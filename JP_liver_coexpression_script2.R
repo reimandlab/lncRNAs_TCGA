@@ -22,7 +22,7 @@
 #[3]. Clinical features 
 #[4]. is methylation available?
 
-#script2 - more processing and visualization 
+#script2 - more processing and visualization via HEATMAPS
 
 #---------------------------------------------------------
 #Preamble
@@ -61,6 +61,8 @@ tier1_lncs <- fread("tier1_lncs.txt", data.table=F)
 tier2_lncs <- fread("tier2_lncs.txt", data.table=F)
 tier1_pcgs <- fread("tier1_pcgs.txt", data.table=F)
 tier2_pcgs <- fread("tier2_pcgs.txt", data.table=F)
+lncs_medians4 <- fread("meds_greaterthan4.txt", data.table=F)
+
 
 lnc <- readRDS("liver_jp_lncRNA_expression_6028.rds")
 all <- readRDS("liver_jp_pcg_expression.rds")
@@ -108,6 +110,14 @@ for(i in 1:nrow(lnc)){
 		lnc$tier[i] <- "TIER1"
 	}
 }
+
+#---Further add tag if median is greater than 4FPKM
+
+
+
+
+
+
 #---PCG----------------------------------
 all$tier <- ""
 for(i in 1:nrow(all)){
@@ -131,6 +141,13 @@ for(i in 1:nrow(lnc)){
 	lnc$lnc_type[i] <- ucsc[z,7]
 }
 
+
+#---------------------------------------------------------
+#Save Data 
+#---------------------------------------------------------
+
+saveRDS(lnc, file= "lnc_liver_expression_file.rds")
+saveRDS(all, file= "pcg_liver_expression_file.rds")
 
 #---------------------------------------------------------
 #Visualize 
