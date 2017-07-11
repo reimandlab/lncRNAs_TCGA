@@ -57,13 +57,14 @@ library(ggpubr)
 #Data
 #---------------------------------------------------------
 
+#These are lists of genes 
 tier1_lncs <- fread("tier1_lncs.txt", data.table=F)
 tier2_lncs <- fread("tier2_lncs.txt", data.table=F)
 tier1_pcgs <- fread("tier1_pcgs.txt", data.table=F)
 tier2_pcgs <- fread("tier2_pcgs.txt", data.table=F)
 lncs_medians4 <- fread("meds_greaterthan4.txt", data.table=F)
 
-
+#These are gene expression files  
 lnc <- readRDS("liver_jp_lncRNA_expression_6028.rds")
 all <- readRDS("liver_jp_pcg_expression.rds")
 #change feature column with gene names so that they are the rownames
@@ -110,12 +111,6 @@ for(i in 1:nrow(lnc)){
 		lnc$tier[i] <- "TIER1"
 	}
 }
-
-#---Further add tag if median is greater than 4FPKM
-
-
-
-
 
 
 #---PCG----------------------------------
@@ -170,7 +165,7 @@ p2 <- ggbarplot(types, "Type", "Number", fill="Tier", color = "Tier", palette = 
 theme(axis.ticks.x=element_blank())
 #COMBINE
 #+++++++++++++++++
-pdf("type_of_lncs_studied_inctier.pdf", pointsize=5, width=9, height=9)
+pdf("type_of_lncs_studied_inctier_new_tier1.pdf", pointsize=5, width=9, height=9)
 grid.arrange(p1, p2, nrow = 2)
 dev.off()
 

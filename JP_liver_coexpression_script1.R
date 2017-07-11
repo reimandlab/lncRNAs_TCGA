@@ -58,8 +58,11 @@ library(ggpubr)
 #Data
 #---------------------------------------------------------
 
+#These are gene expression files based on the original RNA-Seq
+#PCAWG file
 lnc <- readRDS("liver_jp_lncRNA_expression_6028.rds")
 all <- readRDS("liver_jp_pcg_expression.rds")
+
 #change feature column with gene names so that they are the rownames
 rownames(lnc) <- lnc[,1] ; lnc <- lnc[,-1] #13479 lncRNAs as defined by ensembl "lincRNA", "antisense", "sense_intronic", "sense_overlapping"
 rownames(all) <- all[,1] ; all <- all[,-1] #18039 PCGs as defined by ensembl "protein_coding"
