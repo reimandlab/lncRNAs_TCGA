@@ -1,11 +1,12 @@
-###JP_liver_coexpression_script0_extraction.R
+###coexpression_script0_extraction.R
 
 #Author: Karina_Isaev
 #Date_started: July 11th 2017
-#dir: Thesis/
+#dir: Thesis/GTEx_data/data/raw
 
 #Description:
 #Processing RNA-Seq file from GTEx
+#Reformating loops file
 #Note: these values are RPKM 
 #There are 8,557 unique tissue samples with RNA-Seq data
 
@@ -52,7 +53,11 @@ lncs <- fread("lncs_ensg_fromFantom5paper_downjune7th")
 #ucsc genes
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJune12byKI.txt", data.table=F)
 
-###Processing#################################################
+#loop file
+load("merged_loop_and_all_full_length_gene_June_13_UCSC_gene_file.rsav")
+loops <- as.data.frame(loop_gene)
+
+###Processing#################################################head()
 
 #1. Want to only look at ENSG genes in rna file
 #split feature column and extract third component, write function and apply
@@ -86,19 +91,62 @@ lncs2 <- lncs[! lncs$CAT_geneName %in% unique(lncs[duplicated(lncs$CAT_geneName)
 
 #4. Now seperate rna file into lncs and non-lncs 
 z <- which(rna2[,1] %in% ucsc_lncs$hg19.ensGene.name2)
-lncs_expression <- rna2[z,] #12187
+lncs_expression <- rna2[z,] #12,187 - these aren't yet filtered by being the FANTOM5 list but can later be tagged as such
 z <- which(rna2[,1] %in% ucsc_prots$hg19.ensGene.name2)
-pcg_expression <- rna2[z,] #18039 
+pcg_expression <- rna2[z,] #17,680
 
-#6. subset clin file to patients in expression matrix
-#z <- which(clin$icgc_donor_id %in% colnames(rna2))
-#clin <- clin[z,]
-#using JP ids 
+#5. Extract gene that are in loops
+#cols to keep from loops file
 
-saveRDS(lncs_expression, "liver_jp_lncRNA_expression_6028.rds")
-saveRDS(pcg_expression, "liver_jp_pcg_expression.rds")
-#saveRDS(clin, "liver_jp_clinical.rds")
+new_loops <- as.data.frame(matrix(ncol=3)) ; colnames(new_loops) <- c("ID", "Gene", "Side")
 
-#converting to find JP liver ids 
+cols <- colnames(loops)[c(8,9,13,20)]
+loops <- loops[cols]
+for(i in 1:nrow(loops)){
+	id <- loops[i,1]
+	x <- loops[i,2]
+	#adding x-side genes
+	check <- length(unlist(strsplit(x, ",")))
+	if(check >1){
+		genes <- unlist(strsplit(x, ","))
+		for(s in 1:check){
+			row <- c(id, genes[s], "x")
+			names(row) <- colnames(new_loops)
+			new_loops <- rbind(new_loops, row)
+		}
+	}
+	if(check == 1){
+		row <- c(id, x, "x")
+		names(row) <- colnames(new_loops)
+		new_loops <- rbind(new_loops, row)
+	}
+	y <- loops[i,3]
+	check <- length(unlist(strsplit(y, ",")))
+	#adding y-side genes
+	if(check >1){
+		genes <- unlist(strsplit(y, ","))
+		for(s in 1:check){
+			row <- c(id, genes[s], "y")
+			names(row) <- colnames(new_loops)
+			new_loops <- rbind(new_loops, row)
+		}
+	}
+	if(check == 1){
+		row <- c(id, y, "y")
+		names(row) <- colnames(new_loops)
+		new_loops <- rbind(new_loops, row)
+	}
 
-submitter_donor_id
+}
+
+#remove the first .na line
+new_loops <- new_loops[-1,]
+
+#save loop file in processed folder
+write.table(new_loops, file="processed_loop_fileKI.txt", quote=F, row.names=F)
+
+#Further Process the two files into whether they are genes in loops or not in loops
+saveRDS(lncs_expression, "gtex_lncRNA_expression_12187.rds")
+saveRDS(pcg_expression, "gtex_pcg_expression_17680.rds")
+
+
