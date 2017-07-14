@@ -8,7 +8,7 @@
 #Processing RNA-Seq file from GTEx
 #Reformating loops file
 #Note: these values are RPKM 
-#There are 8,557 unique tissue samples with RNA-Seq data
+#There are 4,859 unique tissue samples with RNA-Seq data
 
 ###Preamble###############################################
 options(stringsAsFactors=F)
@@ -43,8 +43,39 @@ rna <- as.data.frame(rna)
 #Clinical file 
 clin <- fread("GTEx_Data_V6_Annotations_SampleAttributesDS.txt") ; clin <- as.data.frame(clin)
 
-#Sample ID Conversion file
-conv <- ""
+#------------------------------------------------------------------
+#Processing clinical file - inlcude samples that have expression
+#------------------------------------------------------------------
+
+tissues <- as.data.frame(clin[,c(1,6)])
+c <- as.data.frame(table(tissues$SMTS))
+c[,1] <- as.character(c[,1])
+c[,2] <- as.numeric(c[,2])
+
+#PCAWG Cancers
+cancers <- c("Biliary", "Bladder", "Bone","Breast" , "Cervix" , "CNS", "Colon", "Esophagus",
+"Head"  , "Kidney" ,   "Liver" , "Lung" , "Lymph" , "Myeloid" , "Ovary" , "Pancreas",
+"Prostate" ,    "Skin" , "Stomach" ,  "Thyroid"  , "Uterus", "Cervix Uteri", "Brain")	
+
+z <- which(c[,1] %in% cancers)
+cancers_keep <- c[z,1]
+
+#Filter clinical file
+z <- which(clin[,6] %in% cancers_keep)
+clin <- clin[z,]
+
+#keep only patients in gene expression file that are part of the tissues
+#we want to study 
+z <- which(colnames(rna) %in% clin[,1])
+rna <- rna[,c(1,2,z)]
+
+#keep only patients in clinical file that have gene-Expression 
+z <- which(clin[,1] %in% colnames(rna))
+clin <- clin[z,]
+
+####-------------------
+### 4,859 samples TOTAL
+####-------------------
 
 #list of functional lncRNAs from FANTOM5 paper (will assume that all other genes othan than these are protein-coding for now)
 #can always subset the protein coding gene expression file later 

@@ -150,43 +150,43 @@ meds <- apply(loop_lnc, 1, median)
 meds <- as.data.frame(meds)
 meds$gene <- rownames(meds)
 z <- which(meds$meds < 1) ; 
-#1858/2009 have median Expression less than 1
+#1848/2006 have median Expression less than 1
 #Don't plot them 
 meds2 <- meds[-z,]
-#151 remain - make histogram 
-g <- gghistogram(meds2, x="meds", title="151 lncRNAs with Median Expression Greater Than 1RPKM", fill="lightgray", add = "median", rug=FALSE, 
+#158 remain - make histogram 
+g <- gghistogram(meds2, x="meds", title="158 lncRNAs with Median Expression Greater Than 1RPKM", fill="lightgray", add = "median", rug=FALSE, 
 	bins=50, xlab="Median", ylab="Number of lncRNAs")
 g <- ggpar(g, xticks.by = 2)
 
 ##greater than 2s
 z <- which(meds2$meds < 2) ; 
 meds3 <- meds2[-z,]
-#73 remain - make histogram 
-g2 <- gghistogram(meds3, x="meds", title="73 lncRNAs with Median Expression Greater Than 2RPKM", fill="lightgray", add = "median", rug=FALSE, 
+#76 remain - make histogram 
+g2 <- gghistogram(meds3, x="meds", title="76 lncRNAs with Median Expression Greater Than 2RPKM", fill="lightgray", add = "median", rug=FALSE, 
 	bins=50, xlab="Median", ylab="Number of lncRNAs")
 g2 <- ggpar(g2, xticks.by = 2)
 
 ##greater than 3s
 z <- which(meds3$meds < 3) ; 
 meds4 <- meds3[-z,]
-#38 remain - make histogram 
-g3 <- gghistogram(meds4, x="meds", title="38 lncRNAs with Median Expression Greater Than 3RPKM", fill="lightgray", add = "median", rug=FALSE, 
+#45 remain - make histogram 
+g3 <- gghistogram(meds4, x="meds", title="45 lncRNAs with Median Expression Greater Than 3RPKM", fill="lightgray", add = "median", rug=FALSE, 
 	bins=50, xlab="Median", ylab="Number of lncRNAs")
 g3 <- ggpar(g3, xticks.by = 2)
 
 ##greater than 4s
 z <- which(meds4$meds < 4) ; 
 meds5 <- meds4[-z,]
-#28 remain - make histogram 
-g4 <- gghistogram(meds5, x="meds", title="28 lncRNAs with Median Expression Greater Than 4RPKM", fill="lightgray", add = "median", rug=FALSE, 
+#29 remain - make histogram 
+g4 <- gghistogram(meds5, x="meds", title="29 lncRNAs with Median Expression Greater Than 4RPKM", fill="lightgray", add = "median", rug=FALSE, 
 	bins=50, xlab="Median", ylab="Number of lncRNAs")
 g4 <- ggpar(g4, xticks.by = 2)
 
 ##greater than 5s
 z <- which(meds5$meds < 5) ; 
 meds6 <- meds5[-z,]
-#20 remain - make histogram 
-g5 <- gghistogram(meds6, x="meds", title="20 lncRNAs with Median Expression Greater Than 5RPKM", fill="lightgray", add = "median", rug=FALSE, 
+#24 remain - make histogram 
+g5 <- gghistogram(meds6, x="meds", title="24 lncRNAs with Median Expression Greater Than 5RPKM", fill="lightgray", add = "median", rug=FALSE, 
 	bins=50, xlab="Median", ylab="Number of lncRNAs")
 g5 <- ggpar(g5, xticks.by = 2)
 
@@ -213,45 +213,47 @@ meds <- apply(loop_all, 1, median)
 #ie, 0, 0.5, 1, 2, 3, 4 ...
 meds <- as.data.frame(meds)
 meds$gene <- rownames(meds)
+
+#remove those with medians higher than 200 - too far out right
+z <- which(meds[,1] >200)
+meds <- meds[-z,] #left with 5,238
+
 z <- which(meds$meds < 1) ; 
-#1817/5251 have median Expression less than 1
-#Don't plot them 
 meds2 <- meds[-z,]
-g <- gghistogram(meds2, x="meds", title="3,434 PCGs with Median Expression Greater Than 1RPKM", fill="lightgray", add = "median", rug=FALSE, 
+g <- gghistogram(meds2, x="meds", title="3,489 PCGs with Median Expression Greater Than 1RPKM", fill="lightgray", add = "median", rug=FALSE, 
 	bins=50, xlab="Median", ylab="Number of PCGs")
-g <- ggpar(g, xticks.by = 50)
+g <- ggpar(g, xticks.by = 10)
 
 ##greater than 2s
 z <- which(meds2$meds < 2) ; 
 meds3 <- meds2[-z,]
-g2 <- gghistogram(meds3, x="meds", title="2,994 PCGs with Median Expression Greater Than 2RPKM", fill="lightgray", add = "median", rug=FALSE, 
+g2 <- gghistogram(meds3, x="meds", title="3,041 PCGs with Median Expression Greater Than 2RPKM", fill="lightgray", add = "median", rug=FALSE, 
 	bins=50, xlab="Median", ylab="Number of PCGs")
-g2 <- ggpar(g2, xticks.by = 50)
+g2 <- ggpar(g2, xticks.by = 10)
 
 ##greater than 3s
 z <- which(meds3$meds < 3) ; 
 meds4 <- meds3[-z,]
-g3 <- gghistogram(meds4, x="meds", title="2,610 PCGs with Median Expression Greater Than 3RPKM", fill="lightgray", add = "median", rug=FALSE, 
+g3 <- gghistogram(meds4, x="meds", title="2,637 PCGs with Median Expression Greater Than 3RPKM", fill="lightgray", add = "median", rug=FALSE, 
 	bins=50, xlab="Median", ylab="Number of PCGs")
-g3 <- ggpar(g3, xticks.by = 50)
+g3 <- ggpar(g3, xticks.by = 10)
 
 ##greater than 4s
 z <- which(meds4$meds < 4) ; 
 meds5 <- meds4[-z,]
-#28 remain - make histogram 
-g4 <- gghistogram(meds5, x="meds", title="2,258 PCGs with Median Expression Greater Than 4RPKM", fill="lightgray", add = "median", rug=FALSE, 
+g4 <- gghistogram(meds5, x="meds", title="2,298 PCGs with Median Expression Greater Than 4RPKM", fill="lightgray", add = "median", rug=FALSE, 
 	bins=50, xlab="Median", ylab="Number of PCGs")
-g4 <- ggpar(g4, xticks.by = 50)
+g4 <- ggpar(g4, xticks.by = 10)
 
 ##greater than 5s
 z <- which(meds5$meds < 5) ; 
 meds6 <- meds5[-z,]
-g5 <- gghistogram(meds6, x="meds", title="1,978 PCGs with Median Expression Greater Than 5RPKM", fill="lightgray", add = "median", rug=FALSE, 
+g5 <- gghistogram(meds6, x="meds", title="1,997 PCGs with Median Expression Greater Than 5RPKM", fill="lightgray", add = "median", rug=FALSE, 
 	bins=50, xlab="Median", ylab="Number of PCGs")
-g5 <- ggpar(g5, xticks.by = 50)
+g5 <- ggpar(g5, xticks.by = 10)
 
 
-pdf("GTEx_PCGs_arranged_median_summaries.pdf", pointsize=3, width=15, height=15)
+pdf("GTEx_PCGs_arranged_median_summaries_July14.pdf", pointsize=3, width=15, height=15)
 grid.arrange(g, g2, g3, g4, g5, ncol = 1, nrow=5)
 dev.off()
 
