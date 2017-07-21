@@ -1,3 +1,18 @@
+#top5_cancers_extraction_script0.R
+
+#Karina Isaev
+#July 19th, 2017
+
+#Purpose: Using PCAWG, extract the top 5 cancer types with the 
+#most patients and good distribution of samples across
+#multiple histological subtypes 
+
+#For each cancer type, identify list of 100-200 candidate 
+#lncRNAs that wiill be used for further survival and co-expression
+#analysis 
+
+#Script0 - extracts cancer types and plot distributions 
+
 #Preamble#-------------------------------------------------
 options(stringsAsFactors=F)
 
@@ -181,8 +196,17 @@ ggpar(p,
  legend="right", font.legend = c(5, "plain", "black"), legend.title="Histological Subtype")
 dev.off()
 
+###WITHIN CANCER TYPE, REMOVE HISTO SUBTYPE IF ONLY 1-10 SAMPLES IN IT 
+tum_types <- tum_types[tum_types$N>=10]
 
-
+pdf("50patients_min_cancers_dist_wHISTOsubtype_TOP5_removedLOwhistoTypes.pdf")
+p <- ggbarplot(tum_types, "V1", "N", fill="V2", xlab="Tumour Organ Site", palette=mypal) +
+ggtitle("Distribution of Tumour RNA-Seq Samples by Histological Subtype")
+ggpar(p,
+ font.tickslab = c(6,"bold", "black"),
+ xtickslab.rt = 70,
+ legend="right", font.legend = c(5, "plain", "black"), legend.title="Histological Subtype")
+dev.off()
 
 
 
