@@ -1,7 +1,7 @@
 #top5_cancers_extraction_script1.R
 
 #Karina Isaev
-#July 20th, 2017
+#July 24th, 2017
 
 #Purpose: Using PCAWG, extract the top 5 cancer types with the 
 #most patients and good distribution of samples across
@@ -11,13 +11,16 @@
 #lncRNAs that wiill be used for further survival and co-expression
 #analysis 
 
-#Script1 - using the top 5 cancer types chosen
+#Script2 - using the top 5 cancer types chosen
 #PLOTS:
 
-#1. Heatmap of median lncRNA expression in a cancer type 
+#1. For each cancer type, identify list of candidate lncRNAs 
+#whose expression is specific to that cancer 
 
-#2. PCA to show that lncRNA expression in general
-#can seperate cancer types 
+#2. Plot their violin plots with increasing medians 
+
+#3. Plot to compare how cancer specific lncRNAs are expressed 
+#in other cancer types 
 
 #Preamble#-------------------------------------------------
 options(stringsAsFactors=F)
@@ -25,7 +28,7 @@ options(stringsAsFactors=F)
 #Later on - incorporate FANTOM5 and CRISPRi lncRNAs 
 
 #Libraries#------------------------------------------------
-library("colorout")
+library(colorout)
 library(data.table)
 library(survival)
 library(ggplot2)
@@ -172,92 +175,143 @@ clin_top5$combined_tum_histo <- paste(clin_top5[,15], clin_top5[,17])
 #EXPRESSION - pcgs
 z <- which(colnames(pcg_rna) %in% clin_top5$icgc_donor_id)
 pcg_rna_top5 <- pcg_rna[,z] #20166
+sums <- apply(pcg_rna_top5, 1, sum) 
+s <- which(sums==0)
+z <- which(rownames(pcg_rna_top5) %in% names(s))
+pcg_rna_top5 <- pcg_rna_top5[-z,] #20022
+pcg_rna_top5 <- t(pcg_rna_top5)
+pcg_rna_top5 <- as.data.frame(pcg_rna_top5)
+pcg_rna_top5$canc <- ""
+#add patient tum type
+for(i in 1:nrow(pcg_rna_top5)){
+	pat <- rownames(pcg_rna_top5)[i]
+	z <- which(clin_top5$icgc_donor_id %in% pat)
+	hist <- clin_top5$combined_tum_histo[z]
+	pcg_rna_top5$canc[i] <- hist
+}
+
 
 #EXPRESSION - lncs
 z <- which(colnames(lnc_rna) %in% clin_top5$icgc_donor_id)
 lnc_rna_top5 <- lnc_rna[,z] #12598
-pca_lncs <- lnc_rna_top5
-
-#---------------------------------------------------------
-#lncRNA Median Expression Cancer Heatmap 
-#---------------------------------------------------------
-
-##LNCRNAs
-heatmap_matrix <- as.data.frame(matrix(ncol=dim(tum_types)[1],nrow=length(unique(rownames(lnc_rna_top5)))))
-colnames(heatmap_matrix) <-  paste(tum_types[,1], tum_types[,2])
-rownames(heatmap_matrix) <- unique(rownames(lnc_rna_top5))
-
-tissues <- paste(tum_types[,1], tum_types[,2])
-genes <- unique(rownames(lnc_rna_top5))
-
-for(i in 1:length(tissues)){
-	tis <- tissues[i]
-	pats_tis <- which(clin_top5$combined_tum_histo %in% tis)
-	pats_tis <- clin_top5[pats_tis,9]
-	pats_exp <- which(colnames(lnc_rna_top5) %in% pats_tis)
-	pats_exp <- lnc_rna_top5[,pats_exp]
-
-	for(y in 1:length(genes)){
-		k <- which(rownames(pats_exp) %in% genes[y])
-		median_k <- median(as.numeric(pats_exp[k,]))
-		heatmap_matrix[y, i] <- median_k
-	}
+sums <- apply(lnc_rna_top5, 1, sum) 
+s <- which(sums==0)
+z <- which(rownames(lnc_rna_top5) %in% names(s))
+lnc_rna_top5 <- lnc_rna_top5[-z,] #12543
+lnc_rna_top5 <- t(lnc_rna_top5)
+lnc_rna_top5 <- as.data.frame(lnc_rna_top5)
+lnc_rna_top5$canc <- ""
+#add patient tum type
+for(i in 1:nrow(lnc_rna_top5)){
+	pat <- rownames(lnc_rna_top5)[i]
+	z <- which(clin_top5$icgc_donor_id %in% pat)
+	hist <- clin_top5$combined_tum_histo[z]
+	lnc_rna_top5$canc[i] <- hist
 }
 
-##Are there any lncs that median of 0 in all cancers?
-sums <- apply(heatmap_matrix, 1, sum) #3658
-s <- which(sums == 0)
-z <- which(rownames(heatmap_matrix) %in% names(s))
-heatmap_matrix <- heatmap_matrix[-z,] #8940 genes left 
 
-floored_heatmap_matrix <- floor(heatmap_matrix)
-##now how many genes have a median of 0 in all tissues?
-sums <- apply(floored_heatmap_matrix, 1, sum) #3658
-s <- which(sums == 0)
-z <- which(rownames(floored_heatmap_matrix) %in% names(s))
-floored_heatmap_matrix <- floored_heatmap_matrix[-z,] #1612 genes left 
+#---------------------------------------------------------
+#Analysis - plot medians cutoffs
+#---------------------------------------------------------
 
-##some outliers
-maxs <- apply(floored_heatmap_matrix, 1, max)
-summary(maxs)
-   # Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
-   # 1.0      1.0      2.0    127.5      3.0 147231.0 
+#For each subtype:
+#Generate (1) plot showing how many lncRNAs left after different 
+#median cutoffs --> then decide on a cutoff based on how many lncRNAs 
+#there are
 
-#cap it at 100, only 8 lncRNAs with max median E greater 15
-s <- which(maxs >100)
-z <- which(rownames(floored_heatmap_matrix) %in% names(s))
-floored_heatmap_matrix <- floored_heatmap_matrix[-z,] #1604 genes left 
+plots <- list()
 
-mypal[5] <- "white"
-my_palette <- colorRampPalette(mypal[c(5,8,3,2)])(n = 150)
+for(i in 1:length(unique(lnc_rna_top5$canc))){
+	tis <- unique(lnc_rna_top5$canc)[i]
+	z <- which(lnc_rna_top5$canc %in% tis)
+	tis_exp <- lnc_rna_top5[z,]
+	#measure medians of genes and save them 
+	meds <- as.data.frame(matrix(nrow=dim(tis_exp)[2]-1,ncol=2))
+	colnames(meds) <- c("Gene", "MedianE")
+	meds$Gene <- colnames(tis_exp[,1:dim(tis_exp)[2]-1])
+	meds$MedianE <- apply(tis_exp[,1:dim(tis_exp)[2]-1], 2, median)
+	meds$check1 <- ""
+	meds$check2 <- ""
+	meds$check3 <- ""
+	meds$check4 <- ""
+	meds$check5 <- ""
+	
+	for(y in 1:nrow(meds)){
+		m <- meds$MedianE[y]
+		if(m >=5){
+			meds[y,3:7] <- 1
+		}
+		if(m >=4){
+			meds[y,3:6] <- 1
+		}
+		if(m >=3){
+			meds[y,3:5] <- 1
+		}
+		if(m >=2){
+			meds[y,3:4] <- 1
+		}
+		if(m >=1){
+			meds[y,3] <- 1
+		}
+		if(m < 1){
+			meds[y,3] <- 0
+		}
+	}
+	#plot how many lncRNAs meet each median cutoff
+	plot_meds <- as.data.frame(matrix(nrow=5,ncol=2))
+	colnames(plot_meds) <- c("Median", "Number_lncRNAs")
+	plot_meds[,1] <- 1:5
+	plot_meds[5,2] <- length(which(meds$check5==1))
+	plot_meds[4,2] <- length(which(meds$check4==1 & (!(meds$check5==1))))
+	plot_meds[3,2] <- length(which(meds$check3==1 & (!(meds$check4==1))))
+	plot_meds[2,2] <- length(which(meds$check2==1 & (!(meds$check3==1))))
+	plot_meds[1,2] <- length(which(meds$check1==1 & (!(meds$check2==1))))
 
-pdf("top5cancers_lncRNAs_heatmapJuuly20.pdf", pointsize=2)
-heatmap.2(as.matrix(floored_heatmap_matrix), trace="none",col= my_palette, hclustfun = function(x) hclust(x,method = 'ward.D'),
-	distfun = function(x) dist(x,method = 'euclidean'), srtCol=35, cexCol=0.9, key.title=NA, keysize=1, labRow = FALSE,
-          margins = c(9, 2), main = list("Median Expression of 1,604 lncRNAs Across Cancers", cex = 1.2))
+	#save plot
+	g <- ggbarplot(plot_meds, x="Median", y="Number_lncRNAs", palette=mypal, col="Median", fill="Median", label = TRUE, lab.pos = "in", lab.size = 2.6)
+	g <- ggpar(g, legend="none")
+	g <- g + labs(title = tis, y="Number of lncRNAs") + 
+     theme(plot.title = element_text(hjust = 0.5))
+    plots[[i]] <- g
 
+    #save list of high expression lncRNAs 
+    name_file <- paste(tis, "list_great5med_lncs.txt")
+    save <- as.data.frame(meds[meds$MedianE >=5,1])
+    colnames(save)[1] <- "gene"
+    save$canc <- tis
+    write.table(save, name_file, quote=F, row.names=F, sep="_")
+
+} #end loop
+
+g1 <- plots[[1]]
+g2 <- plots[[2]]
+g3 <- plots[[3]]
+g4 <- plots[[4]]
+g5 <- plots[[5]]
+g6 <- plots[[6]]
+g7 <- plots[[7]]
+
+pdf("top5_cancers_lncRNAs_above_diffMedians.pdf", pointsize=5, height=13, width=13)
+plot_grid(g1,g2,g3,g4,g5,g6,g7, labels = "AUTO", ncol = 2, align = 'v', label_size = 10, scale = 0.9)
 dev.off()
 
+
 #---------------------------------------------------------
-#PCA
+#Analysis - how many lncRNAs in common?
 #---------------------------------------------------------
 
-#Using all lncRNAs - remove those that are 0 in all patients 
-sums <- apply(pca_lncs, 1, sum) 
-s <- which(sums==0)
-z <- which(rownames(pca_lncs) %in% names(s))
-pca_lncs <- pca_lncs[-z,]
+f <- fread("all_lncs_cancers.txt", data.table=F, sep="_")
+#remove individual file headers
+z <- which(f[,1] %in% "gene")
+f <- f[-z,]
 
-#Set up patient - cancer type list 
-pats <- colnames(pca_lncs)
-z <- which(clin_top5$icgc_donor_id %in% pats)
-canc <- as.factor(clin_top5$combined_tum_histo[z])
+#how many times does each gene appear? if 7 == all cancers
+counts <- as.data.table(table(f[,1]))
+counts <- counts[order(N)]
+#173/305 lncRNAs appear only once
+#21/305 lncRNAs appear in all cancer types 
 
-pca_lncs <- log1p(pca_lncs)
-pca_lncs <- t(pca_lncs)
-
-
-
+all <- counts$V1[counts$N ==7]
 
 
 
