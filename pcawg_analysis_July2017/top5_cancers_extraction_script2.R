@@ -56,11 +56,11 @@ mypal = pal_npg("nrc", alpha = 0.7)(10)
 #---------------------------------------------------------
 
 #UCSC gene info
-ucsc <- fread("UCSC_hg19_gene_annotations_downlJune12byKI.txt", data.table=F)
+ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
 ucsc <- ucsc[z,]
 z <- which(duplicated(ucsc[,6]))
-ucsc <- ucsc[-z,]
+ucsc <- ucsc[-z,] #total unique genes left 32843
 
 #Clinical file 
 clin <- fread("pcawg_specimen_histology_August2016_v6.tsv", data.table=F)
@@ -235,9 +235,13 @@ for(i in 1:length(unique(lnc_rna_top5$canc))){
 	meds$check3 <- ""
 	meds$check4 <- ""
 	meds$check5 <- ""
+	meds$check10 <- ""
 	
 	for(y in 1:nrow(meds)){
 		m <- meds$MedianE[y]
+		if(m >=10){
+			meds[y,3:8] <- 1
+		}
 		if(m >=5){
 			meds[y,3:7] <- 1
 		}
@@ -258,10 +262,11 @@ for(i in 1:length(unique(lnc_rna_top5$canc))){
 		}
 	}
 	#plot how many lncRNAs meet each median cutoff
-	plot_meds <- as.data.frame(matrix(nrow=5,ncol=2))
+	plot_meds <- as.data.frame(matrix(nrow=6,ncol=2))
 	colnames(plot_meds) <- c("Median", "Number_lncRNAs")
-	plot_meds[,1] <- 1:5
-	plot_meds[5,2] <- length(which(meds$check5==1))
+	plot_meds[,1] <- c(1:5,10)
+	plot_meds[6,2] <- length(which(meds$check10==1))
+	plot_meds[5,2] <- length(which(meds$check5==1 & (!(meds$check10==1))))
 	plot_meds[4,2] <- length(which(meds$check4==1 & (!(meds$check5==1))))
 	plot_meds[3,2] <- length(which(meds$check3==1 & (!(meds$check4==1))))
 	plot_meds[2,2] <- length(which(meds$check2==1 & (!(meds$check3==1))))
@@ -276,7 +281,7 @@ for(i in 1:length(unique(lnc_rna_top5$canc))){
 
     #save list of high expression lncRNAs 
     name_file <- paste(tis, "list_great5med_lncs.txt")
-    save <- as.data.frame(meds[meds$MedianE >=5,1])
+    save <- as.data.frame(meds[meds$MedianE >=10,1])
     colnames(save)[1] <- "gene"
     save$canc <- tis
     write.table(save, name_file, quote=F, row.names=F, sep="_")
@@ -291,13 +296,13 @@ g5 <- plots[[5]]
 g6 <- plots[[6]]
 g7 <- plots[[7]]
 
-pdf("top5_cancers_lncRNAs_above_diffMedians.pdf", pointsize=5, height=13, width=13)
+pdf("top5_cancers_lncRNAs_above_diffMedians.pdf", pointsize=5, height=13, width=14)
 plot_grid(g1,g2,g3,g4,g5,g6,g7, labels = "AUTO", ncol = 2, align = 'v', label_size = 10, scale = 0.9)
 dev.off()
 
 
 #---------------------------------------------------------
-#Analysis - how many lncRNAs in common?
+#Analysis - how many lncRNAs in common? - 21 lncRNAs plot
 #---------------------------------------------------------
 
 f <- fread("all_lncs_cancers.txt", data.table=F, sep="_")
@@ -312,31 +317,244 @@ counts <- counts[order(N)]
 #21/305 lncRNAs appear in all cancer types 
 
 all <- counts$V1[counts$N ==7]
+all <- as.data.frame(all)
+#gene ids conversion ENSG-Hugo
+z <- which(ucsc$hg19.ensGene.name2 %in% all[,1])
+all$gene <- ""
+all$gene <- ucsc$hg19.ensemblToGeneName.value[z]
+
+specific <- counts$V1[counts$N ==1]
+specific <- as.data.frame(specific)
+#gene ids conversion ENSG-Hugo
+z <- which(ucsc$hg19.ensGene.name2 %in% specific[,1])
+specific$gene <- ""
+specific$gene <- ucsc$hg19.ensemblToGeneName.value[z]
+
+#make violin plot for 10 lncRNAs that are highly expressed in all cancers
+
+#num of rows = num_genes(10) * patients(497) = 10437
+
+all_genes <- as.data.frame(matrix(nrow=4970, ncol=4))
+colnames(all_genes) <- c("Gene", "Cancer", "Patient", "GeneE")
+
+for(i in 1:nrow(all)){
+	gene2 <- all[i,1]
+	gene <- all[i,2]
+	if(i == 1){
+		all_genes[1:497,1] <- gene
+		z <- which(colnames(lnc_rna_top5) %in% gene2)
+		dat <- lnc_rna_top5[,c(z,12544)]	
+		all_genes[1:497,2] <- dat$canc
+		all_genes[1:497,3] <- rownames(dat)
+		all_genes[1:497,4] <- dat[,1]
+	}
+	if(!(i==1)){
+		z <- which(is.na(all_genes[,1]))[1]
+		all_genes[z:(z+496), 1] <- gene
+		z2 <- which(colnames(lnc_rna_top5) %in% gene2)
+		dat <- lnc_rna_top5[,c(z2,12544)]	
+		all_genes[z:(z+496),2] <- dat$canc
+		all_genes[z:(z+496),3] <- rownames(dat)
+		all_genes[z:(z+496),4] <- dat[,1]
+	}
+}
+
+##Plot violin
+all_genes_logged <- all_genes  
+all_genes_logged$GeneE <- log1p(all_genes_logged$GeneE)
+
+pdf("10_high_all_tissues_lncs.pdf", pointsize=5, width=16, height=14)
+g <- ggviolin(all_genes_logged, x="Cancer", y="GeneE", color="Cancer", fill="Cancer", palette=mypal,draw_quantiles = 0.5, facet.by="Gene")
+g <- ggpar(g, font.legend = c(8, "plain", "black")) 
+g <- g + labs(title = "10 lncRNAs Highly Expressed in all Cancers", y="log1p(FPKM)") + 
+     theme(plot.title = element_text(hjust = 0.5))
+g <- g + rremove("x.text")
+g <- g + rremove("x.ticks")     
+g <- g  + geom_hline(aes(yintercept=log1p(10)), colour="#990000", linetype="dashed")
+g
+dev.off()
 
 
 
+#---------------------------------------------------------
+#Analysis - can the 300 lncRNAs seperate patients based on
+#expression into cancer type?
+#---------------------------------------------------------
+
+##Task: make heatmap clustering patients at the top
+#by cancer type based on lncRNA expression 
+#need matrix
+#using only 305 genes to start
+genes_305 <- as.data.frame(counts[,1])
+lncs_305 <- which(colnames(lnc_rna_top5) %in% genes_305[,1])
+lncs_305 <- lnc_rna_top5[,c(lncs_305, 12544)]
+
+df <- lncs_305[,1:117]
+
+desc_stats <- data.frame(
+  Min = apply(df, 2, min), # minimum
+  Med = apply(df, 2, median), # median
+ Mean = apply(df, 2, mean), # mean
+  SD = apply(df, 2, sd), # Standard deviation
+  Max = apply(df, 2, max) # Maximum
+  )
+
+desc_stats <- round(desc_stats, 1)
+
+#As we don’t want the hierarchical clustering result to depend to an arbitrary variable unit, 
+#we start by scaling the data using the R function scale() as follow:
+
+df <- scale(df)
+head(df)
+# Dissimilarity matrix
+d <- dist(df, method = "euclidean")
+# Hierarchical clustering using Ward's method
+res.hc <- hclust(d, method = "ward.D2" )
+# Plot the obtained dendrogram
+plot(res.hc, cex = 0.6, hang = -1)
+dev.off()
+
+library(factoextra)
+#Observations are represented by points in the plot, using principal components
+pdf("pca_using117_toplncs.pdf", pointsize=4, height=11, width=10)
+fviz_cluster(list(data = df, cluster = as.factor(lncs_305$canc)))
+dev.off()
+
+#pca using logged values instead of scaled
+df <- lncs_305[,1:117]
+df <- log1p(df)
+pdf("pca_using117_toplncsLogged.pdf", pointsize=4, height=11, width=10)
+fviz_cluster(list(data = df, cluster = as.factor(lncs_305$canc)), geom = "point", palette=mypal, ggtheme = theme_minimal(), ellipse.type="norm")
+dev.off()
+
+##compare to 305 randomly chosen mRNAs with median E > 5FPKM 
 
 
+#---------------------------------------------------------
+#Analysis - Cancer Specific lncRNAs 
+#---------------------------------------------------------
+
+##clustering using just 173(163 with Hugo IDs) /305 lncRNAs super specific
+#make violin plot for 173 lncRNAs that are highly expressed in specific cancers to show it 
+
+#num of rows = num_genes(163) * patients(497) = 10437
+
+specific_genes <- as.data.frame(matrix(nrow=35784, ncol=4))
+colnames(specific_genes) <- c("Gene", "Cancer", "Patient", "GeneE")
+
+for(i in 1:nrow(specific)){
+	gene2 <- specific[i,1]
+	gene <- specific[i,2]
+	if(i == 1){
+		specific_genes[1:497,1] <- gene
+		z <- which(colnames(lnc_rna_top5) %in% gene2)
+		dat <- lnc_rna_top5[,c(z,12544)]	
+		specific_genes[1:497,2] <- dat$canc
+		specific_genes[1:497,3] <- rownames(dat)
+		specific_genes[1:497,4] <- dat[,1]
+	}
+	if(!(i==1)){
+		z <- which(is.na(specific_genes[,1]))[1]
+		specific_genes[z:(z+496), 1] <- gene
+		z2 <- which(colnames(lnc_rna_top5) %in% gene2)
+		dat <- lnc_rna_top5[,c(z2,12544)]	
+		specific_genes[z:(z+496),2] <- dat$canc
+		specific_genes[z:(z+496),3] <- rownames(dat)
+		specific_genes[z:(z+496),4] <- dat[,1]
+	}
+}
+
+##Plot violin
+specific_genes_logged <- specific_genes  
+specific_genes_logged$GeneE <- log1p(specific_genes_logged$GeneE)
+specific_genes_logged$Gene <- as.factor(specific_genes_logged$Gene)
+
+pdf("72_high_specific_tissues_lncs.pdf", pointsize=8, width=14, height=13)
+
+for (i in seq(1, length(unique(specific_genes_logged$Gene)), 4)) {
+    
+    g <- ggviolin(specific_genes_logged[specific_genes_logged$Gene %in% levels(specific_genes_logged$Gene)[i:(i+5)], ], 
+                  x="Cancer", y="GeneE", color="Cancer", fill="Cancer", palette=mypal,draw_quantiles = 0.5, facet.by="Gene",
+                  order = unique(specific_genes_logged$Cancer)[c(1,3,7,2,4,5,6)])
+
+    g <- ggpar(g, font.legend = c(6, "plain", "black")) 
+	g <- g + labs(title = "72 lncRNAs Highly Expressed in Specific Cancers", y="log1p(FPKM)") + 
+     	 theme(plot.title = element_text(hjust = 0.5))
+	g <- g + rremove("x.text")
+	g <- g + rremove("x.ticks")  
+	g <- g  + geom_hline(aes(yintercept=log1p(10)), colour="#990000", linetype="dashed")
+	print(g)
+}
+
+dev.off()
 
 
+#---------------------------------------------------------
+#Analysis - can the 163 lncRNAs seperate patients based on 
+#cancer type?
+#---------------------------------------------------------
 
+##Task: make heatmap clustering patients at the top
+#by cancer type based on lncRNA expression 
+#need matrix
+#using only 305 genes to start
+lncs_163 <- which(colnames(lnc_rna_top5) %in% specific[,1])
+lncs_163 <- lnc_rna_top5[,c(lncs_163, 12544)]
 
+df <- lncs_163[,1:163]
 
+desc_stats <- data.frame(
+  Min = apply(df, 2, min), # minimum
+  Med = apply(df, 2, median), # median
+ Mean = apply(df, 2, mean), # mean
+  SD = apply(df, 2, sd), # Standard deviation
+  Max = apply(df, 2, max) # Maximum
+  )
 
+desc_stats <- round(desc_stats, 1)
 
+#As we don’t want the hierarchical clustering result to depend to an arbitrary variable unit, 
+#we start by scaling the data using the R function scale() as follow:
 
+df <- scale(df)
+head(df)
+# Dissimilarity matrix
+d <- dist(df, method = "euclidean")
+# Hierarchical clustering using Ward's method
+res.hc <- hclust(d, method = "ward.D2" )
+# Plot the obtained dendrogram
+plot(res.hc, cex = 0.6, hang = -1)
+dev.off()
 
+library(factoextra)
+#Observations are represented by points in the plot, using principal components
+pdf("pca_using163_toplncs.pdf", pointsize=4, height=11, width=10)
+fviz_cluster(list(data = df, cluster = as.factor(lncs_163$canc)))
+dev.off()
 
+#pca using logged values instead of scaled
+df <- lncs_163[,1:163]
+df <- log1p(df)
+pdf("pca_using136_toplncsLogged.pdf", pointsize=4, height=11, width=10)
+fviz_cluster(list(data = df, cluster = as.factor(lncs_163$canc)), geom = "point", palette=mypal, ggtheme = theme_minimal(), ellipse.type="norm")
+dev.off()
 
+##compare to 72 randomly chosen lncRNAs
 
+z <- which(colnames(lnc_rna_top5) %in% specific[,1])
+random_lncs <- lnc_rna_top5[,-z]
+random_lncs_sample <- random_lncs[,-12381]
 
+random_list <- c()
 
+for(i in 1:500){
+s <- sample(1:ncol(random_lncs_sample), 72)
+df <- random_lncs_sample[,s]
+df <- log1p(df)
+#pdf("pca_using163random_lncsLogged.pdf", pointsize=4, height=11, width=10)
+f <- fviz_cluster(list(data = df, cluster = as.factor(random_lncs$canc)), geom = "point", palette=mypal, ggtheme = theme_minimal(), ellipse.type="norm")
+random_list[[i]] <- f
+}
 
-
-
-
-
-
-
-
-
+ml<-marrangeGrob(random_list,nrow=2,ncol=2)
+ggsave("pca_using163random_lncsLogged.pdf",ml)
