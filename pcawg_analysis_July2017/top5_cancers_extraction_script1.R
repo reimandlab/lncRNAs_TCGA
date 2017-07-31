@@ -53,7 +53,7 @@ mypal = pal_npg("nrc", alpha = 0.7)(10)
 #---------------------------------------------------------
 
 #UCSC gene info
-ucsc <- fread("UCSC_hg19_gene_annotations_downlJune12byKI.txt", data.table=F)
+ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
 ucsc <- ucsc[z,]
 z <- which(duplicated(ucsc[,6]))
@@ -212,10 +212,11 @@ heatmap_matrix <- heatmap_matrix[-z,] #8940 genes left
 
 floored_heatmap_matrix <- floor(heatmap_matrix)
 ##now how many genes have a median of 0 in all tissues?
-sums <- apply(floored_heatmap_matrix, 1, sum) #3658
+sums <- apply(floored_heatmap_matrix, 1, sum) #7328
 s <- which(sums == 0)
 z <- which(rownames(floored_heatmap_matrix) %in% names(s))
 floored_heatmap_matrix <- floored_heatmap_matrix[-z,] #1612 genes left 
+#that have median of at least 1 FPKM in at least one cancer type 
 
 ##some outliers
 maxs <- apply(floored_heatmap_matrix, 1, max)
@@ -231,30 +232,41 @@ floored_heatmap_matrix <- floored_heatmap_matrix[-z,] #1604 genes left
 mypal[5] <- "white"
 my_palette <- colorRampPalette(mypal[c(5,8,3,2)])(n = 150)
 
-pdf("top5cancers_lncRNAs_heatmapJuuly20.pdf", pointsize=2)
+#pdf("top5cancers_lncRNAs_heatmapJuuly20.pdf", pointsize=2)
 heatmap.2(as.matrix(floored_heatmap_matrix), trace="none",col= my_palette, hclustfun = function(x) hclust(x,method = 'ward.D'),
 	distfun = function(x) dist(x,method = 'euclidean'), srtCol=35, cexCol=0.9, key.title=NA, keysize=1, labRow = FALSE,
           margins = c(9, 2), main = list("Median Expression of 1,604 lncRNAs Across Cancers", cex = 1.2))
 
 dev.off()
 
-#---------------------------------------------------------
-#PCA
-#---------------------------------------------------------
+#what if divide the lncRNAs into high and low median groups to see heatmap more clearly 
 
-#Using all lncRNAs - remove those that are 0 in all patients 
-sums <- apply(pca_lncs, 1, sum) 
-s <- which(sums==0)
-z <- which(rownames(pca_lncs) %in% names(s))
-pca_lncs <- pca_lncs[-z,]
+#divide by medians
 
-#Set up patient - cancer type list 
-pats <- colnames(pca_lncs)
-z <- which(clin_top5$icgc_donor_id %in% pats)
-canc <- as.factor(clin_top5$combined_tum_histo[z])
+meds <- apply(floored_heatmap_matrix, 1, median)
+#median of medians is 0
+z <- which(meds==0)
+s <- names(z)
+z <- which(rownames(floored_heatmap_matrix) %in% s)
+lncs1 <- floored_heatmap_matrix[z,]
+#medians of median >=1
+lncs2 <- floored_heatmap_matrix[-z,]
 
-pca_lncs <- log1p(pca_lncs)
-pca_lncs <- t(pca_lncs)
+pdf("top5cancers_1073medianofmedians0_lncRNAs_heatmapJuly31.pdf", pointsize=2, width=12)
+heatmap.2(as.matrix(lncs1), trace="none",col= my_palette, hclustfun = function(x) hclust(x,method = 'ward.D'),
+	distfun = function(x) dist(x,method = 'euclidean'), srtCol=35, cexCol=0.9, key.title=NA, keysize=1, labRow = FALSE,
+          margins = c(9, 2), main = list("Median Expression of 1,073 lncRNAs Across Cancers", cex = 1.2))
+dev.off()
+
+pdf("top5cancers_531medianofmedianshigherthan0_lncRNAs_heatmapJuly31.pdf", pointsize=2, width=12)
+heatmap.2(as.matrix(lncs2), trace="none",col= my_palette, hclustfun = function(x) hclust(x,method = 'ward.D'),
+	distfun = function(x) dist(x,method = 'euclidean'), srtCol=35, cexCol=0.9, key.title=NA, keysize=1, labRow = FALSE,
+          margins = c(9, 2), main = list("Median Expression of 531 lncRNAs Across Cancers", cex = 1.2))
+dev.off()
+
+
+
+
 
 
 
