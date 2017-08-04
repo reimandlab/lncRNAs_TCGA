@@ -48,6 +48,8 @@ library(wesanderson)
 library(ggsci)
 library(gridExtra)
 library(ggpubr)
+library(factoextra)
+
 
 mypal = pal_npg("nrc", alpha = 0.7)(10)
 
@@ -318,11 +320,15 @@ f <- f[-z,]
 z <- which(f[,1] %in% fantom[,1])
 f <- f[z,]
 
+#remove 7SK gene from the list as its not cancer unique 
+z <- which(f[,1] %in% fantom[which(fantom$CAT_geneName=="7SK"),1])
+f <- f[-z,] #end up with 86 unique genes in the list
+
 #how many times does each gene appear? if 7 == all cancers
 counts <- as.data.table(table(f[,1]))
 counts <- counts[order(N)]
-#173/305 lncRNAs appear only once
-#21/305 lncRNAs appear in all cancer types 
+#50/86 lncRNAs appear only once
+#9/86 lncRNAs appear in all cancer types 
 all <- counts$V1[counts$N ==7]
 all <- as.data.frame(all)
 #gene ids conversion ENSG-Hugo
@@ -340,8 +346,8 @@ specific <- as.data.frame(specific)
 specific$gene <- ""
 for(i in 1:nrow(specific)){
 	g <- specific[i,1]
-	z <- which(ucsc$hg19.ensGene.name2 %in% g)
-	specific$gene[i] <- ucsc$hg19.ensemblToGeneName.value[z]
+	z <- which(fantom$CAT_geneID %in% g)
+	specific$gene[i] <- fantom$CAT_geneName[z]
 }
 
 #make violin plot for 9 lncRNAs that are highly expressed in all cancers
@@ -402,7 +408,7 @@ genes_305 <- as.data.frame(counts[,1])
 lncs_305 <- which(colnames(lnc_rna_top5) %in% genes_305[,1])
 lncs_305 <- lnc_rna_top5[,c(lncs_305, 12544)]
 
-df <- lncs_305[,1:88]
+df <- lncs_305[,1:86]
 
 desc_stats <- data.frame(
   Min = apply(df, 2, min), # minimum
@@ -417,9 +423,9 @@ desc_stats <- round(desc_stats, 1)
 library(factoextra)
 #Observations are represented by points in the plot, using principal components
 #PCA using logged values 
-df <- lncs_305[,1:88]
+df <- lncs_305[,1:86]
 df <- log1p(df)
-pdf("pca_using88_toplncsLogged.pdf", pointsize=4, height=11, width=10)
+pdf("pca_using86_toplncsLogged.pdf", pointsize=4, height=11, width=10)
 fviz_cluster(list(data = df, cluster = as.factor(lncs_305$canc)), geom = "point", palette=mypal, ggtheme = theme_minimal(), ellipse.type="norm")
 dev.off()
 
@@ -427,12 +433,13 @@ dev.off()
 #Analysis - Cancer Specific lncRNAs 
 #---------------------------------------------------------
 
-##clustering using just 52(88 with Hugo IDs) / lncRNAs super specific
-#make violin plot for 88 lncRNAs that are highly expressed in specific cancers to show it 
+##clustering using just 50 lncRNAs super specific
+#make violin plot for 50 lncRNAs that are highly expressed in specific cancers to show it 
 
-#num of rows = num_genes(52) * patients(497) = 
+#num of rows = num_genes(50) * patients(497) = 24850
+colnames(specific)[2] <- "gene2"
 
-specific_genes <- as.data.frame(matrix(nrow=25844, ncol=4))
+specific_genes <- as.data.frame(matrix(nrow=24850, ncol=4))
 colnames(specific_genes) <- c("Gene", "Cancer", "Patient", "GeneE")
 
 for(i in 1:nrow(specific)){
@@ -462,16 +469,31 @@ specific_genes_logged <- specific_genes
 specific_genes_logged$GeneE <- log1p(specific_genes_logged$GeneE)
 specific_genes_logged$Gene <- as.factor(specific_genes_logged$Gene)
 
-pdf("52_high_specific_tissues_lncs.pdf", pointsize=8, width=14, height=13)
+pdf("50_high_specific_tissues_lncs.pdf", pointsize=8, width=14, height=13)
+
+# Pairwise comparisons: Specify the comparisons you want
+my_comparisons <- list()
+k <- 1
+for(i in 1:(length(unique(specific_genes_logged$Cancer))-1)){
+	t <- unique(specific_genes_logged$Cancer)[i]
+	for(j in i:(length(unique(specific_genes_logged$Cancer))-1)){
+		add <- c(t, unique(specific_genes_logged$Cancer)[j+1])
+		my_comparisons[[k]] <- add 
+		k <- k+1
+	}
+}
+
+
+#plot indiviaul violin plots for each of 50 genes coloured by cancer type 
 
 for (i in seq(1, length(unique(specific_genes_logged$Gene)), 4)) {
     
     g <- ggviolin(specific_genes_logged[specific_genes_logged$Gene %in% levels(specific_genes_logged$Gene)[i:(i+3)], ], 
                   x="Cancer", y="GeneE", color="Cancer", fill="Cancer", palette=mypal,draw_quantiles = 0.5, facet.by="Gene",
                   order = unique(specific_genes_logged$Cancer)[c(1,3,7,2,4,5,6)])
-
+   
     g <- ggpar(g, font.legend = c(6, "plain", "black")) 
-	g <- g + labs(title = "52 lncRNAs Highly Expressed in Specific Cancers", y="log1p(FPKM)") + 
+	g <- g + labs(title = "50 lncRNAs Highly Expressed in Specific Cancers", y="log1p(FPKM)") + 
      	 theme(plot.title = element_text(hjust = 0.5))
 	g <- g + rremove("x.text")
 	g <- g + rremove("x.ticks")  
@@ -494,46 +516,15 @@ dev.off()
 lncs_163 <- which(colnames(lnc_rna_top5) %in% specific[,1])
 lncs_163 <- lnc_rna_top5[,c(lncs_163, 12544)]
 
-df <- lncs_163[,1:52]
-
-desc_stats <- data.frame(
-  Min = apply(df, 2, min), # minimum
-  Med = apply(df, 2, median), # median
- Mean = apply(df, 2, mean), # mean
-  SD = apply(df, 2, sd), # Standard deviation
-  Max = apply(df, 2, max) # Maximum
-  )
-
-desc_stats <- round(desc_stats, 1)
-
-#As we don’t want the hierarchical clustering result to depend to an arbitrary variable unit, 
-#we start by scaling the data using the R function scale() as follow:
-
-df <- scale(df)
-head(df)
-# Dissimilarity matrix
-d <- dist(df, method = "euclidean")
-# Hierarchical clustering using Ward's method
-res.hc <- hclust(d, method = "ward.D2" )
-# Plot the obtained dendrogram
-plot(res.hc, cex = 0.6, hang = -1)
-dev.off()
-
-library(factoextra)
-#Observations are represented by points in the plot, using principal components
-pdf("pca_using163_toplncs.pdf", pointsize=4, height=11, width=10)
-fviz_cluster(list(data = df, cluster = as.factor(lncs_163$canc)))
-dev.off()
-
-#pca using logged values instead of scaled
-df <- lncs_163[,1:163]
+df <- lncs_163[,1:50]
 df <- log1p(df)
-pdf("pca_using136_toplncsLogged.pdf", pointsize=4, height=11, width=10)
+pdf("pca_using50_toplncsLogged.pdf", pointsize=4, height=11, width=10)
 fviz_cluster(list(data = df, cluster = as.factor(lncs_163$canc)), geom = "point", palette=mypal, ggtheme = theme_minimal(), ellipse.type="norm")
 dev.off()
 
-##compare to 72 randomly chosen lncRNAs
 
+
+##RANDOMIZATION#-------------------------------------------
 z <- which(colnames(lnc_rna_top5) %in% specific[,1])
 random_lncs <- lnc_rna_top5[,-z]
 random_lncs_sample <- random_lncs[,-12381]

@@ -47,7 +47,7 @@ mypal = pal_npg("nrc", alpha = 0.7)(10)
 #---------------------------------------------------------
 
 #UCSC gene info
-ucsc <- fread("UCSC_hg19_gene_annotations_downlJune12byKI.txt", data.table=F)
+ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
 ucsc <- ucsc[z,]
 z <- which(duplicated(ucsc[,6]))

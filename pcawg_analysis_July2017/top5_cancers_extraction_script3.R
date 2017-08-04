@@ -72,6 +72,9 @@ rna <- fread("joint_fpkm_uq.tsv", data.table=F)
 #Cancers to use 
 tum_types <- fread("top5_cancers_andHISTO_to_keepJuly20.txt", data.table=F)
 
+#fantom data
+fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
+
 #---------------------------------------------------------
 #Processing
 #---------------------------------------------------------
@@ -127,6 +130,8 @@ extract3 <- function(row){
 	return(ens)
 }
 rna[,1] <- apply(rna[,1:2], 1, extract3) ; 
+fantom[,1] <- apply(fantom[,1:2], 1, extract3)
+
 
 #Remove duplicate genes 
 z <- which(duplicated(rna[,1]))
@@ -220,6 +225,14 @@ f <- fread("all_lncs_cancers.txt", data.table=F, sep="_")
 z <- which(f[,1] %in% "gene")
 f <- f[-z,]
 
+#subset to include only lncs covered by FANTOM
+z <- which(f[,1] %in% fantom[,1])
+f <- f[z,]
+
+#remove 7SK gene from the list as its not cancer unique 
+z <- which(f[,1] %in% fantom[which(fantom$CAT_geneName=="7SK"),1])
+f <- f[-z,] #end up with 86 unique genes in the list
+
 #how many times does each gene appear? if 7 == all cancers
 counts <- as.data.table(table(f[,1], f[,2]))
 counts <- counts[order(N)]
@@ -230,7 +243,7 @@ counts <- counts[!(counts$N==0)]
 #want to get list of genes that occur in only one cancer type what are they?
 once <- as.data.table(table(f[,1]))
 once <- once[order(N)]
-once <- once[once$N==1]
+once <- once[once$N==1] #50 unique genes that appear in one cancer 
 
 counts <- counts[which(counts$V1 %in% once$V1), ]
 counts <- as.data.frame(counts)
@@ -238,7 +251,6 @@ counts <- as.data.frame(counts)
 z <- which(ucsc$hg19.ensGene.name2 %in% counts[,1])
 #counts$gene <- ""
 #counts$gene <- ucsc$hg19.ensemblToGeneName.value[z]
-
 
 num_cancers <-  as.data.table(table(counts$V2))
 colnames(num_cancers)[1] <- "new"
@@ -306,23 +318,29 @@ for(i in 1:nrow(counts)){
 to_plot$Cancer <- as.factor(to_plot$Cancer)
 
 ##Plot violin
+to_plot$gene2 <- ""
+for(i in 1:nrow(to_plot)){
+	g <- to_plot$Gene[i]	 
+	z <- which(fantom$CAT_geneID %in% g)
+	to_plot$gene2[i] <- fantom$CAT_geneName[z]
+}
 to_plot_logged <- to_plot  
 to_plot_logged$GeneE <- log1p(to_plot_logged$GeneE)
 
-pdf("72_high_SPECIFIC_bycancer_tissues_lncs.pdf", pointsize=5, width=16, height=14)
-g <- ggviolin(to_plot_logged, x="Gene", y="GeneE", color="Cancer", fill="Cancer", palette=mypal,draw_quantiles = 0.5)
-g <- ggpar(g, font.legend = c(8, "plain", "black")) 
-g <- g + labs(title = "72 lncRNAs Highly Expressed in all Cancers", y="log1p(FPKM)") + 
+
+pdf("50_high_SPECIFIC_bycancer_tissues_lncs.pdf", pointsize=5, width=16, height=14)
+g <- ggviolin(to_plot_logged, x="gene2", y="GeneE", color="Cancer", fill="Cancer", palette=mypal,draw_quantiles = 0.5)
+g <- ggpar(g, font.legend = c(8, "plain", "black"), x.text.angle=75, font.x=c(6, "plain", "black")) 
+g <- g + labs(title = "50 lncRNAs Highly Expressed in Individual Cancers", y="log1p(FPKM)", x="Gene") + 
      theme(plot.title = element_text(hjust = 0.5))
-g <- g + rremove("x.ticks")     
-g <- g  + geom_hline(aes(yintercept=log1p(10)), colour="#990000", linetype="dashed")
+   g <- g  + geom_hline(aes(yintercept=log1p(10)), colour="#990000", linetype="dashed")
 g
 dev.off()
 
 
 
-
-
+gene_canc <- which(duplicated(to_plot_logged$Gene))
+gene_canc <- to_plot_logged[-gene_canc,]
 
 
 
