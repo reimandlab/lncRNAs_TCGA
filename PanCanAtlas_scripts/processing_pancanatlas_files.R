@@ -59,6 +59,11 @@ extract3 <- function(row){
 	return(ens)
 }
 fantom[,1] <- apply(fantom[,1:2], 1, extract3)
+#remove duplicate gene names (gene names with multiple ensembl ids)
+z <- which(duplicated(fantom$CAT_geneName))
+rm <- fantom$CAT_geneName[z]
+z <- which(fantom$CAT_geneName %in% rm)
+fantom <- fantom[-z,]
 
 #TSS codes
 tss_codes <- fread("tcga_tss_codes.txt")
@@ -152,16 +157,131 @@ for(i in 1:nrow(patients)){
 	#2. keep only genes in UCSC file and FANTOM5 file
 	exp <- exp[(which(rownames(exp) %in% ucsc$hg19.ensemblToGeneName.value)), ]
 
+
+#Change patient ID format so that it matches the clinical ID 
+extract4 <- function(row){
+	gene <- as.character(row[[1]])
+	ens <- unlist(strsplit(gene, "-"))[1:4]
+	p1 <- ens[1]
+	p2 <- ens[2]
+	p3 <- ens[3]
+	ens <- paste(p1, p2, p3, sep="-")
+	return(ens)
+}
+
+colnames(exp) <- unlist(lapply(colnames(exp), extract4))
+patients$id <- unlist(lapply(patients$id, extract4))
+
 #only tumour samples 
 patients <- patients[patients$source=="tumour",]
-z <- which(colnames(exp) %in% patients$id)
-exp <- exp[,z] #2814 total patients 
 
+#[1] remove duplicated patient entries 
+z <- which(patients$id %in% patients$id[which(duplicated(patients$id))])
+patients <- patients[-z,]
+
+z <- which(colnames(exp) %in% patients$id)
+exp <- exp[,z] #2781 unique total patients 
+
+#--------------------------------------------------------------
+#Confirm histological subtypes match the PCAWG types 
+#--------------------------------------------------------------
+
+patients$subtype <- ""
+for(i in 1:nrow(patients)){
+	z <- which(clin$tissue_source_site %in% patients$tss[i])
+	patients$subtype[i] <- clin$histological_type[z][1]
+}
+
+pcawg_types <- c("Infiltrating Ductal Carcinoma", "Kidney Chromophobe", "Kidney Clear Cell Renal Carcinoma",
+	"Kidney Papillary Renal Cell Carcinoma", "Hepatocellular Carcinoma", "Serous Cystadenocarcinoma", "Pancreas-Adenocarcinoma Ductal Type")
+
+patients <- subset(patients, patients$subtype %in% pcawg_types) #2,546 remain 
+z <- which(colnames(exp) %in% patients$id)
+exp <- exp[,z] #2,546 unique total patients 
+
+#save patiennts TSS, cancer type file 
 saveRDS(patients, file="TOP5_PCAWGcancertypes_tcga_rnaseqfile_patients_cancertypes_conversion.rds")
 
 #save RNA-Seq seperatley
 saveRDS(exp, file="TOP5_PCAWGcancertypestcga_pancanatlas_rnaseq_processesAug3.rds")
 
+#--------------------------------------------------------------
+#---which FANTOM lncRNAs covered here? 
+#---how is their expression distributed among the cancer types? 
+#--------------------------------------------------------------
+
+exp_fantom_lncs <- exp[(which(rownames(exp) %in% fantom$CAT_geneName)), ] #65 lncRNA total 
+#add cancer type to patient 
+exp_fantom_lncs <- as.data.frame(exp_fantom_lncs)
+exp_fantom_lncs <- t(exp_fantom_lncs)
+exp_fantom_lncs <- as.data.frame(exp_fantom_lncs)
+
+exp_fantom_lncs$canc <- ""
+for(i in 1:nrow(exp_fantom_lncs)){
+	exp_fantom_lncs$canc[i] <- patients$cancer[which(patients$id == rownames(exp_fantom_lncs)[i])]
+}
+
+saveRDS(exp_fantom_lncs, file="panAtlas_65lncs_RNA-Seq_data.rds")
+
+
+
+
+all_pcawg_lncs <- fread("12598_lncs_sequencedInPCAWG.txt", data.table=F)
+#subset to only the ones in Fantom and convert ENSG to Hugo name 
+colnames(all_pcawg_lncs)[1] <- "CAT_geneID"
+all_pcawg_lncs <- merge(all_pcawg_lncs, fantom, by="CAT_geneID") #5,614/12,598 lncs in FANTOM 
+#how many in common with the 65 found in Pancanatlas? = 54
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#--------------------------------------------------------------
+#Analysis prep using the 50 unique lncs from PCAWG 
+#--------------------------------------------------------------
 
 #how many of the 50 PCAWG lncRNAs are sequenced in this file?
 pcawg_lncs <- fread("ids_of_50unique_lncRNAs_pcawg.txt", data.table=F)
@@ -192,16 +312,16 @@ mini_exp <- exp[which(rownames(exp) %in% lncs),]
 
 lncs <- as.data.frame(lncs)
 
-#Make matrix, nrow= #genes(5) *#patients(2814) == 14070
+#Make matrix, nrow= #genes(5) *#patients(2546) == 12730
 #canc specific - 5 lncRNAs 
 
-specific_genes <- as.data.frame(matrix(nrow=14070, ncol=5))
+specific_genes <- as.data.frame(matrix(nrow=12730, ncol=5))
 colnames(specific_genes) <- c("Gene", "Cancer", "Patient", "GeneE", "ref")
 
 for(i in 1:nrow(lncs)){
 	gene <- as.character(lncs[i,1])
 	if(i == 1){
-		specific_genes[1:2814,1] <- gene
+		specific_genes[1:2546,1] <- gene
 		z <- which(rownames(mini_exp) %in% gene)
 		dat <- as.data.frame(t(mini_exp[z,]))	
 		#add cancer type to dat
@@ -211,15 +331,15 @@ for(i in 1:nrow(lncs)){
 			h <- which(patients$id == pat)
 			dat$canc[j] <- patients$cancer[h]
 		}
-		specific_genes[1:2814,2] <- dat$canc
-		specific_genes[1:2814,3] <- rownames(dat)
-		specific_genes[1:2814,4] <- dat[,1]
+		specific_genes[1:2546,2] <- dat$canc
+		specific_genes[1:2546,3] <- rownames(dat)
+		specific_genes[1:2546,4] <- dat[,1]
 		ref_cord <- which(all_lncs$hg19.ensemblToGeneName.value == gene)
-		specific_genes[1:2814,5] <- all_lncs$V2[ref_cord]
+		specific_genes[1:2546,5] <- all_lncs$V2[ref_cord]
 	}
 	if(!(i==1)){
 		z <- which(is.na(specific_genes[,1]))[1]
-		specific_genes[z:(z+2813), 1] <- gene
+		specific_genes[z:(z+2545), 1] <- gene
 		
 		z2 <- which(rownames(mini_exp) %in% gene)
 		dat <- as.data.frame(t(mini_exp[z2,]))	
@@ -230,11 +350,11 @@ for(i in 1:nrow(lncs)){
 			h <- which(patients$id == pat)
 			dat$canc[j] <- patients$cancer[h]
 		}
-		specific_genes[z:(z+2813),2] <- dat$canc
-		specific_genes[z:(z+2813),3] <- rownames(dat)
-		specific_genes[z:(z+2813),4] <- dat[,1]
+		specific_genes[z:(z+2545),2] <- dat$canc
+		specific_genes[z:(z+2545),3] <- rownames(dat)
+		specific_genes[z:(z+2545),4] <- dat[,1]
 		ref_cord <- which(all_lncs$hg19.ensemblToGeneName.value == gene)
-		specific_genes[z:(z+2813),5] <- all_lncs$V2[ref_cord]
+		specific_genes[z:(z+2545),5] <- all_lncs$V2[ref_cord]
 	}
 }
 
@@ -251,7 +371,7 @@ for(i in 1:length(unique(specific_genes_logged$ref))){
 	ref <- unique(specific_genes_logged$ref)[i]
 
 	data$Gene <- as.factor(data$Gene)
-		file <- paste(ref, "cancer_specific_expressionamongOthers.pdf", sep="_")
+		file <- paste(ref, "cancer_specific_expressionamongOthers_updatedhisto.pdf", sep="_")
 		pdf(file, pointsize=8, width=14, height=13)
 	
 		for (y in seq(1, length(unique(data$Gene)), 4)) {

@@ -53,6 +53,20 @@ ucsc <- ucsc[z,]
 z <- which(duplicated(ucsc[,6]))
 ucsc <- ucsc[-z,]
 
+#fantom 
+fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
+extract3 <- function(row){
+	gene <- as.character(row[[1]])
+	ens <- gsub("\\..*","",gene)
+	return(ens)
+}
+fantom[,1] <- apply(fantom[,1:2], 1, extract3)
+#remove duplicate gene names (gene names with multiple ensembl ids)
+z <- which(duplicated(fantom$CAT_geneName))
+rm <- fantom$CAT_geneName[z]
+z <- which(fantom$CAT_geneName %in% rm)
+fantom <- fantom[-z,]
+
 #Clinical file 
 clin <- fread("pcawg_specimen_histology_August2016_v6.tsv", data.table=F)
 conversion <- fread("pcawgConversion.tsv", data.table=F)

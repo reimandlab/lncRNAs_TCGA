@@ -62,6 +62,20 @@ ucsc <- ucsc[z,]
 z <- which(duplicated(ucsc[,6]))
 ucsc <- ucsc[-z,] #total unique genes left 32843
 
+#fantom 
+fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
+extract3 <- function(row){
+	gene <- as.character(row[[1]])
+	ens <- gsub("\\..*","",gene)
+	return(ens)
+}
+fantom[,1] <- apply(fantom[,1:2], 1, extract3)
+#remove duplicate gene names (gene names with multiple ensembl ids)
+z <- which(duplicated(fantom$CAT_geneName))
+rm <- fantom$CAT_geneName[z]
+z <- which(fantom$CAT_geneName %in% rm)
+fantom <- fantom[-z,]
+
 #Clinical file 
 clin <- fread("pcawg_specimen_histology_August2016_v6.tsv", data.table=F)
 conversion <- fread("pcawgConversion.tsv", data.table=F)
@@ -71,9 +85,6 @@ rna <- fread("joint_fpkm_uq.tsv", data.table=F)
 
 #Cancers to use 
 tum_types <- fread("top5_cancers_andHISTO_to_keepJuly20.txt", data.table=F)
-
-#fantom data
-fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
 
 #---------------------------------------------------------
 #Processing
@@ -214,6 +225,17 @@ for(i in 1:nrow(lnc_rna_top5)){
 	lnc_rna_top5$canc[i] <- hist
 }
 
+#keep only FANTOM lncRNAs
+z <- which(colnames(lnc_rna_top5) %in% fantom$CAT_geneID)
+lnc_rna_top5 <- lnc_rna_top5[,c(z,12544)]
+
+#change to hugo ids 
+for(i in 1:5607){
+	g <- colnames(lnc_rna_top5)[i]
+	colnames(lnc_rna_top5)[i] <- fantom$CAT_geneName[which(fantom$CAT_geneID %in% g)]
+}
+
+saveRDS(lnc_rna_top5, "5607_pcawg_lncRNAs_RNASeq_data.rds")
 
 #---------------------------------------------------------
 #Analysis - how many/which lncRNAs are specific to each
@@ -338,9 +360,6 @@ g
 dev.off()
 
 
-
-gene_canc <- which(duplicated(to_plot_logged$Gene))
-gene_canc <- to_plot_logged[-gene_canc,]
 
 
 
