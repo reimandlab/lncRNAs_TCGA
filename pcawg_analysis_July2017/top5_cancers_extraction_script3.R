@@ -237,6 +237,14 @@ for(i in 1:5607){
 
 saveRDS(lnc_rna_top5, "5607_pcawg_lncRNAs_RNASeq_data.rds")
 
+#change PCGs to Hugo Ids
+for(i in 1:20166){
+	g <- colnames(pcg_rna_top5)[i]
+	colnames(pcg_rna_top5)[i] <- ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 %in% g)]
+}
+
+saveRDS(pcg_rna_top5, "20166_pcawg_PCGs_RNASeq_data.rds")
+
 #---------------------------------------------------------
 #Analysis - how many/which lncRNAs are specific to each
 #cancer type?
