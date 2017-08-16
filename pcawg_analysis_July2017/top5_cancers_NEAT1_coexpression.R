@@ -195,6 +195,7 @@ for(i in 1:nrow(df)){
 df$logp <- -log10(df$fdr_coef)
 df$lm_coefficient <- as.numeric(df$lm_coefficient)
 
+pdf("3312_coexpressedSignificantly_genes.pdf", pointsize=6, height=8, width=9)
 g <- ggscatter(df, x="lm_coefficient", y="logp", palette=mypal, size="logp", color=mypal[3])
 g <- g+ labs(title = "3,132 Protein Coding Genes Co-Expressed with Neat1") + 
      theme(plot.title = element_text(hjust = 0.5)) + 
