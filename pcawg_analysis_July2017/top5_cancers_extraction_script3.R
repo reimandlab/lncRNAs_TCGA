@@ -261,7 +261,7 @@ f <- f[z,]
 
 #remove 7SK gene from the list as its not cancer unique 
 z <- which(f[,1] %in% fantom[which(fantom$CAT_geneName=="7SK"),1])
-f <- f[-z,] #end up with 86 unique genes in the list
+#f <- f[-z,] #end up with 86 unique genes in the list
 
 #how many times does each gene appear? if 7 == all cancers
 counts <- as.data.table(table(f[,1], f[,2]))
@@ -304,24 +304,28 @@ for(i in 1:nrow(num_cancers)){
 }
 
 counts$num_patients <- ""
+counts$gene_name <- ""
 for(i in 1:nrow(counts)){
 	t <- counts[i,2]
 	z <- which(num_cancers$new %in% t)
 	counts$num_patients[i] <- num_cancers$V3[z]
+	zz <- which(fantom$CAT_geneID %in% counts$V1[i])
+	counts$gene_name[i] <- fantom$CAT_geneName[zz]
 }
 
+#change colnames to hugo names
 rows <- sum(as.numeric(num_cancers$rows))
 to_plot <- as.data.frame(matrix(ncol=4, nrow=rows))
 colnames(to_plot) <- c("Gene", "Cancer", "Patient", "GeneE")
 
 for(i in 1:nrow(counts)){
-	gene2 <- counts[i,1]
+	gene2 <- counts[i,5]
 	tis <- counts$V2[i]
 	if(i == 1){
 		a <- as.numeric(counts$num_patients[i])
 		to_plot[1:a,1] <- gene2
 		z <- which(colnames(lnc_rna_top5) %in% gene2)
-		dat <- lnc_rna_top5[,c(z,12544)]
+		dat <- lnc_rna_top5[,c(z,5608)]
 		z <- which(dat$canc %in% tis)	
 		dat <- dat[z,]
 		to_plot[1:a,2] <- dat$canc
@@ -334,7 +338,7 @@ for(i in 1:nrow(counts)){
 		to_plot[z:(z+a), 1] <- gene2
 
 		z2 <- which(colnames(lnc_rna_top5) %in% gene2)
-		dat <- lnc_rna_top5[,c(z2,12544)]	
+		dat <- lnc_rna_top5[,c(z2,5608)]	
 		
 		z3 <- which(dat$canc %in% tis)	
 		dat <- dat[z3,]
@@ -348,19 +352,21 @@ for(i in 1:nrow(counts)){
 to_plot$Cancer <- as.factor(to_plot$Cancer)
 
 ##Plot violin
-to_plot$gene2 <- ""
-for(i in 1:nrow(to_plot)){
-	g <- to_plot$Gene[i]	 
-	z <- which(fantom$CAT_geneID %in% g)
-	to_plot$gene2[i] <- fantom$CAT_geneName[z]
-}
 to_plot_logged <- to_plot  
 to_plot_logged$GeneE <- log1p(to_plot_logged$GeneE)
 
+##Get list of genes ordered by increasing median expression 
+meds <- list()
+for(i in 1:length(unique(to_plot_logged$Gene))){
+	med <- median(to_plot_logged$GeneE[to_plot_logged$Gene==unique(to_plot_logged$Gene)[i]])
+	meds[[i]] <- c(unique(to_plot_logged$Gene)[i], med)
+}
+df <- data.table(matrix(unlist(meds), nrow=50, byrow=T))
+df <- df[order(as.numeric(V2))]
 
 pdf("50_high_SPECIFIC_bycancer_tissues_lncs.pdf", pointsize=5, width=16, height=14)
-g <- ggviolin(to_plot_logged, x="gene2", y="GeneE", color="Cancer", fill="Cancer", palette=mypal,draw_quantiles = 0.5)
-g <- ggpar(g, font.legend = c(8, "plain", "black"), x.text.angle=75, font.x=c(6, "plain", "black")) 
+g <- ggviolin(to_plot_logged, x="Gene", y="GeneE", color="Cancer", fill="Cancer", palette=mypal,draw_quantiles = 0.5, order=as.character(df$V1))
+g <- ggpar(g, font.legend = c(8, "plain", "black"), x.text.angle=55, font.x=c(6, "plain", "black")) 
 g <- g + labs(title = "50 lncRNAs Highly Expressed in Individual Cancers", y="log1p(FPKM)", x="Gene") + 
      theme(plot.title = element_text(hjust = 0.5))
    g <- g  + geom_hline(aes(yintercept=log1p(10)), colour="#990000", linetype="dashed")

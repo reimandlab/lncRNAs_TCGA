@@ -130,7 +130,7 @@ for(i in 1:50){
 	gene <- unique(lncs$Gene)[i]
 	gene_data <- subset(lncs, lncs$Gene %in% gene)
 
-    #plot boxplot showing difference between the two groups 
+      #plot boxplot showing difference between the two groups 
 	title <- paste(unique(gene_data$Gene), unique(gene_data$Cancer)) 
 	g <- ggboxplot(gene_data, x= "median", y="GeneE", add = "jitter", fill="median", palette=mypal, order=c("0", "1"))
 	g <- ggpar(g, legend = "none") 
@@ -180,8 +180,9 @@ dev.off()
 
 results_cox <- results_cox[-1,]
 results_cox$pval <- as.numeric(results_cox$pval)
+results_cox$fdr_pval <- p.adjust(results_cox$pval, method="fdr")
 results_cox <- as.data.table(results_cox)
-results_cox <- results_cox[order(pval)]
+results_cox <- results_cox[order(fdr_pval)]
 
 results_cox[which(results_cox$pval <=0.1)]
 
