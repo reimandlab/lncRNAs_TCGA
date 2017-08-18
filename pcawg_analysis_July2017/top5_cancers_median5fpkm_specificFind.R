@@ -133,7 +133,7 @@ high_lncs <- high_lncs[-1,]
 #high expression in at leat one canc 215 total lncRNAs
 #---------------------------------------------------------
 
-lnc_rna <- lnc_rna[,c((which(colnames(lnc_rna) %in% high_lncs$gene)), 5608,5609)]
+lnc_rna <- lnc_rna[,c((which(colnames(lnc_rna) %in% high_lncs$gene)), 5608,5609)] #215 lncRNAs remain 
 
 #For each patient add survival status and days since last seen 
 lnc_rna$status <- ""
@@ -159,9 +159,6 @@ for(i in 1:nrow(lnc_rna)){
 #---------------------------------------------------------
 results_cox <- as.data.frame(matrix(ncol=5)) ; colnames(results_cox) <- c("gene", "coef", "HR", "pval", "canc")
 
-pdf("survival_results_usingMedian_medGreatThan5_lncRNAs_cutoffquant75.pdf", pointsize=6, width=15, height=14)
-require(gridExtra)
-
 for(i in 1:nrow(high_lncs)){
   #1. Subset lnc_rna to those patients in cancer
   df <- subset(lnc_rna, lnc_rna$canc %in% high_lncs$canc[i])
@@ -172,7 +169,56 @@ for(i in 1:nrow(high_lncs)){
 
   #3. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
-  median2 <- quantile(as.numeric(df[,1]), 0.6)
+  median2 <- quantile(as.numeric(df[,1]), 0.5)
+  #median2 <- median(df[,1])
+  for(y in 1:nrow(df)){
+    genexp <- df[y,1]
+    if(genexp >= median2){
+      df$median[y] <- 1
+      }
+    if(genexp < median2){
+      df$median[y] <- 0
+      }
+    } 
+
+  gene <- colnames(df)[1]
+  #cox
+        df$status[df$status=="alive"] <- 0
+        df$status[df$status=="deceased"] <- 1
+        df$status <- as.numeric(df$status)
+        df$time <- as.numeric(df$time)
+      
+        #cox regression 
+        res.cox <- coxph(Surv(time, status) ~ median, data = df)
+        row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)], df$canc[1])
+        names(row) <- names(results_cox)
+        results_cox <- rbind(results_cox, row)  
+}
+
+results_cox <- results_cox[-1,]
+results_cox$fdr <- p.adjust(results_cox$pval, method="fdr")
+results_cox <- as.data.table(results_cox)
+results_cox <- results_cox[order(fdr)]
+write.table(results_cox, file="results_coxAug18_median5fpkmMin.txt", quote=F, row.names=F)
+
+
+##Full - order plots by decreasing pvalue 
+##+++++++++++++++++++++++++++++
+
+pdf("survival_results_usingMedian_medGreatThan5_lncRNAs_cutoffquant50.pdf", pointsize=6, width=15, height=14)
+require(gridExtra)
+
+for(i in 1:nrow(results_cox)){
+  #1. Subset lnc_rna to those patients in cancer
+  df <- subset(lnc_rna, lnc_rna$canc %in% results_cox$canc[i])
+  z <- which(colnames(df) %in% results_cox$gene[i])
+  df <- df[,c(z,216:220)]  
+
+  df[,1] <- log1p(df[,1])
+
+  #3. Add Median cutoff tag High or Low to each patient per each gene 
+  df$median <- ""
+  median2 <- quantile(as.numeric(df[,1]), 0.5)
   #median2 <- median(df[,1])
   for(y in 1:nrow(df)){
     genexp <- df[y,1]
@@ -188,7 +234,8 @@ for(i in 1:nrow(high_lncs)){
   #plot boxplot showing difference between the two groups and sex
   title <- paste(gene, df$canc[1], "Expression")
   colnames(df)[1] <- "Gene"
-  g <- ggboxplot(df, x= "median", y="Gene", palette=mypal, order=c("0", "1"), fill = "median")
+  g <- ggboxplot(df, x= "median", y="Gene", palette=mypal, order=c("0", "1"), fill = "median",  add = "jitter")
+  g <- g + stat_compare_means()
   g <- ggpar(g, font.legend = c(8, "plain", "black")) 
   g <- g + labs(title = title, y="log1p(FPKM)", x="Median") + 
       theme(plot.title = element_text(hjust = 0.5))
@@ -200,16 +247,12 @@ for(i in 1:nrow(high_lncs)){
         df$status <- as.numeric(df$status)
         df$time <- as.numeric(df$time)
       
-        #cox regression 
-        res.cox <- coxph(Surv(time, status) ~ median, data = df)
-        row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)], df$canc[1])
-        names(row) <- names(results_cox)
-        results_cox <- rbind(results_cox, row)
-        
-         #plot survival plot
+          #plot survival plot
           fit <- survfit(Surv(time, status) ~ median, data = df)
           s <- ggsurvplot(
-          fit,                     # survfit object with calculated statistics.
+          fit, 
+          main = paste(gene, df$canc[1]),       
+          legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
           data = df,      # data used to fit survival curves. 
           risk.table = TRUE,       # show risk table.
           legend = "right", 
@@ -230,23 +273,6 @@ for(i in 1:nrow(high_lncs)){
 
 
 dev.off()
-
-results_cox <- results_cox[-1,]
-results_cox$fdr <- p.adjust(results_cox$pval, method="fdr")
-write.table(results_cox, file="results_coxAug14_0.6.txt", quote=F, row.names=F)
-
-
-
-##results 
-##+++++++++++++++++++++++++++++
-
-#Using median as a cuotff 
-
-#Using .75 quantile as a cutoff
-
-#Using 0.6 quantile as a cutoff 
-
-
 
 
 
