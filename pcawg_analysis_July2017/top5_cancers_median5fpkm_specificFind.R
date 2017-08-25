@@ -1,4 +1,4 @@
-#top5_cancers_NEAT1_survival.R
+#top5_cancers_median5fpkm_specificFind.R
 
 #Karina Isaev
 #August 11th, 2017
@@ -102,7 +102,7 @@ pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #485 patie
 
 check_medians <- function(column){
   med <- median(column)
-  if(med >=5){
+  if(med >=4.5){
     return(med)
   } 
 }
@@ -163,7 +163,7 @@ for(i in 1:nrow(high_lncs)){
   #1. Subset lnc_rna to those patients in cancer
   df <- subset(lnc_rna, lnc_rna$canc %in% high_lncs$canc[i])
   z <- which(colnames(df) %in% high_lncs$gene[i])
-  df <- df[,c(z,216:220)]  
+  df <- df[,c(z,245:249)]  
 
   df[,1] <- log1p(df[,1])
 
@@ -199,7 +199,7 @@ results_cox <- results_cox[-1,]
 results_cox$fdr <- p.adjust(results_cox$pval, method="fdr")
 results_cox <- as.data.table(results_cox)
 results_cox <- results_cox[order(fdr)]
-write.table(results_cox, file="results_coxAug18_median5fpkmMin.txt", quote=F, row.names=F)
+write.table(results_cox, file="results_coxAug18_median5fpkmMin.txt",sep=";", quote=F, row.names=F)
 
 
 ##Full - order plots by decreasing pvalue 

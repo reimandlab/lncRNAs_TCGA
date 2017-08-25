@@ -108,7 +108,7 @@ dev.off()
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #Enrichment Map Setup---------------------------------------
 #Both positive and negative coexpressed genes 
-load("mExplorer_analysis_result.rsav")
+load("mExplorer_analysis_additional_tags_result.rsav")
 paths <- result$resp_coefs
 paths <- as.data.frame(paths)
 paths$Pathway <- rownames(paths)
@@ -135,12 +135,12 @@ scores$Pathway <- gsub("\\.", ":", scores$Pathway)
 paths <- merge(paths, scores, by="Pathway") #136 
 
 #convert format to match required format above
-paths_new <- paths[,c(1,5,6)]
+paths_new <- paths[,c(1,7,8)]
 colnames(paths_new)[1] <- "GO.ID"
 colnames(paths_new)[2] <- "Description"
 colnames(paths_new)[3] <- "p.Val"
 
-write.table(paths_new, sep="	", file="enrich_results_file.txt", quote=F, row.names=F)
+write.table(paths_new, sep="\t", file="enrich_results_file.txt", quote=F, row.names=F)
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #Enrichment Map Setup---------------------------------------
