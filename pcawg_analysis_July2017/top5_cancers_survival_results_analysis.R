@@ -98,7 +98,7 @@ lnc_rna <- lnc_rna[which(rownames(lnc_rna) %in% clin$icgc_donor_id),] #485 patie
 pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #485 patients remain 
 
 #Survival results 
-result <- fread("results_coxAug18_median5fpkmMin.txt", sep=";")
+result <- fread("results_coxAug28_median5fpkmMin.txt", sep=";")
 
 #---------------------------------------------------------
 ##Processing
@@ -109,7 +109,7 @@ result <- fread("results_coxAug18_median5fpkmMin.txt", sep=";")
 
 check_medians <- function(column){
   med <- median(column)
-  if(med >=4.5){
+  if(med >=5){
     return(med)
   } 
 }
@@ -134,14 +134,14 @@ high_lncs <- rbind(high_lncs, res)
 }#end loop
 
 high_lncs <- high_lncs[-1,]
-write.table(high_lncs, file="high_lncsmed4.5top5cancersPCAWG.txt", sep=";", quote=F, row.names=F)
+write.table(high_lncs, file="high_lncsmed4top5cancersPCAWG.txt", sep=";", quote=F, row.names=F)
 
 #---------------------------------------------------------
 #Subset lncRNA Expression dataset to those lncRNAs with 
 #high expression in at leat one canc 215 total lncRNAs
 #---------------------------------------------------------
 
-lnc_rna <- lnc_rna[,c((which(colnames(lnc_rna) %in% high_lncs$gene)), 5608,5609)] #244 lncRNAs remain 
+lnc_rna <- lnc_rna[,c((which(colnames(lnc_rna) %in% high_lncs$gene)), 5608,5609)] #215 lncRNAs remain 
 
 #For each patient add survival status and days since last seen 
 lnc_rna$status <- ""
@@ -171,13 +171,13 @@ for(i in 1:nrow(lnc_rna)){
 
 sig <- filter(result, pval < 0.05)
 sig <- as.data.frame(sig)
-write.table(sig, "50sig_lncRNACancerAssociations.txt", quote=F, row.names=F, sep=";")
+write.table(sig, "42sig_lncRNACancerAssociations.txt", quote=F, row.names=F, sep=";")
 
 #Plot expression distribution of high expressing lncRNAs versus significant survival associated ones
 #and compare to GTEX pattern 
 fdr_sig <- sig[sig$fdr <0.1,]
 
-lnc_rna[,1:244] <- log1p(lnc_rna[,1:244])
+lnc_rna[,1:215] <- log1p(lnc_rna[,1:215])
 
 cancers_list <- unique(high_lncs$canc)
 #only care about pancreas, ovary, liver and clear cell 

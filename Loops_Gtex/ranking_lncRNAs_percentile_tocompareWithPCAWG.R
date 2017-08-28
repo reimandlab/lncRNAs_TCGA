@@ -80,10 +80,10 @@ clin <- clin[z,]
 ####-------------------
 
 ##PCAWG top 5 high cancers 
-high_lncs <- fread("high_lncsmed4.5top5cancersPCAWG.txt", sep=";")
+high_lncs <- fread("high_lncsmed4top5cancersPCAWG.txt", sep=";")
 
 ##PCAWG sig lncRNAs < 0.05 pvalue from high lncs
-sig <- fread("50sig_lncRNACancerAssociations.txt", sep=";")
+sig <- fread("42sig_lncRNACancerAssociations.txt", sep=";")
 sig$canc <- lapply(sig$canc, function(x) unlist(strsplit(x, " "))[1])
 fdr_sig <- sig[fdr <0.1]
 

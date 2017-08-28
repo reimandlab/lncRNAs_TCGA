@@ -1,7 +1,7 @@
 #top5_cancers_median5fpkm_specificFind.R
 
 #Karina Isaev
-#August 11th, 2017
+#August 28th, 2017
 
 #Purpose: using the top 5 cancers selected for analysis, 
 #run survival analysis in a pancancer approach with cancer 
@@ -42,6 +42,9 @@ library(ggthemes)
 mypal = pal_npg("nrc", alpha = 0.7)(10)
 
 #Data-------------------------------------------------------
+
+#List of canddidates and cox results
+allCands <- fread("7tier1_35tier2_lncRNA_candidates_August28th.txt", sep=";")
 
 #UCSC gene info
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
@@ -137,6 +140,7 @@ all[,1:(dim(all)[2]-5)] <- log1p(all[,1:(dim(all)[2]-5)])
 
 #2. Get lncRNA - median within each tissue type
 tissues <- unique(all$canc)
+tissues <- tissues[c(1,2,4,5,6)]
 
 #Function 1
 #input: tissue 
@@ -153,24 +157,16 @@ tissues_data <- lapply(tissues, get_tissue_specific)
 #each patient 
 getScores <- function(row){
 	score=""
-	
 	expression <- data.frame(exp=as.numeric(row[1:(length(row)-5)]), gene=names(row)[1:(length(row)-5)])
 	expression$score <- score
-
+	
 	expression <- as.data.table(expression)
 	expression <- expression[order(exp)]
 	expression$score <- as.numeric(rownames(expression))/length(rownames(expression))
-	expression$geneType <- ""
-	for(y in 1:nrow(expression)){
-		lnc <- length(which(colnames(lnc_rna) %in% expression$gene[y]))
-		pcg <- length(which(colnames(pcg_rna) %in% expression$gene[y]))
-		if(lnc==1){
-			expression$geneType[y] <- "lnc" 
-		}
-		if(pcg==1){
-			expression$geneType[y] <- "pcg"
-		}
-	}
+	
+	#subset to just lnc candidates - we just want their score 
+	z <- which(expression$gene %in% allCands$gene)
+	expression <- expression[z, ]
 	return(expression)
 }
 
@@ -179,30 +175,28 @@ addScores <- function(dataframe){
 	patients <- apply(dataframe, 1, getScores) #list of dataframes, need to coerce together
 	names <- rownames(dataframe)
 	patients <- rbindlist(patients)
-	patients$patient <- rep(names, each=nrow(dataframe))
+	patients$patient <- rep(names, each=38) #38 lncRNA candidates 
 	patients <- as.data.frame(patients)
 	patients$canc <- dataframe$canc[1]
+	patients$data <- "PCAWG"
+	patients$canc <- lapply(patients$canc, function(x) unlist(strsplit(x, " "))[1])
 	return(patients)
 }	
 
 scored <- lapply(tissues_data, addScores) #list of dataframes
+all_cancers_scored <-  rbindlist(scored)
+all_cancers_scored <- as.data.frame(all_cancers_scored)
+
 #one for each tissue/cancer type
 #each gene is scored within each patient 
 #can now make violin plot showing distributon of scores for each candidate lncRNA 
 #just need to subset to genes interested in plotting 
 
+#write file so can use with GTEX 
+saveRDS(all_cancers_scored, file="all_cancers_scored.rds")
 
-#Function 3
-#input: dataframe with lncrna-percentile-tissue
-#output: print dataframe so can compare with PCAWG
-
-print_ranked <- function(dataframe){
-	filename <- paste(dataframe$Tissue[1], "ranked_by_bins_lncRNAsPCAWG.txt", sep="_")
-	write.table(dataframe, file=filename, quote=F, row.names=F, sep=";")
-}	
-lapply(scored, print_ranked)
-
-
+#save list of genes in total used to also compare with GTEX 
+write.table(colnames(all), file="all_genes_used_inRankingAnalysis.txt", quote=F, row.names=F, sep=";")
 
 
 

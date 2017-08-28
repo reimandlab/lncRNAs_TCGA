@@ -7,6 +7,8 @@
 #run survival analysis in a pancancer approach with cancer 
 #type as covariate as Neat1 is highly expressed in all cancers
 
+#last updated August 28th
+
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #RNA files used here obtained from script: 
 #pcawg_analysis_July2017/top5_cancers_extraction_script3.R 
@@ -102,7 +104,7 @@ pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #485 patie
 
 check_medians <- function(column){
   med <- median(column)
-  if(med >=4.5){
+  if(med >=5){
     return(med)
   } 
 }
@@ -163,7 +165,7 @@ for(i in 1:nrow(high_lncs)){
   #1. Subset lnc_rna to those patients in cancer
   df <- subset(lnc_rna, lnc_rna$canc %in% high_lncs$canc[i])
   z <- which(colnames(df) %in% high_lncs$gene[i])
-  df <- df[,c(z,245:249)]  
+  df <- df[,c(z,216:220)]  
 
   df[,1] <- log1p(df[,1])
 
@@ -197,9 +199,80 @@ for(i in 1:nrow(high_lncs)){
 
 results_cox <- results_cox[-1,]
 results_cox$fdr <- p.adjust(results_cox$pval, method="fdr")
+results_cox$fdr <- as.numeric(results_cox$fdr)
+results_cox$pval <- as.numeric(results_cox$pval)
+
 results_cox <- as.data.table(results_cox)
 results_cox <- results_cox[order(fdr)]
-write.table(results_cox, file="results_coxAug18_median5fpkmMin.txt",sep=";", quote=F, row.names=F)
+write.table(results_cox, file="results_coxAug28_median5fpkmMin.txt",sep=";", quote=F, row.names=F)
+
+#save as image, dataframe of lncRNAs with pvalue < 0.05 
+sig <- results_cox[pval < 0.05]
+pdf("42_sig_lncRNA_predictors_usingMedian5.pdf", pointsize=8, width=12, height=14)
+p<-tableGrob(sig)
+grid.arrange(p)
+dev.off()
+
+#tier 1 lncRNAs - fdr sig < 0.1
+#tier 2 lncRNAs - pvalue < 0.05 
+
+tier1 <- filter(results_cox, fdr < 0.1) #7 
+tier2 <- filter(results_cox, pval < 0.05 & fdr > 0.1) #35 
+
+#all candidates 
+all <- rbind(tier1, tier2)
+write.table(all, file="7tier1_35tier2_lncRNA_candidates_August28th.txt", sep=";", quote=F, row.names=F)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ##Full - order plots by decreasing pvalue 
