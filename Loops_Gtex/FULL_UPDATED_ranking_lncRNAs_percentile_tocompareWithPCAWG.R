@@ -34,6 +34,8 @@ library(ggsci)
 library(gridExtra)
 library(ggpubr)
 library(plyr)
+library(tidyr)
+library(cowplot)
 
 mypal = pal_npg("nrc", alpha = 0.7)(10)
 
@@ -47,43 +49,6 @@ mypal = pal_npg("nrc", alpha = 0.7)(10)
 # If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
 # then plot 1 will go in the upper left, 2 will go in the upper right, and
 # 3 will go all the way across the bottom.
-#
-multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
-  library(grid)
-
-  # Make a list from the ... arguments and plotlist
-  plots <- c(list(...), plotlist)
-
-  numPlots = length(plots)
-
-  # If layout is NULL, then use 'cols' to determine layout
-  if (is.null(layout)) {
-    # Make the panel
-    # ncol: Number of columns of plots
-    # nrow: Number of rows needed, calculated from # of cols
-    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
-                    ncol = cols, nrow = ceiling(numPlots/cols))
-  }
-
- if (numPlots==1) {
-    print(plots[[1]])
-
-  } else {
-    # Set up the page
-    grid.newpage()
-    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
-
-    # Make each plot, in the correct location
-    for (i in 1:numPlots) {
-      # Get the i,j matrix positions of the regions that contain this subplot
-      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
-
-      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
-                                      layout.pos.col = matchidx$col))
-    }
-  }
-}
-
 
 ###Data#####################################################
 
@@ -240,11 +205,18 @@ allScoredLncsgtexANDpcawg <- rbind(all_cancers_scored, all_tissues_scored)
 allScoredLncsgtexANDpcawg <- as.data.frame(allScoredLncsgtexANDpcawg)
 allScoredLncsgtexANDpcawg$canc <- as.character(allScoredLncsgtexANDpcawg$canc)
 
+#Make subsetted version that only has the lnc candidate in respective cancer type 
+#plot the gtex equivalent, gene and Canc need to match 
+#each gene has just one HR and pvalue 
+
+cands_for_plottingV3 <- merge(allScoredLncsgtexANDpcawg, sig, by=c("gene", "canc"))
+
 #------------------------------------------------------------------
 #PLOTS 
 #------------------------------------------------------------------
 
 #PLOT 1 - x-axis lncRNA candidate genes , y-axis score, stratify by cancer type 
+#all genes/cancer type 
 pdf("plot1_pcawgVSgtex_38candidates.pdf", pointsize=8, width=25, height=25)
 
 f <- ggboxplot(allScoredLncsgtexANDpcawg, x="gene", y="score", color="data", palette=mypal)
@@ -276,7 +248,7 @@ for(i in 1:length(tissues)){
 
   	#wilcoxon test, gene score between gtex and pcawg 
   	wil <- as.data.frame(allScored %>% group_by(gene) %>% do(tidy(wilcox.test(score ~ data, data=.))))
-  	wil$fdr <- p.adjust(wil$p.value, method="bonferroni")
+  	wil$fdr <- p.adjust(wil$p.value, method="fdr")
   	wil$sig <- "" 
   	wil$sig[wil$fdr <=0.05] <- "Yes"
   	wil$sig[wil$fdr > 0.05] <- "No"
@@ -302,8 +274,56 @@ p<-tableGrob(wilcoxon_results)
 grid.arrange(p)
 dev.off()
 
-#PLOT2 - x-axis lncRNA candidate genes, y-axis HR, size = -log10(pvalue), stratify by cancer type 
+#plot 1 version 3
+#only plot candidate lncs within that cancer type and facet with xspace = free 
+#the next plot underneath would show HRs 
 
+#Order cands_for_plottingV3 by median score of each lncRNA with PCAWG cancer 
+tissues <- unique(cands_for_plottingV3$canc) #keep only candidates pancreas, kidney, liver and ovary 
+new_matrix <- as.data.frame(matrix(ncol=11), stringsAsFactors=T)
+colnames(new_matrix) <- c(colnames(cands_for_plottingV3), "Hazard")
+
+#change names of duplicated candidate gens
+dup_data <- sig[which(duplicated(sig$gene)),]
+
+for(i in 1:length(tissues)){
+	allScored <- cands_for_plottingV3[cands_for_plottingV3$canc == tissues[i],]
+	#get median score for each gene 
+	pscore <- filter(allScored, data=="PCAWG")
+	pscore$score <- as.numeric(pscore$score)
+	meds <- as.data.table(pscore %>%
+         group_by(gene) %>%
+         summarise_each(funs(median), score))
+  	meds <- meds[order(score)]
+  	#select all rows from original dataset that correpond to these genes and cancer type
+  	z <- which(cands_for_plottingV3$canc == tissues[i])
+	df <- cands_for_plottingV3[z,]
+	df <- df[ order(match(df$gene, meds$gene)), ]
+	df$Hazard <- ""
+		df$Hazard[df$HR <1] <- "TS"
+		df$Hazard[df$HR >1] <- "OG"
+	new_matrix <- rbind(new_matrix, df)
+
+  }
+
+new_matrix <- new_matrix[-1,]
+new_matrix$pval <- -log10(new_matrix$pval)
+
+f <- ggboxplot(new_matrix, x="gene", y="score", color="data", fill="data", palette=mypal[c(3,4)], ggtheme=theme_bw())
+f <- f + facet_grid (.~ canc, scales = "free_x", space = "free_x")
+f <- ggpar(f, xlab="Candidate lncRNAs", ylab="Score", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,1))
+
+#PLOT2 - x-axis lncRNA candidate genes, y-axis HR, size = -log10(pvalue), stratify by cancer type 
+#using new_matrix, want to plot same lncs on x-axis, facetted by cancer type, y-axis== HR 
+
+p <- ggscatter(new_matrix, x="gene", y="HR", palette= mypal, ggtheme=theme_bw(), size="pval", color="Hazard")
+p <- p + facet_grid (.~ canc, scales = "free_x", space = "free_x")
+p <- ggpar(p, xlab="Candidate lncRNAs", ylab="Hazard Ratio", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,5))
+
+
+pdf("plot1_pcawgVSgtex_38candidatesV4ordered_justcandsPLUShazardratios.pdf", pointsize=8, width=25, height=14)
+plot_grid(f, p, labels = c("A", "B"), align = "v", nrow = 2)
+dev.off()
 
 
 
