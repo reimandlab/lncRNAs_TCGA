@@ -59,13 +59,13 @@ ggplot(fit$model, aes_string(x = names(fit$model)[3], y = names(fit$model)[1])) 
 
 #Run linear regression and obtain p-values and generate plot
 linear_regression_wplot <- function(column){
-	gene <- colnames(neat1)[column]
-	cancer <- neat1$canc
-	lm0 <- lm(neat1[,column] ~ cancer)
-	lm1 <- lm(neat1[,column] ~ cancer + neat1_dat)
+	gene <- colnames(lnc_data)[column]
+	cancer <- lnc_data$canc
+	lm0 <- lm(lnc_data[,column] ~ 1)
+	lm1 <- lm(lnc_data[,column] ~ 1 + JustLnc_dat)
 	anov_p <- anova(lm0, lm1)[2,6]
-	coef <- lm1$coefficients[8] 
-	coef_p <- summary(lm1)$coefficients[8,4]
+	coef <- lm1$coefficients[2] 
+	coef_p <- summary(lm1)$coefficients[2,4]
 	#Make plot 
 	print(ggplot(lm1$model, aes_string(x = names(lm1$model)[3], y = names(lm1$model)[1])) + 
   	geom_point() +
@@ -73,19 +73,19 @@ linear_regression_wplot <- function(column){
   	stat_smooth(method = "lm", col = "red") +
   	labs(title = paste(gene, "Adj R2 = ",round(signif(summary(lm1)$adj.r.squared, 5),digits=4),
                      "Intercept =",round(signif(lm1$coef[[1]],5), digits=4),
-                     " Slope =",round(signif(lm1$coef[[8]], 5), digits=4),
-                     " P =",round(signif(summary(lm1)$coef[8,4], 5),digits=4), x= "Neat1 Expression", y=paste(gene, "Expression"))))
+                     " Slope =",round(signif(lm1$coef[[2]], 5), digits=4),
+                     " P =",round(signif(summary(lm1)$coef[2,4], 5),digits=4), x= "Neat1 Expression", y=paste(gene, "Expression"))))
 	}
 
 #Run linear regression and save coefficients and pvalues 
 linear_regression <- function(column){
-	gene <- colnames(neat1)[column]
-	cancer <- neat1$canc
-	lm0 <- lm(neat1[,column] ~ cancer)
-	lm1 <- lm(neat1[,column] ~ cancer + neat1_dat)
+	gene <- colnames(lnc_data)[column]
+	cancer <- lnc_data$canc
+	lm0 <- lm(lnc_data[,column] ~ 1)
+	lm1 <- lm(lnc_data[,column] ~ 1 + JustLnc_dat)
 	anov_p <- anova(lm0, lm1)[2,6]
-	coef <- lm1$coefficients[8] 
-	coef_p <- summary(lm1)$coefficients[8,4]
+	coef <- lm1$coefficients[2]
+	coef_p <- summary(lm1)$coefficients[2,4]
 	if((anov_p <= 0.05) & (coef_p <= 0.05)) {
 		return(c(gene, coef, coef_p, anov_p))
 	}
@@ -149,38 +149,64 @@ z <- which(colnames(pcg_rna) %in% fantom[,2])
 pcg_rna <- pcg_rna[,-z]
 
 #---------------------------------------------------------
-#Pre-Processing - set up NEAT1/PCG matrix for LM
+#Pre-Processing - set up lnc/PCG matrix for LM
 #---------------------------------------------------------
-neat1 <- lnc_rna[,c(which(colnames(lnc_rna) == "NEAT1"),5608,5609)]
-neat1 <- merge(neat1, pcg_rna, by="patient")
-neat1 <- neat1[,-20065]
-colnames(neat1)[3] <- "canc"
+
+#List of canddidates and cox results
+allCands <- fread("7tier1_35tier2_lncRNA_candidates_August28th.txt", sep=";")
+
+#[1] - for each lncRNA, divide expression data by patient high or low lncRNA expression
+#for each row of allCands
+lnc <- allCands$gene[1]
+canc <- allCands$canc[1]
+
+#get lnc data 
+lnc_data <- lnc_rna[,c(which(colnames(lnc_rna) == lnc),5608,5609)]
+#subset data by cancer type that that lnc is a candidate in 
+lnc_data <- lnc_data[lnc_data$canc == canc, ]
+
+lnc_data <- merge(lnc_data, pcg_rna, by="patient")
+lnc_data <- lnc_data[,-19957]
+colnames(lnc_data)[3] <- "canc"
 
 #1. Remove PCGs with median E < 5 FPKM 
 #get medians of all PCGs
-meds <- apply(neat1[,4:20062], 2, median)
+meds <- apply(lnc_data[,4:19956], 2, median)
 #names of pcgs with median <5 
 low <- names(meds[which(meds <5)]) 
-neat1 <- neat1[,-(which(colnames(neat1) %in% low))] #6028 pcgs remain
+lnc_data <- lnc_data[,-(which(colnames(lnc_data) %in% low))] #6785 pcgs remain
 #log all gene expression values
-neat1[,c(2,4:6032)] <- log1p(neat1[,c(2,4:6032)])
+lnc_data[,c(2,4:(ncol(lnc_data)))] <- log1p(lnc_data[,c(2,4:(ncol(lnc_data)))])
 
 #---------------------------------------------------------
 #Analysis - Linear Regression Using Logged Values and 
 #cancer type as confounder  
 #---------------------------------------------------------
 
-neat1_dat <- neat1[,2]
+JustLnc_dat <- lnc_data[,2]
 
 #Main Analysis
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-pdf("all_coexpressions.pdf")  
-lapply(4:6032, linear_regression_wplot)
-dev.off()
+#PLOTTING LINEAR REGRESSIOn
+
+#pdf("all_coexpressions.pdf")  
+#lapply(4:6032, linear_regression_wplot)
+#dev.off()
 
 #Obtain regression results 
-results <- lapply(4:6032, linear_regression)
+
+#Divide lnc
+
+
+
+results <- lapply(4:(ncol(lnc_data)), linear_regression)
+
+
+
+
+
+
 #remove blank entries - those that weren't significantly associated 
 results <- Filter(Negate(is.null), results) 
 #convert to df
