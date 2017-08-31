@@ -36,6 +36,8 @@ library(ggpubr)
 library(plyr)
 library(tidyr)
 library(cowplot)
+library(broom)
+library(tidyverse)
 
 mypal = pal_npg("nrc", alpha = 0.7)(10)
 
@@ -217,14 +219,12 @@ cands_for_plottingV3 <- merge(allScoredLncsgtexANDpcawg, sig, by=c("gene", "canc
 
 #PLOT 1 - x-axis lncRNA candidate genes , y-axis score, stratify by cancer type 
 #all genes/cancer type 
-pdf("plot1_pcawgVSgtex_38candidates.pdf", pointsize=8, width=25, height=25)
-
-f <- ggboxplot(allScoredLncsgtexANDpcawg, x="gene", y="score", color="data", palette=mypal)
-f <- facet(f, facet.by="canc", nrow=7, ncol=1)
-f <- ggpar(f, xlab="Candidate lncRNAs, n=38", ylab="Score", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,1))
-f
-
-dev.off()
+#pdf("plot1_pcawgVSgtex_38candidates.pdf", pointsize=8, width=25, height=25)
+#f <- ggboxplot(allScoredLncsgtexANDpcawg, x="gene", y="score", color="data", palette=mypal)
+#f <- facet(f, facet.by="canc", nrow=7, ncol=1)
+#f <- ggpar(f, xlab="Candidate lncRNAs, n=38", ylab="Score", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,1))
+#f
+#dev.off()
 
 #plot 1 version 2
 #plot only candidate lncRNAs within that cancer type
@@ -260,9 +260,9 @@ for(i in 1:length(tissues)){
 	wilcoxon_results[[i]] <- wil	
 }
 
-pdf("plot1_Version2_pcawgVSgtex_38candidatesWithinEachCancer.pdf", pointsize=8, width=30, height=20)
-multiplot(plotlist = plots, cols = 2)
-dev.off()
+#pdf("plot1_Version2_pcawgVSgtex_38candidatesWithinEachCancer.pdf", pointsize=8, width=30, height=20)
+#multiplot(plotlist = plots, cols = 2)
+#dev.off()
 
 wilcoxon_results <- rbindlist(wilcoxon_results)
 wilcoxon_results <- as.data.table(wilcoxon_results)
@@ -280,11 +280,12 @@ dev.off()
 
 #Order cands_for_plottingV3 by median score of each lncRNA with PCAWG cancer 
 tissues <- unique(cands_for_plottingV3$canc) #keep only candidates pancreas, kidney, liver and ovary 
-new_matrix <- as.data.frame(matrix(ncol=11), stringsAsFactors=T)
-colnames(new_matrix) <- c(colnames(cands_for_plottingV3), "Hazard")
+new_matrix <- as.data.frame(matrix(ncol=15))
+colnames(new_matrix) <- c(colnames(cands_for_plottingV3), "Hazard", "medianScore", "high", "Prediction", "Tier")
 
 #change names of duplicated candidate gens
 dup_data <- sig[which(duplicated(sig$gene)),]
+nonSigWilcox <- filter(wilcoxon_results, fdr > 0.05)
 
 for(i in 1:length(tissues)){
 	allScored <- cands_for_plottingV3[cands_for_plottingV3$canc == tissues[i],]
@@ -298,10 +299,44 @@ for(i in 1:length(tissues)){
   	#select all rows from original dataset that correpond to these genes and cancer type
   	z <- which(cands_for_plottingV3$canc == tissues[i])
 	df <- cands_for_plottingV3[z,]
-	df <- df[ order(match(df$gene, meds$gene)), ]
 	df$Hazard <- ""
-		df$Hazard[df$HR <1] <- "TS"
-		df$Hazard[df$HR >1] <- "OG"
+	df$Hazard[df$HR <1] <- "TS"
+	df$Hazard[df$HR >1] <- "OG"
+
+	#compare median of GTEX to median of PCAWG
+	#if median in GTEX > median PCAWG and HR <1, prediction = TS
+	predictions <- as.data.frame(df %>% group_by(gene, data) %>%  summarise_each(funs(median), score))
+	colnames(predictions)[3] <- "medianScore"
+	predictions$high <- ""
+	predictions$HR <- ""
+	for(j in 1:length(unique(predictions$gene))){
+		check <- predictions[predictions$gene == unique(predictions$gene)[j],]
+		z <- check$data[which(check$medianScore == max(check$medianScore))]
+		predictions$high[predictions$gene == unique(predictions$gene)[j]] <- z
+		z2 <- df$HR[which(df$gene == unique(predictions$gene)[j])][1]
+		predictions$HR[predictions$gene == unique(predictions$gene)[j]] <- z2
+	}
+	predictions$Prediction <- ""
+	predictions$Prediction[(predictions$high == "GTEX") & (predictions$HR < 1)] <- "Predicted TS"
+	predictions$Prediction[(predictions$high == "PCAWG") & (predictions$HR > 1)] <- "Predicted OG"
+	predictions$Prediction[(predictions$high == "PCAWG") & (predictions$HR < 1)] <- "No Prediction"
+	predictions$Prediction[(predictions$high == "GTEX") & (predictions$HR > 1)] <- "No Prediction"
+	predictions <- predictions[,-2]
+
+	#add to df
+	df <- merge(df, predictions, by=c("gene", "HR"))
+
+	#if fdr < 0.1, tier == 1
+	df$Tier[df$fdr <=0.1] <- 1
+	df$Tier[df$fdr >0.1] <-  2
+
+	df <- df[ order(match(df$gene, meds$gene)), ]
+
+	#if gene name is duplicated change it to something else 
+	z <- which((df$gene %in% dup_data$gene )& (df$canc %in% dup_data$canc))
+	replace <- paste(df$gene[z], "*")
+	df$gene[z] <- replace
+
 	new_matrix <- rbind(new_matrix, df)
 
   }
@@ -309,20 +344,37 @@ for(i in 1:length(tissues)){
 new_matrix <- new_matrix[-1,]
 new_matrix$pval <- -log10(new_matrix$pval)
 
-f <- ggboxplot(new_matrix, x="gene", y="score", color="data", fill="data", palette=mypal[c(3,4)], ggtheme=theme_bw())
-f <- f + facet_grid (.~ canc, scales = "free_x", space = "free_x")
-f <- ggpar(f, xlab="Candidate lncRNAs", ylab="Score", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,1))
+#BOXPLOTS
 
-#PLOT2 - x-axis lncRNA candidate genes, y-axis HR, size = -log10(pvalue), stratify by cancer type 
-#using new_matrix, want to plot same lncs on x-axis, facetted by cancer type, y-axis== HR 
+f <- ggboxplot(new_matrix, x="gene", y="score", color="data", fill="data", palette=mypal[c(3,4)], ggtheme=theme_bw())
+f <- f + facet_grid (.~ canc, scales = "free_x", space = "free_x") + 
+ 	theme(strip.background =element_rect(fill=mypal[9]))+
+  	theme(strip.text = element_text(colour = 'white'))
+f <- ggpar(f, xlab="Candidate lncRNAs", ylab="Score", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,1))
+f <- f + rremove("y.grid") + rremove("xlab") + rremove("x.text")
+
+#HAZARD RATIOS
 
 p <- ggscatter(new_matrix, x="gene", y="HR", palette= mypal, ggtheme=theme_bw(), size="pval", color="Hazard")
-p <- p + facet_grid (.~ canc, scales = "free_x", space = "free_x")
-p <- ggpar(p, xlab="Candidate lncRNAs", ylab="Hazard Ratio", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,5))
+p <- p + facet_grid (.~ canc, scales = "free_x", space = "free_x") + 
+ 	theme(strip.background =element_rect(fill=mypal[9]))+
+  	theme(strip.text = element_text(colour = 'white'))
+p <- ggpar(p, xlab="Candidate lncRNAs", ylab="Hazard Ratio", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,4))
+p <- p + rremove("y.grid") + rremove("xlab") + rremove("x.text")
 
+
+#TIER AND PREDICTION STATUS 
+new_matrix$Tier <- as.factor(new_matrix$Tier)
+
+g <- ggscatter(new_matrix, x="gene", y="Tier", palette= c("grey", mypal[c(1,2)]), ggtheme=theme_bw(), color="Prediction")
+g <- g + facet_grid (.~ canc, scales = "free_x", space = "free_x") + 
+ 	theme(strip.background =element_rect(fill=mypal[9]))+
+  	theme(strip.text = element_text(colour = 'white'))
+g <- ggpar(g, xlab="Candidate lncRNAs", ylab="Tier", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right")
+g <- g + rremove("y.grid")
 
 pdf("plot1_pcawgVSgtex_38candidatesV4ordered_justcandsPLUShazardratios.pdf", pointsize=8, width=25, height=14)
-plot_grid(f, p, labels = c("A", "B"), align = "v", nrow = 2)
+plot_grid(f, p, g,  labels = c("A", "B", "C"), align = "v", nrow = 3)
 dev.off()
 
 

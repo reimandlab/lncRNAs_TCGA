@@ -19,6 +19,7 @@ options(stringsAsFactors=F)
 
 #Libraries#------------------------------------------------
 library(data.table)
+library(plyr)
 library(survival)
 library(ggplot2)
 library(ggfortify)
@@ -36,7 +37,6 @@ library(ggsci)
 library(gridExtra)
 library(ggpubr)
 library(ggthemes)
-library(plyr)
 library(tidyr)
 library(cowplot)
 library(broom)
@@ -139,9 +139,6 @@ table(ucsc[,7][ucsc[,8] %in% colnames(pcg_rna)])
 z <- which(colnames(pcg_rna) %in% fantom[,2])
 pcg_rna <- pcg_rna[,-z]
 
-saveRDS(pcg_rna, file="pcg_RNAseq_wPatientData_RankAg.rds")
-saveRDS(lnc_rna, file="lnc_RNAseq_wPatientData_RankAg.rds")
-
 #---------------------------------------------------------
 #Pre-Processing - set up lnc/PCG matrix for LM
 #---------------------------------------------------------
@@ -189,32 +186,15 @@ getPCGS <- function(df){
 	return(all)
 }
 
-dividedWpcgs <- mclapply(divided, getPCGS)
+dividedWpcgs <- llply(divided, getPCGS, .progress = "text")
+print("pass2")
 
-#FUNCTION3 - run linear regression within each dataframe comparing lncRNA and each PCG
-#(1) across all samples
-#(2) just in high and just in low to compare gene lists obtained between high and low groups
 
-#Run linear regression and save coefficients and pvalues 
-linear_regression <- function(column){
-	gene <- colnames(dataframe)[column]
-	cancer <- dataframe$canc
-	#(1) across all samples
-	lm0 <- lm(dataframe[,column] ~ 1)
-	lm1 <- lm(dataframe[,column] ~ 1 + dataframe[,2])
-	anov_p <- anova(lm0, lm1)[2,6]
-	coef <- lm1$coefficients[2]
-	coef_p <- summary(lm1)$coefficients[2,4]
-	if((anov_p <= 0.05) & (coef_p <= 0.05)) {
-		return(c(gene, coef, coef_p, anov_p, "allPatients"))
-	}
-}
-
-linear_regression_highOnly <- function(column){
-	gene <- colnames(dataframe)[column]
-	cancer <- dataframe$canc
+linear_regression_highOnly <- function(column, d){
+	gene <- colnames(d)[column]
+	cancer <- d$canc
 	
-	dataframe2 <- dataframe[dataframe$exp ==1, ]
+	dataframe2 <- d[d$exp ==1, ]
 
 	#(2) across only high expressing lncRNA samples 
 	lm0 <- lm(dataframe2[,column] ~ 1)
@@ -227,64 +207,13 @@ linear_regression_highOnly <- function(column){
 	}
 }
 
-linear_regression_lowOnly <- function(column){
-	gene <- colnames(dataframe)[column]
-	cancer <- dataframe$canc
-	
-	dataframe3 <- dataframe[dataframe$exp ==0, ]
 
-	#(3) across only low expressing lncRNA samples 
-	lm0 <- lm(dataframe3[,column] ~ 1)
-	lm1 <- lm(dataframe3[,column] ~ 1 + dataframe3[,2])
-	anov_p <- anova(lm0, lm1)[2,6]
-	coef <- lm1$coefficients[2]
-	coef_p <- summary(lm1)$coefficients[2,4]
-	if((anov_p <= 0.05) & (coef_p <= 0.05)) {
-		return(c(gene, coef, coef_p, anov_p, "lowLNCpatients"))
-	}
-}
+lrResultsHigh <- function(d){
 
-
-###MAIN-----------------------------------------------------------------------------------
-
-
-lrResults <- function(dataframe){
-	
-	#(1) across all samples 
-	results <- mclapply(5:ncol(dataframe), linear_regression)
-
-	#remove blank entries - those that weren't significantly associated 
-	results <- Filter(Negate(is.null), results) 
-	#convert to df
-	df <- data.frame(matrix(unlist(results), nrow=length(results), byrow=T))
-	colnames(df) <- c("PCG", "lm_coefficient", "lm_coef_pval", "lm_anov_pval", "Patients")
-	df$fdr_coef <- p.adjust(df$lm_coef_pval, method="fdr")
-	df$fdr_anov <- p.adjust(df$lm_anov_pval, method="fdr")
-	df$pass <- ""
-	for(i in 1:nrow(df)){
-		coef <- df[i, 6]
-		anov <- df[i,7]
-		if((coef <=0.05) & (anov <= 0.05)){
-			f <- 1
-		}
-		if(!((coef <=0.05) & (anov <= 0.05))){
-			f <- 0
-		}
-		df$pass[i] <- f
-	}
-	df$canc <- dataframe$canc[1]
-	df$lnc <- colnames(dataframe)[2]
-	return(df)
-}
-
-	l1 <- lapply(dividedWpcgs, lrResults)
-
-
-
-lrResultsHigh <- function(dataframe){
+	d <- as.data.frame(d)
 
 	#(2) across just high expressing patients 
-	results2 <- mclapply(5:ncol(dataframe), linear_regression_highOnly)
+	results2 <- llply(5:ncol(d), linear_regression_highOnly, d=d)
 	#remove blank entries - those that weren't significantly associated 
 	results2 <- Filter(Negate(is.null), results2) 
 	#convert to df
@@ -304,58 +233,21 @@ lrResultsHigh <- function(dataframe){
 		}
 		df2$pass[i] <- f
 	}
-	df2$canc <- dataframe$canc[1]
-	df2$lnc <- colnames(dataframe)[2]
+	df2$canc <- d$canc[1]
+	df2$lnc <- colnames(d)[2]
 
 	return(df2)
 }
 	
-	l2 <- mclapply(dividedWpcgs, lrResultsHigh)
+	l2 <- llply(dividedWpcgs, lrResultsHigh, .progress = "text")
+	#pass3
+
+	final_resultsHIGH <- ldply(l2, data.frame)
+
+	saveRDS(l2, "l2.RDS")
+	saveRDS(final_resultsHIGH, file="HIGH_coexpression_for42candidateLNCS.rds")
 
 
-
-lrResultsLow <- function(dataframe){
-
-	#(2) across just low expressing patients 
-	results3 <- mclapply(5:ncol(dataframe), linear_regression_lowOnly)
-
-	#remove blank entries - those that weren't significantly associated 
-	results3 <- Filter(Negate(is.null), results3) 
-	#convert to df
-	df3 <- data.frame(matrix(unlist(results3), nrow=length(results3), byrow=T))
-	colnames(df3) <- c("PCG", "lm_coefficient", "lm_coef_pval", "lm_anov_pval", "Patients")
-	df3$fdr_coef <- p.adjust(df3$lm_coef_pval, method="fdr")
-	df3$fdr_anov <- p.adjust(df3$lm_anov_pval, method="fdr")
-	df3$pass <- ""
-	for(i in 1:nrow(df3)){
-		coef <- df3[i, 6]
-		anov <- df3[i,7]
-		if((coef <=0.05) & (anov <= 0.05)){
-			f <- 1
-		}
-		if(!((coef <=0.05) & (anov <= 0.05))){
-			f <- 0
-		}
-		df3$pass[i] <- f
-	}
-	df3$canc <- dataframe$canc[1]
-	df3$lnc <- colnames(dataframe)[2]
-
-	return(df3)
-}
-
-	l3 <- mclapply(dividedWpcgs, lrResultsLow)
-
-
-final_resultsAll <- ldply(l1, data.frame)
-final_resultsHigh <- ldply(l2, data.frame)
-final_resultsLow <- ldply(l3, data.frame)
-
-saveRDS(final_resultsAll, file="all_coexpression_for42candidateLNCS.rds")
-
-saveRDS(final_resultsHigh, file="HIGHcoexpression_for42candidateLNCS.rds")
-
-saveRDS(final_resultsLow, file="LOW_coexpression_for42candidateLNCS.rds")
 
 
 
