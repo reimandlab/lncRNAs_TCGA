@@ -45,43 +45,6 @@ library(parallel)
 
 mypal = pal_npg("nrc", alpha = 0.7)(10)
 
-#Functions-------------------------------------------------
-
-#Plotting linear regression line 
-ggplotRegression <- function (fit) {
-require(ggplot2)
-ggplot(fit$model, aes_string(x = names(fit$model)[3], y = names(fit$model)[1])) + 
-  geom_point() +
-  stat_smooth(method = "lm", col = "red") +
-  labs(title = paste("Adj R2 = ",signif(summary(fit)$adj.r.squared, 5),
-                     "Intercept =",signif(fit$coef[[1]],5 ),
-                     " Slope =",signif(fit$coef[[8]], 5),
-                     " P =",signif(summary(fit)$coef[8,4], 5)))
-}
-
-
-#Run linear regression and obtain p-values and generate plot
-linear_regression_wplot <- function(column){
-	gene <- colnames(lnc_data)[column]
-	cancer <- lnc_data$canc
-	lm0 <- lm(lnc_data[,column] ~ 1)
-	lm1 <- lm(lnc_data[,column] ~ 1 + JustLnc_dat)
-	anov_p <- anova(lm0, lm1)[2,6]
-	coef <- lm1$coefficients[2] 
-	coef_p <- summary(lm1)$coefficients[2,4]
-	#Make plot 
-	print(ggplot(lm1$model, aes_string(x = names(lm1$model)[3], y = names(lm1$model)[1])) + 
-  	geom_point() +
-  	theme_hc() + 
-  	stat_smooth(method = "lm", col = "red") +
-  	labs(title = paste(gene, "Adj R2 = ",round(signif(summary(lm1)$adj.r.squared, 5),digits=4),
-                     "Intercept =",round(signif(lm1$coef[[1]],5), digits=4),
-                     " Slope =",round(signif(lm1$coef[[2]], 5), digits=4),
-                     " P =",round(signif(summary(lm1)$coef[2,4], 5),digits=4), x= "Neat1 Expression", y=paste(gene, "Expression"))))
-	}
-
-
-
 #Data-------------------------------------------------------
 
 #UCSC gene info

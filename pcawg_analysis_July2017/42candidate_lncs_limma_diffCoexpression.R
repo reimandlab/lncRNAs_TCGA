@@ -1,4 +1,4 @@
-#42candidate_lncs_limma_diffCoexpression.R
+#42candidate_lncs_limma_diffCoexpression .R
 
 #Karina Isaev
 #September 5th, 2017
@@ -42,6 +42,7 @@ library(cowplot)
 library(broom)
 library(tidyverse)
 library(parallel)
+library(limma)
 
 mypal = pal_npg("nrc", alpha = 0.7)(10)
 
@@ -153,6 +154,31 @@ getPCGS <- function(df){
 dividedWpcgs <- llply(divided, getPCGS, .progress = "text")
 print("pass2")
 
+#make scatter plot showing patient vs lncRNA candidate expression
+#what does the curve look like? how close are the points to each other?
+
+simplePlot <- function(d){
+	toplot <- as.data.table(d[,1:4])
+	colnames(toplot)[2] <- "lnc"
+	toplot <- toplot[order(lnc)]
+	toplot$id <- rownames(toplot)
+	toplot$exp[toplot$exp==0] <- "Low lncRNA"
+	toplot$exp[toplot$exp==1] <- "High lncRNA"
+
+	toplot$exp <- as.factor(toplot$exp)
+	g <- ggscatter(toplot, x = "id", y = "lnc", color = "exp",
+  				palette = mypal)
+	g <- ggpar(g, xlab=FALSE,  legend = "right", legend.title = "lncRNA Group", ylab="lncRNA log1p(FPKM) Expression",
+		main = paste(colnames(d)[2], "Expression Distribution"))
+	g <- g + rremove("x.ticks")
+	print(g + rremove("x.text"))
+}
+
+pdf("42lncRNAcandidates_distributionofExpSept6.pdf", pointsize=6)
+llply(dividedWpcgs, simplePlot, .progress = "text")
+dev.off()
+
+
 #FUNCTION3 - limma differential expression between high and low lncRNA groups
 diffE <- function(d){
 	design <- model.matrix(~ 0 + factor(d$exp))
@@ -172,7 +198,7 @@ diffE <- function(d){
 
 	par(mfrow=c(2,1))
 	
-	pdf(paste(colnames(d)[2], d[1,3], "volcano.pdf", sep="_"))
+	pdf(paste(colnames(d)[2], d[1,3], "volcano.pdf", sep="_"), pointsize=8, height=9, width=10)
 
 	for (i in 1:ncol(fit2$p.value)) {
 	print(hist(p.adjust(fit2$p.value[,i], method="fdr"), main=colnames(fit2$p.value)[i]))
@@ -183,35 +209,78 @@ diffE <- function(d){
 
     if(dim(t)[1] > 1){
 
-    #save top 100 gene names 
+    #rank list of genes before making heatmap
+    t <- as.data.table(t)
+    #first by adj p values then by decreasing FC
+    t <- t[order(adj.P.Val)]
+    t <- t[order(-abs(as.numeric(logFC)))]
+
+    #save top gene names 
     top <- c(paste(colnames(d)[2], d[1,3]), t$ID)
+
+    if(dim(t)[1] >= 200){
+	#save 200 most DE genes 
+    t <- t[1:200,]
+	}
 
     #generate volcano plot
     print(ggplot(aes(x=logFC, y= -log10(P.Value)), data=t) + geom_point(aes(colour = -log10(adj.P.Val))) + scale_colour_gradient(low = "blue", high="red") +
     	labs(colour = "-log10(fdr)", x = "Limma logFC", y= "-log10(p-value)") + ggtitle(paste(colnames(d)[2], d[1,3]), "Differential Expression"))
     
-
     #generate heatmap 
-    heat <- expression[which(rownames(expression) %in% top),]
+    heat <- expression[which(rownames(expression) %in% t$ID),]
     tags <- d$exp
-
-    color.map <- function(tags) { if (tags==1) "#FF0000" else "#0000FF" }
+	color.map <- function(tags) { if (tags==1) "#FF0000" else "#0000FF" }
     patientcolors <- unlist(lapply(tags, color.map))
-
-    #heatmap.2(heat, col=topo.colors(200), scale="row", ColSideColors=patientcolors,
+	#heatmap.2(heat, col=topo.colors(200), scale="row", ColSideColors=patientcolors,
           #key=TRUE, symkey=FALSE, density.info="none", trace="none", cexRow=0.5, cexCol=0.5, keysize=1.05)
 	
 	# cluster on correlation
-	hc <- hclust(as.dist(1 – cor(t(heat))), method="ward.D2")
-
+	hc <- hclust(as.dist(1 - cor(t(heat))), method="ward.D2")
 	# draw a heatmap
 	heatmap(as.matrix(heat),
 	Rowv=as.dendrogram(hc),
 	col=greenred(100),ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6)
 
-	}	
+	#pathway enrichment
 
-    dev.off()
+	#split into positive and nagative co-experessed genes 
+	neg <- t[logFC <0]
+	#pathway enrichment looking at top 100 coexpressed genes based on the above ranking
+	negGenes <- neg[,1]
+	negNoradpaths <- gprofiler(negGenes, organism = "hsapiens", ordered_query= TRUE, min_set_size=20, max_set_size = 300, min_isect_size=5, correction_method="fdr")
+	if(!(dim(negNoradpaths)[1]==0)){
+	negNoradpaths <- negNoradpaths[, c(9, 12, 3)]
+	colnames(negNoradpaths) <- c("GO.ID", "Description", "p.Val")
+	negNoradpaths$FDR <- negNoradpaths$p.Val
+	negNoradpaths$Phenotype <- "-1"
+	}
+	pos <- t[logFC >0]
+	#pathway enrichment looking at top 100 coexpressed genes based on the above ranking
+	posGenes <- pos[,1]
+	posNoradpaths <- gprofiler(posGenes, organism = "hsapiens", ordered_query= TRUE, min_set_size=20, max_set_size = 300, min_isect_size=5, correction_method="fdr")
+	if(!(dim(posNoradpaths)[1]==0)){
+	posNoradpaths <- posNoradpaths[, c(9, 12, 3)]
+	colnames(posNoradpaths) <- c("GO.ID", "Description", "p.Val")
+	posNoradpaths$FDR <- posNoradpaths$p.Val
+	posNoradpaths$Phenotype <- "+1"
+	}
+
+	#combine 
+	allPaths <- rbind(negNoradpaths, posNoradpaths)
+
+	if(!(dim(allPaths)[1]==0)){
+	#only keep GO or REACTOME
+	reac <- grep("REAC", allPaths$GO.ID)
+	go <- grep("GO", allPaths$GO.ID)
+	allPaths <- allPaths[c(reac, go), ]
+
+	write.table(allPaths, sep= "\t", file=paste(colnames(d)[2], "PathwaysUsingtTop200DEgenesSept7.txt", sep="_"), quote=F, row.names=F)
+	}
+	
+	dev.off()
+
+	}
 
     if(dim(t)[1] <= 1){
     	top <- c(paste(colnames(d)[2], d[1,3]), "none")
@@ -222,9 +291,7 @@ diffE <- function(d){
 
 diffExpressed <- llply(dividedWpcgs, diffE, .progress = "text")
 
-saveRDS(diffExpressed, file="42candidatesWithDEpcgsSept5.rds")
-
-
+saveRDS(diffExpressed, file="Sept7updated_42candidatesWithDEpcgsSept7TOP200genesUsed.rds")
 
 
 

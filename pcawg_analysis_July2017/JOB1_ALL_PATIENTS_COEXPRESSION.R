@@ -205,17 +205,34 @@ linear_regression <- function(column, d){
 	coef <- lm1$coefficients[2]
 	coef_p <- summary(lm1)$coefficients[2,4]
 	if((anov_p <= 0.05) & (coef_p <= 0.05)) {
+		#plot regression
+		fit <- lm(d[,column] ~ 1 + d[,2])
+		print(ggplot(fit$model, aes_string(x = names(fit$model)[2], y = names(fit$model)[1])) + 
+  		geom_point() +
+  		stat_smooth(method = "lm", col = "red") +
+  		labs(title = paste("Adj R2 = ",signif(summary(fit)$adj.r.squared, 5),
+                     "Intercept =",signif(fit$coef[[1]],5 ),
+                     " Slope =",signif(fit$coef[[2]], 5),
+                     " P =",signif(summary(fit)$coef[2,4], 5)), x=colnames(d)[2], y=gene))
+
 		return(c(gene, coef, coef_p, anov_p, "allPatients"))
 	}
 }
 
+#> which(colnames(d) %in% "PUM1")
+#[1] 4549
+#> which(colnames(d) %in% "PUM2")
+#[1] 4550
+
+linear_regression(4549, d)
+linear_regression(4550, d)
 
 lrResults <- function(d){
-	
+	pdf("norad_coexpressedPCGSsept6th.pdf", pointsize=8)
 	d <- as.data.frame(d)
 
 	#(1) across all samples 
-	results <- llply(5:ncol(d), linear_regression, d=d)
+	results <- llply(5:ncol(d), linear_regression, d=d, .progress = "text")
 	#remove blank entries - those that weren't significantly associated 
 	results <- Filter(Negate(is.null), results) 
 	#convert to df
@@ -237,8 +254,11 @@ lrResults <- function(d){
 	}
 	df$canc <- d$canc[1]
 	df$lnc <- colnames(d)[2]
+	dev.off()
 	return(df)
 	}
+
+
 
 	l1 <- llply(dividedWpcgs, lrResults, .progress = "text")
 	#pass3
