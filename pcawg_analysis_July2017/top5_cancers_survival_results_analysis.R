@@ -334,7 +334,7 @@ multivariate_prep <- function(canc_genes){
 	genes <- canc_genes[[2]]
 	df <- lnc_rna[lnc_rna$canc==canc,]
 	#add high or low tag to each genes 
-	df <- df[,c(which(colnames(df) %in% genes),245:251)]
+	df <- df[,c(which(colnames(df) %in% genes),216:222)]
 	#change the values in each gene's column to median tag values
 	j <- ncol(df)-7
 	tags <- apply(df[,1:j], 2, gene_tag)
@@ -347,6 +347,18 @@ multivariate_prep <- function(canc_genes){
 
 #apply to canc_genes_list
 genes_to_test <- lapply(canc_genes_list, multivariate_prep) #list of dataframes 
+
+##Multivariate analysis using top 2 lncRNAs 
+#LINC00665 and LINC00657 
+ovaryTop <- genes_to_test[[1]]
+ovaryTop <- ovaryTop[,c(1:7, which(colnames(ovaryTop) %in% c("LINC00657", "LINC00665")))]
+
+modelALL <- coxph(Surv(time, status) ~ age + sex + LINC00665 + LINC00657, data =  lung)
+
+
+
+
+
 
 #Function 4
 #input: dataframe with 0/1 indicating high or low genes
