@@ -212,8 +212,9 @@ print("pass2")
 
 ##ALL SAMPLES#-----------------------------------------------------------------------
 
-#norad data 
+#norad data & LINC00665
 d <- dividedWpcgs[[1]]
+d2 <- dividedWpcgs[[2]]
 
 #Run linear regression and save coefficients and pvalues 
 linear_regression <- function(column, d){

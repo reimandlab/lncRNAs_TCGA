@@ -218,10 +218,12 @@ diffE <- function(d){
     #save top gene names 
     top <- c(paste(colnames(d)[2], d[1,3]), t$ID)
 
-    if(dim(t)[1] >= 200){
-	#save 200 most DE genes 
-    t <- t[1:200,]
-	}
+    #use all not just top 200 genes 
+
+    #if(dim(t)[1] >= 200){
+	##save 200 most DE genes 
+    #t <- t[1:200,]
+	#}
 
     #generate volcano plot
     print(ggplot(aes(x=logFC, y= -log10(P.Value)), data=t) + geom_point(aes(colour = -log10(adj.P.Val))) + scale_colour_gradient(low = "blue", high="red") +
@@ -238,6 +240,9 @@ diffE <- function(d){
 	# cluster on correlation
 	hc <- hclust(as.dist(1 - cor(t(heat))), method="ward.D2")
 	# draw a heatmap
+
+	heatmap.2(as.matrix(heat), col=greenred(100), ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6, Rowv=as.dendrogram(hc), trace="none", scale="row")
+
 	heatmap(as.matrix(heat),
 	Rowv=as.dendrogram(hc),
 	col=greenred(100),ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6)
