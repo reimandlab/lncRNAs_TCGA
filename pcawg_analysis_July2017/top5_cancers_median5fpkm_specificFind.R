@@ -131,6 +131,28 @@ high_lncs <- rbind(high_lncs, res)
 high_lncs <- high_lncs[-1,]
 
 #---------------------------------------------------------
+#Visualize high lncRNA overlap between cancers 
+#---------------------------------------------------------
+
+g <- as.data.table(table(high_lncs$gene, high_lncs$canc))
+gg <- matrix(nrow=7, ncol=215)
+colnames(gg) <- unique(g$V1)
+rownames(gg) <- unique(g$V2)
+
+for(i in 1:length(unique(g$V2))){  
+  canc <- unique(g$V2)[i]
+  z <- which(g$V2 == canc)
+  gg[which(rownames(gg)==canc),] <- as.numeric(g$N[z])
+}
+
+# Plot 
+pdf("215lncRNAs_overlap_Matrix.pdf", pointsize=8, width=9, height=10)
+heatmap.2(as.matrix(t(gg)), scale="none", col=mypal[c(2,1)], trace="none", hclustfun = function(x) hclust(x,method = 'ward.D2'),
+  distfun = function(x) dist(x,method = 'euclidean'), srtCol=21, cexCol=1.4, key.title=NA, keysize=0.6, 
+          margins = c(10, 7), main = list("215 lncRNAs Expression Status in Cancers", cex = 1.2))
+dev.off()
+
+#---------------------------------------------------------
 #Subset lncRNA Expression dataset to those lncRNAs with 
 #high expression in at leat one canc 215 total lncRNAs
 #---------------------------------------------------------

@@ -148,20 +148,21 @@ pdf("1267_cancer_mainSITE_organ_distribution.pdf")
 p <- ggbarplot(tum_types, "V1", "N", color="N", xlab="Tumour Organ Site") +
 ggtitle("Distribution of Tumour RNA-Seq Samples by Cancer Site")
 ggpar(p,
- font.tickslab = c(6,"bold", "black"),
+ font.tickslab = c(8,"bold", "black"),
  xtickslab.rt = 70,
- legend="right")
+ legend="right", ylab="Number of Patient Samples")
 dev.off()
 
 ###CANCER TYPES WITH AT LEAST 50 PATIENTS 
 tum_types <- tum_types[tum_types$N>=50]
+order = tum_types$V1
 pdf("50patients_min_cancers_dist.pdf")
 p <- ggbarplot(tum_types, "V1", "N", color="N", xlab="Tumour Organ Site") +
 ggtitle("Distribution of Tumour RNA-Seq Samples by Cancer Site")
 ggpar(p,
- font.tickslab = c(6,"bold", "black"),
+ font.tickslab = c(8,"bold", "black"),
  xtickslab.rt = 70,
- legend="right")
+ legend="right", ylab="Number of Patient Samples")
 dev.off()
 
 ###IN THESE CANCER TYPES, HOW MANY HISTOLOGICAL 
@@ -177,13 +178,13 @@ tum_types <- tum_types[-z,]
 
 cols <- colorRampPalette(mypal)(30) 
 
-pdf("50patients_min_cancers_dist_wHISTOsubtype.pdf")
-p <- ggbarplot(tum_types, "V1", "N", fill="V2", xlab="Tumour Organ Site", palette=cols) +
+pdf("50patients_min_cancers_dist_wHISTOsubtype.pdf", pointsize=8, width=10, height=9)
+p <- ggbarplot(tum_types, "V1", "N", fill="V2", xlab="Tumour Organ Site", palette=cols, order=order) +
 ggtitle("Distribution of Tumour RNA-Seq Samples by Histological Subtype")
 ggpar(p,
- font.tickslab = c(6,"bold", "black"),
+ font.tickslab = c(8,"bold", "black"),
  xtickslab.rt = 70,
- legend="right", font.legend = c(5, "plain", "black"), legend.title="Histological Subtype")
+ legend="right", font.legend = c(8, "plain", "black"), legend.title="Histological Subtype", ylab="Number of Patient Samples")
 dev.off()
 
 
@@ -194,6 +195,8 @@ canc <- c("Kidney", "Ovary", "Liver", "Breast", "Pancreas") ; canc <- as.vector(
 z <- which(tum_clin$histology_tier2 %in% canc)
 top50_tum_clin <- tum_clin[z,]
 
+order <- order[which(order %in% canc)]
+
 tum_types <- as.data.table(table(top50_tum_clin$histology_tier2, top50_tum_clin$histology_tier4))
 tum_types <- tum_types[order(N)]
 z <- which(tum_types$N ==0)
@@ -202,24 +205,24 @@ tum_types <- tum_types[-z,]
 cols <- colorRampPalette(mypal)(17) 
 
 pdf("50patients_min_cancers_dist_wHISTOsubtype_TOP5.pdf")
-p <- ggbarplot(tum_types, "V1", "N", fill="V2", xlab="Tumour Organ Site", palette=cols) +
+p <- ggbarplot(tum_types, "V1", "N", fill="V2", xlab="Tumour Organ Site", palette=cols, order=order) +
 ggtitle("Distribution of Tumour RNA-Seq Samples by Histological Subtype")
 ggpar(p,
- font.tickslab = c(6,"bold", "black"),
+ font.tickslab = c(8,"bold", "black"),
  xtickslab.rt = 70,
- legend="right", font.legend = c(5, "plain", "black"), legend.title="Histological Subtype")
+ legend="right", font.legend = c(8, "plain", "black"), legend.title="Histological Subtype")
 dev.off()
 
 ###WITHIN CANCER TYPE, REMOVE HISTO SUBTYPE IF ONLY 1-10 SAMPLES IN IT 
 tum_types <- tum_types[tum_types$N>=10]
 
 pdf("50patients_min_cancers_dist_wHISTOsubtype_TOP5_removedLOwhistoTypes.pdf")
-p <- ggbarplot(tum_types, "V1", "N", fill="V2", xlab="Tumour Organ Site", palette=mypal) +
+p <- ggbarplot(tum_types, "V1", "N", fill="V2", xlab="Tumour Organ Site", palette=mypal, order=order) +
 ggtitle("Distribution of Tumour RNA-Seq Samples by Histological Subtype")
 ggpar(p,
- font.tickslab = c(6,"bold", "black"),
+ font.tickslab = c(8,"bold", "black"),
  xtickslab.rt = 70,
- legend="right", font.legend = c(5, "plain", "black"), legend.title="Histological Subtype")
+ legend="right", font.legend = c(8, "plain", "black"), legend.title="Histological Subtype")
 dev.off()
 
 

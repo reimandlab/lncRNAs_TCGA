@@ -49,6 +49,8 @@ library(ggsci)
 library(gridExtra)
 library(ggpubr)
 library(factoextra)
+library(cowplot)
+
 
 
 mypal = pal_npg("nrc", alpha = 0.7)(10)
@@ -283,14 +285,14 @@ for(i in 1:length(unique(lnc_rna_top5$canc))){
 	colnames(plot_meds) <- c("Median", "Number_lncRNAs")
 	plot_meds[,1] <- c(1:5,10)
 	plot_meds[6,2] <- length(which(meds$check10==1))
-	plot_meds[5,2] <- length(which(meds$check5==1 & (!(meds$check10==1))))
-	plot_meds[4,2] <- length(which(meds$check4==1 & (!(meds$check5==1))))
-	plot_meds[3,2] <- length(which(meds$check3==1 & (!(meds$check4==1))))
-	plot_meds[2,2] <- length(which(meds$check2==1 & (!(meds$check3==1))))
-	plot_meds[1,2] <- length(which(meds$check1==1 & (!(meds$check2==1))))
+	plot_meds[5,2] <- length(which(meds$check5==1))
+	plot_meds[4,2] <- length(which(meds$check4==1))  
+	plot_meds[3,2] <- length(which(meds$check3==1))
+	plot_meds[2,2] <- length(which(meds$check2==1)) 
+	plot_meds[1,2] <- length(which(meds$check1==1))
 
 	#save plot
-	g <- ggbarplot(plot_meds, x="Median", y="Number_lncRNAs", palette=mypal, col="Median", fill="Median", label = TRUE, lab.pos = "in", lab.size = 2.6)
+	g <- ggbarplot(plot_meds, x="Median", y="Number_lncRNAs", palette=mypal, col=mypal[i], fill=mypal[i], label = TRUE, lab.pos = "in", lab.size = 3.5)
 	g <- ggpar(g, legend="none")
 	g <- g + labs(title = tis, y="Number of lncRNAs") + 
      theme(plot.title = element_text(hjust = 0.5))
@@ -298,7 +300,7 @@ for(i in 1:length(unique(lnc_rna_top5$canc))){
 
     #save list of high expression lncRNAs 
     name_file <- paste(tis, "list_great5med_lncs.txt")
-    save <- as.data.frame(meds[meds$MedianE >=10,1])
+    save <- as.data.frame(meds[meds$MedianE >=5,1])
     colnames(save)[1] <- "gene"
     save$canc <- tis
     write.table(save, name_file, quote=F, row.names=F, sep="_")
@@ -313,7 +315,7 @@ g5 <- plots[[5]]
 g6 <- plots[[6]]
 g7 <- plots[[7]]
 
-pdf("top5_cancers_lncRNAs_above_diffMedians.pdf", pointsize=5, height=13, width=14)
+pdf("top5_cancers_lncRNAs_above_diffMedians.pdf", pointsize=8, height=14, width=14)
 plot_grid(g1,g2,g3,g4,g5,g6,g7, labels = "AUTO", ncol = 2, align = 'v', label_size = 10, scale = 0.9)
 dev.off()
 
@@ -321,6 +323,8 @@ dev.off()
 #---------------------------------------------------------
 #Analysis - how many lncRNAs in common? - 21 lncRNAs plot
 #---------------------------------------------------------
+
+#all_lncs_cancers.txt (obtain by cat of the 7 files produced in the above for-loop)
 
 f <- fread("all_lncs_cancers.txt", data.table=F, sep="_")
 #remove individual file headers
@@ -330,10 +334,6 @@ f <- f[-z,]
 #subset to include only lncs covered by FANTOM
 z <- which(f[,1] %in% fantom[,1])
 f <- f[z,]
-
-#remove 7SK gene from the list as its not cancer unique 
-z <- which(f[,1] %in% fantom[which(fantom$CAT_geneName=="7SK"),1])
-f <- f[-z,] #end up with 86 unique genes in the list
 
 #how many times does each gene appear? if 7 == all cancers
 counts <- as.data.table(table(f[,1]))
@@ -419,7 +419,7 @@ genes_305 <- as.data.frame(counts[,1])
 lncs_305 <- which(colnames(lnc_rna_top5) %in% genes_305[,1])
 lncs_305 <- lnc_rna_top5[,c(lncs_305, 12544)]
 
-df <- lncs_305[,1:86]
+df <- lncs_305[,1:213] #number of lncs 
 
 desc_stats <- data.frame(
   Min = apply(df, 2, min), # minimum
@@ -434,9 +434,9 @@ desc_stats <- round(desc_stats, 1)
 library(factoextra)
 #Observations are represented by points in the plot, using principal components
 #PCA using logged values 
-df <- lncs_305[,1:86]
+df <- lncs_305[,1:213] #number of lncs 
 df <- log1p(df)
-pdf("pca_using86_toplncsLogged.pdf", pointsize=4, height=11, width=10)
+pdf("pca_using213MEDIANsof5MIN_toplncsLogged.pdf", pointsize=4, height=11, width=10)
 fviz_cluster(list(data = df, cluster = as.factor(lncs_305$canc)), geom = "point", palette=mypal, ggtheme = theme_minimal(), ellipse.type="norm")
 dev.off()
 

@@ -45,6 +45,8 @@ library(wesanderson)
 library(ggsci)
 library(gridExtra)
 library(ggpubr)
+library(plyr)
+
 
 mypal = pal_npg("nrc", alpha = 0.7)(10)
 
@@ -95,6 +97,7 @@ norm_pats <- conversion$icgc_donor_id[z]
 z <- which(conversion$tumor_rna_seq_aliquot_id %in% colnames(rna))
 tum_pats <- conversion$icgc_donor_id[z]
 
+##Convert RNA-Seq IDs to ICGC donor IDs
 for(i in 1:ncol(rna)){
 	z <- which(conversion$tumor_rna_seq_aliquot_id %in% colnames(rna)[i])
 	if(!(length(z)==0)){
@@ -102,6 +105,7 @@ for(i in 1:ncol(rna)){
 	}
 }
 
+#Change gene names to match ensembl IDs 
 extract <- function(row){
 	gene <- as.character(row[[1]])
 	ens <- unlist(strsplit(gene, "::"))[3]
@@ -223,8 +227,46 @@ sums <- apply(heatmap_matrix, 1, sum) #3658
 s <- which(sums == 0)
 z <- which(rownames(heatmap_matrix) %in% names(s))
 heatmap_matrix <- heatmap_matrix[-z,] #8940 genes left 
-
 floored_heatmap_matrix <- floor(heatmap_matrix)
+
+##make histogram showing how many lncRNAs have median greater than 1, 2, 3.... 
+##among each cancer type 
+makehistodata <- function(canc){
+	#make dataframe with nrow = #genes = 8490 
+	#two columns one with median values for each gene
+	#one wtih just name of cancer
+	z <- which(colnames(floored_heatmap_matrix) %in% canc)
+	df <- matrix(ncol=2, nrow=8940)
+	df[,1] <- canc
+	df[,2] <- floored_heatmap_matrix[,z]
+	return(df)
+}
+allcancers <- llply(unique(colnames(floored_heatmap_matrix)), makehistodata)
+df <- ldply(allcancers, data.frame)
+colnames(df) <- c("Cancer", "Medians")
+df$Medians <- as.numeric(df$Medians)
+
+df2 <- df[df$Medians <= 30, ] #only 59 medians greater than 30 
+
+pdf("HistogramOfMediansTopCancers.pdf", pointsize=8, width=10, height=9)
+#make histogram
+g <- gghistogram(df2, x = "Medians",
+   rug = TRUE, 
+   color = "Cancer", bins= 100, xticks.by=2, xlim=c(0,30))
+ggpar(g, legend="right")
+dev.off()
+
+df3 <- df2[df2$Medians >=1, ] 
+
+pdf("HistogramOfMediansTopCancersGreaterThan1.pdf", pointsize=8, width=10, height=9)
+#make histogram
+g <- gghistogram(df3, x = "Medians",
+   rug = TRUE, 
+   color = "Cancer", bins= 100, xticks.by=2, xlim=c(0,30))
+ggpar(g, legend="right")
+dev.off()
+
+
 ##now how many genes have a median of 0 in all tissues?
 sums <- apply(floored_heatmap_matrix, 1, sum) #7328
 s <- which(sums == 0)
@@ -244,14 +286,15 @@ z <- which(rownames(floored_heatmap_matrix) %in% names(s))
 floored_heatmap_matrix <- floored_heatmap_matrix[-z,] #1604 genes left 
 
 mypal[5] <- "white"
-my_palette <- colorRampPalette(mypal[c(5,8,3,2)])(n = 150)
+my_palette <- colorRampPalette(mypal[c(5,8,3,2)])(n = 100)
 
-#pdf("top5cancers_lncRNAs_heatmapJuuly20.pdf", pointsize=2)
-heatmap.2(as.matrix(floored_heatmap_matrix), trace="none",col= my_palette, hclustfun = function(x) hclust(x,method = 'ward.D'),
-	distfun = function(x) dist(x,method = 'euclidean'), srtCol=35, cexCol=0.9, key.title=NA, keysize=1, labRow = FALSE,
+pdf("top5cancers_lncRNAs_heatmapSept12.pdf", pointsize=2)
+heatmap.2(as.matrix(floored_heatmap_matrix), trace="none",col=my_palette, hclustfun = function(x) hclust(x,method = 'ward.D2'),
+	distfun = function(x) dist(x,method = 'euclidean'), srtCol=18, cexCol=1.4, key.title=NA, keysize=1, labRow = FALSE,
           margins = c(9, 2), main = list("Median Expression of 1,604 lncRNAs Across Cancers", cex = 1.2))
 
 dev.off()
+
 
 #what if divide the lncRNAs into high and low median groups to see heatmap more clearly 
 
@@ -277,10 +320,6 @@ heatmap.2(as.matrix(lncs2), trace="none",col= my_palette, hclustfun = function(x
 	distfun = function(x) dist(x,method = 'euclidean'), srtCol=35, cexCol=0.9, key.title=NA, keysize=1, labRow = FALSE,
           margins = c(9, 2), main = list("Median Expression of 531 lncRNAs Across Cancers", cex = 1.2))
 dev.off()
-
-
-
-
 
 
 
