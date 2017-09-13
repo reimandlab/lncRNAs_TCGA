@@ -137,9 +137,9 @@ correlateLNCS <- function(value){
 	lncs <- filter(allCands, canc==value)
 	lncsData <- lnc_rna[which(lnc_rna$canc %in% value),]
 	lncsData <- lncsData[, which(colnames(lncsData) %in% lncs$gene)]
-	M <- cor(lncsData, method="spearman")
+	lncsData <- log1p(lncsData)
 	cor.mtest <- function(mat, conf.level = 0.95){
- 	mat <- as.matrix(mat)
+  	mat <- as.matrix(mat)
     n <- ncol(mat)
     p.mat <- lowCI.mat <- uppCI.mat <- matrix(NA, n, n)
     diag(p.mat) <- 0
@@ -154,13 +154,115 @@ correlateLNCS <- function(value){
     }
     return(list(p.mat, lowCI.mat, uppCI.mat))
 	}
-
-	res1 <- cor.mtest(M,0.95)
+	res1 <- cor.mtest(lncsData,0.95)
+	M <- cor(lncsData)
 	## specialized the insignificant value according to the significant level
-	print(corrplot(M, method="circle", type="upper", order="hclust", p.mat = res1[[1]], sig.level=0.1))
+	print(corrplot(M, method="circle", type="upper", order="hclust", p.mat = res1[[1]], sig.level=0.05, insig = "pch"))
 }
 
-pdf("candidateCancersWithCorrelationsofLNCRNAs_Sept7th.pdf", pointsize=8, width=8, height=9)
+pdf("NewcandidateCancersWithCorrelationsofLNCRNAs_Sept13th.pdf", pointsize=8, width=8, height=9)
 llply(values, correlateLNCS)
 dev.off()
+
+#FUNCTION3 - calculate linear regression between top 
+ovarian <- values[[1]]
+
+lncs <- filter(allCands, canc==ovarian)
+lncsData <- lnc_rna[which(lnc_rna$canc %in% ovarian),]
+lncsData <- lncsData[, which(colnames(lncsData) %in% lncs$gene)]
+
+#Run linear regression and save coefficients and pvalues 
+linear_regression <- function(column, d){
+	if(!(column == 8)){
+	gene <- colnames(d)[column]
+	#(1) across all samples
+	lm0 <- lm(d[,column] ~ 1)
+	lm1 <- lm(d[,column] ~ 1 + d[,8]) #8 because LINC00657 is in column 8 
+	anov_p <- anova(lm0, lm1)[2,6]
+	coef <- lm1$coefficients[2]
+	coef_p <- summary(lm1)$coefficients[2,4]
+	#if((anov_p <= 0.05) & (coef_p <= 0.05)) {
+		#plot regression
+		fit <- lm(d[,column] ~ 1 + d[,8])
+		print(ggplot(fit$model, aes_string(x = names(fit$model)[2], y = names(fit$model)[1])) + 
+  		geom_point() +
+  		stat_smooth(method = "lm", col = "red") +
+  		labs(title = paste("Adj R2 = ",signif(summary(fit)$adj.r.squared, 5),
+                     "Intercept =",signif(fit$coef[[1]],5 ),
+                     " Slope =",signif(fit$coef[[2]], 5),
+                     " P =",signif(summary(fit)$coef[2,4], 5)), x=colnames(d)[8], y=gene))
+
+		return(c(gene, coef, coef_p, anov_p, "allPatients"))
+	#}
+	}
+}
+
+#(1) across all samples 
+d <- lncsData
+pdf("logged_ovary_LNCLNC_coexpressedPCGSsept13th.pdf", pointsize=8)
+d <- as.data.frame(d)
+d <- log1p(d)
+results <- llply(1:ncol(d), linear_regression, d=d, .progress = "text")
+
+#remove blank entries - those that weren't significantly associated 
+results <- Filter(Negate(is.null), results) 
+#convert to df
+df <- data.frame(matrix(unlist(results), nrow=length(results), byrow=T))
+colnames(df) <- c("PCG", "lm_coefficient", "lm_coef_pval", "lm_anov_pval", "Patients")
+df$fdr_coef <- p.adjust(df$lm_coef_pval, method="fdr")
+df$fdr_anov <- p.adjust(df$lm_anov_pval, method="fdr")
+df$pass <- ""
+for(i in 1:nrow(df)){
+	coef <- df[i, 6]
+	anov <- df[i,7]
+	if((coef <=0.05) & (anov <= 0.05)){
+			f <- 1
+		}
+	if(!((coef <=0.05) & (anov <= 0.05))){
+			f <- 0
+		}
+		df$pass[i] <- f
+	}
+df$lnc <- colnames(d)[8]
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
