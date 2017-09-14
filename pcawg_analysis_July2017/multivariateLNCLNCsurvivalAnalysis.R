@@ -193,6 +193,7 @@ lncsTostudy$status[lncsTostudy$status=="deceased"] = 1
 lncsTostudy$status[lncsTostudy$status=="alive"] = 0
 lncsTostudy$time <- as.numeric(lncsTostudy$time)
 lncsTostudy$status <- as.numeric(lncsTostudy$status)
+model4 <- lncsTostudy
 lncsTostudy[,1:2] <- log1p(lncsTostudy[,1:2])
 
 # 1. Determine the optimal cutpoint of variables
@@ -356,23 +357,53 @@ dev.off()
 medianScored <- lncsTostudy
 med1 <- median(medianScored$LINC00657)
 med2 <- median(medianScored$LINC00665)
-
 medianScored$LINC00657[medianScored$LINC00657 >=med1] = "high"
 medianScored$LINC00657[medianScored$LINC00657 <med1] = "low"
-
 medianScored$LINC00665[medianScored$LINC00665 >=med2] = "high"
 medianScored$LINC00665[medianScored$LINC00665 <med2] = "low"
-
-
 test <- medianScored[,c(6,5,1,2)]
-#pdf("USINGMEDIANSggforests_multivaraiteANDunivariateCOX.pdf", pointsize=10, width=10, height=9)
+
+pdf("logMinusRatopSept14th_USINGMEDIANSggforests_multivaraiteANDunivariateCOX.pdf", pointsize=10, width=10, height=9)
+
+#using median logRatio between lnc1 and lnc2 
+model4$logratio <- log(model4[,1]/model4[,2])
+hist(model4$logratio)
+med2 <- median(model4$logratio)
+model4$logRatio[model4$logratio >= med2] = "high"
+model4$logRatio[model4$logratio <  med2] = "low"
+test2 <- model4[,c(6,5,9)]
+
+splots <- list()
+
+#univariate - logRATIO between two lncs 
+model <- coxph( Surv(time, status) ~ logRatio, 
+                data = test2)
+ggforest(model)
+          fit <- survfit(Surv(time, status) ~ logRatio , data = test2)
+          s <- ggsurvplot(
+          fit, 
+          main = "Survival Curves, log(lnc1/lnc2)",       
+          #legend.labs = c("H LINC00665, L LINC00657", "High Expression"),             # survfit object with calculated statistics.
+          data = test2,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,2000),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 500,     # break X axis in time intervals by 500.
+          palette = colorRampPalette(mypal)(14), 
+          ggtheme = theme_minimal(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          splots[[1]] <- s
 
 #univariate - LINC00665
 model <- coxph( Surv(time, status) ~ LINC00665, 
                 data = test)
-
-splots <- list()
-
 ggforest(model)
           fit <- survfit(Surv(time, status) ~ LINC00665 , data = test)
           s <- ggsurvplot(
@@ -394,7 +425,7 @@ ggforest(model)
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          splots[[1]] <- s
+          splots[[2]] <- s
 
 
 #univariate - LINC00657
@@ -421,7 +452,7 @@ ggforest(model)
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          splots[[2]] <- s 
+          splots[[3]] <- s 
 
 
 #multivariate 
@@ -448,14 +479,20 @@ ggforest(model)
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          splots[[3]] <- s
+          splots[[4]] <- s
  
+dev.off()
 
-pdf("3survival_plots.pdf", width=15, height=14, pointsize=8)
+pdf("4survival_plots.pdf", width=18, height=15, pointsize=8)
  arrange_ggsurvplots(splots, print = TRUE,
   ncol = 2, nrow = 2, risk.table.height = 0.4)
 dev.off()
-#dev.off()
+
+
+
+#---------------------------------------------------------
+#Comparing models ANOVA 
+#---------------------------------------------------------
 
 
 m1 =  coxph( Surv(time, status) ~ LINC00657, 
@@ -468,9 +505,6 @@ anova(m1)
 
 #lnc2 vs null
 anova(m2)
-
-#lnc1 vs lnc2 
-anova(m1, m2)
 
 #lnc1 vs lnc1+lnc2
 m3 =  coxph( Surv(time, status) ~ LINC00657 + LINC00665, 
@@ -504,4 +538,34 @@ ggplot(medianScored, aes_string(x = "LINC00657", y = "LINC00665")) +
       geom_vline(xintercept = med1) + 
       geom_hline(yintercept = med2)
 dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

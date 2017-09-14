@@ -188,21 +188,15 @@ diffE <- function(d){
 	expression <- t(d[,5:ncol(d)])
 	fit <- lmFit(expression, design)
 	cont.matrix <- makeContrasts(LowvsHigh=Low-High, levels=design)
-
 	fit2 <- contrasts.fit(fit, cont.matrix)
 	fit2 <- eBayes(fit2)
-
 	ps <- fit2$p.value
 	ps <- p.adjust(ps, method="fdr")
 	numGenes <- length(which(ps <= 0.05))
 
-	par(mfrow=c(2,1))
-	
 	pdf(paste(colnames(d)[2], d[1,3], "volcano.pdf", sep="_"), pointsize=8, height=9, width=10)
-
-	for (i in 1:ncol(fit2$p.value)) {
-	print(hist(p.adjust(fit2$p.value[,i], method="fdr"), main=colnames(fit2$p.value)[i]))
-		}
+	
+	hist(p.adjust(fit2$p.value, method="fdr"), main=colnames(fit2$p.value))	
 
 	genes=rownames(expression)
     t <- topTable(fit2,coef=1,adjust.method="fdr",n=numGenes,p.value=0.05,genelist=genes)
@@ -212,8 +206,8 @@ diffE <- function(d){
     #rank list of genes before making heatmap
     t <- as.data.table(t)
     #first by adj p values then by decreasing FC
-    t <- t[order(adj.P.Val)]
-    t <- t[order(-abs(as.numeric(logFC)))]
+    #t <- t[order(adj.P.Val)]
+    #t <- t[order(-abs(as.numeric(logFC)))]
 
     #save top gene names 
     top <- c(paste(colnames(d)[2], d[1,3]), t$ID)
@@ -226,9 +220,13 @@ diffE <- function(d){
 	#}
 
     #generate volcano plot
-    print(ggplot(aes(x=logFC, y= -log10(P.Value)), data=t) + geom_point(aes(colour = -log10(adj.P.Val))) + scale_colour_gradient(low = "blue", high="red") +
-    	labs(colour = "-log10(fdr)", x = "Limma logFC", y= "-log10(p-value)") + ggtitle(paste(colnames(d)[2], d[1,3]), "Differential Expression"))
+    point <- quantile(as.numeric(-log10(t$P.Value)),0.95)
+
+    print(ggplot(aes(x=logFC, y= -log10(P.Value)), data=t) + geom_point(aes(colour = -log10(adj.P.Val)), size = 0.85) + scale_colour_gradient(low = "blue", high="red") +
+    	labs(colour = "-log10(fdr)", x = "Limma logFC", y= "-log10(p-value)") + ggtitle(paste(colnames(d)[2], d[1,3]), "Differential Expression") + 
+    	  geom_text(aes(label=ifelse(-log10(P.Value) >= point,as.character(ID),'')),hjust=0,vjust=0, check_overlap = TRUE, size=3))
     
+
     #generate heatmap 
     heat <- expression[which(rownames(expression) %in% t$ID),]
     tags <- d$exp
@@ -243,46 +241,27 @@ diffE <- function(d){
 
 	heatmap.2(as.matrix(heat), col=greenred(100), ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6, Rowv=as.dendrogram(hc), trace="none", scale="row")
 
-	heatmap(as.matrix(heat),
-	Rowv=as.dendrogram(hc),
-	col=greenred(100),ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6)
-
 	#pathway enrichment
 
-	#split into positive and nagative co-experessed genes 
-	neg <- t[logFC <0]
-	#pathway enrichment looking at top 100 coexpressed genes based on the above ranking
-	negGenes <- neg[,1]
-	negNoradpaths <- gprofiler(negGenes, organism = "hsapiens", ordered_query= TRUE, min_set_size=20, max_set_size = 300, min_isect_size=5, correction_method="fdr")
-	if(!(dim(negNoradpaths)[1]==0)){
-	negNoradpaths <- negNoradpaths[, c(9, 12, 3)]
-	colnames(negNoradpaths) <- c("GO.ID", "Description", "p.Val")
-	negNoradpaths$FDR <- negNoradpaths$p.Val
-	negNoradpaths$Phenotype <- "-1"
-	}
-	pos <- t[logFC >0]
-	#pathway enrichment looking at top 100 coexpressed genes based on the above ranking
-	posGenes <- pos[,1]
-	posNoradpaths <- gprofiler(posGenes, organism = "hsapiens", ordered_query= TRUE, min_set_size=20, max_set_size = 300, min_isect_size=5, correction_method="fdr")
-	if(!(dim(posNoradpaths)[1]==0)){
-	posNoradpaths <- posNoradpaths[, c(9, 12, 3)]
-	colnames(posNoradpaths) <- c("GO.ID", "Description", "p.Val")
-	posNoradpaths$FDR <- posNoradpaths$p.Val
-	posNoradpaths$Phenotype <- "+1"
-	}
+	#give gprofiler two lists
+	list <- list()
+	list[[1]] <- t[logFC <0]$ID #negative fold change, more expressed in the high lncRNA group 
+	list[[2]] <- t[logFC >0]$ID #postivie fold change, more expressed in the low lncRNA group 
 
-	#combine 
-	allPaths <- rbind(negNoradpaths, posNoradpaths)
+	combined_paths <- gprofiler(list, organism = "hsapiens", exclude_iea=TRUE, ordered_query= TRUE, min_set_size=10, max_set_size = 300, min_isect_size=10, correction_method="fdr")
 
-	if(!(dim(allPaths)[1]==0)){
+	if(!(dim(combined_paths)[1]==0)){
 	#only keep GO or REACTOME
-	reac <- grep("REAC", allPaths$GO.ID)
-	go <- grep("GO", allPaths$GO.ID)
-	allPaths <- allPaths[c(reac, go), ]
+	reac <- grep("REAC", combined_paths$term.id)
+	go <- grep("GO", combined_paths$term.id)
+	combined_paths <- combined_paths[c(reac, go), ]
+	combined_paths <- combined_paths[,c(9,12, 3, 3, 1, 14)]
+	colnames(combined_paths) <- c("GO.ID", "Description", "p.Val", "FDR", "Phenotype", "Genes")
+	combined_paths$Phenotype[combined_paths$Phenotype==1] = "1"
+	combined_paths$Phenotype[combined_paths$Phenotype==2] = "-1"
 
-	write.table(allPaths, sep= "\t", file=paste(colnames(d)[2], "PathwaysUsingtTop200DEgenesSept7.txt", sep="_"), quote=F, row.names=F)
+	write.table(combined_paths, sep= "\t", file=paste(colnames(d)[2], "PathwaysUsingtALL_DEgenesSept14.txt", sep="_"), quote=F, row.names=F)
 	}
-	
 	dev.off()
 
 	}
@@ -296,8 +275,7 @@ diffE <- function(d){
 
 diffExpressed <- llply(dividedWpcgs, diffE, .progress = "text")
 
-saveRDS(diffExpressed, file="Sept7updated_42candidatesWithDEpcgsSept7TOP200genesUsed.rds")
-
+saveRDS(diffExpressed, file="Sept7updated_42candidatesWithDEpcgsSept14allDEgenesUsed.rds")
 
 
 
