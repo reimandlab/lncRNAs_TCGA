@@ -185,6 +185,32 @@ lncsTostudy <- lnc_rna[,c(which(colnames(lnc_rna) %in% lncsTostudy),216:220)]
 lncsTostudy <- as.data.table(lncsTostudy)
 lncsTostudy <- filter(lncsTostudy, canc == "Ovary Serous cystadenocarcinoma")
 
+##-------------------------------------------------------------
+##TP53 and survival 
+pcg_rna <- pcg_rna[,c((which(colnames(pcg_rna) %in% "TP53")), 19958,19959)] #215 lncRNAs remain 
+##-------------------------------------------------------------
+
+#For each patient add survival status and days since last seen 
+pcg_rna$status <- ""
+pcg_rna$time <- ""
+pcg_rna$sex <- ""
+for(i in 1:nrow(pcg_rna)){
+  pat <- rownames(pcg_rna)[i]
+  z <- which(clin$icgc_donor_id %in% pat)
+  pcg_rna$status[i] <- clin$donor_vital_status[z]
+  pcg_rna$sex[i] <- clin$donor_sex[z]
+  t <- clin$donor_survival_time[z]
+  if(is.na(t)){
+        t <- clin$donor_interval_of_last_followup[z]
+        }
+        pcg_rna$time[i] <- t
+}
+
+#only ovarian
+lncsTostudy <- as.data.table(pcg_rna)
+lncsTostudy <- filter(lncsTostudy, canc == "Ovary Serous cystadenocarcinoma")
+
+
 #---------------------------------------------------------
 #Multivariate survival analysis - Kaplain Mier 
 #---------------------------------------------------------

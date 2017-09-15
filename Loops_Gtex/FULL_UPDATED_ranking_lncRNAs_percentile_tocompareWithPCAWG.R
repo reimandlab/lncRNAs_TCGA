@@ -260,9 +260,9 @@ for(i in 1:length(tissues)){
 	wilcoxon_results[[i]] <- wil	
 }
 
-#pdf("plot1_Version2_pcawgVSgtex_38candidatesWithinEachCancer.pdf", pointsize=8, width=30, height=20)
-#multiplot(plotlist = plots, cols = 2)
-#dev.off()
+pdf("plot1_Version3_pcawgVSgtex_38candidatesWithinEachCancer.pdf", pointsize=8, width=30, height=20)
+multiplot(plotlist = plots, cols = 2)
+dev.off()
 
 wilcoxon_results <- rbindlist(wilcoxon_results)
 wilcoxon_results <- as.data.table(wilcoxon_results)
