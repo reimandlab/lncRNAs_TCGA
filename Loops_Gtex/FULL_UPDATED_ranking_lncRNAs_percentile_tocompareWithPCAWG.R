@@ -346,6 +346,18 @@ new_matrix$pval <- -log10(new_matrix$pval)
 
 #BOXPLOTS
 
+#f <- ggboxplot(new_matrix, x="gene", y="score", color="data", fill="data", palette=mypal[c(3,4)], ggtheme=theme_bw())
+#f <- f + facet_grid (.~ canc, scales = "free_x", space = "free_x") + 
+ 	#theme(strip.background =element_rect(fill=mypal[9]))+
+  	#theme(strip.text = element_text(colour = 'white'))
+
+#f <- f + stat_compare_means(aes(group=data, label = ..p.signif..))
+#f <- facet(f, facet.by = "canc", scales="free_x")
+#f <- ggpar(f, xlab="Candidate lncRNAs", ylab="Rank", x.text.angle=35, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,1))
+#f <- f + rremove("y.grid") 
+#+ rremove("xlab") + rremove("x.text")
+
+#old boxplots
 f <- ggboxplot(new_matrix, x="gene", y="score", color="data", fill="data", palette=mypal[c(3,4)], ggtheme=theme_bw())
 f <- f + facet_grid (.~ canc, scales = "free_x", space = "free_x") + 
  	theme(strip.background =element_rect(fill=mypal[9]))+
@@ -353,8 +365,9 @@ f <- f + facet_grid (.~ canc, scales = "free_x", space = "free_x") +
 f <- ggpar(f, xlab="Candidate lncRNAs", ylab="Score", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,1))
 f <- f + rremove("y.grid") + rremove("xlab") + rremove("x.text")
 
-#HAZARD RATIOS
+#Instead of boxplots, label each point as gtex or pcawg, showing in which dataset it's more highlyE
 
+#HAZARD RATIOS
 p <- ggscatter(new_matrix, x="gene", y="HR", palette= mypal, ggtheme=theme_bw(), size="pval", color="Hazard")
 p <- p + facet_grid (.~ canc, scales = "free_x", space = "free_x") + 
  	theme(strip.background =element_rect(fill=mypal[9]))+
@@ -373,7 +386,7 @@ g <- g + facet_grid (.~ canc, scales = "free_x", space = "free_x") +
 g <- ggpar(g, xlab="Candidate lncRNAs", ylab="Tier", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right")
 g <- g + rremove("y.grid")
 
-pdf("plot1_pcawgVSgtex_38candidatesV4ordered_justcandsPLUShazardratios.pdf", pointsize=8, width=25, height=14)
+pdf("plot1_pcawgVSgtex_38candidatesV4ordered_justcandsPLUShazardratios.pdf", pointsize=8, width=30, height=14)
 plot_grid(f, p, g,  labels = c("A", "B", "C"), align = "v", nrow = 3)
 dev.off()
 
