@@ -222,10 +222,12 @@ diffE <- function(d){
     #generate volcano plot
     point <- quantile(as.numeric(-log10(t$P.Value)),0.95)
 
+    pdf("plot.pdf")
+
     print(ggplot(aes(x=logFC, y= -log10(P.Value)), data=t) + geom_point(aes(colour = -log10(adj.P.Val)), size = 0.85) + scale_colour_gradient(low = "blue", high="red") +
     	labs(colour = "-log10(fdr)", x = "Limma logFC", y= "-log10(p-value)") + ggtitle(paste(colnames(d)[2], d[1,3]), "Differential Expression") + 
     	  geom_text(aes(label=ifelse(-log10(P.Value) >= point,as.character(ID),'')),hjust=0,vjust=0, check_overlap = TRUE, size=3))
-    
+    dev.off()
 
     #generate heatmap 
     heat <- expression[which(rownames(expression) %in% t$ID),]
@@ -276,7 +278,6 @@ diffE <- function(d){
 diffExpressed <- llply(dividedWpcgs, diffE, .progress = "text")
 
 saveRDS(diffExpressed, file="Sept7updated_42candidatesWithDEpcgsSept14allDEgenesUsed.rds")
-
 
 
 
