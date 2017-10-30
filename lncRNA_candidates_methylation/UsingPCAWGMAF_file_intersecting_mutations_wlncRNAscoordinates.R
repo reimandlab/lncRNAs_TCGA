@@ -60,12 +60,6 @@ medianexp = fread("medianScoresOvarianCancerTop3_lncRNAs.txt")
 medianexp = medianexp[,-c(1, 6, 7)]
 colnames(medianexp) = c("GS1", "LINC00665","ZNF503","canc","patient","status","time", "sex")
 
-#Mutation data
-muts = fread("simple_somatic_mutation.open.OV-AU.tsv")
-
-#subset to patients that are in these 70 
-muts = filter(muts, icgc_donor_id %in% ov_pats$V2)
-
 #mutations from MAF file 
 maf = fread("merged_mutations_ovarian_cancer_patients.txt", fill=TRUE)
 z = which(maf$V43 == "V43")
@@ -89,40 +83,13 @@ colnames(maf) = c("Hugo", "Chr", "Start", "End", "Strand", "Variant_Classificati
 	"Project_Code", "Donor_ID", "country")
 
 #---------------------------------------------------------
-#Make GRanges objects	
+#Make Bed files 
 #---------------------------------------------------------
-
-#1. Methylation CpG coordinates 
 maf$Chr = paste("chr", maf$Chr, sep="")
+maf = maf[,c(2:4, 1, 5:15)]
+#maf = maf[,1:3]
+write.table(maf, file= "maf_ovarian.bed" , sep = "\t", quote=F, row.names=F, col.names=F)
 
-gr_muts = GRanges(seqnames = maf$Chr, 
-	ranges = IRanges(as.numeric(maf$Start), end =  as.numeric(maf$End)), 
-	strand = maf$Strand,
-	gc = maf$Variant_Type)
-
-#2. lncRNAs 
-gr_lncs = GRanges(seqnames = ucsc$hg19.ensGene.chrom, 
-	ranges = IRanges(as.numeric(ucsc$hg19.ensGene.txStart), end = ucsc$hg19.ensGene.txStart), 
-	strand = ucsc$hg19.ensGene.strand,
-	gc = ucsc$hg19.ensemblToGeneName.value)
-
-#Add 500 basepairs downstream 
-down = flank(gr_lncs, 2500, start = FALSE)
-#Add 500 basepairs upstream 
-up = flank(gr_lncs, 2500)
-
-down = unlist(down)
-up = unlist(up)
-comb = append(up, down)
-gr_lncs = append(gr_lncs, comb)
-
-#how many unique lncs 
-lnc = subsetByOverlaps(gr_lncs, gr_muts, ignore.strand = TRUE)
-
-#get coordinates of which probes overlap which lncRNA genes 
-hits <- findOverlaps(gr_lncs, gr_meth)
-
-idx <- (subjectHits(hits))
-id2 <- (queryHits(hits))
-
-values <- DataFrame(probes=gr_meth$gc[idx], lncs = gr_lncs$gc[id2])
+ucsc = ucsc[,c(2,4,5,1,3,6:8)]
+#ucsc = ucsc[,1:3]
+write.table(ucsc, file="3ovarianLNCs.bed",sep = "\t", quote=F, row.names=F, col.names=F)

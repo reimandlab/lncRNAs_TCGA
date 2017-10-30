@@ -61,44 +61,22 @@ medianexp = medianexp[,-c(1, 6, 7)]
 colnames(medianexp) = c("GS1", "LINC00665","ZNF503","canc","patient","status","time", "sex")
 
 #Mutation data
-muts = fread("simple_somatic_mutation.open.OV-AU.tsv")
+muts = fread("simple_somatic_mutation.open.OV-US.tsv")
 
 #subset to patients that are in these 70 
 muts = filter(muts, icgc_donor_id %in% ov_pats$V2)
-
-#mutations from MAF file 
-maf = fread("merged_mutations_ovarian_cancer_patients.txt", fill=TRUE)
-z = which(maf$V43 == "V43")
-maf = maf[-z,]
-
-colnames(maf)[15] = "patient"
-maf = filter(maf, patient %in% ov_pats$V2)
-
-#which patients US which patients AUS
-us = fread("sample.OV-AU.tsv")
-us = unique(us$icgc_donor_id)
-aus = fread("sample.OV-US.tsv")
-aus = unique(aus$icgc_donor_id)
-
-maf$country = ""
-maf$country[which(maf$patient %in% us)] ="US"
-maf$country[which(maf$patient %in% aus)] = "AUS"
-maf = maf[,-1]
-
-colnames(maf) = c("Hugo", "Chr", "Start", "End", "Strand", "Variant_Classification", "Variant_Type", "Reference_allele", "Reference_allele2", "alt_allele", "dbSNP_RS", "gc_content",
-	"Project_Code", "Donor_ID", "country")
 
 #---------------------------------------------------------
 #Make GRanges objects	
 #---------------------------------------------------------
 
 #1. Methylation CpG coordinates 
-maf$Chr = paste("chr", maf$Chr, sep="")
+muts$chromosome = paste("chr", muts$chromosome, sep="")
 
-gr_muts = GRanges(seqnames = maf$Chr, 
-	ranges = IRanges(as.numeric(maf$Start), end =  as.numeric(maf$End)), 
-	strand = maf$Strand,
-	gc = maf$Variant_Type)
+gr_muts = GRanges(seqnames = muts$chromosome, 
+	ranges = IRanges(as.numeric(muts$chromosome_start), end =  as.numeric(muts$chromosome_end)), 
+	strand = muts$chromosome_strand,
+	gc = muts$icgc_mutation_id)
 
 #2. lncRNAs 
 gr_lncs = GRanges(seqnames = ucsc$hg19.ensGene.chrom, 
@@ -116,13 +94,6 @@ up = unlist(up)
 comb = append(up, down)
 gr_lncs = append(gr_lncs, comb)
 
-#how many unique lncs 
+#how many unique lncs - 6/8
 lnc = subsetByOverlaps(gr_lncs, gr_muts, ignore.strand = TRUE)
 
-#get coordinates of which probes overlap which lncRNA genes 
-hits <- findOverlaps(gr_lncs, gr_meth)
-
-idx <- (subjectHits(hits))
-id2 <- (queryHits(hits))
-
-values <- DataFrame(probes=gr_meth$gc[idx], lncs = gr_lncs$gc[id2])
