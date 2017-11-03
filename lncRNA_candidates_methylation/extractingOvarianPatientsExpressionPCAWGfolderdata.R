@@ -278,7 +278,7 @@ medianScored$GS1[medianScored$GS1 >=med3] = "high"
 medianScored$GS1[medianScored$GS1 <med3] = "low"
 
 #Save patient status for each lncRNA 
-write.table(medianScored, file="medianScoresOvarianCancerTop3_lncRNAs.txt", quote=F)
+write.table(medianScored, file="medianScoresOvarianCancerTop3_lncRNAs.txt", quote=F, sep=";")
 
 test <- medianScored[,c(7,6,1,2,3)]
 
