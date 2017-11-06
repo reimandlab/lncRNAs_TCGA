@@ -14,12 +14,14 @@ library(GenomicRanges)
 ###Data
 #+++++++++++++++++++++++++++++++++
 
-ov_pats = fread("ovarianPatientsRNAseqPCAWGn=70.txt")
+canc_pats = fread("485_patient_IDs_top5CancersPCAWG.txt")
 
-lnc_probes = read.csv("39CandidatelncRNAprobesKIoct2017.csv")
+lnc_probes = read.table("cand_lincs_wMethylationProbes.txt")
+colnames(lnc_probes) = c("Chr_lnc", "start_lnc", "end_lnc", "ensg", "hugo", "type", 
+	"transcript", "chr_probe", "start_probe", "end_probe", "probe")
 
 ###Cat methylation results into one file 
-results = fread("mergedMethylationsOvary.txt", fill=TRUE)
+results = fread("merged_methylation_files_for8candidates_top_cancers.txt", fill=TRUE)
 z <- which(results$V2 == "V2")
 results = results[-z,]
 
@@ -53,61 +55,62 @@ lncs = fread("results_October12_42candsFromPCAWG.txt")
 lncs = filter(lncs, pval < 0.05)
 
 #ucsc only keep those lncrnas in fantom
-ucsc = ucsc[which(ucsc$hg19.ensGene.name2 %in% lncs$gene),]
+lincs = ucsc[which(ucsc$hg19.ensGene.name2 %in% lncs$gene),]
 
-#Methylation data 
-meth = read.csv("HumanMethylation450probe_coordinatesIllumina.csv")
-meth$Strand[meth$Strand=="F"] = "+"
-meth$Strand[meth$Strand=="R"] = "-"
-meth$CHR = paste("chr", meth$CHR, sep="")
+###Merge methylation file with lnc-RNA probes so we know 
+###which probe corresponds to which gene 
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+cols = c(2, 3, 9, 10, 11)
+results = as.data.frame(results)
+results = results[,cols]
+colnames(results) = c("patient", "country", "probe", "beta_value", "measure")
+results = merge(results, lnc_probes, by = "probe")
+
+###Get lncRNA expression data so we can assign 
+###high or low lncRNA candidate expression to each patient 
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+lnc_rna <- readRDS("5607_pcawg_lncRNAs_RNASeq_data.rds")
+lnc_rna <- as.data.frame(lnc_rna)
+lnc_rna$patient <- rownames(lnc_rna)
+z <- which(lnc_rna$patient %in% canc_pats$patient)
+lnc_rna = lnc_rna[z,]
+
+canc = c("Kidney Adenocarcinoma, clear cell type", "Ovary Serous cystadenocarcinoma", "Liver Hepatocellular carcinoma", "Pancreas Pancreatic ductal carcinoma")
+z <- which(lnc_rna$canc %in% canc)
+lnc_rna = lnc_rna[z,]
+
+cancers = unique(lnc_rna$canc)
+get_canc_data = function(canc){
+	z <- which(lnc_rna$canc == canc)
+	canc_data = lnc_rna[z,]
+	#canc specific lncrnas 
+	canc_data$canc = str_sub(canc_data$canc, 1, 4)
+	genes = lncs$gene[which(lncs$canc == canc_data$canc[1])]
+	for(i in 1:length(genes)){
+		z <- which(ucsc$hg19.ensGene.name2 == genes[[i]])
+		genes[[i]] = ucsc$hg19.ensemblToGeneName.value[z]
+	}
+	z <- which(colnames(canc_data) %in% genes)
+	canc_data = canc_data[,c(z, 5608, 5609)]
+	return(canc_data)	
+}
+
+canc_data_list = llply(cancers, get_canc_data)
 
 
-meth$Strand[meth$Strand=="+"] = '+'
-meth$Strand[meth$Strand=="-"] = '-'
-meth$Strand[meth$Strand== ""] = '*'
 
-#---------------------------------------------------------
-#Make GRanges objects	
-#---------------------------------------------------------
 
-#1. Methylation CpG coordinates 
-gr_meth = GRanges(seqnames = meth$CHR[1:485512], 
-	ranges = IRanges(as.numeric(meth$MAPINFO[1:485512]), end =  as.numeric(meth$MAPINFO[1:485512])), 
-	strand = meth$Strand[1:485512],
-	gc = meth$Name[1:485512])
 
-#2. lncRNAs 
-gr_lncs = GRanges(seqnames = ucsc$hg19.ensGene.chrom, 
-	ranges = IRanges(as.numeric(ucsc$hg19.ensGene.txStart), end = ucsc$hg19.ensGene.txStart), 
-	strand = ucsc$hg19.ensGene.strand,
-	gc = ucsc$hg19.ensemblToGeneName.value)
 
-#Add 500 basepairs downstream 
-down = flank(gr_lncs, 2500, start = FALSE)
-#Add 500 basepairs upstream 
-up = flank(gr_lncs, 2500)
 
-down = unlist(down)
-up = unlist(up)
-gr_lncs = append(up, down)
 
-#how many unique lncs - 6/8
-lnc = subsetByOverlaps(gr_lncs, gr_meth)
 
-#get coordinates of which probes overlap which lncRNA genes 
-hits <- findOverlaps(gr_lncs, gr_meth)
 
-idx <- (subjectHits(hits))
-id2 <- (queryHits(hits))
 
-values <- DataFrame(probes=gr_meth$gc[idx], lncs = gr_lncs$gc[id2])
 
-#Merge results file with vlaues file, adding lncRNA ID to probe ID 
-colnames(results)[9] = "probes"
-results = merge(results, values, by = "probes")
 
-#48 ovarian patients out of the 70 with methylation data for 6/8 lncRNAs 
-write.csv(results, file="48ovaryPatients_methylation_6candidatelncRNAs.csv", quote=F)
 
 
 

@@ -44,21 +44,6 @@ cna = cna[,z]
 ###Analysis-––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 ###
 
-
-#LM plotting function 
-#Run linear regression and obtain p-values and generate plot
-linear_regression_wplot <- function(lm){
-	#Make plot 
-	print(ggplot(lm$model, aes_string(x = names(lm$model)[2], y = names(lm$model)[1])) + 
-  	geom_point() +
-  	theme_hc() + 
-  	stat_smooth(method = "lm", col = "red") +
-  	labs(title = paste(colnames(lm$model)[1], "Adj R2 = ",round(signif(summary(lm)$adj.r.squared, 5),digits=4),
-                     "Intercept =",round(signif(lm$coef[[1]],5), digits=4),
-                     " Slope =",round(signif(lm$coef[[2]], 5), digits=4),
-                     " P =",round(signif(summary(lm)$coef[2,4], 5),digits=4))))
-	}
-
 ###
 ###1 - Linear logged models-––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 ###
@@ -109,6 +94,25 @@ wilcoxon_results$fdr = p.adjust(wilcoxon_results$wilcoxon_pval, method="fdr")
 wilcoxon_results = as.data.table(wilcoxon_results)
 wilcoxon_results = wilcoxon_results[order(fdr)]
 
+#plot wilcoxon results so that they are ordered
+wilcoxon_results = filter(wilcoxon_results, fdr <=0.1)
+
+pdf("172_patients_pvales0.1wilcoxon_boxplots.pdf", width=9)
+for(i in 1:nrow(wilcoxon_results)){
+	gene = wilcoxon_results$gene[i]
+	z <- which(gene_list %in% gene)
+	data = gene_data[[z]]
+	res <- wilcox.test(data[,5] ~ MutationStatus, data = data,
+                   exact = FALSE)
+	p = res$p.value
+	#for plotting 
+	data$geneE = data[,5]
+	g = ggboxplot(data, x = "MutationStatus", y = "geneE", add="jitter", palette=mypal[c(2,1)], col="MutationStatus", main=paste(colnames(data)[5], "FDR=", round(wilcoxon_results[i,3], digits=4)))
+	g = g + stat_compare_means()
+	print(g)
+}
+dev.off()
+
 
 run_linear_model = function(data){
 	#1. log1p 
@@ -119,10 +123,6 @@ run_linear_model = function(data){
 	m0 = lm(data[,5] ~ 1) 
 	m1 = lm(data[,5] ~ data[,3])
 	colnames(m1$model)[1] = gene
-	#plot
-	print(linear_regression_wplot(m1))
-	m5 = lm(data[,5] ~ data[,2])
-	print(linear_regression_wplot(m5))
 
 	mut_m1_coef = summary(m1)$coefficients[2,1]
 	mut_m1_pval = summary(m1)$coefficients[2,4]
@@ -160,9 +160,7 @@ run_linear_model = function(data){
 
 }
 
-pdf("Linear_Model_mutation_CNA.pdf", width=10, height=8)
 linear_model_results = llply(gene_data, run_linear_model, .progress = "text")
-dev.off()
 
 ###
 ###2 - Negative binomial rounded models-––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––

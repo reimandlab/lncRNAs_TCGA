@@ -60,7 +60,7 @@ lncs = fread("results_October12_42candsFromPCAWG.txt")
 lncs = filter(lncs, pval < 0.05)
 
 #ucsc only keep those lncrnas in fantom
-ucsc = ucsc[which(ucsc$hg19.ensGene.name2 %in% lncs$gene),]
+lincs = ucsc[which(ucsc$hg19.ensGene.name2 %in% lncs$gene),]
 
 #Methylation data 
 meth = read.csv("HumanMethylation450probe_coordinatesIllumina.csv")

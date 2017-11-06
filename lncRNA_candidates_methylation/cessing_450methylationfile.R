@@ -6,7 +6,7 @@
 #ovarian cancer patients, overlapping lncRNA regions 
 
 files = list.files(pattern= "pro") #pattern of mini files 
-files = files[3:5624]
+files = files[7:5628]
 
 ###Load Libraries
 #+++++++++++++++++++++++++++++++++
@@ -16,16 +16,18 @@ source("source_file.R")
 ###Data
 #+++++++++++++++++++++++++++++++++
 
-ov_pats = fread("ovarianPatientsRNAseqPCAWGn=70.txt")
+canc_pats = fread("485_patient_IDs_top5CancersPCAWG.txt")
 
-lnc_probes = read.csv("39CandidatelncRNAprobesKIoct2017.csv")
+lnc_probes = read.table("cand_lincs_wMethylationProbes.txt")
+colnames(lnc_probes) = c("Chr_lnc", "start_lnc", "end_lnc", "ensg", "hugo", "type", 
+	"transcript", "chr_probe", "start_probe", "end_probe", "probe")
 
 for(i in 1:length(files)){
 
-	f = fread(files[i])
-	f = subset(f, f$V1 %in% ov_pats$V2)
+	f = fread(files[i], data.table=F)
+	f = subset(f, f[,1] %in% canc_pats$patient)
 	if(!(nrow(f) == 0)){
-	f = subset(f, f$V8 %in% lnc_probes$Name)
+	f = subset(f, f[,8] %in% lnc_probes$probe)
 	if(!(nrow(f) == 0)){
 	name = paste("newfiles/", i, ".txt", sep="_")
 	write.table(f, name, quote=F)
