@@ -4,9 +4,9 @@ library(data.table)
 library(plyr)
 library(dplyr)
 
-#get list of files, have 8,974 rna-seq files in total
+#get list of files, have 9,246 rna-seq files in total
 
-files <- list.files()[1:3228]
+files <- list.files()
 
 #need to open each file folder --> unzip file --> readfile --> 
 
@@ -32,7 +32,17 @@ readALLfiles <- function(f){
 #apply to each file in list
 named.list <- llply(temp, readALLfiles, .progress = "text")
 
-saveRDS(named.list, file="3228rnaSEQfilesLIST.rds")
+saveRDS(named.list, file="9246rnaSEQfilesLIST.rds")
+
+new <- named.list %>% Reduce(function(dtf1,dtf2) left_join(dtf1,dtf2,by="V1"), .)
+
+saveRDS(new, file="9246rnaSEQfiles.rds")
+
+#columns of files.matrix = order of metafast files UUIDS
+
+
+
+
 
 
 
