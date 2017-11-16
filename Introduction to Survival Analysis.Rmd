@@ -1,0 +1,46 @@
+---
+title: "Introduction to Survival Analaysis in R"
+output: html_notebook
+---
+
+First we will cover the log-rank test and how to make Kaplan-Meier plots for visualizing survival curves.
+We will begin by using the Ovarian dataset in the survival package
+
+```{r}
+library(data.table)
+library(survival)
+library(ggplot2)
+library(dplyr)
+library(survminer)
+library(MASS)
+library(Hmisc)
+library(ggpubr)
+```
+
+```{r}
+data(ovarian)
+```
+
+Log-rank test 
+
+The Cox Proportional-Hazards Model 
+```{r}
+args(coxph)
+```
+
+"In  the  simple  case  of  right-censored  data,  the  call  to Surv takes  the  form Surv(time, event), where time is either the event time or the censoring time, and
+event is a dummy variable coded 1 if the event is observed or 0 if the observation is censored"
+
+```{r}
+Rossi <- fread("Rossi_Data_arrest.txt", header=T)
+Rossi[1:5, 1:10]
+```
+
+Cox regression of time to rearrest on time constant covariates 
+
+```{r}
+mod.allison <- coxph(Surv(week, arrest) ~
++     fin + age + race + wexp + mar + paro + prio,
++     data=Rossi)
+```
+

@@ -11,13 +11,13 @@
 ###---------------------------------------------------------------
 
 source("source_file.R")
+library(stringr)
 
 ###---------------------------------------------------------------
 ###Load Data 
 ###---------------------------------------------------------------
 
 #1. RNA data 
-
 rna = readRDS("5919_lncs4cancers_TCGAnew.rds")
 rownames(rna) = rna$gene
 rna$gene = NULL
@@ -42,34 +42,35 @@ z <- which(fantom$CAT_geneName %in% rm)
 fantom <- fantom[-z,]
 
 #4. List of lncRNA survival associated candidates 
-cands = fread("7tier1_35tier2_lncRNA_candidates_August28th.txt")
+#cands = fread("7tier1_35tier2_lncRNA_candidates_August28th.txt")
 
 #5. TCGA ID cancer type conversion 
 canc_conversion = readRDS("tcga_id_cancer_type_conversion.txt")
 
 #6. List of TCGA IDs used in PCAWG - to remove
-ids_remove = fread("819_unique_TCGAids_usedbyPCAWG.txt")
-
+ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
 
 ###---------------------------------------------------------------
 ###Process Data 
 ###---------------------------------------------------------------
 
 #Change patient ids to shorted id
-for(i in 1:nrow(rna)){
-	rowname = rownames(rna)[i]
-	new = canc_conversion$id[which(canc_conversion$TCGA_id %in% rowname)]
-	rownames(rna)[i] = new
+
+change = function(rowname){
+  new = canc_conversion$id[which(canc_conversion$TCGA_id %in% rowname)]
+  return(new)  
 }
 
+rownames(rna) = sapply(rownames(rna), change)
+
 #remove thos patients already used in PCAWG
-ids_remove = unique(clin$bcr_patient_barcode[which(clin$bcr_patient_uuid %in% ids_remove$V2)]) #600 to remove 
-z <- which(rownames(rna) %in% ids_remove) #69 PCAWG samples in this TCGA RNA file
+ids_remove = unique(clin$bcr_patient_barcode[which(clin$bcr_patient_barcode %in% ids_remove$bcr_patient_barcode)]) #600 to remove 
+z <- which(rownames(rna) %in% ids_remove) #666 PCAWG samples in this TCGA RNA file
 rna = rna[-z,]
 
 #Keep only those patients with both RNA-Seq AND clinical data
 z <- which(rownames(rna) %in% clin$bcr_patient_barcode)
-rna = rna[z,] #all have clinical data
+rna = rna[z,] #all have clinical data - 7387 patients 
 
 #Add survival info to rna file
 rna = as.data.frame(rna)
@@ -105,35 +106,111 @@ for(i in 1:dim(rna)[1]){
 ###---------------------------------------------------------------
 
 #change all the cancer type names so they match up
-rna$canc = substr(rna$canc , 1, 4)
-cands$canc = substr(cands$canc , 1, 4)
+#rna$canc = substr(rna$canc , 1, 4)
+#cands$canc = substr(cands$canc , 1, 4)
 
 #subset RNA to candidate genes 
-ensg = fantom$CAT_geneID[which(fantom$CAT_geneName %in% cands$gene)]
-z <- which(colnames(rna) %in% ensg)
-rna = rna[,c(z, 5920:5923)]
+#ensg = fantom$CAT_geneID[which(fantom$CAT_geneName %in% cands$gene)]
+#z <- which(colnames(rna) %in% ensg)
+#rna = rna[,c(z, 5920:5923)]
+
+
+###Get list of high expressing lncRNAs in each cancer 
+
+#1. First remove lncRNAs with 0 expression in all patients 
+sums = apply(rna[,1:5919], 2, sum)
+sums = as.numeric(sums)
+z <- which(sums == 0) #134
+#remove - MAYBE INSTEAD OF MEDIAN = 0 , SHOULD REMOVE THE ONES 
+#THAT HAVE SUM OF 0 MEANING IT HAS 0 EXPRESSION IN EVERY SINGLE PATIENT 
+rna = rna[,-z]
+#meds = apply(rna, 2, median)
+#meds = as.numeric(meds)
+#z <- which(meds > 20000)
+#remove - potential outliers 
+#rna = rna[,-z]
+
+#---------------------------------------------------------
+#Find cancer sepcific lncRNAs with median E >= 5 FPKM 
+#---------------------------------------------------------
+
+#Write function that takes a dataframe, calculates medians and 
+#output list of genes with median greater than that 
+
+check_medians <- function(column){
+  med <- median(column)
+  if(med >=2000){
+    return(med)
+  } 
+}
+
+#save results
+high_lncs <- as.data.frame(matrix(ncol=3))
+colnames(high_lncs) <- c("median", "gene", "canc")
+
+#apply to dataframe 
+
+for(i in 1:length(unique(rna$canc))){
+
+#subset RNA-dataset to one cancer type
+df <- subset(rna, rna$canc %in% unique(rna$canc)[i])
+
+#apply function
+res <- apply(df[,1:5785], 2, check_medians)
+res <- Filter(Negate(is.null), res)  
+res <- data.frame(median=(matrix(unlist(res), nrow=length(res), byrow=T)), gene = names(res), canc=unique(rna$canc)[i])
+high_lncs <- rbind(high_lncs, res)
+
+}#end loop
+
+high_lncs <- high_lncs[-1,]
+#subset rna file to these lncRNAs 
+z = which(colnames(rna) %in% high_lncs$gene)
+z = c(z, 5786:5789)
+rna = rna[,z]
+rna[,1:4116] = log1p(rna[,1:4116])
+
+#why some don't have a cancer type?
+z <- which(rna$canc == "")
+rna = rna[-z,]
+
+z <- which(high_lncs$canc == "")
+high_lncs = high_lncs[-z,]
+
+#PCA
+library(factoextra)
+#res.pca <- prcomp(rna[1:3232], scale = TRUE)
+#res.pca <- prcomp(rna[1:3232])
+
+#p = fviz_pca_ind(res.pca,
+  #label="none", habillage=rna$canc,
+  #           addEllipses=TRUE, ellipse.level=0.95)
+
+#p + theme_minimal()
+#dev.off()
 
 ###---------------------------------------------------------------
 ###Survival analysis 
 ###---------------------------------------------------------------
 
+#For now just to reduce number of tests - I will keep only those genes 
+#with median expression greater than the median of medain individual gene expression
+#ie = summary(high_lncs$median)$Median == 8252
+high_lncs = high_lncs[high_lncs$median >= 8252,]
+
 results_cox <- as.data.frame(matrix(ncol=5)) ; colnames(results_cox) <- c("gene", "coef", "HR", "pval", "canc")
 
-for(i in 1:nrow(cands)){
+survival_analysis = function(row){
   #1. Subset lnc_rna to those patients in cancer
-  df <- subset(rna, rna$canc %in% cands$canc[i])
-  
-  ens = fantom$CAT_geneID[which(fantom$CAT_geneName %in% cands$gene[i])]
-
+  df <- subset(rna, rna$canc %in% row[[3]])
+  ens = fantom$CAT_geneID[which(fantom$CAT_geneID %in% row[[2]])]
   z <- which(colnames(df) %in% ens)
   
   if(!(length(z) ==0)){
 
-  df <- df[,c(z,37:40)]  
+  df <- df[,c(z,4117:4120)]  
 
-  df[,1] <- log1p(df[,1])
-
-  #3. Add Median cutoff tag High or Low to each patient per each gene 
+  #2. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
   median2 <- quantile(as.numeric(df[,1]), 0.5)
   if(!(median2 == 0)){
@@ -148,52 +225,86 @@ for(i in 1:nrow(cands)){
       }
     } 
 
+  #3. check if there is significant difference in expression between high and low 
+  #ie - see that it's not flat 
+  p = wilcox.test(df[which(df$median==0),1], df[which(df$median==1),1], paired=F)$p.value
+  if(p <= 0.05){
+
   gene <- colnames(df)[1]
   #cox
-        df$status[df$status=="Alive"] <- 0
-        df$status[df$status=="Dead"] <- 1
-        df$status <- as.numeric(df$status)
-        df$time <- as.numeric(df$time)
+  df$status[df$status=="Alive"] <- 0
+  df$status[df$status=="Dead"] <- 1
+  df$status <- as.numeric(df$status)
+  df$time <- as.numeric(df$time)
       
-        #cox regression 
-        res.cox <- coxph(Surv(time, status) ~ median, data = df)
-        row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)], df$canc[1])
-        names(row) <- names(results_cox)
-        results_cox <- rbind(results_cox, row)  
+  #cox regression 
+  res.cox <- coxph(Surv(time, status) ~ median, data = df)
+  row <- data.frame(gene = gene, coef = summary(res.cox)$coefficients[1,1], 
+    HR = summary(res.cox)$coefficients[1,2],
+    pval = summary(res.cox)$coefficients[1,5],
+    canc = df$canc[1])
+  if(length(row) > 1){
+  names(row) <- names(results_cox)
+  print(gene)
+  return(row) 
+}
+}
 }
 }
 }
 
-results_cox <- results_cox[-1,]
-results_cox$fdr <- p.adjust(results_cox$pval, method="fdr")
-results_cox$fdr <- as.numeric(results_cox$fdr)
-results_cox$pval <- as.numeric(results_cox$pval)
+results = apply(high_lncs, 1, survival_analysis)
 
-results_cox <- as.data.table(results_cox)
-results_cox <- results_cox[order(fdr)]
-write.table(results_cox, file="results_October12_42candsFromPCAWG.txt",sep=";", quote=F, row.names=F)
+#turn list of results into a dataframe 
+df <- ldply (results, data.frame)
+
+#need to adjust fdr for each cancer seperatley 
+#results_cox = as.data.table(results$cox)
+
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++RESULTS
+
+results = readRDS("results_cox_high_lncs_TCGA.rds")
+results$fdr = ""
+results = as.data.table(results)
+cancers = unique(results$canc)
+
+adjustment = function(cancer){
+  data = filter(results, canc %in% cancer)
+  data$fdr = p.adjust(data$pval, method="fdr")
+  data = filter(data, fdr <= 0.05)
+  if(!(dim(data)[1] == 0)){
+    return(data)
+  }
+}
+
+adjusted = llply(cancers, adjustment)
+adjusted = ldply (adjusted, data.frame)
+adjusted = as.data.table(adjusted)
 
 ###Change gene names to Hugo IDs
-#for(i in 1:nrow(results_cox)){
-	#g = results_cox$gene[i]
+#for(i in 1:nrow(adjusted)){
+	#g = adjusted$gene[i]
 	#hugo = fantom$CAT_geneName[which(fantom$CAT_geneID %in% g)]
-	#results_cox$gene[i] = hugo
+	#adjusted$gene[i] = hugo
 #}
 
+cancs_wlncs = as.data.table(table(adjusted$canc))
+cancs_wlncs = cancs_wlncs[order(N)]
 
 ##Full - order plots by decreasing pvalue 
 ##+++++++++++++++++++++++++++++
 
-pdf("TCGA_survival_validation_ofPCAWG_results_42lncRNAs.pdf", pointsize=6, width=15, height=14)
+pdf("TCGA_toplncRNAS_survival_associations.pdf", pointsize=6, width=15, height=14)
 require(gridExtra)
 
-for(i in 1:nrow(results_cox)){
-  #1. Subset lnc_rna to those patients in cancer
-  df <- subset(rna, rna$canc %in% results_cox$canc[i])
-  z <- which(colnames(df) %in% results_cox$gene[i])
-  df <- df[,c(z,37:40)]  
+adjusted = adjusted[order(fdr)]
 
-  df[,1] <- log1p(df[,1])
+for(i in 1:nrow(adjusted)){
+  #1. Subset lnc_rna to those patients in cancer
+  df <- subset(rna, rna$canc %in% adjusted$canc[i])
+  z <- which(colnames(df) %in% adjusted$gene[i])
+  df <- df[,c(z,4117:4120)]  
 
   #3. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""

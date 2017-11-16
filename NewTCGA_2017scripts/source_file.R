@@ -31,6 +31,7 @@ library(broom)
 library(tidyverse)
 library(parallel)
 library(limma)
+library(stringr)
 
 mypal = pal_npg("nrc", alpha = 0.7)(10)
 
