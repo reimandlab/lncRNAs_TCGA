@@ -110,6 +110,13 @@ pcg_rna <- pcg_rna[,-z]
 #List of canddidates and cox results
 allCands <- fread("7tier1_35tier2_lncRNA_candidates_August28th.txt", sep=";")
 
+#Right now just looking at the top 6 in PCAWG and TCGA 
+cancer_pairs = data.frame(cancer = c(rep(unique(allCands$canc)[1], 3), rep(unique(allCands$canc)[2], 2), unique(allCands$canc)[3]), genes = c("LINC00665", 
+	"ZNF503-AS2", "GS1-251I9.4", "NEAT1", "ADORA2A-AS1", "AC006126.4"))
+
+allCands = subset(allCands, (allCands$canc %in% cancer_pairs$canc & allCands$gene %in% cancer_pairs$genes))
+allCands = allCands[-5,]
+
 #[1] - for each lncRNA, divide expression data by patient high or low lncRNA expression
 #for each row of allCands
 
@@ -174,10 +181,28 @@ simplePlot <- function(d){
 	print(g + rremove("x.text"))
 }
 
-pdf("42lncRNAcandidates_distributionofExpSept6.pdf", pointsize=6)
+pdf("42lncRNAcandidates_distributionofExp_Nov21.pdf", pointsize=6)
 llply(dividedWpcgs, simplePlot, .progress = "text")
 dev.off()
 
+
+##Helper function to calcualte wilcoxon 
+check_wilcoxon = function(PCG){
+		data = d[,c(1:4, which(colnames(d) %in% PCG))]
+		wilcoxon = wilcox.test(data[which(data$exp==1),5], data[which(data$exp==0),5], alternative="two.sided")$p.value
+		return(wilcoxon)
+	}
+
+#Helper function for plotting boxplots
+#plot boxplots for most sig genes 
+boxplot = function(PCG){
+		data = d[,c(1:4, which(colnames(d) %in% PCG))]
+		colnames(data)[5] = "PCG_Expression"
+		g = ggboxplot(data, x = "exp", y="PCG_Expression", title = paste(PCG, data[1,3], colnames(data)[2]))
+		g = g + stat_compare_means()
+		print(g)
+		return(PCG)
+	}
 
 #FUNCTION3 - limma differential expression between high and low lncRNA groups
 diffE <- function(d){
@@ -196,7 +221,32 @@ diffE <- function(d){
 
 	pdf(paste(colnames(d)[2], d[1,3], "volcano.pdf", sep="_"), pointsize=8, height=9, width=10)
 	
-	hist(p.adjust(fit2$p.value, method="fdr"), main=colnames(fit2$p.value))	
+	#hist(p.adjust(fit2$p.value, method="fdr"), main=colnames(fit2$p.value))	
+
+	#check wilcoxon test for nonparametric analysis 
+	#based on expression (high or low tag) is PCG expression differentially expressed
+	#between two groups?
+
+	wilcoxon_pcgs = sapply(colnames(d)[5:ncol(d)], check_wilcoxon)
+	#which are sig genes after fdr?
+	wilcoxon_pcgs = p.adjust(wilcoxon_pcgs, method="fdr")
+	wilcoxon_pcgs = wilcoxon_pcgs[which(wilcoxon_pcgs <= 0.05)]
+	wilcoxon_pcgs = wilcoxon_pcgs[order(wilcoxon_pcgs)]
+
+	pcgs_wilcoxon = names(wilcoxon_pcgs)
+
+	print(length(pcgs_wilcoxon))
+
+	if(length(pcgs_wilcoxon) > 50){
+		plot_pcgs = pcgs_wilcoxon[1:50]
+		print(length(plot_pcgs))
+	}
+	if(length(pcgs_wilcoxon) <= 50){
+		plot_pcgs = pcgs_wilcoxon
+	}
+
+	plots = sapply(plot_pcgs, boxplot)
+	print("done boxplots")
 
 	genes=rownames(expression)
     t <- topTable(fit2,coef=1,adjust.method="fdr",n=numGenes,p.value=0.05,genelist=genes)
@@ -211,8 +261,11 @@ diffE <- function(d){
 
     #save top gene names 
     top <- c(paste(colnames(d)[2], d[1,3]), t$ID)
-
-    #use all not just top 200 genes 
+    
+    print(paste("t before subset", dim(t)[1]))
+    
+    t = subset(t, ID %in% pcgs_wilcoxon)
+    print(paste("t before subset", dim(t)[1]))
 
     #if(dim(t)[1] >= 200){
 	##save 200 most DE genes 
@@ -222,12 +275,11 @@ diffE <- function(d){
     #generate volcano plot
     point <- quantile(as.numeric(-log10(t$P.Value)),0.95)
 
-    pdf("plot.pdf")
-
+    #pdf("plot.pdf")
     print(ggplot(aes(x=logFC, y= -log10(P.Value)), data=t) + geom_point(aes(colour = -log10(adj.P.Val)), size = 0.85) + scale_colour_gradient(low = "blue", high="red") +
     	labs(colour = "-log10(fdr)", x = "Limma logFC", y= "-log10(p-value)") + ggtitle(paste(colnames(d)[2], d[1,3]), "Differential Expression") + 
     	  geom_text(aes(label=ifelse(-log10(P.Value) >= point,as.character(ID),'')),hjust=0,vjust=0, check_overlap = TRUE, size=3))
-    dev.off()
+    #dev.off()
 
     #generate heatmap 
     heat <- expression[which(rownames(expression) %in% t$ID),]
@@ -250,7 +302,8 @@ diffE <- function(d){
 	list[[1]] <- t[logFC <0]$ID #negative fold change, more expressed in the high lncRNA group 
 	list[[2]] <- t[logFC >0]$ID #postivie fold change, more expressed in the low lncRNA group 
 
-	combined_paths <- gprofiler(list, organism = "hsapiens", exclude_iea=TRUE, ordered_query= TRUE, min_set_size=10, max_set_size = 300, min_isect_size=10, correction_method="fdr")
+	combined_paths <- gprofiler(list, organism = "hsapiens", exclude_iea=TRUE, ordered_query= TRUE, min_set_size=5, max_set_size = 500, min_isect_size=5, correction_method="fdr")
+	print(dim(combined_paths)[1])
 
 	if(!(dim(combined_paths)[1]==0)){
 	#only keep GO or REACTOME
@@ -277,7 +330,7 @@ diffE <- function(d){
 
 diffExpressed <- llply(dividedWpcgs, diffE, .progress = "text")
 
-saveRDS(diffExpressed, file="Sept7updated_42candidatesWithDEpcgsSept14allDEgenesUsed.rds")
+saveRDS(diffExpressed, file="Nov22updated_6candidatesWithDEpcgsSept14allDEgenesUsed.rds")
 
 
 
