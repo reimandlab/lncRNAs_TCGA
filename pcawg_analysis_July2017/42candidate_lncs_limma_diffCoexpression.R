@@ -108,27 +108,30 @@ pcg_rna <- pcg_rna[,-z]
 #---------------------------------------------------------
 
 #List of canddidates and cox results
-allCands <- fread("7tier1_35tier2_lncRNA_candidates_August28th.txt", sep=";")
-
+allCands <- fread("lncRNAs_sig_FDR_0.1_Nov23.txt")
+allCands = filter(allCands, gene %in% c("NEAT1", "RP11-622A1.2", "GS1-251I9.4", "ZNF503-AS2", "AC009336.24"))
 #Right now just looking at the top 6 in PCAWG and TCGA 
-cancer_pairs = data.frame(cancer = c(rep(unique(allCands$canc)[1], 3), rep(unique(allCands$canc)[2], 2), unique(allCands$canc)[3]), genes = c("LINC00665", 
-	"ZNF503-AS2", "GS1-251I9.4", "NEAT1", "ADORA2A-AS1", "AC006126.4"))
+#cancer_pairs = data.frame(cancer = c(rep(unique(allCands$canc)[1], 3), rep(unique(allCands$canc)[2], 2), unique(allCands$canc)[3]), genes = c("LINC00665", 
+#	"ZNF503-AS2", "GS1-251I9.4", "NEAT1", "ADORA2A-AS1", "AC006126.4"))
 
-allCands = subset(allCands, (allCands$canc %in% cancer_pairs$canc & allCands$gene %in% cancer_pairs$genes))
-allCands = allCands[-5,]
+#allCands = subset(allCands, (allCands$canc %in% cancer_pairs$canc & allCands$gene %in% cancer_pairs$genes))
+#allCands = allCands[-5,]
 
 #[1] - for each lncRNA, divide expression data by patient high or low lncRNA expression
 #for each row of allCands
 
 #FUNCTION1 - divide expression into high and low for each lnc within a cancer type 
 #Apply this function to every row of allCands
+
+lnc_rna[,1:5607] = log1p(lnc_rna[,1:5607])
+
 getExpression <- function(row){
 	lnc <- row[[1]]
 	canc <- row[[5]]
 	#First divide patients into high and low based on median expression of lnc
 	lncData <- lnc_rna[, c(which(colnames(lnc_rna) %in% lnc), 5608:5609)]
 	lncData <- lncData[lncData$canc==canc,]
-	med <- median(as.numeric(lncData[,1]))
+	med <- mean(as.numeric(lncData[,1]))
 	lncData$exp[lncData[,1] >= med] <- 1
 	lncData$exp[lncData[,1] < med] <- 0 
 	return(lncData)
@@ -181,10 +184,9 @@ simplePlot <- function(d){
 	print(g + rremove("x.text"))
 }
 
-pdf("42lncRNAcandidates_distributionofExp_Nov21.pdf", pointsize=6)
+pdf("6lncRNAcandidates_distributionofExp_Nov23.pdf", pointsize=6)
 llply(dividedWpcgs, simplePlot, .progress = "text")
 dev.off()
-
 
 ##Helper function to calcualte wilcoxon 
 check_wilcoxon = function(PCG){
@@ -272,6 +274,9 @@ diffE <- function(d){
     #t <- t[1:200,]
 	#}
 
+    #t set cutoff
+    #t = filter(t, abs(logFC) >= 0.4)
+
     #generate volcano plot
     point <- quantile(as.numeric(-log10(t$P.Value)),0.95)
 
@@ -299,10 +304,12 @@ diffE <- function(d){
 
 	#give gprofiler two lists
 	list <- list()
-	list[[1]] <- t[logFC <0]$ID #negative fold change, more expressed in the high lncRNA group 
-	list[[2]] <- t[logFC >0]$ID #postivie fold change, more expressed in the low lncRNA group 
+	l1 <- filter(t, logFC <0)
+	list[[1]] <- l1$ID #negative fold change, more expressed in the high lncRNA group 
+	l2 <- filter(t, logFC >0)
+	list[[2]] <- l2$ID #postivie fold change, more expressed in the low lncRNA group 
 
-	combined_paths <- gprofiler(list, organism = "hsapiens", exclude_iea=TRUE, ordered_query= TRUE, min_set_size=5, max_set_size = 500, min_isect_size=5, correction_method="fdr")
+	combined_paths <- gprofiler(list, organism = "hsapiens", exclude_iea=TRUE, ordered_query= TRUE, min_set_size=5, max_set_size = 300, min_isect_size=8, correction_method="fdr")
 	print(dim(combined_paths)[1])
 
 	if(!(dim(combined_paths)[1]==0)){
@@ -325,12 +332,35 @@ diffE <- function(d){
     	top <- c(paste(colnames(d)[2], d[1,3]), "none")
    	}
 
-    return(top)   	
+    return(t)   	
 }
 
-diffExpressed <- llply(dividedWpcgs, diffE, .progress = "text")
+#diffExpressed <- llply(list_datas, diffE, .progress = "text")
+d1 =  dividedWpcgs[[1]]
+d = d1
+d1_results = diffE(d)
 
-saveRDS(diffExpressed, file="Nov22updated_6candidatesWithDEpcgsSept14allDEgenesUsed.rds")
+d2 =  dividedWpcgs[[2]]
+d = d2
+d2_results = diffE(d)
+
+d3 =dividedWpcgs[[3]]
+d = d3
+d3_results = diffE(d)
+
+d4 = dividedWpcgs[[4]]
+d = d4
+d4_results = diffE(d)
+
+d5 = dividedWpcgs[[5]]
+d = d5
+d5_results = diffE(d)
+
+d6 = dividedWpcgs[[6]]
+d = d6
+d6_results = diffE(d)
+
+#saveRDS(diffExpressed, file="Nov22updated_6candidatesWithDEpcgsSept14allDEgenesUsed.rds")
 
 
 

@@ -59,6 +59,7 @@ fantom = fantom[c(z1,z2),]
 
 #4. List of lncRNA survival associated candidates 
 #cands = fread("7tier1_35tier2_lncRNA_candidates_August28th.txt")
+cands = fread("lncRNAs_sig_FDR_0.1_Nov23.txt")
 
 #5. TCGA ID cancer type conversion 
 canc_conversion = readRDS("tcga_id_cancer_type_conversion.txt")
@@ -86,8 +87,9 @@ rna = rna[-z,]
 #Keep only those patients with both RNA-Seq AND clinical data
 z <- which(rownames(rna) %in% clin$bcr_patient_barcode)
 rna = rna[z,] #all have clinical data - 7387 patients 
-z <- which(colnames(rna) %in% fantom$CAT_geneID)
-rna = rna[,z]
+
+#z <- which(colnames(rna) %in% fantom$CAT_geneID)
+#rna = rna[,z]
 
 #Add survival info to rna file
 rna = as.data.frame(rna)
@@ -123,24 +125,30 @@ for(i in 1:dim(rna)[1]){
 ###---------------------------------------------------------------
 
 #change all the cancer type names so they match up
-#rna$canc = substr(rna$canc , 1, 4)
-#cands$canc = substr(cands$canc , 1, 4)
+rna$canc = substr(rna$canc , 1, 4)
+cands$canc = substr(cands$canc , 1, 4)
 
 #subset RNA to candidate genes 
-#ensg = fantom$CAT_geneID[which(fantom$CAT_geneName %in% cands$gene)]
-#z <- which(colnames(rna) %in% ensg)
-#rna = rna[,c(z, 5920:5923)]
+#UCSC gene info
+ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
+z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
+ucsc <- ucsc[z,]
+z <- which(duplicated(ucsc[,6]))
+ucsc <- ucsc[-z,]
 
+ensg = ucsc$hg19.ensGene.name2[which(ucsc$hg19.ensemblToGeneName.value %in% cands$gene)]
+z <- which(colnames(rna) %in% ensg)
+rna = rna[,c(z, 5920:5923)]
 
 ###Get list of high expressing lncRNAs in each cancer 
 
 #1. First remove lncRNAs with 0 expression in all patients 
-sums = apply(rna[,1:3127], 2, sum)
-sums = as.numeric(sums)
-z <- which(sums == 0) #134
+#sums = apply(rna[,1:3127], 2, sum)
+#sums = as.numeric(sums)
+#z <- which(sums == 0) #134
 #remove - MAYBE INSTEAD OF MEDIAN = 0 , SHOULD REMOVE THE ONES 
 #THAT HAVE SUM OF 0 MEANING IT HAS 0 EXPRESSION IN EVERY SINGLE PATIENT 
-rna = rna[,-z]
+#rna = rna[,-z]
 #meds = apply(rna, 2, median)
 #meds = as.numeric(meds)
 #z <- which(meds > 20000)
@@ -153,44 +161,44 @@ rna = rna[,-z]
 
 #Write function that takes a dataframe, calculates medians and 
 #output list of genes with median greater than that 
-check_medians <- function(column){
-  med <- median(column)
-  if(med >=2000){
-    return(med)
-  } 
-}
+#check_medians <- function(column){
+ # med <- median(column)
+  #if(med >=2000){
+   # return(med)
+  #} 
+#}
 
 #save results
-high_lncs <- as.data.frame(matrix(ncol=3))
-colnames(high_lncs) <- c("median", "gene", "canc")
+#high_lncs <- as.data.frame(matrix(ncol=3))
+#colnames(high_lncs) <- c("median", "gene", "canc")
 
 #apply to dataframe 
-for(i in 1:length(unique(rna$canc))){
+#for(i in 1:length(unique(rna$canc))){
 #subset RNA-dataset to one cancer type
-df <- subset(rna, rna$canc %in% unique(rna$canc)[i])
+#df <- subset(rna, rna$canc %in% unique(rna$canc)[i])
 #apply function
-res <- apply(df[,1:3071], 2, check_medians)
-res <- Filter(Negate(is.null), res)  
-res <- data.frame(median=(matrix(unlist(res), nrow=length(res), byrow=T)), gene = names(res), canc=unique(rna$canc)[i])
-high_lncs <- rbind(high_lncs, res)
-}#end loop
+#res <- apply(df[,1:3071], 2, check_medians)
+#res <- Filter(Negate(is.null), res)  
+#res <- data.frame(median=(matrix(unlist(res), nrow=length(res), byrow=T)), gene = names(res), canc=unique(rna$canc)[i])
+#high_lncs <- rbind(high_lncs, res)
+#}#end loop
 
-high_lncs <- high_lncs[-1,]
+#high_lncs <- high_lncs[-1,]
 #subset rna file to these lncRNAs 
-z = which(colnames(rna) %in% high_lncs$gene)
-z = c(z, 3072:3075)
-rna = rna[,z]
-rna[,1:1897] = log1p(rna[,1:1897])
+#z = which(colnames(rna) %in% high_lncs$gene)
+#z = c(z, 3072:3075)
+#rna = rna[,z]
+#rna[,1:1897] = log1p(rna[,1:1897])
 
 #why some don't have a cancer type?
-z <- which(rna$canc == "")
-rna = rna[-z,]
+#z <- which(rna$canc == "")
+#rna = rna[-z,]
 
-z <- which(high_lncs$canc == "")
-high_lncs = high_lncs[-z,]
+#z <- which(high_lncs$canc == "")
+#high_lncs = high_lncs[-z,]
 
 #PCA
-library(factoextra)
+#library(factoextra)
 #res.pca <- prcomp(rna[1:3232], scale = TRUE)
 #res.pca <- prcomp(rna[1:3232])
 
@@ -208,25 +216,27 @@ library(factoextra)
 #For now just to reduce number of tests - I will keep only those genes 
 #with median expression greater than the median of medain individual gene expression
 #ie = summary(high_lncs$median)$Median == 8252
-high_lncs = high_lncs[high_lncs$median >= 7302,]
+#high_lncs = high_lncs[high_lncs$median >= 7302,]
 
-genes = as.data.table(table(high_lncs$gene))
+genes = as.data.table(table(cands$gene))
 genes = genes[order(N)]
 colnames(genes) = c("gene", "frequencyBycancer")
 
-high_lncs = merge(high_lncs, genes, by = "gene")
+#high_lncs = merge(high_lncs, genes, by = "gene")
 
 results_cox <- as.data.frame(matrix(ncol=5)) ; colnames(results_cox) <- c("gene", "coef", "HR", "pval", "canc")
 
+rna[,1:22] = log1p(rna[,1:22])
+
 survival_analysis = function(row){
   #1. Subset lnc_rna to those patients in cancer
-  df <- subset(rna, rna$canc %in% row[[3]])
-  ens = fantom$CAT_geneID[which(fantom$CAT_geneID %in% row[[1]])]
+  df <- subset(rna, rna$canc %in% row[[5]])
+  ens = ucsc$hg19.ensGene.name2[which(ucsc$hg19.ensemblToGeneName.value %in% row[[1]])]
   z <- which(colnames(df) %in% ens)
   
   if(!(length(z) ==0)){
 
-  df <- df[,c(z,1898:1901)]  
+  df <- df[,c(z,23:26)]  
 
   #2. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
@@ -277,11 +287,23 @@ survival_analysis = function(row){
 }
 }
 
-results = apply(high_lncs, 1, survival_analysis)
+results = apply(cands, 1, survival_analysis)
 
 #turn list of results into a dataframe 
 df <- ldply (results, data.frame)
 results = df
+results$geneName = ""
+results = as.data.table(results)
+results = results[order(pval)]
+results = filter(results, pval <= 0.05)
+
+for(i in 1:nrow(results)){
+  g = results[i,1]
+  z <- which(ucsc$hg19.ensGene.name2 %in% g)
+  results[i,6] = ucsc$hg19.ensemblToGeneName.value[z]
+}
+
+
 #need to adjust fdr for each cancer seperatley 
 #results_cox = as.data.table(results$cox)
 
@@ -297,7 +319,7 @@ adjustment = function(cancer){
   #data = filter(data, fdr <= 0.05)
   data = results[z,]
   data$fdr = p.adjust(data$pval, method="fdr")
-  z <- which(data$fdr <= 0.05)
+  z <- which(data$fdr <= 0.1)
   data = data[z,]
 
   if(!(dim(data)[1] == 0)){
@@ -322,20 +344,18 @@ cancs_wlncs = cancs_wlncs[order(N)]
 ##Full - order plots by decreasing pvalue 
 ##+++++++++++++++++++++++++++++
 
-pdf("TCGA_toplncRNAS_survival_associations.pdf", pointsize=6, width=15, height=14)
+pdf("PCAWG_NOV23_lncRNA_Validations_inTCGATCGA.pdf", pointsize=6, width=9, height=8)
 require(gridExtra)
 
-adjusted = adjusted[order(fdr)]
-
-for(i in 1:nrow(adjusted)){
+for(i in 1:nrow(results)){
   #1. Subset lnc_rna to those patients in cancer
-  df <- subset(rna, rna$canc %in% adjusted$canc[i])
-  z <- which(colnames(df) %in% adjusted$gene[i])
-  df <- df[,c(z,4117:4120)]  
+  df <- subset(rna, rna$canc %in% results$canc[i])
+  z <- which(colnames(df) %in% results$gene[i])
+  df <- df[,c(z,23:26)]  
 
   #3. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
-  median2 <- quantile(as.numeric(df[,1]), 0.5)
+  median2 <- mean(as.numeric(df[,1]))
   #median2 <- median(df[,1])
   for(y in 1:nrow(df)){
     genexp <- df[y,1]
@@ -353,10 +373,10 @@ for(i in 1:nrow(adjusted)){
   #plot boxplot showing difference between the two groups and sex
   title <- paste(gene, df$canc[1], "Expression")
   colnames(df)[1] <- "Gene"
-  g <- ggboxplot(df, x= "median", y="Gene", palette=mypal, order=c("0", "1"), fill = "median",  add = "jitter")
+  g <- ggboxplot(df, x= "median", y="Gene", palette=mypal[c(4,1)], order=c("0", "1"), fill = "median",  add = "jitter")
   g <- g + stat_compare_means()
-  g <- ggpar(g, font.legend = c(8, "plain", "black")) 
-  g <- g + labs(title = title, y="log1p(FPKM)", x="Median") + 
+  g <- ggpar(g, font.legend = c(10, "plain", "black")) 
+  g <- g + labs(title = title, y="log1p(FPKM)", x="Mean") + 
       theme(plot.title = element_text(hjust = 0.5))
       print(g)
 
@@ -370,6 +390,13 @@ for(i in 1:nrow(adjusted)){
           fit <- survfit(Surv(time, status) ~ median, data = df)
           s <- ggsurvplot(
           fit, 
+          surv.median.line = "hv",
+          font.main = c(16, "bold", "black"),
+          font.x = c(14, "plain", "black"),
+          font.y = c(14, "plain", "black"),
+          font.tickslab = c(14, "plain", "black"),
+          font.legend = 12,
+          risk.table.fontsize = 5, 
           main = paste(gene, df$canc[1]),       
           legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
           data = df,      # data used to fit survival curves. 
@@ -381,7 +408,8 @@ for(i in 1:nrow(adjusted)){
           xlim = c(0,2000),        # present narrower X axis, but not affect
                             # survival estimates.
           break.time.by = 500,     # break X axis in time intervals by 500.
-          palette = colorRampPalette(mypal)(14), 
+          #palette = colorRampPalette(mypal)(14), 
+          palette = mypal[c(4,1)],
           ggtheme = theme_minimal(), # customize plot and risk table with a theme.
           risk.table.y.text.col = T, # colour risk table text annotations.
           risk.table.y.text = FALSE # show bars instead of names in text annotations
