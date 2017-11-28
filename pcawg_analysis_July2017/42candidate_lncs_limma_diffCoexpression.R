@@ -287,6 +287,7 @@ diffE <- function(d){
     #dev.off()
 
     #generate heatmap 
+    
     heat <- expression[which(rownames(expression) %in% t$ID),]
     tags <- d$exp
 	color.map <- function(tags) { if (tags==1) "#FF0000" else "#0000FF" }
@@ -366,8 +367,10 @@ d6_results = diffE(d)
 
 
 
-
-
+pdf("NEAT1_liver_mutations_vs_expression.pdf", width=9, height=8)
+g  = ggboxplot(neat1, x="V1", y="N", col = "V2", palette=mypal[c(2,1)], title="Neat1 mutation in 84 Liver cancer patients")
+g + stat_compare_means()
+dev.off()
 
 
 

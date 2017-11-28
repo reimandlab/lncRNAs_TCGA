@@ -44,7 +44,10 @@ mypal = pal_npg("nrc", alpha = 0.7)(10)
 #Data-------------------------------------------------------
 
 #List of canddidates and cox results
-allCands <- fread("7tier1_35tier2_lncRNA_candidates_August28th.txt", sep=";")
+#allCands <- fread("7tier1_35tier2_lncRNA_candidates_August28th.txt", sep=";")
+#List of canddidates and cox results
+allCands <- fread("lncRNAs_sig_FDR_0.1_Nov23.txt")
+allCands = filter(allCands, gene %in% c("NEAT1", "RP11-622A1.2", "GS1-251I9.4", "ZNF503-AS2", "AC009336.24"))
 
 #UCSC gene info
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
@@ -140,7 +143,7 @@ all[,1:(dim(all)[2]-5)] <- log1p(all[,1:(dim(all)[2]-5)])
 
 #2. Get lncRNA - median within each tissue type
 tissues <- unique(all$canc)
-tissues <- tissues[c(1,2,4,5,6)]
+tissues <- tissues[c(4,6)]
 
 #Function 1
 #input: tissue 
@@ -193,7 +196,7 @@ all_cancers_scored <- as.data.frame(all_cancers_scored)
 #just need to subset to genes interested in plotting 
 
 #write file so can use with GTEX 
-saveRDS(all_cancers_scored, file="all_cancers_scored.rds")
+saveRDS(all_cancers_scored, file="OVARY_LIVER_cancers_scored.rds")
 
 #save list of genes in total used to also compare with GTEX 
 write.table(colnames(all), file="all_genes_used_inRankingAnalysis.txt", quote=F, row.names=F, sep=";")

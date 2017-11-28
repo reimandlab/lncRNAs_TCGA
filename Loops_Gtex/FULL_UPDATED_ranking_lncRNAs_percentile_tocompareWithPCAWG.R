@@ -71,7 +71,7 @@ c[,1] <- as.character(c[,1])
 c[,2] <- as.numeric(c[,2])
 
 #PCAWG Cancers top 5 
-cancers <- c("Breast" , "Kidney" ,  "Liver" , "Ovary" , "Pancreas")	
+cancers <- c("Liver" , "Ovary")	
 
 z <- which(c[,1] %in% cancers)
 cancers_keep <- c[z,1]
@@ -101,7 +101,9 @@ sig <- fread("42sig_lncRNACancerAssociations.txt", sep=";")
 sig$canc <- lapply(sig$canc, function(x) unlist(strsplit(x, " "))[1])
 fdr_sig <- sig[fdr <0.1]
 
-allCands <- fread("7tier1_35tier2_lncRNA_candidates_August28th.txt", sep=";")
+allCands <- fread("lncRNAs_sig_FDR_0.1_Nov23.txt")
+allCands = filter(allCands, gene %in% c("NEAT1", "RP11-622A1.2", "GS1-251I9.4", "ZNF503-AS2", "AC009336.24"))
+allCands = allCands[-6,]
 
 #list of functional lncRNAs from FANTOM5 paper (will assume that all other genes othan than these are protein-coding for now)
 #can always subset the protein coding gene expression file later 
@@ -109,6 +111,10 @@ lncs <- fread("lncs_ensg_fromFantom5paper_downjune7th")
 
 #ucsc genes
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
+
+#PCAWG scores
+pcawg_scores = readRDS("OVARY_LIVER_cancers_scored.rds")
+
 
 ###Processing#################################################head()
 
@@ -201,7 +207,7 @@ scored <- lapply(tissues_data, addScores) #list of dataframes
 all_tissues_scored <-  rbindlist(scored)
 
 #bind all tissues scored from GTEX with all cancers scored from pcawg
-all_cancers_scored <- readRDS("all_cancers_scored.rds")
+all_cancers_scored <- pcawg_scores
 
 allScoredLncsgtexANDpcawg <- rbind(all_cancers_scored, all_tissues_scored)
 allScoredLncsgtexANDpcawg <- as.data.frame(allScoredLncsgtexANDpcawg)
@@ -230,7 +236,7 @@ cands_for_plottingV3 <- merge(allScoredLncsgtexANDpcawg, sig, by=c("gene", "canc
 #plot only candidate lncRNAs within that cancer type
 allCands$canc <- lapply(allCands$canc, function(x) unlist(strsplit(x, " "))[1])
 tissues <- unique(allScoredLncsgtexANDpcawg$canc) #keep only candidates pancreas, kidney, liver and ovary 
-tissues <- tissues[c(3,1,4,5)]
+#tissues <- tissues[c(3,1,4,5)]
 plots <- list()
 wilcoxon_results <- list()
 
@@ -240,27 +246,27 @@ for(i in 1:length(tissues)){
 	allScored <- allScored[which(allScored$gene %in% cands$gene),]
 	#get median score for each gene 
 	pscore <- filter(allScored, data=="PCAWG")
-	meds <- as.data.table(pscore %>%
-  		group_by(gene) %>%
-  		summarise_each(funs(median), score))
+	#meds <- as.data.table(pscore %>%
+  		#group_by(gene) %>%
+  		#dplyr::summarise_each(funs(median), score))
 
-  	meds <- meds[order(score)]
+  	#meds <- meds[order(score)]
 
   	#wilcoxon test, gene score between gtex and pcawg 
-  	wil <- as.data.frame(allScored %>% group_by(gene) %>% do(tidy(wilcox.test(score ~ data, data=.))))
+  	wil <- as.data.frame(allScored %>% group_by(gene) %>% do(broom::tidy(wilcox.test(score ~ data, data=.))))
   	wil$fdr <- p.adjust(wil$p.value, method="fdr")
   	wil$sig <- "" 
   	wil$sig[wil$fdr <=0.05] <- "Yes"
   	wil$sig[wil$fdr > 0.05] <- "No"
   	wil$canc <- allScored$canc[1]
 
-	f <- ggboxplot(allScored, x="gene", y="score", color="data", palette=mypal, order=as.character(meds$gene))
+	f <- ggboxplot(allScored, x="gene", y="score", color="data", palette=mypal)
 	f <- ggpar(f, xlab="Candidate lncRNAs", main= paste(length(unique(allScored$gene)), "Candidate Genes in", allScored$canc[1], "Cancer") ,ylab="Score", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,1))
 	plots[[i]] <- f 
 	wilcoxon_results[[i]] <- wil	
 }
 
-pdf("plot1_Version3_pcawgVSgtex_38candidatesWithinEachCancer.pdf", pointsize=8, width=30, height=20)
+pdf("plot1_Version3_pcawgVSgtex_6candidatesWithinEachCancer.pdf", pointsize=8, width=30, height=20)
 multiplot(plotlist = plots, cols = 2)
 dev.off()
 
@@ -269,7 +275,7 @@ wilcoxon_results <- as.data.table(wilcoxon_results)
 wilcoxon_results$fdr <- as.numeric(wilcoxon_results$fdr)
 wilcoxon_results <- wilcoxon_results[order(fdr)]
 
-pdf("42_sig_lncRNA_predictors_usingMedian5WILCOXON_gtexVSpcawg.pdf", pointsize=8, width=12, height=14)
+pdf("6_sig_lncRNA_predictors_usingMedian5WILCOXON_gtexVSpcawg.pdf", pointsize=8, width=12, height=14)
 p<-tableGrob(wilcoxon_results)
 grid.arrange(p)
 dev.off()
@@ -361,19 +367,21 @@ new_matrix$pval <- -log10(new_matrix$pval)
 f <- ggboxplot(new_matrix, x="gene", y="score", color="data", fill="data", palette=mypal[c(3,4)], ggtheme=theme_bw())
 f <- f + facet_grid (.~ canc, scales = "free_x", space = "free_x") + 
  	theme(strip.background =element_rect(fill=mypal[9]))+
-  	theme(strip.text = element_text(colour = 'white'))
-f <- ggpar(f, xlab="Candidate lncRNAs", ylab="Score", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,1))
+  	theme(strip.text = element_text(colour = 'white', size = 15))
+f <- ggpar(f, xlab="Candidate lncRNAs", ylab="Score", x.text.angle=65, font.tickslab=c(14, "plain", "black"), legend="right", ylim=c(0,1))
 f <- f + rremove("y.grid") + rremove("xlab") + rremove("x.text")
 
 #Instead of boxplots, label each point as gtex or pcawg, showing in which dataset it's more highlyE
 
 #HAZARD RATIOS
-p <- ggscatter(new_matrix, x="gene", y="HR", palette= mypal, ggtheme=theme_bw(), size="pval", color="Hazard")
+p <- ggscatter(new_matrix, x="gene", y="HR", palette= mypal, ggtheme=theme_bw(), color="Hazard", size=8)
 p <- p + facet_grid (.~ canc, scales = "free_x", space = "free_x") + 
  	theme(strip.background =element_rect(fill=mypal[9]))+
-  	theme(strip.text = element_text(colour = 'white'))
-p <- ggpar(p, xlab="Candidate lncRNAs", ylab="Hazard Ratio", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,4))
-p <- p + rremove("y.grid") + rremove("xlab") + rremove("x.text")
+  	theme(strip.text = element_text(colour = 'white', size = 15))
+p <- ggpar(p, xlab="Candidate lncRNAs", ylab="Hazard Ratio", x.text.angle=65, font.tickslab=c(14, "plain", "black"), legend="right", ylim=c(0,2.5))
+p <- p + rremove("y.grid")
+
+#p <- p + rremove("y.grid") + rremove("xlab") + rremove("x.text")
 
 
 #TIER AND PREDICTION STATUS 
@@ -386,18 +394,54 @@ g <- g + facet_grid (.~ canc, scales = "free_x", space = "free_x") +
 g <- ggpar(g, xlab="Candidate lncRNAs", ylab="Tier", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right")
 g <- g + rremove("y.grid")
 
-pdf("plot1_pcawgVSgtex_38candidatesV4ordered_justcandsPLUShazardratios.pdf", pointsize=8, width=30, height=14)
-plot_grid(f, p, g,  labels = c("A", "B", "C"), align = "v", nrow = 3)
+#pdf("plot1_pcawgVSgtex_38candidatesV4ordered_justcandsPLUShazardratios.pdf", pointsize=14, width=13, height=14)
+#plot_grid(f, p, g,  labels = c("A", "B", "C"), align = "v", nrow = 3)
+#dev.off()
+
+
+pdf("new_pcawgVSgtex_6candidatesV4ordered_justcandsPLUShazardratios.pdf", pointsize=14, width=18, height=13)
+plot_grid(f, p, labels = c("A", "B"), align = "v", nrow = 2)
 dev.off()
 
 
 
 
 
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
 
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
 
+  numPlots = length(plots)
 
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
 
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
 
 
 

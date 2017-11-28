@@ -69,12 +69,14 @@ z <- which(colnames(pcg_rna) %in% fantom[,2])
 pcg_rna <- pcg_rna[,-z]
 
 #Candidate lncRNAs 
-lncs = fread("results_October12_42candsFromPCAWG.txt")
-lncs = filter(lncs, pval < 0.05)
-lncs = filter(lncs, canc == "Ovar")
+#List of canddidates and cox results
+allCands <- fread("lncRNAs_sig_FDR_0.1_Nov23.txt")
+allCands = filter(allCands, gene %in% c("NEAT1", "RP11-622A1.2", "GS1-251I9.4", "ZNF503-AS2", "AC009336.24"))
+allCands = allCands[-6,]
+lncs = filter(allCands, canc == "Ovary Serous cystadenocarcinoma")
 
 #ucsc only keep those lncrnas in fantom
-ucsc = ucsc[which(ucsc$hg19.ensGene.name2 %in% lncs$gene),]
+ucsc = ucsc[which(ucsc$hg19.ensemblToGeneName.value %in% lncs$gene),]
 
 #lncRNA candidate expression status 
 medianexp = read.table("medianScoresOvarianCancerTop3_lncRNAs.txt", sep=";", header=T)
@@ -173,7 +175,7 @@ g + stat_compare_means(method = "t.test")
 dev.off()
 
 pdf("GS1-251I9.4_Boxplot_CNA_expressionOct31Wilcoxon.pdf", width=9, height=8)
-g  = ggboxplot(lncwCNA, x="Expression_GS1", y="CNA_GS1", add="jitter", palette=mypal[c(2,1)], col="Expression_GS1", title="GS1-251I9.4 Expression vs CNA in 66 Ovarian Cancer Patients")
+g  = ggboxplot(lncwCNA, x="Expression_GS1", y="CNA_GS1", add="median", palette=mypal[c(2,1)], col="Expression_GS1", title="GS1-251I9.4 Expression vs CNA in 66 Ovarian Cancer Patients")
 g + stat_compare_means()
 dev.off()
 
