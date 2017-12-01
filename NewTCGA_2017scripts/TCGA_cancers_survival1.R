@@ -26,10 +26,10 @@ rna$gene = NULL
 rna = t(rna)
 
 #--pcg
-pcg = readRDS("54564_PCGS4cancers_TCGAnew.rds")
-rownames(pcg) = pcg$gene
-pcg$gene = NULL
-pcg = t(pcg)
+#pcg = readRDS("54564_PCGS4cancers_TCGAnew.rds")
+#rownames(pcg) = pcg$gene
+#pcg$gene = NULL
+#pcg = t(pcg)
 
 #2. Clinical data
 clin = read.csv("all_clin_XML_tcgaSept2017.csv")
@@ -49,13 +49,13 @@ rm <- fantom$CAT_geneName[z]
 z <- which(fantom$CAT_geneName %in% rm)
 fantom <- fantom[-z,]
 
-genes = c("AC006126.4", "ADORA2A-AS1", "NEAT1", "LINC00665", "ZNF503-AS2", "GS1-251I9.4")
-z1 = which(fantom[,2] %in% genes)
+#genes = c("AC006126.4", "ADORA2A-AS1", "NEAT1", "LINC00665", "ZNF503-AS2", "GS1-251I9.4")
+#z1 = which(fantom[,2] %in% genes)
 
 #Subset to intergenic and antisense 
-z2 = which(fantom$CAT_geneClass %in% c("lncRNA_antisense", "lncRNA_intergenic"))
+#z2 = which(fantom$CAT_geneClass %in% c("lncRNA_antisense", "lncRNA_intergenic"))
 
-fantom = fantom[c(z1,z2),]
+#fantom = fantom[c(z1,z2),]
 
 #4. List of lncRNA survival associated candidates 
 #cands = fread("7tier1_35tier2_lncRNA_candidates_August28th.txt")
@@ -241,7 +241,7 @@ survival_analysis = function(row){
   #2. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
   #median2 <- quantile(as.numeric(df[,1]), 0.5)
-  median2 = mean(df[,1])
+  median2 = median(df[,1])
   if(!(median2 == 0)){
   #median2 <- median(df[,1])
   for(y in 1:nrow(df)){
@@ -303,7 +303,6 @@ for(i in 1:nrow(results)){
   results[i,6] = ucsc$hg19.ensemblToGeneName.value[z]
 }
 
-
 #need to adjust fdr for each cancer seperatley 
 #results_cox = as.data.table(results$cox)
 
@@ -344,7 +343,7 @@ cancs_wlncs = cancs_wlncs[order(N)]
 ##Full - order plots by decreasing pvalue 
 ##+++++++++++++++++++++++++++++
 
-pdf("PCAWG_NOV23_lncRNA_Validations_inTCGATCGA.pdf", pointsize=6, width=9, height=8)
+pdf("PCAWG_NOV30_lncRNA_Validations_inTCGATCGA.pdf", pointsize=6, width=9, height=8)
 require(gridExtra)
 
 for(i in 1:nrow(results)){
@@ -355,7 +354,7 @@ for(i in 1:nrow(results)){
 
   #3. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
-  median2 <- mean(as.numeric(df[,1]))
+  median2 <- median(as.numeric(df[,1]))
   #median2 <- median(df[,1])
   for(y in 1:nrow(df)){
     genexp <- df[y,1]
@@ -376,7 +375,7 @@ for(i in 1:nrow(results)){
   g <- ggboxplot(df, x= "median", y="Gene", palette=mypal[c(4,1)], order=c("0", "1"), fill = "median",  add = "jitter")
   g <- g + stat_compare_means()
   g <- ggpar(g, font.legend = c(10, "plain", "black")) 
-  g <- g + labs(title = title, y="log1p(FPKM)", x="Mean") + 
+  g <- g + labs(title = title, y="log1p(FPKM)", x="Median") + 
       theme(plot.title = element_text(hjust = 0.5))
       print(g)
 

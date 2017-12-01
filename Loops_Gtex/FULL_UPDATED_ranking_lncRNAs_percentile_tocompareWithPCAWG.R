@@ -364,7 +364,7 @@ new_matrix$pval <- -log10(new_matrix$pval)
 #+ rremove("xlab") + rremove("x.text")
 
 #old boxplots
-f <- ggboxplot(new_matrix, x="gene", y="score", color="data", fill="data", palette=mypal[c(3,4)], ggtheme=theme_bw())
+f <- ggboxplot(new_matrix, x="gene", y="score", color="data", fill="data", palette=mypal[c(3,4,5)], ggtheme=theme_bw())
 f <- f + facet_grid (.~ canc, scales = "free_x", space = "free_x") + 
  	theme(strip.background =element_rect(fill=mypal[9]))+
   	theme(strip.text = element_text(colour = 'white', size = 15))
@@ -402,6 +402,40 @@ g <- g + rremove("y.grid")
 pdf("new_pcawgVSgtex_6candidatesV4ordered_justcandsPLUShazardratios.pdf", pointsize=14, width=18, height=13)
 plot_grid(f, p, labels = c("A", "B"), align = "v", nrow = 2)
 dev.off()
+
+#plot for GS1 in Ovarian cancer 
+cands_for_plottingV3 = as.data.table(cands_for_plottingV3)
+ov = filter(cands_for_plottingV3, canc == "Ovary", gene == "GS1-251I9.4")
+
+pdf("GS1_ovary_GTEX_vsPCAWG.pdf", pointsize=10)
+my_comparisons <- list( c("GTEX", "Low"), c("Low", "High"), c("GTEX", "High") )
+f = ggboxplot(ov, x="data", y="score", color="data", fill="data", palette=mypal[c(3,4,1)], ggtheme=theme_bw(), order=c("GTEX", "Low", "High"), add="jitter")
+f = ggpar(f, ylab="Score", x.text.angle=65, font.tickslab=c(14, "plain", "black"), legend="right", ylim=c(0.5,1),
+	font.x = c(18, "plain", "black"),
+   font.y = c(18, "plain", "black"))
+#f = f + rremove("y.grid") 
+f = f + stat_compare_means(comparisons = my_comparisons, label.y = c(0.8, 0.9, 0.95))
+print(f)
+dev.off()
+
+
+
+#plot for NEAT1 in Liver cancer
+liv = filter(cands_for_plottingV3, canc == "Liver", gene == "NEAT1")
+pdf("Neat1_liver_GTEX_vsPCAWG.pdf", pointsize=10)
+my_comparisons <- list( c("GTEX", "Low"), c("Low", "High"), c("GTEX", "High") )
+f = ggboxplot(liv, x="data", y="score", color="data", fill="data", palette=mypal[c(3,4,1)], ggtheme=theme_bw(), order=c("GTEX", "Low", "High"), add="jitter")
+f = ggpar(f, ylab="Score", x.text.angle=65, font.tickslab=c(14, "plain", "black"), legend="right", ylim=c(0.5,1.05),
+	font.x = c(18, "plain", "black"),
+   font.y = c(18, "plain", "black"))
+#f = f + rremove("y.grid") 
+f = f + stat_compare_means(comparisons = my_comparisons, label.y = c(1.02, 1.035, 1.055))
+print(f)
+dev.off()
+
+
+
+
 
 
 

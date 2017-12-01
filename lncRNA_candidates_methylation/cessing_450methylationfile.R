@@ -5,7 +5,7 @@
 #methylation files to extract probes for 
 #ovarian cancer patients, overlapping lncRNA regions 
 
-files = list.files(pattern= "pro") #pattern of mini files 
+files = list.files(pattern= "x") #pattern of mini files 
 files = files[7:5628]
 
 ###Load Libraries

@@ -41,6 +41,7 @@ library(ggsci)
 library(gridExtra)
 library(ggpubr)
 library(ggthemes)
+library(plyr)
 
 mypal = pal_npg("nrc", alpha = 0.7)(10)
 
@@ -102,9 +103,11 @@ pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #485 patie
 #Write function that takes a dataframe, calculates medians and 
 #output list of genes with median greater than that 
 
+lnc_rna[,1:5607] = log1p(lnc_rna[,1:5607])
+
 check_medians <- function(column){
   med <- median(column)
-  if(med >=5){
+  if(med >=1.8){
     return(med)
   } 
 }
@@ -189,13 +192,13 @@ for(i in 1:nrow(high_lncs)){
   z <- which(colnames(df) %in% high_lncs$gene[i])
   df <- df[,c(z,216:220)]  
 
-  df[,1] <- log1p(df[,1])
+  #df[,1] <- log1p(df[,1])
 
   #3. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
   #median2 <- quantile(as.numeric(df[,1]), 0.5)
   #median2 <- median(df[,1])
-  median2 = mean(df[,1])
+  median2 = median(df[,1])
   for(y in 1:nrow(df)){
     genexp <- df[y,1]
     if(genexp >= median2){
@@ -214,10 +217,16 @@ for(i in 1:nrow(high_lncs)){
         df$time <- as.numeric(df$time)
       
         #cox regression 
-        res.cox <- coxph(Surv(time, status) ~ median, data = df)
+        #res.cox <- coxph(Surv(time, status) ~ median, data = df)
+        #first check that model meets proportionality assumption
+        res.cox <- coxph(Surv(time, status) ~ df[,1], data = df)
+        testph <- cox.zph(res.cox)
+        p = testph$table[1,3]
+        if(p >= 0.05){
         row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)], df$canc[1])
         names(row) <- names(results_cox)
         results_cox <- rbind(results_cox, row)  
+}
 }
 
 results_cox <- results_cox[-1,]
@@ -236,7 +245,7 @@ adjustment = function(cancer){
   #data = filter(data, fdr <= 0.05)
   data = results_cox[z,]
   data$fdr = p.adjust(data$pval, method="fdr")
-  z <- which(data$fdr <= 0.1)
+  z <- which(data$fdr <= 0.05)
   data = data[z,]
 
   if(!(dim(data)[1] == 0)){
@@ -248,6 +257,14 @@ adjusted = llply(cancers, adjustment)
 adjusted = ldply(adjusted, data.frame)
 adjusted = as.data.table(adjusted)
 adjusted = adjusted[order(fdr)]
+
+
+tested = as.data.table(table(high_lncs$canc))
+tested = tested[order(N)]
+pdf("dist_lncRNAs_tested.pdf", pointsize=10, width=9, height=9)
+g = ggbarplot(tested, "V1", "N", label = TRUE, fill = "V1", palette= mypal, xlab= "Cancer Type", ylab = "Number of lncRNAs Tested for Survival Association")
+ggpar(g, legend="none", yticks.by=5, xtickslab.rt = 55)
+dev.off()
 
 #results_cox <- results_cox[order(fdr)]
 #write.table(results_cox, file="results_coxAug28_median5fpkmMin.txt",sep=";", quote=F, row.names=F)
@@ -274,7 +291,7 @@ write.table(adjusted, file="lncRNAs_sig_FDR_0.1_Nov23.txt", sep=";", quote=F, ro
 ##Full - order plots by decreasing pvalue 
 ##+++++++++++++++++++++++++++++
 
-pdf("survival_results_usingMean_medGreatThan5_lncRNAs_Nov23.pdf", pointsize=6, width=9, height=8)
+pdf("survival_results_usingMean_medGreatThan5_lncRNAs_Nov30.pdf", pointsize=6, width=9, height=8)
 require(gridExtra)
 
 for(i in 1:nrow(adjusted)){
@@ -289,7 +306,7 @@ for(i in 1:nrow(adjusted)){
   df$median <- ""
   #median2 <- quantile(as.numeric(df[,1]), 0.5)
   #median2 <- median(df[,1])
-  median2 = mean(df[,1])
+  median2 = median(df[,1])
   for(y in 1:nrow(df)){
     genexp <- df[y,1]
     if(genexp >= median2){
@@ -307,7 +324,7 @@ for(i in 1:nrow(adjusted)){
   g <- ggboxplot(df, x= "median", y="Gene", palette=mypal[c(4,1)], order=c("0", "1"), fill = "median",  add = "jitter")
   g <- g + stat_compare_means()
   g <- ggpar(g, font.legend = c(10, "plain", "black")) 
-  g <- g + labs(title = title, y="log1p(FPKM)", x="Mean") + 
+  g <- g + labs(title = title, y="log1p(FPKM)", x="Median") + 
       theme(plot.title = element_text(hjust = 0.5))
       print(g)
 

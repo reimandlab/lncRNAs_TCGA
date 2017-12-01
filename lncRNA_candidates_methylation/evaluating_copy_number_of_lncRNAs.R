@@ -16,6 +16,9 @@ library(stringr)
 #++++++++++++++++++++++++++++++++++++++++
 ov_pats = fread("ovarianPatientsRNAseqPCAWGn=70.txt")
 
+liv_pats = fread("485_patient_IDs_top5CancersPCAWG.txt")
+liv_pats = filter(liv_pats, canc == "Liver Hepatocellular carcinoma")
+
 ##which lncRNAs are covered by probes 
 #UCSC gene info
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
@@ -57,6 +60,8 @@ pcg_rna <- pcg_rna[,-(which(colnames(pcg_rna) %in% dups))]
 #Clinical file - available only for 485/497 patients 
 clin_pats <- readRDS("Jan26_PCAWG_clinical")
 z <- which(clin_pats$icgc_donor_id %in% ov_pats$V2)
+#z <- which(clin_pats$icgc_donor_id %in% liv_pats$patient)
+
 clin_pats <- clin_pats[z,]
 
 lnc_rna <- lnc_rna[which(rownames(lnc_rna) %in% clin_pats$icgc_donor_id),] 
@@ -100,10 +105,11 @@ maf$country[which(maf$patient %in% aus)] = "AUS"
 maf = maf[,-1]
 
 colnames(maf) = c("Hugo", "Chr", "Start", "End", "Strand", "Variant_Classification", "Variant_Type", "Reference_allele", "Reference_allele2", "alt_allele", "dbSNP_RS", "gc_content",
-	"Project_Code", "Donor_ID", "country")
+	"Project_Code", "Donor_ID")
 
 #copy number data for ovarian patients from JR's file obtained on October 30th 
 cna = readRDS("ovarianPatients_CNA_data.rds") 
+#cna = readRDS("liverPatients_CNA_data.rds")
 
 ###CNA figure out how segments match to gene 
 segments = rownames(cna) 
@@ -144,10 +150,18 @@ g = function(row){
 	return(gg)
 }
 gene$ensg = apply(gene, 1, g)
-z <- which(gene$ensg %in% ucsc$hg19.ensGene.name2)
+z <- which(gene[,74] %in% ucsc$hg19.ensemblToGeneName.value)
+cna = gene[z,]
+#cna = cna[1,]
 lncwCNA = gene[z,]
+lncwCNA = lncwCNA[1,]
 
-rownames(lncwCNA) = lncwCNA$ensg
+rownames(cna) = lncwCNA[1,74]
+cna = cna[,-c(1:2,86:93)]
+lncwCNA = cna #liver cancer
+
+
+rownames(lncwCNA) = rownames(cna)
 lncwCNA = lncwCNA[,-(c(1:2, 69:76))]
 
 ###add patient info - expression status-----------------------------------------------------
@@ -169,6 +183,20 @@ lncwCNA = as.data.frame(lncwCNA)
 lncwCNA$patient = rownames(lncwCNA)
 lncwCNA$CNA_GS1 = as.numeric(lncwCNA$CNA_GS1)
 
+pdf("GS1_ovary_Dec1.pdf", width=9, height=8)
+ggplot(lncwCNA, aes(CNA_GS1, fill = Expression_GS1)) +
+  geom_histogram(bins=7) + theme_light(base_size = 22)
+dev.off()
+
+
+
+#barplot
+pdf("GS1-251I9.4_barplot_Dec1.pdf", width=9, height=8)
+g = gghistogram(lncwCNA, x = "CNA_GS1",
+  fill = "Expression_GS1", color = "Expression_GS1", palette = "mypal", add = "median", bins = 7, alpha=0.35)
+ggpar(g, ggtheme = theme_minimal(), , font.tickslab = c(15,"plain", "black"), xticks.by=1)
+dev.off()
+
 pdf("GS1-251I9.4_Boxplot_CNA_expressionOct31.pdf", width=9, height=8)
 g  = ggboxplot(lncwCNA, x="Expression_GS1", y="CNA_GS1", add="jitter", palette=mypal[c(2,1)], col="Expression_GS1", title="GS1-251I9.4 Expression vs CNA in 66 Ovarian Cancer Patients")
 g + stat_compare_means(method = "t.test")
@@ -177,6 +205,54 @@ dev.off()
 pdf("GS1-251I9.4_Boxplot_CNA_expressionOct31Wilcoxon.pdf", width=9, height=8)
 g  = ggboxplot(lncwCNA, x="Expression_GS1", y="CNA_GS1", add="median", palette=mypal[c(2,1)], col="Expression_GS1", title="GS1-251I9.4 Expression vs CNA in 66 Ovarian Cancer Patients")
 g + stat_compare_means()
+dev.off()
+
+
+###add patient info - expression status LIVER NEAT1--------------------------------------------------
+exp = c(1:83)
+names(exp) = colnames(lncwCNA)[1:83]
+
+neat1 = lnc_rna[,c(which(colnames(lnc_rna) %in% "NEAT1"), 5608:5609)]
+
+for(i in 1:83){
+	pat = colnames(lncwCNA)[i]
+	z <- which(neat1$patient %in% pat)
+	if(!(length(z)==0)){
+		exp[i] = neat1$NEAT1[z]
+	}
+}
+
+lncwCNA = rbind(lncwCNA, exp)
+lncwCNA = t(lncwCNA)
+colnames(lncwCNA) = c("CNA_NEAT1", "Expression_NEAT1")
+lncwCNA = as.data.frame(lncwCNA)
+lncwCNA$patient = rownames(lncwCNA)
+lncwCNA$CNA_NEAT1 = as.numeric(lncwCNA$CNA_NEAT1)
+lncwCNA$Expression_NEAT1 = as.numeric(lncwCNA$Expression_NEAT1)
+lncwCNA$Expression_NEAT1 = log1p(lncwCNA$Expression_NEAT1)
+median = median(log1p(neat1$NEAT1))
+
+lncwCNA$TAG_NEAT1[lncwCNA$Expression_NEAT1 >= median] = "High"
+lncwCNA$TAG_NEAT1[lncwCNA$Expression_NEAT1 < median] = "Low"
+
+
+pdf("NEAT1_liver_CNA_Dec1.pdf", width=9, height=8)
+g  = ggboxplot(lncwCNA, x="TAG_NEAT1", y="CNA_NEAT1", add="jitter", palette=mypal[c(2,1)], title="NEAT1 Expression vs CNA in 83 HCC Cancer Patients")
+g + stat_compare_means()
+dev.off()
+
+which(lncwCNA$CNA_NEAT1 == 9)
+lncwCNA = lncwCNA[-60,]
+
+#barplot
+g = gghistogram(lncwCNA, x = "CNA_NEAT1",
+  color = "TAG_NEAT1", palette = "mypal", add = "median", bins = 5)
+ggpar(g, ggtheme = theme_minimal(), , font.tickslab = c(15,"plain", "black"), xticks.by=1)
+dev.off()
+
+pdf("NEAT1_liver_Dec1.pdf", width=9, height=8)
+ggplot(lncwCNA, aes(CNA_NEAT1, fill = TAG_NEAT1)) +
+  geom_histogram(bins=5) + theme_light(base_size = 18)
 dev.off()
 
 

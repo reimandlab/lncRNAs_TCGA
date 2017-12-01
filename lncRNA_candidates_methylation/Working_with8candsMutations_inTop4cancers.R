@@ -92,7 +92,7 @@ genes_muts = llply(genes, get_mut_info)
 #lncRNA expressing patients? 
 #---------------------------------------------------------
 
-genes = genes[c(4, 8)]
+genes = genes[1]
 lnc_rna <- readRDS("5607_pcawg_lncRNAs_RNASeq_data.rds")
 lnc_rna <- as.data.frame(lnc_rna)
 lnc_rna$patient <- rownames(lnc_rna)
@@ -136,6 +136,15 @@ pdf("neat1MutationvsExpression_84Liver.pdf", width=9)
 g  = ggboxplot(lnc_rna, x="Neat1mut", y="NEAT1", add="jitter", palette=mypal[c(2,1)], col="Adormut", title="Neat1 expression versus mutation status in 84 Liver Patients")
 g + stat_compare_means()
 dev.off()
+
+#Compare expression 
+lnc_rna$NEAT1 = log1p(lnc_rna$NEAT1)
+
+pdf("neat1MutationvsExpression_84LiverDec1.pdf", width=9)
+g  = ggboxplot(lnc_rna, x="Neat1mut", y="NEAT1", add="jitter", palette=mypal[c(2,1)], col="Neat1mut", title="Neat1 expression versus mutation status in 84 Liver Patients")
+g + stat_compare_means()
+dev.off()
+
 
 #Compare expression 
 pdf("ADOR2AS1_MutationvsExpression_84Liver.pdf", width=9)

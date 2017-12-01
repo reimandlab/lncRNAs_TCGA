@@ -6,7 +6,7 @@
 #ovarian cancer patients, overlapping lncRNA regions 
 
 files = list.files(pattern= "x") #pattern of mini files 
-files = files[2:11517]
+files = files[3:11518]
 
 ###Load Libraries
 #+++++++++++++++++++++++++++++++++
@@ -21,6 +21,9 @@ canc_pats = filter(canc_pats, canc == "Liver Hepatocellular carcinoma")
 
 
 lnc_probes = read.table("cand_lincs_wMethylationProbes.txt")
+lnc_probes = as.data.table(lnc_probes)
+lnc_probes = filter(lnc_probes, V5 %in% "NEAT1")
+
 colnames(lnc_probes) = c("Chr_lnc", "start_lnc", "end_lnc", "ensg", "hugo", "type", 
 	"transcript", "chr_probe", "start_probe", "end_probe", "probe")
 

@@ -47,7 +47,7 @@ mypal = pal_npg("nrc", alpha = 0.7)(10)
 #allCands <- fread("7tier1_35tier2_lncRNA_candidates_August28th.txt", sep=";")
 #List of canddidates and cox results
 allCands <- fread("lncRNAs_sig_FDR_0.1_Nov23.txt")
-allCands = filter(allCands, gene %in% c("NEAT1", "RP11-622A1.2", "GS1-251I9.4", "ZNF503-AS2", "AC009336.24"))
+allCands = filter(allCands, gene %in% c("NEAT1", "GS1-251I9.4"))
 
 #UCSC gene info
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
@@ -145,6 +145,8 @@ all[,1:(dim(all)[2]-5)] <- log1p(all[,1:(dim(all)[2]-5)])
 tissues <- unique(all$canc)
 tissues <- tissues[c(4,6)]
 
+#3. Want ranking seperatley for high lncRNA expression group versus low lncRNA expression group
+
 #Function 1
 #input: tissue 
 #output: list of dataframes by tissue
@@ -196,6 +198,34 @@ all_cancers_scored <- as.data.frame(all_cancers_scored)
 #just need to subset to genes interested in plotting 
 
 #write file so can use with GTEX 
+neat1_med = 3.150499
+GS1_med = 1.859112
+
+all_cancers_scored$canc = as.character(all_cancers_scored$canc)
+
+for(i in 1:nrow(all_cancers_scored)){
+	canc = all_cancers_scored$canc[i]
+	if(canc == "Ovary"){
+		e = all_cancers_scored$exp[i]
+		if(e >= GS1_med){
+			all_cancers_scored$data[i] = "High"
+		}
+		if(e < GS1_med){
+			all_cancers_scored$data[i] = "Low"
+		}
+	}
+	if(canc == "Liver"){
+		e = all_cancers_scored$exp[i]
+		if(e >= neat1_med){
+			all_cancers_scored$data[i] = "High"
+		}
+		if(e < neat1_med){
+			all_cancers_scored$data[i] = "Low"
+		}
+	}
+}
+
+
 saveRDS(all_cancers_scored, file="OVARY_LIVER_cancers_scored.rds")
 
 #save list of genes in total used to also compare with GTEX 

@@ -277,6 +277,8 @@ diffE <- function(d){
     #t set cutoff
     #t = filter(t, abs(logFC) >= 0.4)
 
+    t = t[1:500,]
+
     #generate volcano plot
     point <- quantile(as.numeric(-log10(t$P.Value)),0.95)
 
@@ -296,10 +298,11 @@ diffE <- function(d){
           #key=TRUE, symkey=FALSE, density.info="none", trace="none", cexRow=0.5, cexCol=0.5, keysize=1.05)
 	
 	# cluster on correlation
+
 	hc <- hclust(as.dist(1 - cor(t(heat))), method="ward.D2")
 	# draw a heatmap
-
-	heatmap.2(as.matrix(heat), col=greenred(100), ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6, Rowv=as.dendrogram(hc), trace="none", scale="row")
+	my_palette <- colorRampPalette(c("blue", "white", "orange"))(n = 100)
+	heatmap.2(as.matrix(heat), col=my_palette, ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6, Rowv=as.dendrogram(hc), trace="none", scale="row")
 
 	#pathway enrichment
 
