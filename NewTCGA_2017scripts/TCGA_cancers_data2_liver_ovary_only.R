@@ -18,8 +18,14 @@ source("source_file.R")
 
 #1. RNA data 
 rna = readRDS("lnc_rna_ovary_liver_plus_clinical.rds")
+rna = as.data.frame(rna)
 rna$patient = rownames(rna)
 rna = as.data.table(rna)
+
+pcg = readRDS("pcg_rna_ovary_liver.rds")
+pcg = as.data.frame(pcg)
+pcg$patient = rownames(pcg)
+pcg = as.data.table(pcg)
 
 #2. Clinical data
 clin = read.csv("all_clin_XML_tcgaSept2017.csv")
@@ -68,9 +74,12 @@ rna = as.data.table(rna)
 ###---------------------------------------------------------------
 
 liver = filter(rna, canc == "Liver hepatocellular carcinoma")
+pcg_liver = filter(pcg, pcg$patient %in% liver$patient)
 ovary = filter(rna, canc == "Ovarian serous cystadenocarcinoma")
+pcg_ovary = filter(pcg, pcg$patient %in% ovary$patient)
 
 datasets = list(liver, ovary)
+datasets2 = list(pcg_liver, pcg_ovary)
 
 #1. Remove any genes with 0 counts in all people
 check_low = function(df){
@@ -83,8 +92,14 @@ check_low = function(df){
 }
 
 datasets = llply(datasets, check_low)
+datasets2 = llply(datasets2, check_low)
+
 df = datasets[[1]] #liver
+pcg_df = datasets2[[1]]
+
 dfgenes = t(df[,1:(ncol(df)-5)])
+pcg_df = t(pcg_df[,1:50135])
+
 dfgenes = as.data.frame(dfgenes)
 dfgenes$mean = apply(dfgenes, 1, mean)
 dfgenes$gene = rownames(dfgenes)
@@ -136,6 +151,7 @@ df = datasets[[1]] #liver
 saveRDS(df, file="liver_lncRNA_data.rds")
 saveRDS(dfgenes, file="liver_lncRNA_transposed_data_additional.rds")
 
+saveRDS(pcg_df, file="liver_PCG_data.rds")
 
 #3. Plot histogram of counts/gene within each cancer type 
 make_histo = function(gene){

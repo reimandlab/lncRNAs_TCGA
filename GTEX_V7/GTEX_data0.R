@@ -11,7 +11,7 @@ source("source_file.R")
 ###---------------------------------------------------------------
 
 #1. Gene Reads
-gene_reads = fread("GTEx_Analysis_2016-01-15_v7_RNASeQCv1.1.8_gene_reads.gct")
+gene_reads = fread("GTEx_Analysis_2016-01-15_v7_RNASeQCv1.1.8_gene_tpm.gct")
 
 #2. Transcript expected count 
 #transcript = fread("GTEx_Analysis_2016-01-15_v7_RSEMv1.2.22_transcript_expected_count.txt")
@@ -78,6 +78,82 @@ saveRDS(lncRNA, file="lncRNAs_GTEX_V7.rds")
 
 pcg = gene_reads[-z,]
 saveRDS(pcg, file = "PCGs_GTEX_V7.rds")
+
+###---------------------------------------------------------------
+###Process Data
+###---------------------------------------------------------------
+
+#add mean tpm to each gene and sort 
+gene_reads = as.data.frame(gene_reads)
+gene_reads$mean = apply(gene_reads[,3:177], 1, mean)
+gene_reads$type[gene_reads$Name %in% lncRNA$Name] = "lncRNA"
+
+pro = ucsc[ucsc$hg19.ensemblSource.source == "protein_coding",]
+gene_reads$type[gene_reads$Name %in% pro$CAT_geneID] = "pcg"
+gene_reads = as.data.table(gene_reads)
+
+gene_reads = filter(gene_reads, type %in% c("lncRNA", "pcg"))
+gene_reads = as.data.table(gene_reads)
+
+gene_reads = gene_reads[order(mean)]
+
+tcga_genes = fread("genes_used_TCGA.txt")
+gene_reads = filter(gene_reads, Name %in% tcga_genes$x)
+gene_reads = as.data.table(gene_reads)
+genes_gtex = gene_reads$Name
+write.table(genes_gtex, file = "genes_used_GTEx.txt")
+
+###---------------------------------------------------------------
+###Add scores 
+###---------------------------------------------------------------
+
+get_score = function(patient){
+	z = which(colnames(gene_reads) %in% patient)
+	z =  c(z, 1:2, 178:179)
+	data = gene_reads[,..z]
+	data = as.data.frame(data)
+	data$order = data[,1]
+	data = as.data.table(data)
+	data = data[order(order)]
+	data$rank = 1:nrow(data)
+	data$score = data$rank/nrow(data)
+	data$patient = patient
+	data$canc = "liver_gtex"
+	data = as.data.frame(data)
+	data = data[,-1]
+	return(data)
+}
+
+patients = as.list(colnames(gene_reads)[3:(ncol(gene_reads)-2)])
+ranked_genes = llply(patients, get_score)
+ranked_genes = ldply(ranked_genes, data.frame)
+
+saveRDS(ranked_genes, file="GTEX_liver_ranked_genes_Dec14.rds")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

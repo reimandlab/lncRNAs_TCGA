@@ -24,11 +24,10 @@ rownames(rna) = rna$gene
 rna$gene = NULL
 rna = t(rna)
 
-#--pcg
-#pcg = readRDS("54564_PCGS4cancers_TCGAnew.rds")
-#rownames(pcg) = pcg$gene
-#pcg$gene = NULL
-#pcg = t(pcg)
+pcg = readRDS("54564_lncLiverOvariancancers_TCGAnew.rds")
+rownames(pcg) = pcg$gene
+pcg$gene = NULL
+pcg = t(pcg)
 
 #2. Clinical data
 clin = read.csv("all_clin_XML_tcgaSept2017.csv")
@@ -73,18 +72,22 @@ change = function(rowname){
 }
 
 rownames(rna) = sapply(rownames(rna), change)
+rownames(pcg) = sapply(rownames(pcg), change)
 
 #remove thos patients already used in PCAWG
 ids_remove = unique(clin$bcr_patient_barcode[which(clin$bcr_patient_barcode %in% ids_remove$bcr_patient_barcode)]) #600 to remove 
 z <- which(rownames(rna) %in% ids_remove) #666 PCAWG samples in this TCGA RNA file
 rna = rna[-z,]
 
+z <- which(rownames(pcg) %in% ids_remove) #666 PCAWG samples in this TCGA RNA file
+pcg = pcg[-z,]
+
 #Keep only those patients with both RNA-Seq AND clinical data
 z <- which(rownames(rna) %in% clin$bcr_patient_barcode)
 rna = rna[z,] #all have clinical data - 7387 patients 
 
-#z <- which(colnames(rna) %in% fantom$CAT_geneID)
-#rna = rna[,z]
+z <- which(rownames(pcg) %in% clin$bcr_patient_barcode)
+pcg = pcg[z,] #all have clinical data - 7387 patients 
 
 #Add survival info to rna file
 rna = as.data.frame(rna)
@@ -115,5 +118,6 @@ for(i in 1:dim(rna)[1]){
 }
 
 saveRDS(rna, "lnc_rna_ovary_liver_plus_clinical.rds")
+saveRDS(pcg, "pcg_rna_ovary_liver.rds")
 
 
