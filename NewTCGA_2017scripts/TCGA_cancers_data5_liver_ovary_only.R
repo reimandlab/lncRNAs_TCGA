@@ -192,7 +192,6 @@ for(i in 1:nrow(survival_results)){
           font.tickslab = c(14, "plain", "black"),
           font.legend = 12,
           risk.table.fontsize = 5, 
-          main = paste(gene, df$canc[1]),       
           legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
           data = df,      # data used to fit survival curves. 
           risk.table = TRUE,       # show risk table.
