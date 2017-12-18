@@ -276,19 +276,19 @@ sig_data = sig_data[order(change_median)]
 
 #1. Divide into high tumour greater than gtex
 high_tum_great = as.data.table(filter(sig_data, group == "high", change_median < 0))
-high_tum_great$type = "high_tum_great"
+high_tum_great$type_test = "high_tum_great"
 
 #low tumour greater than gtex
 low_tum_great = as.data.table(filter(sig_data, group == "low", change_median < 0))
-low_tum_great$type = "low_tum_great"
+low_tum_great$type_test = "low_tum_great"
 
 #high tumour lower than gtex
 high_tum_lower = as.data.table(filter(sig_data, group == "high", change_median > 0))
-high_tum_lower$type = "high_tum_lower"
+high_tum_lower$type_test = "high_tum_lower"
 
 #low tumour lower tha gtex 
 low_tum_lower = as.data.table(filter(sig_data, group == "low", change_median > 0))
-low_tum_lower$type = "low_tum_lower"
+low_tum_lower$type_test = "low_tum_lower"
 
 #save as a list of dataframes 
 #within each one conduct survival analysis 
