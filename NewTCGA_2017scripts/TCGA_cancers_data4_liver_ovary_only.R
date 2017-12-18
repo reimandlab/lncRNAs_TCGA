@@ -258,7 +258,7 @@ make_boxplots = function(g){
 	data = filter(filtered_data, Name == g)
 	my_comparisons <- list( c("GTEx", "Low"), c("Low", "High"), c("GTEx", "High") )
 	name = fantom$CAT_geneName[which(fantom$CAT_geneID %in% g)]
-	f = ggboxplot(data, title=paste(name, "Expression"), x="median", y="score", color="median", fill="median", palette=mypal[c(3,4,1)], ggtheme=theme_bw(), order=c("GTEx", "Low", "High"), add="jitter")
+	f = ggboxplot(data, title=paste(name, "Expression"), x="quantile3", y="score", color="quantile3", fill="quantile3", palette=mypal[c(3,4,1)], ggtheme=theme_bw(), order=c("GTEx", "Low", "High"), add="jitter")
 	f = ggpar(f, ylab="Score", x.text.angle=65, font.tickslab=c(14, "plain", "black"), legend="right", 
 		font.x = c(18, "plain", "black"),
    		font.y = c(18, "plain", "black"))
@@ -267,23 +267,37 @@ make_boxplots = function(g){
 	return(f)
 }
 
-pdf("new_Diff_exp_genes_normal_liver_tumour.pdf")
+pdf("new_QUANTIL3_Diff_exp_genes_normal_liver_tumour.pdf")
 llply(genes, make_boxplots, .progress = "text")
 dev.off()
 
 #Order by greatest differences in means 
 sig_data = sig_data[order(change_median)]
-#Divide into high tumour greater than gtex
+
+#1. Divide into high tumour greater than gtex
+high_tum_great = as.data.table(filter(sig_data, group == "high", change_median < 0))
+high_tum_great$type = "high_tum_great"
+
 #low tumour greater than gtex
+low_tum_great = as.data.table(filter(sig_data, group == "low", change_median < 0))
+low_tum_great$type = "low_tum_great"
+
 #high tumour lower than gtex
+high_tum_lower = as.data.table(filter(sig_data, group == "high", change_median > 0))
+high_tum_lower$type = "high_tum_lower"
+
 #low tumour lower tha gtex 
+low_tum_lower = as.data.table(filter(sig_data, group == "low", change_median > 0))
+low_tum_lower$type = "low_tum_lower"
 
+#save as a list of dataframes 
+#within each one conduct survival analysis 
 
+compiled_data = list(high_tum_great, low_tum_great, high_tum_lower, low_tum_lower)
 
+saveRDS(compiled_data, file="compiled_data_lncRNAs_highlow_gtex.rds")
 
-
-
-
+saveRDS(filtered_data, file="filtered_data_with_TAGS.rds")
 
 
 
