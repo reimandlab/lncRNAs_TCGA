@@ -106,7 +106,7 @@ for(i in 1:nrow(cancers_keep)){
 }
 
 #Keep only tumours for now, save normal for later
-cancers_keep = cancers_keep[cancers_keep$source == "01", ]
+cancers_keep = cancers_keep[cancers_keep$source == "11", ]
 
 clean_tcga_id = function(row){
 	id = row[[1]]
@@ -141,7 +141,7 @@ rna = rna[,c(z,9247)]
 #4. Keep only lncRNA genes 
 z <- which(rna$gene %in% fantom$CAT_geneID)
 lnc_rna = rna[z,]
-saveRDS(lnc_rna, "5919_lncs4cancers_TCGAnew.rds")
+saveRDS(lnc_rna, "5919_lncs4matched_normal_tissues_TCGAnew.rds")
 
 #everything else (includes PCGS, other lncRNAs not in FANTOM)
 pcg_rna = rna[-z,]

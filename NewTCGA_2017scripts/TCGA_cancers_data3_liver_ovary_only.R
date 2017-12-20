@@ -71,6 +71,7 @@ genes <- fread("geneLengths.txt")
 genes[,1] <- apply(genes[,1:2], 1, extract3)
 genes = as.data.frame(genes)
 rownames(genes) = genes$gene_id
+genes$aggregate_length = genes$aggregate_length/1000
 
 rownames(dfgenes_liv) = dfgenes_liv$gene
 counts1 = dfgenes_liv[,1:319]
@@ -129,7 +130,7 @@ patients = as.list(colnames(tpms)[1:(ncol(tpms)-3)])
 ranked_genes = llply(patients, get_score)
 ranked_genes = ldply(ranked_genes, data.frame)
 
-saveRDS(ranked_genes, file="TCGA_liver_ranked_genes_Dec14.rds")
+saveRDS(ranked_genes, file="TCGA_liver_ranked_genes_Dec19.rds")
 
 
 

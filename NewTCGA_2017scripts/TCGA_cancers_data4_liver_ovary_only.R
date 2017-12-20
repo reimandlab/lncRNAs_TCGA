@@ -15,7 +15,7 @@ source("source_file.R")
 ###Data
 ###---------------------------------------------------------------
 
-liver_tum = readRDS("TCGA_liver_ranked_genes_Dec14.rds")
+liver_tum = readRDS("TCGA_liver_ranked_genes_Dec19.rds")
 liver_norm = readRDS("GTEX_liver_ranked_genes_Dec14.rds")
 
 #subset liver_tum to only genes in liver_norm 
@@ -58,6 +58,7 @@ genes = as.list(unique(all_data$Name))
 add_exp_tag = function(gene){
 	data = subset(all_data, all_data$Name == gene)
 	#subset to tcga 
+	data$order = log1p(data$order)
 	data_t = subset(data, canc == "liver_tcga")
 	mean = mean(data_t$order)
 	median = median(data_t$order)
@@ -92,7 +93,7 @@ add_exp_tag = function(gene){
 }
 
 filters = llply(genes, add_exp_tag, .progress = "text")
-filters = Filter(Negate(is.null), filters) #2930 remain out of 5376, need to go back to them and check why they were removed
+filters = Filter(Negate(is.null), filters) #3408 remain out of 5376, need to go back to them and check why they were removed
 #most likely because they had very low read TPMs 
 
 #4. For the genes that are seperable into low and high groups 
@@ -101,6 +102,7 @@ filters = Filter(Negate(is.null), filters) #2930 remain out of 5376, need to go 
 add_exp_tag_to_all_data = function(gene){
 	data = subset(all_data, all_data$Name == gene)
 	#subset to tcga 
+	data$order = log1p(data$order)
 	data_t = subset(data, canc == "liver_tcga")
 	mean = mean(data_t$order)
 	median = median(data_t$order)
@@ -246,7 +248,7 @@ sig_data$fdr_quantile1_pval = p.adjust(sig_data$pval_quantile1, method="fdr")
 sig_data$fdr_quantile3_pval = p.adjust(sig_data$pval_quantile3, method="fdr")
 
 sig_data = as.data.table(sig_data)
-sig_data = filter(sig_data, fdr_mean_pval <=0.01, fdr_median_pval <=0.01, fdr_quantile1_pval <=0.01, fdr_quantile3_pval <=0.01)
+sig_data = filter(sig_data, fdr_mean_pval <=0.005, fdr_median_pval <=0.005, fdr_quantile1_pval <=0.005, fdr_quantile3_pval <=0.005)
 #all still significant 
 sig_data = as.data.table(sig_data)
 
@@ -258,7 +260,7 @@ make_boxplots = function(g){
 	data = filter(filtered_data, Name == g)
 	my_comparisons <- list( c("GTEx", "Low"), c("Low", "High"), c("GTEx", "High") )
 	name = fantom$CAT_geneName[which(fantom$CAT_geneID %in% g)]
-	f = ggboxplot(data, title=paste(name, "Expression"), x="quantile3", y="score", color="quantile3", fill="quantile3", palette=mypal[c(3,4,1)], ggtheme=theme_bw(), order=c("GTEx", "Low", "High"), add="jitter")
+	f = ggboxplot(data, title=paste(name, "Expression"), x="median", y="score", color="median", fill="median", palette=mypal[c(3,4,1)], ggtheme=theme_bw(), order=c("GTEx", "Low", "High"), add="jitter")
 	f = ggpar(f, ylab="Score", x.text.angle=65, font.tickslab=c(14, "plain", "black"), legend="right", 
 		font.x = c(18, "plain", "black"),
    		font.y = c(18, "plain", "black"))
@@ -267,7 +269,7 @@ make_boxplots = function(g){
 	return(f)
 }
 
-pdf("new_QUANTIL3_Diff_exp_genes_normal_liver_tumour.pdf")
+pdf("new_median_Diff_exp_genes_normal_liver_tumour.pdf")
 llply(genes, make_boxplots, .progress = "text")
 dev.off()
 

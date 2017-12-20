@@ -18,7 +18,7 @@ source("source_file.R")
 compiled_data = readRDS("compiled_data_lncRNAs_highlow_gtex.rds")
 clin_exp = readRDS("lnc_rna_ovary_liver_plus_clinical.rds")
 clin_exp$patient = rownames(clin_exp)
-clin_exp = clin_exp[,c(5920:5924)]
+clin_exp = clin_exp[,c(5920:5923)]
 clin_exp = subset(clin_exp, canc == "Liver hepatocellular carcinoma")
 clin_exp$time = as.numeric(clin_exp$time)
 z = which(is.na(clin_exp$time))
@@ -42,6 +42,7 @@ fantom = as.data.table(fantom)
 #filtered data
 filtered_data = readRDS("filtered_data_with_TAGS.rds")
 filtered_data = filter(filtered_data, canc == "liver_tcga")
+clin_exp$patient = rownames(clin_exp)
 filtered_data = merge(filtered_data, clin_exp, by = "patient")
 colnames(filtered_data)[2] = "gene"
 
@@ -68,7 +69,7 @@ calc = function(genee){
 		results_cox <- as.data.frame(matrix(ncol=5)) ; colnames(results_cox) <- c("gene", "coef", "HR", "pval", "type_predictor")
 		dat = as.data.table(dat)
 		dat = filter(dat, gene %in% genee)
-		dat$status[dat$status=="Alive"] <- 0
+		    dat$status[dat$status=="Alive"] <- 0
         dat$status[dat$status=="Dead"] <- 1
         dat$status <- as.numeric(dat$status)
         dat$time <- as.numeric(dat$time)
@@ -119,8 +120,6 @@ calc_survival = function(dat){
 }
 
 survival_results = as.data.frame(matrix(ncol=6)) ; colnames(survival_results) <- c("gene", "coef", "HR", "pval", "type_predictor", "fdr")
-
-colnames(survival_results) = colnames(genes_test[[1]])
 for(i in 1:length(genes_test)){
 	dat = genes_test[[i]]
 	new = calc_survival(dat)
@@ -169,7 +168,7 @@ for(i in 1:nrow(survival_results)){
  	
 	genex = survival_results$gene[i]
 	type = survival_results$type_predictor[i]
-	#if(!(type == "logged_tpm")){
+	if(!(type == "logged_tpm")){
 		df = filter(filtered_data, gene == genex)
 
  	 	#cox
@@ -183,7 +182,7 @@ for(i in 1:nrow(survival_results)){
           #plot survival plot
           fit <- survfit(Surv(time, status) ~ median, data = df)
           s <- ggsurvplot(
-          title = paste(genexname, "Survival Curve Split by Median"),
+          title = paste(genexname, type, "Survival Curve Split"),
           fit, 
           surv.median.line = "hv",
           font.main = c(16, "bold", "black"),
@@ -210,13 +209,13 @@ for(i in 1:nrow(survival_results)){
                             # in legend of risk table
           )
           print(s)  
-      #}
+      }
 }
 
 
 dev.off()
 
-saveRDS(survival_results, file="survival_results_DEC15_liver_TCGA.rds")
+saveRDS(survival_results, file="survival_results_DEC19_liver_TCGA.rds")
 
 
 
