@@ -22,8 +22,11 @@ library(scater)
 #1. lncRNA expression in different cancers 
 rna = readRDS("5919_lncRNAs_tcga_all_cancers_Dec20_wclinical_data.rds")
 pcg = readRDS("19438_lncRNAs_tcga_all_cancers_Dec20_wclinical_data.rds")
+
+lncrnas = colnames(rna)[1:(ncol(rna)-5)]
+pcgs = colnames(pcg)[1:(ncol(pcg)-5)]
+
 rna$patient = rownames(rna) ; pcg$patient = rownames(pcg)
-rna$type = "lncrna" ; pcg$type = "pcg"
 rna = merge(rna, pcg, by = c("patient", "canc", "time", "status", "sex", "patient"))
 
 #matched normal 
@@ -62,7 +65,7 @@ rna = rna[-z,]
 cancers = as.list(unique(rna$canc)) #18 cancers wtih at least 90 patients in each cohort
 
 #3. Remove any lncRNAs that are not expressed in any of the patients 
-sums = apply(rna[,6:(ncol(rna)-1)], 2, sum) #134 with 0 expression in ALL patients 
+sums = apply(rna[,6:ncol(rna)], 2, sum) #134 with 0 expression in ALL patients 
 zeroes = names(sums[which(sums ==0)]) #what are they?
 #in pcawg 
 z <- which(colnames(rna) %in% zeroes)
@@ -73,7 +76,7 @@ rna = as.data.table(rna)
 
 get_mean_variance = function(cancer){
 	canc_data = rna[canc == cancer]
-	gene_data = canc_data[,6:(ncol(rna)-1)]
+	gene_data = canc_data[,6:ncol(rna)]
 	#1. remove any genes that have 0 counts within cancer
 	sums = apply(gene_data, 2, sum) #134 with 0 expression in ALL patients 
 	zeroes = names(sums[which(sums ==0)]) #what are they?
@@ -89,9 +92,16 @@ get_mean_variance = function(cancer){
 	vars = as.data.frame(apply(gene_data, 2, sd)) ; colnames(vars) = c("sd")
 	means$gene = rownames(means) ; vars$gene = rownames(vars)
 	gene_overview = merge(means, vars, by = "gene")
-	gene_overview = merge(gene_overview, fantom, by ="gene")
+	#gene_overview = merge(gene_overview, fantom, by ="gene")
 	gene_overview = as.data.frame(gene_overview)
 	gene_overview$canc = cancer
+	gene_overview$type = ""
+	z <- which(gene_overview$gene %in% lncrnas) ; gene_overview$type[z] = "lncRNA"
+	z <- which(gene_overview$gene %in% pcgs) ; gene_overview$type[z] = "pcgs"
+	z <- which(gene_overview$type == "")
+	if(!(length(z)==0)){
+		gene_overview = gene_overview[-z,]
+	}
 	gene_overview = as.data.table(gene_overview)
 	gene_overview = gene_overview[order(mean)]
 	return(gene_overview)
@@ -104,17 +114,17 @@ gene_overviews = llply(cancers, get_mean_variance, .progress="text")
 make_density_plot = function(gene_data){
 	#gene_data$mean = log2(gene_data$mean)
 	#gene_data$var = log2(gene_data$var)
-	sp = ggplot(gene_data, aes(x=mean, y=sd)) + geom_point(alpha = 0.2, aes(colour = factor(functional_evidence)))
+	sp = ggplot(gene_data, aes(x=mean, y=sd)) + geom_point(alpha = 0.3, aes(colour = factor(type)))
 	sp = sp + geom_density_2d() + theme_minimal() + 
-	labs(title= paste(gene_data$canc[1], "Mean vs SD", nrow(gene_data), "lncRNAs"),
+	labs(title= paste(gene_data$canc[1], "Mean vs SD", nrow(gene_data), "Total Genes"),
        x="mean log1p(FPKM)", y = "SD log1p(FPKM)")
 	return(sp)
 }
 
 plots = llply(gene_overviews, make_density_plot, .progress="text")
 
-ml <- marrangeGrob(plots, nrow=2, ncol=2)
-ggsave("w_colour_logged1p_allexpression_first_mean_SD_plots_lncRNAS_TCGA.pdf", ml, width = 20, height = 15)
+ml <- marrangeGrob(plots, nrow=2, ncol=1)
+ggsave("PCGS_vs_lncRNAs_logged1p_allexpression_first_mean_SD_plots_lncRNAS_TCGA.pdf", ml, width = 20, height = 15)
 dev.off()
 
 #6. 
