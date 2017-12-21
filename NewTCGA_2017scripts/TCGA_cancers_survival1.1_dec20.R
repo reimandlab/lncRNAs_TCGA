@@ -87,7 +87,7 @@ get_mean_variance = function(cancer){
 		gene_data = gene_data[,-z]
 	}
 	#2. calculate mean variance for each gene and save as a new data table 
-	gene_data = log1p(gene_data)
+	#gene_data = log1p(gene_data)
 	means = as.data.frame(apply(gene_data, 2, mean)); colnames(means) = c("mean")
 	vars = as.data.frame(apply(gene_data, 2, sd)) ; colnames(vars) = c("sd")
 	means$gene = rownames(means) ; vars$gene = rownames(vars)
@@ -112,8 +112,8 @@ gene_overviews = llply(cancers, get_mean_variance, .progress="text")
 #5. Make density plots for each cancer type 
 
 make_density_plot = function(gene_data){
-	#gene_data$mean = log2(gene_data$mean)
-	#gene_data$var = log2(gene_data$var)
+	gene_data$mean = log2(gene_data$mean)
+	gene_data$sd = log2(gene_data$sd)
 	sp = ggplot(gene_data, aes(x=mean, y=sd)) + geom_point(alpha = 0.3, aes(colour = factor(type)))
 	sp = sp + geom_density_2d() + theme_minimal() + 
 	labs(title= paste(gene_data$canc[1], "Mean vs SD", nrow(gene_data), "Total Genes"),
@@ -124,7 +124,7 @@ make_density_plot = function(gene_data){
 plots = llply(gene_overviews, make_density_plot, .progress="text")
 
 ml <- marrangeGrob(plots, nrow=2, ncol=1)
-ggsave("PCGS_vs_lncRNAs_logged1p_allexpression_first_mean_SD_plots_lncRNAS_TCGA.pdf", ml, width = 20, height = 15)
+ggsave("PCGS_vs_lncRNAs_mean_SD_plots_lncRNAS_TCGA.pdf", ml, width = 20, height = 15)
 dev.off()
 
 #6. 
