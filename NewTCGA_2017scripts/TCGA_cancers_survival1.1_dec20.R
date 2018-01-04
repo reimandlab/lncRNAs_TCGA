@@ -12,8 +12,6 @@
 ###---------------------------------------------------------------
 
 source("source_file.R")
-library(stringr)
-library(scater)
 
 ###---------------------------------------------------------------
 ###Load Data 
@@ -87,7 +85,7 @@ get_mean_variance = function(cancer){
 		gene_data = gene_data[,-z]
 	}
 	#2. calculate mean variance for each gene and save as a new data table 
-	#gene_data = log1p(gene_data)
+	gene_data = log1p(gene_data)
 	means = as.data.frame(apply(gene_data, 2, mean)); colnames(means) = c("mean")
 	vars = as.data.frame(apply(gene_data, 2, sd)) ; colnames(vars) = c("sd")
 	means$gene = rownames(means) ; vars$gene = rownames(vars)
@@ -107,10 +105,25 @@ get_mean_variance = function(cancer){
 	return(gene_overview)
 }
 
+cancers = cancers[c(1,7,14)]
 gene_overviews = llply(cancers, get_mean_variance, .progress="text")
+#top 5 cancers
 
-#5. Make density plots for each cancer type 
+#5. Calculate how many lncRNA fall within each mean/variance bin 
+#10*10 matrix
 
+make_bins = function(dt){
+	
+}
+
+
+
+
+
+
+
+
+#6. Make density plots for each cancer type 
 make_density_plot = function(gene_data){
 	gene_data$mean = log2(gene_data$mean)
 	gene_data$sd = log2(gene_data$sd)

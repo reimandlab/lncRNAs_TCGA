@@ -44,7 +44,8 @@ z <- which(fantom$CAT_geneName %in% rm)
 fantom <- fantom[-z,]
 
 #4. List of lncRNA survival associated candidates 
-cands = fread("7tier1_35tier2_lncRNA_candidates_August28th.txt")
+cands = read.csv("42_original_candidates.csv", header=F)
+colnames(cands) = c("lncRNA", "cancer")
 
 #5. TCGA ID cancer type conversion 
 canc_conversion = readRDS("tcga_id_cancer_type_conversion.txt")
