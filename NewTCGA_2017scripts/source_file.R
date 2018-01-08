@@ -29,9 +29,10 @@ library(tidyr)
 library(cowplot)
 library(broom)
 library(tidyverse)
-library(parallel)
 library(limma)
 library(stringr)
+library(scater)
+
 
 mypal = pal_npg("nrc", alpha = 0.7)(10)
 
