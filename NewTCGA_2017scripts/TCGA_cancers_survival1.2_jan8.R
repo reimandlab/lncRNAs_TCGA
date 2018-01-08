@@ -253,45 +253,57 @@ analyze_cands = function(dt){
 	densitymean = ggdensity(dt2, x = "mean", fill = "lightgray", add = "mean")
 	densitysd = ggdensity(dt2, x = "sd", fill = "lightgray", add = "mean")
 
-	file = paste(dt2$canc[1], "remaining_75_mean_variance.pdf", sep="_")
+	file = paste(dt$canc[1], "remaining_75_mean_variance.pdf", sep="_")
 	pdf(file, width = 10)
 	plot_grid(boxplotmean, boxplotsd, densitymean, densitysd, labels = c("A", "B", "C", "D"), align = "v", ncol=2)
-	dev.off()
 
 	outlier_genes = outliers$gene
-	outlier_genes = llply(outlier_genes, surv_test, .progress="text")
-	outlier_surv_results = ldply(outlier_genes, rbind)
-	outlier_surv_results$fdr = p.adjust(outlier_surv_results$pval, method="fdr")
-	outlier_surv_results$group = "outliers"
+	
+	dt$meanbin = ""
+	dt$sdbin = ""
 
-	#change which candidates we looking at 
-	high_high = subset(dt, meanper >=0.5 & sdper >=0.5)
-	hh_surv_genes = llply(as.list(unique(high_high$gene)), surv_test, .progress="text")
-	hh_surv_genes = ldply(hh_surv_genes, rbind)
-	hh_surv_genes$fdr = p.adjust(hh_surv_genes$pval, method="fdr")
-	hh_surv_genes$group = "HmeanHsd"
+	for(i in 1:nrow(dt)){
+		mper = floor(dt$meanper[i]*10)
+		dt$meanbin[i] = mper
+		sdper = floor(dt$sdper[i]*10)
+		dt$sdbin[i] = sdper
 
-	high_low = subset(dt, meanper >=0.5 & sdper < 0.5)
-	hl_surv_genes = llply(as.list(unique(high_low$gene)), surv_test, .progress="text")
-	hl_surv_genes = ldply(hl_surv_genes, rbind)
-	hl_surv_genes$fdr = p.adjust(hl_surv_genes$pval, method="fdr")
-	hl_surv_genes$group = "HmeanLsd"
+	}	
+	dt = as.data.frame(dt)
+	dt$meanbin = as.numeric(dt$meanbin)
+	dt$sdbin = as.numeric(dt$sdbin)
+	f = table(dt$meanbin, dt$sdbin)
+	plot(f)
+	dt$meanbin = as.numeric(dt$meanbin)
+	gghistogram(dt, x="meanbin", fill = "lightgray", bins=11)
+	tests = as.list(0:10)
+	check_bin_surv = function(num){
+		dt4 = subset(dt, meanbin == num)
+		genes = as.list(unique(dt4$gene))
+		bin_survival = llply(genes, surv_test, .progress="text")
+		bin_survival = ldply(bin_survival, rbind)
+		bin_survival$fdr = p.adjust(bin_survival$pval, method="fdr")
+		bin_survival$group = num
+		return(bin_survival)
+	}
+	tests_survival = llply(tests, check_bin_surv, .progress="text")
+	tests_survival2 = ldply(tests_survival, rbind)
+	tests_survival2$pval = as.numeric(tests_survival2$pval)
+	tests_survival2$fdrsig = ""
+	tests_survival2$fdrsig[tests_survival2$fdr <=0.1] = "yes"
+	tests_survival2$fdrsig[tests_survival2$fdr > 0.1] = "no"
 
-	low_high = subset(dt, meanper < 0.5 & sdper >=0.5)
-	lh_surv_genes = llply(as.list(unique(low_high$gene)), surv_test, .progress="text")
-	lh_surv_genes = ldply(lh_surv_genes, rbind)
-	lh_surv_genes$fdr = p.adjust(lh_surv_genes$pval, method="fdr")
-	lh_surv_genes$group = "HsdLmean"
+	tests_survival2$sig = ""
+	tests_survival2$sig[tests_survival2$pval <=0.05] = "yes"
+	tests_survival2$sig[tests_survival2$pval > 0.05] = "no"
 
-	low_low = subset(dt, meanper < 0.5 & sdper < 0.5)
-	ll_surv_genes = llply(as.list(unique(low_low$gene)), surv_test, .progress="text")
-	ll_surv_genes = ldply(ll_surv_genes, rbind)
-	ll_surv_genes$fdr = p.adjust(ll_surv_genes$pval, method="fdr")
-	lh_surv_genes$group = "LsdLmean"
+	ggboxplot(tests_survival2, x = "group", y="pval")
+	ggboxplot(tests_survival2, x = "group", y="fdr")
 
-	surv_results = rbind(high_high, high_low, low_high, low_low)
 
-	return(surv_results)
+	dev.off()
+
+	return(tests_survival2)
 }
 
 
@@ -302,13 +314,11 @@ analyze_cands = function(dt){
 #apply survival analysis to all cancers 
 all_cancers_survival_results = llply(lnc_percentile_ranks, analyze_cands, .progress="text")
 
+print("finished running")
 
+saveRDS(all_cancers_survival_results, file="survival_results_by_bins.rds")
 
-
-
-
-
-
+print("done")
 
 
 
