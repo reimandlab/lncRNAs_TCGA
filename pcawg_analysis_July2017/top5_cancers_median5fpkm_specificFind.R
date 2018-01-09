@@ -190,7 +190,7 @@ for(i in 1:nrow(high_lncs)){
   #1. Subset lnc_rna to those patients in cancer
   df <- subset(lnc_rna, lnc_rna$canc %in% high_lncs$canc[i])
   z <- which(colnames(df) %in% high_lncs$gene[i])
-  df <- df[,c(z,216:220)]  
+  df <- df[,c(z,212:216)]  
 
   #df[,1] <- log1p(df[,1])
 
@@ -217,28 +217,28 @@ for(i in 1:nrow(high_lncs)){
         df$time <- as.numeric(df$time)
       
         #cox regression 
-        #res.cox <- coxph(Surv(time, status) ~ median, data = df)
+        res.cox <- coxph(Surv(time, status) ~ median, data = df)
         #first check that model meets proportionality assumption
-        res.cox <- coxph(Surv(time, status) ~ df[,1], data = df)
-        testph <- cox.zph(res.cox)
-        p = testph$table[1,3]
-        if(p >= 0.05){
+        #res.cox <- coxph(Surv(time, status) ~ df[,1], data = df)
+        #testph <- cox.zph(res.cox)
+        #p = testph$table[1,3]
+        #if(p >= 0.05){
         row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)], df$canc[1])
         names(row) <- names(results_cox)
         results_cox <- rbind(results_cox, row)  
-}
+#}
 }
 
 results_cox <- results_cox[-1,]
-#results_cox$fdr <- p.adjust(results_cox$pval, method="fdr")
-#results_cox$fdr <- as.numeric(results_cox$fdr)
-#results_cox$pval <- as.numeric(results_cox$pval)
+results_cox$fdr <- p.adjust(results_cox$pval, method="fdr")
+results_cox$fdr <- as.numeric(results_cox$fdr)
+results_cox$pval <- as.numeric(results_cox$pval)
 
-results_cox$fdr = ""
-results_cox <- as.data.table(results_cox)
-results_cox$pval = as.numeric(results_cox$pval)
+#results_cox$fdr = ""
+#results_cox <- as.data.table(results_cox)
+#results_cox$pval = as.numeric(results_cox$pval)
 
-cancers = unique(results_cox$canc)
+#cancers = unique(results_cox$canc)
 
 adjustment = function(cancer){
   z <- which(results_cox$canc %in% cancer)  
@@ -291,14 +291,16 @@ write.table(adjusted, file="lncRNAs_sig_FDR_0.1_Nov23.txt", sep=";", quote=F, ro
 ##Full - order plots by decreasing pvalue 
 ##+++++++++++++++++++++++++++++
 
+results_cox = results_cox[which(results_cox$pval <=0.05),]
+
 pdf("survival_results_usingMean_medGreatThan5_lncRNAs_Nov30.pdf", pointsize=6, width=9, height=8)
 require(gridExtra)
 
-for(i in 1:nrow(adjusted)){
+for(i in 1:nrow(results_cox)){
   #1. Subset lnc_rna to those patients in cancer
-  df <- subset(lnc_rna, lnc_rna$canc %in% adjusted$canc[i])
-  z <- which(colnames(df) %in% adjusted$gene[i])
-  df <- df[,c(z,216:220)]  
+  df <- subset(lnc_rna, lnc_rna$canc %in% results_cox$canc[i])
+  z <- which(colnames(df) %in% results_cox$gene[i])
+  df <- df[,c(z,212:216)]  
 
   df[,1] <- log1p(df[,1])
 

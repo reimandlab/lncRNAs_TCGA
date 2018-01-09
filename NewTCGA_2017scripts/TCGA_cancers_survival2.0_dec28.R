@@ -137,7 +137,7 @@ for(i in 1:nrow(results_cox)){
 ##Full - order plots by decreasing pvalue 
 ##+++++++++++++++++++++++++++++
 
-pdf("10from42lncrnaCandidatesTCGAdec28.pdf", pointsize=6, width=15, height=14)
+pdf("10from42lncrnaCandidatesTCGAdec28.pdf", pointsize=6, width=9, height=8)
 require(gridExtra)
 
 results_cox = as.data.frame(results_cox)
@@ -173,7 +173,7 @@ for(i in 1:nrow(results_cox)){
   #plot boxplot showing difference between the two groups and sex
   title <- paste(gene, df$canc[1], "Expression")
   colnames(df)[1] <- "Gene"
-  g <- ggboxplot(df, x= "median", y="Gene", palette=mypal, order=c("0", "1"), fill = "median",  add = "jitter")
+  g <- ggboxplot(df, x= "median", y="Gene", palette=mypal[c(4,1)], order=c("0", "1"), fill = "median",  add = "jitter")
   g <- g + stat_compare_means()
   g <- ggpar(g, font.legend = c(8, "plain", "black")) 
   g <- g + labs(title = title, y="log1p(FPKM)", x="Median") + 
@@ -189,8 +189,15 @@ for(i in 1:nrow(results_cox)){
           #plot survival plot
           fit <- survfit(Surv(time, status) ~ median, data = df)
           s <- ggsurvplot(
+          title = paste(gene, df$canc[1]),
           fit, 
-          main = paste(gene, df$canc[1]),       
+          surv.median.line = "hv",
+          font.main = c(16, "bold", "black"),
+          font.x = c(14, "plain", "black"),
+          font.y = c(14, "plain", "black"),
+          font.tickslab = c(14, "plain", "black"),
+          font.legend = 12,
+          risk.table.fontsize = 5, 
           legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
           data = df,      # data used to fit survival curves. 
           risk.table = TRUE,       # show risk table.
@@ -201,13 +208,15 @@ for(i in 1:nrow(results_cox)){
           xlim = c(0,2000),        # present narrower X axis, but not affect
                             # survival estimates.
           break.time.by = 500,     # break X axis in time intervals by 500.
-          palette = mypal, 
+          #palette = colorRampPalette(mypal)(14), 
+          palette = mypal[c(4,1)],
           ggtheme = theme_minimal(), # customize plot and risk table with a theme.
           risk.table.y.text.col = T, # colour risk table text annotations.
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
           print(s)  
+
 }
 }
 
