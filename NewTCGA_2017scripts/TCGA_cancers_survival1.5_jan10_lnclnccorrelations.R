@@ -146,7 +146,7 @@ surv_test = function(gene){
   print(gene)
   results_cox <- as.data.frame(matrix(ncol=5)) ; colnames(results_cox) <- c("gene", "coef", "HR", "pval", "canc")
   #1. Subset lnc_rna to those patients in cancer
-  df <- subset(rna, rna$canc %in% corlncs$canc)
+  df <- subset(rna, rna$canc %in% cancer)
   z <- which(colnames(df) %in% gene)
   if(!(length(z)==0)){
   df = as.data.frame(df)
