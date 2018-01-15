@@ -6,7 +6,7 @@ surv_test = function(gene){
   z <- which(colnames(df) %in% gene)
   if(!(length(z)==0)){
   df = as.data.frame(df)
-  df <- df[,c(z,5786:5790)]  
+  df <- df[,c(z,2359:2363)]  
   df[,1] <- log1p(df[,1])
 
   #2. Add Median cutoff tag High or Low to each patient per each gene 

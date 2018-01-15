@@ -22,7 +22,13 @@
 
 source("source_code_Cox_MonteCarlo_CV_Jan12.R")
 require(caTools)
-set.seed(101) 
+set.seed(101)
+
+#start with only lncRNA_intergenic
+lincs = subset(fantom, CAT_geneClass == "lncRNA_intergenic")
+z = which(colnames(rna) %in% lincs$gene)
+rna = as.data.frame(rna)
+rna = rna[,c(z, 5786:5790)]
 
 ###[2.] Data splitting 
 
@@ -33,7 +39,7 @@ set.seed(101)
 #Going to work on each cancer seperatley 
 #for now start with one cancer 
 cancer = cancers[[1]]
-canc_data = rna[canc == cancer]
+canc_data = rna[which(rna$canc == cancer),]
 canc_data = as.data.frame(canc_data)
 rownames(canc_data) = canc_data$patient
 gene_data = t(canc_data[,1:(ncol(rna)-5)])
@@ -50,6 +56,7 @@ if(!(length(z)==0)){
 smp_size <- floor(0.8 * nrow(canc_data))
 ## set the seed to make your partition reproductible
 set.seed(123)
+for(i in 1:100){
 train_ind <- sample(seq_len(nrow(canc_data)), size = smp_size)
 
 train <- canc_data[train_ind, ]
@@ -66,7 +73,7 @@ source("survival_scriptJan12.R")
 #surv_test is the loaded survival function which takes in gene 
 #name as input and conducts a univariate cox regression model 
 
-genes = as.list(colnames(train)[1:5778])
+genes = as.list(colnames(train)[1:2355])
 tests_survival2 = llply(genes, surv_test, .progress="text")
 tests_survival3 = ldply(tests_survival2, rbind)
 tests_survival3$pval = as.numeric(tests_survival3$pval)
@@ -75,28 +82,36 @@ tests_survival3$pval = as.numeric(tests_survival3$pval)
 #so filter by HR and keep the max 
 tests_survival3 = subset(tests_survival3, pval <=0.05)
 length(unique(tests_survival3$gene))
+sortme <- function(dt, sort.field) dt[order(-abs(dt[[sort.field]]))]
+tests_survival3$HR = as.numeric(tests_survival3$HR)
+tests_survival3 = as.data.table(tests_survival3)
+sort.field = "HR"
+tests_survival3 = sortme(tests_survival3, sort.field)
+z = table(train$status)[2]
+tests_survival3 = as.data.frame(tests_survival3)
+tests_survival3 = tests_survival3[1:z, ]
 
 #using LASSO 
 #with 10fold cross validation to get optimal lamda penalization parameter
-z <- which(colnames(canc_data) %in% tests_survival3$gene)
-canc_data = canc_data[,c(z, 5779:5783)]
+z <- which(colnames(train) %in% tests_survival3$gene)
+train = train[,c(z, (ncol(train)-4):ncol(train))]
 #practice lasso 
-canc_data$time = as.numeric(canc_data$time)
-canc_data$status[canc_data$status=="Alive"] <- 0
-canc_data$status[canc_data$status=="Dead"] <- 1
-canc_data$status <- as.numeric(canc_data$status)
+train$time = as.numeric(train$time)
+train$status[train$status=="Alive"] <- 0
+train$status[train$status=="Dead"] <- 1
+train$status <- as.numeric(train$status)
 
 #x is an n*p matrix of covariate values, each row corresponds to a patient and each
 #column is a covariate 
 #y is an n*2 matrix with a column time and status 
 
-gene_data = canc_data[,1:(ncol(canc_data)-5)]
+gene_data = train[,1:(ncol(train)-5)]
 for(i in 1:ncol(gene_data)){
 	gene_data[,i] = scale(gene_data[,i])[, 1]
 }
-
+#gene_data = log1p(gene_data)
 x <- model.matrix( ~ ., gene_data)
-y <- Surv(canc_data$time, canc_data$status)
+y <- Surv(train$time, train$status)
 
 library(glmnet)
 fit = glmnet(x, y, family = "cox")
@@ -107,6 +122,7 @@ fit = glmnet(x, y, family = "cox")
 #-fold cross-validation for the Cox model. The usage is similar to that for other families except for two main differences.
 
 cvfit = cv.glmnet(x, y, family = "cox", alpha =1, nfolds=5) #uses cross validation to select
+
 #the best lamda and then use lambda to see which features remain in model 
 cvfit$lambda.min #left vertical line
 cvfit$lambda.1se #right vertical line 
@@ -116,20 +132,30 @@ coef.min = coef(cvfit, s = "lambda.min")
 active.min = which(coef.min != 0)
 index.min = coef.min[active.min]
 
-index.min
-coef.min
-
+genes_keep = rownames(coef.min)[active.min]
+training_data = train[,c(which(colnames(train) %in% genes_keep), (ncol(train)-4):ncol(train))]
 
 #limit survival analysis to just those genes in training and test set 
-cox_model = coxph(Surv(training_data$Survival,training_data$Status) ~ ., data=training_data) 
+training_data$status[training_data$status=="Alive"] <- 0
+training_data$status[training_data$status=="Dead"] <- 1
+training_data$status <- as.numeric(training_data$status)
+training_data$time <- as.numeric(training_data$time)
+y <- Surv(training_data$time, training_data$status)
+training_data2 = training_data[,1:(ncol(training_data)-5)]
+training_data2 = log1p(training_data2)
+
+cox_model = coxph(y ~., data=training_data2) 
 
 #create survival estimates on validation data
 pred_validation = predict(cox_model, newdata = test)
 
 # Determine concordance
-cindex_validation = concordance.index (pred_validation, surv.time = validation_data$Survival,
-                                       surv.event=validation_data$Status, method = "noether")
+cindex_validation = concordance.index(pred_validation, surv.time = test$time,
+                                       surv.event=test$status, method = "noether")
 
+
+
+}
 ###---------------------------------------------------------------
 ###Survival function 
 ###---------------------------------------------------------------
