@@ -47,8 +47,34 @@ canc_data = as.data.frame(canc_data)
 
 #clinical variables 
 add_clin = fread("OV_clinical_core.txt", data.table=F)
+clin = canc_data[,2359:ncol(canc_data)]
+
+#clinical variables 
+add_clin = fread("OV_clinical_core.txt", data.table=F)
+add_clin = add_clin[,-5]
+colnames(add_clin)[1] = "patient"
+add_clin = merge(add_clin, clin, by="patient")
+rownames(add_clin) = add_clin$patient
+z = which(add_clin$stage == "[Not Available]")
+add_clin = add_clin[-z,]
+z = which(add_clin$grade %in% c("G4", "GB", "GX"))
+add_clin = add_clin[-z,]
+
+add_clin$stage[add_clin$stage == "IIA"] = 2
+add_clin$stage[add_clin$stage == "IIB"] = 2
+add_clin$stage[add_clin$stage == "IIC"] = 2
+add_clin$stage[add_clin$stage == "IIIA"] = 3
+add_clin$stage[add_clin$stage == "IIIB"] = 3
+add_clin$stage[add_clin$stage == "IIIC"] = 3
+add_clin$stage[add_clin$stage == "IV"] = 4
+
+add_clin$grade[add_clin$grade == "G1"] = 1
+add_clin$grade[add_clin$grade == "G2"] = 2
+add_clin$grade[add_clin$grade == "G3"] = 3
 
 rownames(canc_data) = canc_data$patient
+canc_data = subset(canc_data, patient %in% add_clin$patient)
+
 gene_data = t(canc_data[,1:(ncol(rna)-5)])
 	
 #1. remove any genes that have 0 counts within cancer
@@ -65,7 +91,7 @@ cinds = c()
 genes_results = list()
 set.seed(123)
 
-for(j in 1:100){
+for(j in 1:50){
 smp_size <- floor(0.7 * nrow(canc_data))
 train_ind <- sample(seq_len(nrow(canc_data)), size = smp_size)
 train <- canc_data[train_ind, ]
@@ -244,8 +270,8 @@ print("done")
 ###Survival function 
 ###---------------------------------------------------------------
 
-saveRDS(genes_results, file="ALL_OV_pats_updated_code_binary_predictors_list_of_sig_genes_CVJan17.rds")
-saveRDS(cinds, file="ALL_OV_pats_updated_code_binary_predictors_cindes_CV_100timesJan17.RDS")
+saveRDS(genes_results, file="only_pats_wclinical_updated_code_binary_predictors_list_of_sig_genes_CVJan16.rds")
+saveRDS(cinds, file="only_pats_wclinical_updated_code_binary_predictors_cindes_CV_100timesJan16.RDS")
 
 
 	

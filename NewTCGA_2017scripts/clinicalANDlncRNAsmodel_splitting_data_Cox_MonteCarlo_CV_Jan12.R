@@ -47,8 +47,35 @@ canc_data = as.data.frame(canc_data)
 
 #clinical variables 
 add_clin = fread("OV_clinical_core.txt", data.table=F)
+clin = canc_data[,2359:ncol(canc_data)]
+
+#clinical variables 
+add_clin = fread("OV_clinical_core.txt", data.table=F)
+add_clin = add_clin[,-5]
+colnames(add_clin)[1] = "patient"
+add_clin = merge(add_clin, clin, by="patient")
+rownames(add_clin) = add_clin$patient
+z = which(add_clin$stage == "[Not Available]")
+add_clin = add_clin[-z,]
+z = which(add_clin$grade %in% c("G4", "GB", "GX"))
+add_clin = add_clin[-z,]
+
+add_clin$stage[add_clin$stage == "IIA"] = 2
+add_clin$stage[add_clin$stage == "IIB"] = 2
+add_clin$stage[add_clin$stage == "IIC"] = 2
+add_clin$stage[add_clin$stage == "IIIA"] = 3
+add_clin$stage[add_clin$stage == "IIIB"] = 3
+add_clin$stage[add_clin$stage == "IIIC"] = 3
+add_clin$stage[add_clin$stage == "IV"] = 4
+
+add_clin$grade[add_clin$grade == "G1"] = 1
+add_clin$grade[add_clin$grade == "G2"] = 2
+add_clin$grade[add_clin$grade == "G3"] = 3
 
 rownames(canc_data) = canc_data$patient
+canc_data = subset(canc_data, patient %in% add_clin$patient)
+add_clin = add_clin[,-c(6,7)]
+
 gene_data = t(canc_data[,1:(ncol(rna)-5)])
 	
 #1. remove any genes that have 0 counts within cancer
@@ -122,7 +149,10 @@ train$status <- as.numeric(train$status)
 #column is a covariate 
 #y is an n*2 matrix with a column time and status 
 
-gene_data = train[,1:(ncol(train)-5)]
+train$patient = rownames(train)
+train = merge(train, add_clin, by = c("patient", "canc", "sex"))
+
+gene_data = train[,4:(ncol(train)-5)]
 gene_data = log1p(gene_data)
 
 #Add high/low tags to each gene 
@@ -141,6 +171,7 @@ for(k in 1:ncol(gene_data)){
       }
     } 
 }
+
 
 #gene_data = log1p(gene_data)
 x <- model.matrix( ~., gene_data)
@@ -169,13 +200,19 @@ print(genes_keep)
 
 if(!(length(genes_keep)==0)){
 
-training_data = train[,c(which(colnames(train) %in% genes_keep), (ncol(train)-4):ncol(train))]
+training_data = train[,c(1, which(colnames(train) %in% genes_keep), (ncol(train)-4):ncol(train))]
 
 #limit survival analysis to just those genes in training and test set 
 training_data$status[training_data$status=="Alive"] <- 0
 training_data$status[training_data$status=="Dead"] <- 1
 training_data$status <- as.numeric(training_data$status)
 training_data$time <- as.numeric(training_data$time)
+training_data$age <- as.numeric(training_data$age)
+training_data$grade <- as.numeric(training_data$grade)
+training_data$stage <- as.numeric(training_data$stage)
+rownames(training_data) = training_data$patient 
+training_data = training_data[,-1]
+
 training_data[,1:(ncol(training_data)-5)] = log1p(training_data[,1:(ncol(training_data)-5)] )
 #Add high/low tags to each gene 
 for(k in 1:(ncol(training_data)-5)){
@@ -194,23 +231,25 @@ for(k in 1:(ncol(training_data)-5)){
     } 
 }
 
-#cols not to keep in model 
-z = colnames(training_data)[(ncol(training_data)-4):ncol(training_data)]
-z = z[c(1, 4,5)]
-training_data = training_data[,-c(which(colnames(training_data) %in% z))]
-
 cox_model = coxph(Surv(time, status)  ~ ., data = training_data)
 
 #create survival estimates on validation data
+test$patient = rownames(test)
+test = merge(test, add_clin, by = c("patient", "canc", "sex"))
+
 test = test[,which(colnames(test) %in% colnames(training_data))]
 
 test$status[test$status=="Alive"] <- 0
 test$status[test$status=="Dead"] <- 1
 test$status <- as.numeric(test$status)
 test$time <- as.numeric(test$time)
-test[,1:(ncol(test)-2)] = log1p(test[,1:(ncol(test)-2)])
+test$age <- as.numeric(test$age)
+test$grade <- as.numeric(test$grade)
+test$stage <- as.numeric(test$stage)
+
+test[,1:(ncol(test)-5)] = log1p(test[,1:(ncol(test)-5)])
 #Add high/low tags to each gene 
-for(k in 1:(ncol(test)-2)){
+for(k in 1:(ncol(test)-5)){
 	median2 <- quantile(as.numeric(test[,k]), 0.5)
   	if(median2 ==0){
   	median2 = mean(as.numeric(test[,k]))
@@ -244,8 +283,8 @@ print("done")
 ###Survival function 
 ###---------------------------------------------------------------
 
-saveRDS(genes_results, file="ALL_OV_pats_updated_code_binary_predictors_list_of_sig_genes_CVJan17.rds")
-saveRDS(cinds, file="ALL_OV_pats_updated_code_binary_predictors_cindes_CV_100timesJan17.RDS")
+saveRDS(genes_results, file="lncRNAS_AND_wclinical_updated_code_binary_predictors_list_of_sig_genes_CVJan16.rds")
+saveRDS(cinds, file="lncRNAS_AND_wclinical_updated_code_binary_predictors_cindes_CV_100timesJan16.RDS")
 
 
 	
