@@ -143,7 +143,6 @@ extract3 <- function(row){
 rna[,1] <- apply(rna[,1:2], 1, extract3) ; 
 fantom[,1] <- apply(fantom[,1:2], 1, extract3)
 
-
 #Remove duplicate genes 
 z <- which(duplicated(rna[,1]))
 genes <- rna[z,1]
@@ -151,8 +150,8 @@ z <- which(rna[,1] %in% genes)
 rna <- rna[-z,]
 
 #Using UCSC keep only antisense, lincRNA and protein-coding genes
-z <- which(rna[,1] %in% ucsc$hg19.ensGene.name2)
-rna <- rna[z,]
+#z <- which(rna[,1] %in% ucsc$hg19.ensGene.name2)
+#rna <- rna[z,]
  
 #rows
 rownames(rna) <- rna[,1]
@@ -176,7 +175,9 @@ pcg_rna <- rna[zz,]
 ###LNC_RNA#########
 ###################
 lnc_rna <- rna[-zz,]
-
+#keep only fantom lncrnas 
+z = which(rownames(lnc_rna) %in% fantom$CAT_geneID)
+lnc_rna = lnc_rna[z,]
 
 ###SUBSET CLINICAL AND EXPRESSION FILE TO ONLY THE TOP 5 CANCERS/HISTOS
 
@@ -225,23 +226,8 @@ for(i in 1:nrow(lnc_rna_top5)){
 	lnc_rna_top5$canc[i] <- hist
 }
 
-#keep only FANTOM lncRNAs
-z <- which(colnames(lnc_rna_top5) %in% fantom$CAT_geneID)
-lnc_rna_top5 <- lnc_rna_top5[,c(z,12544)]
 
-#change to hugo ids 
-for(i in 1:5607){
-	g <- colnames(lnc_rna_top5)[i]
-	colnames(lnc_rna_top5)[i] <- fantom$CAT_geneName[which(fantom$CAT_geneID %in% g)]
-}
-
-saveRDS(lnc_rna_top5, "5607_pcawg_lncRNAs_RNASeq_data.rds")
-
-#change PCGs to Hugo Ids
-for(i in 1:20166){
-	g <- colnames(pcg_rna_top5)[i]
-	colnames(pcg_rna_top5)[i] <- ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 %in% g)]
-}
+saveRDS(lnc_rna_top5, "6028_pcawg_lncRNAs_RNASeq_data.rds")
 
 saveRDS(pcg_rna_top5, "20166_pcawg_PCGs_RNASeq_data.rds")
 

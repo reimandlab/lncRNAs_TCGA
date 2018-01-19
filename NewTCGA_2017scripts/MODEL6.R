@@ -1,4 +1,6 @@
-###source_code_Cox_MonteCarlo_CV_Jan12.R
+###MODEL6.R
+
+#multivariate model with 3 lncRNAs and clinical variables 
 
 ###Purpose--------------------------------------------------------------------
 
@@ -183,7 +185,7 @@ print("done")
 ###Survival function 
 ###---------------------------------------------------------------
 
-saveRDS(cinds, file="202_OV_pats_3bestGenesANDclinicalVariables_CV_100timesJan19.RDS")
+saveRDS(cinds, file="MODEL6_202_OV_pats_3bestGenesANDclinicalVariables_CV_100timesJan19.RDS")
 
 
 	

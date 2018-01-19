@@ -1,4 +1,6 @@
-###source_code_Cox_MonteCarlo_CV_Jan12.R
+###MODEL6C.R
+
+#multivariate model with 3 lncRNAs and clinical variables 
 
 ###Purpose--------------------------------------------------------------------
 
@@ -77,8 +79,10 @@ canc_data = subset(canc_data, patient %in% add_clin$patient)
 #add_clin = add_clin[,-c(6,7)]
 
 top3genes = c("ENSG00000227544", "ENSG00000235823", "ENSG00000258082")
+top3genes = top3genes[3]
+
 canc_data = canc_data[,c(which(colnames(canc_data) %in% top3genes), 2359:ncol(canc_data))]
-canc_data = canc_data[,-c(4,7)]
+canc_data = canc_data[,-c(2,5)]
 
 add_clin = merge(add_clin, canc_data, by="patient")
 
@@ -107,11 +111,11 @@ test <- add_clin[-train_ind, ]
 ###---------------------------------------------------------------
 
 source("survival_scriptJan12.R")
-train[,5:7] = log1p(train[,5:7])
+train[,5] = log1p(train[,5])
 
-for(k in 5:7){
-    median2 <- quantile(as.numeric(train[,k]), 0.5)
-    if(median2 ==0){
+k = 5
+median2 <- quantile(as.numeric(train[,k]), 0.5)
+if(median2 ==0){
     median2 = mean(as.numeric(train[,k]))
     }
     for(m in 1:nrow(train)){
@@ -123,7 +127,7 @@ for(k in 5:7){
       train[m,k] <- 0
       }
     } 
-}
+
 
 train$time = as.numeric(train$time)
 train$status[train$status=="Alive"] <- 0
@@ -132,7 +136,7 @@ train$status <- as.numeric(train$status)
 train$age = as.numeric(train$age)
 train$stage = as.numeric(train$stage)
 train$grade = as.numeric(train$grade)
-train = train[,-c(1)]
+train = train[,-c(1:4)]
 
 cox_model = coxph(Surv(time, status)  ~ ., data = train)
 
@@ -143,13 +147,11 @@ test$status[test$status=="Alive"] <- 0
 test$status[test$status=="Dead"] <- 1
 test$status <- as.numeric(test$status)
 test$time <- as.numeric(test$time)
-test$age = as.numeric(test$age)
-test$stage = as.numeric(test$stage)
-test$grade = as.numeric(test$grade)
+
 
 #Add high/low tags to each gene 
-test[,4:6] = log1p(test[,4:6])
-for(k in 4:6){
+test[,1] = log1p(test[,1])
+k = 1
     median2 <- quantile(as.numeric(test[,k]), 0.5)
     if(median2 ==0){
     median2 = mean(as.numeric(test[,k]))
@@ -163,7 +165,6 @@ for(k in 4:6){
       test[m,k] <- 0
       }
     } 
-}
 
 pred_validation = predict(cox_model, newdata = test)
 
@@ -183,7 +184,7 @@ print("done")
 ###Survival function 
 ###---------------------------------------------------------------
 
-saveRDS(cinds, file="202_OV_pats_3bestGenesANDclinicalVariables_CV_100timesJan19.RDS")
+saveRDS(cinds, file="MODEL10A_202_OV_pats_3bestGenes_CV_100timesJan19.RDS")
 
 
 	

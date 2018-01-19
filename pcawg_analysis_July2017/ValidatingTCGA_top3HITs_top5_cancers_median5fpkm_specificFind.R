@@ -103,64 +103,16 @@ pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #485 patie
 #Write function that takes a dataframe, calculates medians and 
 #output list of genes with median greater than that 
 
-lnc_rna[,1:5607] = log1p(lnc_rna[,1:5607])
-
-check_medians <- function(column){
-  med <- median(column)
-  if(med >=1.8){
-    return(med)
-  } 
-}
-
-#save results
-high_lncs <- as.data.frame(matrix(ncol=3))
-colnames(high_lncs) <- c("median", "gene", "canc")
-
-#apply to dataframe 
-
-for(i in 1:length(unique(lnc_rna$canc))){
-
-#subset RNA-dataset to one cancer type
-df <- subset(lnc_rna, lnc_rna$canc %in% unique(lnc_rna$canc)[i])
-
-#apply function
-res <- apply(df[,1:5607], 2, check_medians)
-res <- Filter(Negate(is.null), res)  
-res <- data.frame(median=(matrix(unlist(res), nrow=length(res), byrow=T)), gene = names(res), canc=unique(lnc_rna$canc)[i])
-high_lncs <- rbind(high_lncs, res)
-
-}#end loop
-
-high_lncs <- high_lncs[-1,]
-
-#---------------------------------------------------------
-#Visualize high lncRNA overlap between cancers 
-#---------------------------------------------------------
-
-g <- as.data.table(table(high_lncs$gene, high_lncs$canc))
-gg <- matrix(nrow=7, ncol=215)
-colnames(gg) <- unique(g$V1)
-rownames(gg) <- unique(g$V2)
-
-for(i in 1:length(unique(g$V2))){  
-  canc <- unique(g$V2)[i]
-  z <- which(g$V2 == canc)
-  gg[which(rownames(gg)==canc),] <- as.numeric(g$N[z])
-}
-
-# Plot 
-pdf("215lncRNAs_overlap_Matrix.pdf", pointsize=8, width=9, height=10)
-heatmap.2(as.matrix(t(gg)), scale="none", col=mypal[c(2,1)], trace="none", hclustfun = function(x) hclust(x,method = 'ward.D2'),
-  distfun = function(x) dist(x,method = 'euclidean'), srtCol=21, cexCol=1.4, key.title=NA, keysize=0.6, 
-          margins = c(10, 7), main = list("215 lncRNAs Expression Status in Cancers", cex = 1.2))
-dev.off()
+lnc_rna[,1:6013] = log1p(lnc_rna[,1:6013])
 
 #---------------------------------------------------------
 #Subset lncRNA Expression dataset to those lncRNAs with 
 #high expression in at leat one canc 215 total lncRNAs
 #---------------------------------------------------------
+top3genes = c("ENSG00000227544", "ENSG00000235823", "ENSG00000258082")
 
-lnc_rna <- lnc_rna[,c((which(colnames(lnc_rna) %in% high_lncs$gene)), 5608,5609)] #215 lncRNAs remain 
+
+lnc_rna <- lnc_rna[,c((which(colnames(lnc_rna) %in% top3genes)), 6014,6015)] 
 
 #For each patient add survival status and days since last seen 
 lnc_rna$status <- ""
@@ -180,21 +132,24 @@ for(i in 1:nrow(lnc_rna)){
         lnc_rna$time[i] <- t
 }
 
+lnc_rna = subset(lnc_rna, canc =='Ovary Serous cystadenocarcinoma')
+
 #---------------------------------------------------------
 #Run survival analysis on each gene-cancer combo
 #from high_lncs 
 #---------------------------------------------------------
 results_cox <- as.data.frame(matrix(ncol=5)) ; colnames(results_cox) <- c("gene", "coef", "HR", "pval", "canc")
 
-for(i in 1:nrow(high_lncs)){
+lnc_rna$status[lnc_rna$status=="alive"] <- 0
+lnc_rna$status[lnc_rna$status=="deceased"] <- 1
+lnc_rna$status <- as.numeric(lnc_rna$status)
+lnc_rna$time <- as.numeric(lnc_rna$time)
+
+for(i in 1:3){
   #1. Subset lnc_rna to those patients in cancer
-  df <- subset(lnc_rna, lnc_rna$canc %in% high_lncs$canc[i])
-  z <- which(colnames(df) %in% high_lncs$gene[i])
-  df <- df[,c(z,212:216)]  
-
-  #df[,1] <- log1p(df[,1])
-
-  #3. Add Median cutoff tag High or Low to each patient per each gene 
+  df <- lnc_rna[,c(i, 4:8)]
+  
+  #2. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
   #median2 <- quantile(as.numeric(df[,1]), 0.5)
   #median2 <- median(df[,1])
@@ -211,13 +166,9 @@ for(i in 1:nrow(high_lncs)){
 
   gene <- colnames(df)[1]
   #cox
-        df$status[df$status=="alive"] <- 0
-        df$status[df$status=="deceased"] <- 1
-        df$status <- as.numeric(df$status)
-        df$time <- as.numeric(df$time)
-      
         #cox regression 
-        res.cox <- coxph(Surv(time, status) ~ median, data = df)
+        colnames(df)[1] = "geneexpression"
+        res.cox <- coxph(Surv(time, status) ~ geneexpression, data = df)
         #first check that model meets proportionality assumption
         #res.cox <- coxph(Surv(time, status) ~ df[,1], data = df)
         #testph <- cox.zph(res.cox)
@@ -230,81 +181,18 @@ for(i in 1:nrow(high_lncs)){
 }
 
 results_cox <- results_cox[-1,]
-results_cox$fdr <- p.adjust(results_cox$pval, method="fdr")
-results_cox$fdr <- as.numeric(results_cox$fdr)
-results_cox$pval <- as.numeric(results_cox$pval)
-
-#results_cox$fdr = ""
-#results_cox <- as.data.table(results_cox)
-#results_cox$pval = as.numeric(results_cox$pval)
-
-#cancers = unique(results_cox$canc)
-
-adjustment = function(cancer){
-  z <- which(results_cox$canc %in% cancer)  
-  #data = filter(data, fdr <= 0.05)
-  data = results_cox[z,]
-  data$fdr = p.adjust(data$pval, method="fdr")
-  z <- which(data$fdr <= 0.05)
-  data = data[z,]
-
-  if(!(dim(data)[1] == 0)){
-    return(data)
-  }
-}
-
-adjusted = llply(cancers, adjustment)
-adjusted = ldply(adjusted, data.frame)
-adjusted = as.data.table(adjusted)
-adjusted = adjusted[order(fdr)]
-
-
-tested = as.data.table(table(high_lncs$canc))
-tested = tested[order(N)]
-pdf("dist_lncRNAs_tested.pdf", pointsize=10, width=9, height=9)
-g = ggbarplot(tested, "V1", "N", label = TRUE, fill = "V1", palette= mypal, xlab= "Cancer Type", ylab = "Number of lncRNAs Tested for Survival Association")
-ggpar(g, legend="none", yticks.by=5, xtickslab.rt = 55)
-dev.off()
-
-#results_cox <- results_cox[order(fdr)]
-#write.table(results_cox, file="results_coxAug28_median5fpkmMin.txt",sep=";", quote=F, row.names=F)
-
-#save as image, dataframe of lncRNAs with pvalue < 0.05 
-#sig <- results_cox[pval < 0.05]
-#pdf("42_sig_lncRNA_predictors_usingMedian5.pdf", pointsize=8, width=12, height=14)
-#p<-tableGrob(sig)
-#grid.arrange(p)
-#dev.off()
-
-#tier 1 lncRNAs - fdr sig < 0.1
-#tier 2 lncRNAs - pvalue < 0.05 
-
-#tier1 <- filter(results_cox, fdr < 0.1) #7 
-#tier2 <- filter(results_cox, pval < 0.05 & fdr > 0.1) #35 
-
-#all candidates 
-#all <- rbind(tier1, tier2)
-#write.table(all, file="7tier1_35tier2_lncRNA_candidates_August28th.txt", sep=";", quote=F, row.names=F)
-write.table(adjusted, file="lncRNAs_sig_FDR_0.1_Nov23.txt", sep=";", quote=F, row.names=F)
-
 
 ##Full - order plots by decreasing pvalue 
 ##+++++++++++++++++++++++++++++
 
-results_cox = results_cox[which(results_cox$pval <=0.05),]
-
-pdf("survival_results_usingMean_medGreatThan5_lncRNAs_Nov30.pdf", pointsize=6, width=9, height=8)
+pdf("Validating3_lncRNAs_fromTCGAJan192018.pdf", pointsize=6, width=9, height=8)
 require(gridExtra)
 
-for(i in 1:nrow(results_cox)){
+for(i in 1:3){
   #1. Subset lnc_rna to those patients in cancer
-  df <- subset(lnc_rna, lnc_rna$canc %in% results_cox$canc[i])
-  z <- which(colnames(df) %in% results_cox$gene[i])
-  df <- df[,c(z,212:216)]  
+  df <- lnc_rna[,c(i, 4:8)]
 
-  df[,1] <- log1p(df[,1])
-
-  #3. Add Median cutoff tag High or Low to each patient per each gene 
+  #2. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
   #median2 <- quantile(as.numeric(df[,1]), 0.5)
   #median2 <- median(df[,1])

@@ -1,4 +1,6 @@
-###source_code_Cox_MonteCarlo_CV_Jan12.R
+###MODEL6.R
+
+#multivariate model with 3 lncRNAs and clinical variables 
 
 ###Purpose--------------------------------------------------------------------
 
@@ -49,38 +51,11 @@ canc_data = as.data.frame(canc_data)
 
 clin = canc_data[,2359:ncol(canc_data)]
 
-#clinical variables 
-add_clin = fread("OV_clinical_core.txt", data.table=F)
-add_clin = add_clin[,-5]
-colnames(add_clin)[1] = "patient"
-#add_clin = merge(add_clin, clin, by="patient")
-rownames(add_clin) = add_clin$patient
-z = which(add_clin$stage == "[Not Available]")
-add_clin = add_clin[-z,]
-z = which(add_clin$grade %in% c("G4", "GB", "GX"))
-add_clin = add_clin[-z,]
-
-add_clin$stage[add_clin$stage == "IIA"] = 2
-add_clin$stage[add_clin$stage == "IIB"] = 2
-add_clin$stage[add_clin$stage == "IIC"] = 2
-add_clin$stage[add_clin$stage == "IIIA"] = 3
-add_clin$stage[add_clin$stage == "IIIB"] = 3
-add_clin$stage[add_clin$stage == "IIIC"] = 3
-add_clin$stage[add_clin$stage == "IV"] = 4
-
-add_clin$grade[add_clin$grade == "G1"] = 1
-add_clin$grade[add_clin$grade == "G2"] = 2
-add_clin$grade[add_clin$grade == "G3"] = 3
-
 rownames(canc_data) = canc_data$patient
-canc_data = subset(canc_data, patient %in% add_clin$patient)
-#add_clin = add_clin[,-c(6,7)]
 
 top3genes = c("ENSG00000227544", "ENSG00000235823", "ENSG00000258082")
 canc_data = canc_data[,c(which(colnames(canc_data) %in% top3genes), 2359:ncol(canc_data))]
 canc_data = canc_data[,-c(4,7)]
-
-add_clin = merge(add_clin, canc_data, by="patient")
 
 ## set the seed to make your partition reproductible
 cinds = c()
@@ -91,10 +66,10 @@ set.seed(123)
 ############
 
 for(j in 1:100){
-smp_size <- floor(0.7 * nrow(add_clin))
-train_ind <- sample(seq_len(nrow(add_clin)), size = smp_size)
-train <- add_clin[train_ind, ]
-test <- add_clin[-train_ind, ]
+smp_size <- floor(0.7 * nrow(canc_data))
+train_ind <- sample(seq_len(nrow(canc_data)), size = smp_size)
+train <- canc_data[train_ind, ]
+test <- canc_data[-train_ind, ]
 
 ###[2.] Feature selection 
 
@@ -107,9 +82,9 @@ test <- add_clin[-train_ind, ]
 ###---------------------------------------------------------------
 
 source("survival_scriptJan12.R")
-train[,5:7] = log1p(train[,5:7])
+train[,1:3] = log1p(train[,1:3])
 
-for(k in 5:7){
+for(k in 1:3){
     median2 <- quantile(as.numeric(train[,k]), 0.5)
     if(median2 ==0){
     median2 = mean(as.numeric(train[,k]))
@@ -129,10 +104,8 @@ train$time = as.numeric(train$time)
 train$status[train$status=="Alive"] <- 0
 train$status[train$status=="Dead"] <- 1
 train$status <- as.numeric(train$status)
-train$age = as.numeric(train$age)
-train$stage = as.numeric(train$stage)
-train$grade = as.numeric(train$grade)
-train = train[,-c(1)]
+
+train = train[,-c(6)]
 
 cox_model = coxph(Surv(time, status)  ~ ., data = train)
 
@@ -143,13 +116,10 @@ test$status[test$status=="Alive"] <- 0
 test$status[test$status=="Dead"] <- 1
 test$status <- as.numeric(test$status)
 test$time <- as.numeric(test$time)
-test$age = as.numeric(test$age)
-test$stage = as.numeric(test$stage)
-test$grade = as.numeric(test$grade)
 
 #Add high/low tags to each gene 
-test[,4:6] = log1p(test[,4:6])
-for(k in 4:6){
+test[,1:3] = log1p(test[,1:3])
+for(k in 1:3){
     median2 <- quantile(as.numeric(test[,k]), 0.5)
     if(median2 ==0){
     median2 = mean(as.numeric(test[,k]))
@@ -183,7 +153,7 @@ print("done")
 ###Survival function 
 ###---------------------------------------------------------------
 
-saveRDS(cinds, file="202_OV_pats_3bestGenesANDclinicalVariables_CV_100timesJan19.RDS")
+saveRDS(cinds, file="MODEL6B_305_OV_pats_3bestGenes_CV_100timesJan19.RDS")
 
 
 	
