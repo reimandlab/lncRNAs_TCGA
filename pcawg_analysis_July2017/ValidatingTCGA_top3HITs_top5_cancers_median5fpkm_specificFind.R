@@ -151,9 +151,9 @@ for(i in 1:3){
   
   #2. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
-  #median2 <- quantile(as.numeric(df[,1]), 0.5)
+  median2 <- quantile(as.numeric(df[,1]), 0.75)
   #median2 <- median(df[,1])
-  median2 = median(df[,1])
+  #median2 = median(df[,1])
   for(y in 1:nrow(df)){
     genexp <- df[y,1]
     if(genexp >= median2){
@@ -196,7 +196,9 @@ for(i in 1:3){
   df$median <- ""
   #median2 <- quantile(as.numeric(df[,1]), 0.5)
   #median2 <- median(df[,1])
-  median2 = median(df[,1])
+  #median2 = median(df[,1])
+  median2 <- quantile(as.numeric(df[,1]), 0.1)
+
   for(y in 1:nrow(df)){
     genexp <- df[y,1]
     if(genexp >= median2){
@@ -219,11 +221,7 @@ for(i in 1:3){
       print(g)
 
   #cox
-        df$status[df$status=="alive"] <- 0
-        df$status[df$status=="deceased"] <- 1
-        df$status <- as.numeric(df$status)
-        df$time <- as.numeric(df$time)
-      
+       
           #plot survival plot
           fit <- survfit(Surv(time, status) ~ median, data = df)
           s <- ggsurvplot(

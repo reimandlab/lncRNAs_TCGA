@@ -182,7 +182,7 @@ g = ggboxplot(cinds_all, x="Model", y= "cindex", fill="Predictor", palette=mypal
           font.tickslab = c(15, "plain", "black"),
           font.legend = 15)+
 		stat_compare_means(method = "wilcox.test",
-                     ref.group = "1", label = "p.format")+
+                     ref.group = "4", label = "p.format")+
                      geom_hline(yintercept = 0.5, linetype = 2, colour="red")
 ggpar(g, xlab ="Model", ylab="C-index")
 print(g)
