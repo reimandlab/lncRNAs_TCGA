@@ -103,14 +103,14 @@ pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #485 patie
 #Write function that takes a dataframe, calculates medians and 
 #output list of genes with median greater than that 
 
-lnc_rna[,1:6013] = log1p(lnc_rna[,1:6013])
+#lnc_rna[,1:6013] = log1p(lnc_rna[,1:6013])
 
 #---------------------------------------------------------
 #Subset lncRNA Expression dataset to those lncRNAs with 
 #high expression in at leat one canc 215 total lncRNAs
 #---------------------------------------------------------
-top3genes = c("ENSG00000227544", "ENSG00000235823", "ENSG00000258082")
-
+top3genes = c("ENSG00000227486", "ENSG00000227544", "ENSG00000232124", "ENSG00000235572", "ENSG00000249662", 
+  "ENSG00000258082", "ENSG00000265369")
 
 lnc_rna <- lnc_rna[,c((which(colnames(lnc_rna) %in% top3genes)), 6014,6015)] 
 
@@ -145,15 +145,17 @@ lnc_rna$status[lnc_rna$status=="deceased"] <- 1
 lnc_rna$status <- as.numeric(lnc_rna$status)
 lnc_rna$time <- as.numeric(lnc_rna$time)
 
-for(i in 1:3){
+for(i in 1:7){
   #1. Subset lnc_rna to those patients in cancer
-  df <- lnc_rna[,c(i, 4:8)]
+  df <- lnc_rna[,c(i, 8:12)]
   
   #2. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
-  median2 <- quantile(as.numeric(df[,1]), 0.75)
-  #median2 <- median(df[,1])
-  #median2 = median(df[,1])
+  #median2 <- quantile(as.numeric(df[,1]), 0.75)
+  median2 <- median(df[,1])
+  if(median2 == 0){
+    median2 = mean(df[,1])
+  }
   for(y in 1:nrow(df)){
     genexp <- df[y,1]
     if(genexp >= median2){
@@ -168,7 +170,7 @@ for(i in 1:3){
   #cox
         #cox regression 
         colnames(df)[1] = "geneexpression"
-        res.cox <- coxph(Surv(time, status) ~ geneexpression, data = df)
+        res.cox <- coxph(Surv(time, status) ~ median, data = df)
         #first check that model meets proportionality assumption
         #res.cox <- coxph(Surv(time, status) ~ df[,1], data = df)
         #testph <- cox.zph(res.cox)
@@ -185,20 +187,20 @@ results_cox <- results_cox[-1,]
 ##Full - order plots by decreasing pvalue 
 ##+++++++++++++++++++++++++++++
 
-pdf("Validating3_lncRNAs_fromTCGAJan192018.pdf", pointsize=6, width=9, height=8)
+pdf("Validating7_lncRNAs_fromTCGAJan242018.pdf", pointsize=6, width=9, height=8)
 require(gridExtra)
 
-for(i in 1:3){
+for(i in 1:7){
   #1. Subset lnc_rna to those patients in cancer
-  df <- lnc_rna[,c(i, 4:8)]
+  df <- lnc_rna[,c(i, 8:12)]
 
   #2. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
-  #median2 <- quantile(as.numeric(df[,1]), 0.5)
-  #median2 <- median(df[,1])
-  #median2 = median(df[,1])
-  median2 <- quantile(as.numeric(df[,1]), 0.1)
-
+  #median2 <- quantile(as.numeric(df[,1]), 0.75)
+  median2 <- median(df[,1])
+  if(median2 == 0){
+    median2 = mean(df[,1])
+  }
   for(y in 1:nrow(df)){
     genexp <- df[y,1]
     if(genexp >= median2){
@@ -208,7 +210,7 @@ for(i in 1:3){
       df$median[y] <- 0
       }
     } 
-
+    
   gene <- colnames(df)[1]
   #plot boxplot showing difference between the two groups and sex
   title <- paste(gene, df$canc[1], "Expression")
