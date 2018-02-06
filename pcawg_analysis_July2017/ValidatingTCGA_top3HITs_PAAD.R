@@ -87,7 +87,7 @@ pcg_rna$patient <- rownames(pcg_rna)
 #remove duplicated column names 
 dups <- colnames(pcg_rna)[which(duplicated(colnames(pcg_rna)))]   
 #save them in a list for future reference 
-pcg_rna <- pcg_rna[,-(which(colnames(pcg_rna) %in% dups))]
+#pcg_rna <- pcg_rna[,-(which(colnames(pcg_rna) %in% dups))]
 
 #Clinical file - available only for 485/497 patients 
 clin <- readRDS("Jan26_PCAWG_clinical")
@@ -110,7 +110,7 @@ pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #485 patie
 #Subset lncRNA Expression dataset to those lncRNAs with 
 #high expression in at leat one canc 215 total lncRNAs
 #---------------------------------------------------------
-genes = readRDS("final_candidates_10batches_of1000CV_LIHC_cancer_patientsFeb2.RDS")
+genes = readRDS("final_candidates_10batches_of1000CV_PAAD_cancer_patientsFeb6.RDS")
 cands = as.data.frame(table(genes$gene))
 colnames(cands)[1] = "gene"
 cands$name = ""
@@ -145,7 +145,7 @@ for(i in 1:nrow(lnc_rna)){
         lnc_rna$time[i] <- t
 }
 
-lnc_rna = subset(lnc_rna, canc =='Liver Hepatocellular carcinoma')
+lnc_rna = subset(lnc_rna, canc =='Pancreas Pancreatic ductal carcinoma')
 
 #---------------------------------------------------------
 #Run survival analysis on each gene-cancer combo
@@ -158,14 +158,14 @@ lnc_rna$status[lnc_rna$status=="deceased"] <- 1
 lnc_rna$status <- as.numeric(lnc_rna$status)
 lnc_rna$time <- as.numeric(lnc_rna$time)
 
-for(i in 1:9){
+for(i in 1:2){
   #1. Subset lnc_rna to those patients in cancer
-  df <- lnc_rna[,c(i, 10:14)]
+  df <- lnc_rna[,c(i, 3:7)]
   
   #2. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
-  #median2 <- quantile(as.numeric(df[,1]), 0.75)
-  median2 <- median(df[,1])
+  median2 <- quantile(as.numeric(df[,1]), 0.75)
+  #median2 <- median(df[,1])
   if(median2 == 0){
     median2 = mean(df[,1])
   }
@@ -206,17 +206,17 @@ results_cox$HR = as.numeric(results_cox$HR)
 ##Full - order plots by decreasing pvalue 
 ##+++++++++++++++++++++++++++++
 
-pdf("Validating9_lncRNAs_fromTCGA_LIHC_Feb22018.pdf", pointsize=6, width=9, height=8)
+pdf("Validating2_lncRNAs_fromTCGA_PAAD_Feb22018.pdf", pointsize=6, width=9, height=8)
 require(gridExtra)
 
-for(i in 1:9){
+for(i in 1:2){
   #1. Subset lnc_rna to those patients in cancer
-  df <- lnc_rna[,c(i, 10:14)]
+  df <- lnc_rna[,c(i, 3:7)]
 
   #2. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
-  #median2 <- quantile(as.numeric(df[,1]), 0.75)
-  median2 <- median(df[,1])
+  median2 <- quantile(as.numeric(df[,1]), 0.25)
+  #median2 <- median(df[,1])
   if(median2 == 0){
     median2 = mean(df[,1])
   }
@@ -229,10 +229,10 @@ for(i in 1:9){
       df$median[y] <- 0
       }
     } 
-    
-  gene <- colnames(df)[1]
+   
   df$time <- as.numeric(df$time)
   df$time = df$time/365  
+  gene <- colnames(df)[1]
   gene = fantom$CAT_geneName[which(fantom$gene == gene)]
   #plot boxplot showing difference between the two groups and sex
   title <- paste(gene, df$canc[1], "Expression")
@@ -279,11 +279,114 @@ for(i in 1:9){
           print(s)  
 }
 
-
 dev.off()
 
+###check if antisense PCG is also associated with survival 
 
+pdf("anttisensePCG_Validating2_lncRNAs_fromTCGA_PAAD_Feb22018.pdf", pointsize=6, width=9, height=8)
+require(gridExtra)
 
+  #1. Subset lnc_rna to those patients in cancer
+  #For each patient add survival status and days since last seen 
+  i = which(colnames(pcg_rna) == "ENSG00000167656")
+  df <- pcg_rna[,c(i, 20023:20024)]
+
+  df$status <- ""
+  df$time <- ""
+  df$sex <- ""
+
+  #lncs
+  for(i in 1:nrow(df)){
+  pat <- rownames(df)[i]
+  z <- which(clin$icgc_donor_id %in% pat)
+  df$status[i] <- clin$donor_vital_status[z]
+  df$sex[i] <- clin$donor_sex[z]
+  t <- clin$donor_survival_time[z]
+  if(is.na(t)){
+        t <- clin$donor_interval_of_last_followup[z]
+        }
+        df$time[i] <- t
+  }
+
+  df = subset(df, canc =='Pancreas Pancreatic ductal carcinoma')
+
+#---------------------------------------------------------
+#Run survival analysis on each gene-cancer combo
+#from high_lncs 
+#---------------------------------------------------------
+results_cox <- as.data.frame(matrix(ncol=5)) ; colnames(results_cox) <- c("gene", "coef", "HR", "pval", "canc")
+
+df$status[df$status=="alive"] <- 0
+df$status[df$status=="deceased"] <- 1
+df$status <- as.numeric(df$status)
+df$time <- as.numeric(df$time)
+
+  #2. Add Median cutoff tag High or Low to each patient per each gene 
+  df$median <- ""
+  median2 <- quantile(as.numeric(df[,1]), 0.5)
+  #median2 <- median(df[,1])
+  if(median2 == 0){
+    median2 = mean(df[,1])
+  }
+  for(y in 1:nrow(df)){
+    genexp <- df[y,1]
+    if(genexp >= median2){
+      df$median[y] <- 1
+      }
+    if(genexp < median2){
+      df$median[y] <- 0
+      }
+    } 
+   
+  df$time <- as.numeric(df$time)
+  df$time = df$time/365  
+  gene <- colnames(df)[1]
+  gene = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == gene)]
+  #plot boxplot showing difference between the two groups and sex
+  title <- paste(gene, df$canc[1], "Expression")
+  colnames(df)[1] <- "Gene"
+  g <- ggboxplot(df, x= "median", y="Gene", palette=mypal[c(4,1)], order=c("0", "1"), fill = "median",  add = "jitter")
+  g <- g + stat_compare_means()
+  g <- ggpar(g, font.legend = c(10, "plain", "black")) 
+  g <- g + labs(title = title, y="FPKM", x="Median") + 
+      theme(plot.title = element_text(hjust = 0.5))
+      print(g)
+
+  #cox
+       
+          #plot survival plot
+          fit <- survfit(Surv(time, status) ~ median, data = df)
+          s <- ggsurvplot(
+          title = paste(gene, df$canc[1]),
+          fit, 
+          xlab = "Time (Years)", 
+          surv.median.line = "hv",
+          font.main = c(16, "bold", "black"),
+          font.x = c(14, "plain", "black"),
+          font.y = c(14, "plain", "black"),
+          font.tickslab = c(14, "plain", "black"),
+          font.legend = 12,
+          risk.table.fontsize = 5, 
+          legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
+          data = df,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,5),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          palette = mypal[c(4,1)],
+          ggtheme = theme_minimal(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          print(s)  
+
+dev.off()
 
 
 
