@@ -1,24 +1,35 @@
+###MODEL6.R
+
+#multivariate model with 3 lncRNAs and clinical variables 
+
+###Purpose--------------------------------------------------------------------
+
+#Using each cancer's dataset, divide it into training and test sets (MonteCarlo, 100 times)
+#Each time, run univariate survival analysis to identify individual lncRNAs that are significantly
+#associated with survival 
+
+#retained feature number shouldn't exceed number of events (deaths) in training set 
+
+#Then Run Lasso --> feature selection, keep track of this list during each iteration 
+#penalty parameter was chosen based on the fivefold cross-validation within the training set 
+
+#apply trained model to the test set for prediction 
+#calculate C-index using survcomp package 
+
+###[1.] Load requirements  
+
 ###---------------------------------------------------------------
-###TCGA_cancers_survival1.1_dec20.R
+###Load libraries and data 
 ###---------------------------------------------------------------
 
-###December 20th, 2017
-###establish a list of lncRNAs to evaluate using survival analysis
-###by looking at mean versus variance density for each lncRNA 
-###within each cancer type 
-
-###---------------------------------------------------------------
-###Load Libraries
-###---------------------------------------------------------------
-
-source("source_code_Cox_MonteCarlo_CV_PAAD_Feb5.R")
+source("source_code_Cox_MonteCarlo_CV_Jan12.R")
 require(caTools)
 
 #start with only lncRNA_intergenic
 lincs = subset(fantom, CAT_geneClass == "lncRNA_intergenic")
 z = which(colnames(rna) %in% lincs$gene)
 rna = as.data.frame(rna)
-rna = rna[,c(z, 5749:5753)]
+rna = rna[,c(z, 5786:5790)]
 
 ###[2.] Data splitting 
 
@@ -35,15 +46,14 @@ library(stringr)
 
 #Going to work on each cancer seperatley 
 #for now start with one cancer 
-cancer = cancers[[1]] #PAAD
+cancer = cancers[[1]] #OV 
 canc_data = rna[which(rna$canc == cancer),]
 canc_data = as.data.frame(canc_data)
 
-clin = canc_data[,2336:ncol(canc_data)]
+clin = canc_data[,2359:ncol(canc_data)]
 
 #New clinical file from Firehose 
-#New clinical file from Firehose 
-newclin = readRDS("185_PAAD_pats_clinical_data_Feb5_firehose.rds")
+newclin = readRDS("591_OV_pats_clinical_data_Jan23_firehose.rds")
 z = which(newclin$patient.bcr_patient_barcode %in% clin$patient)
 newclin = newclin[z,]
 colss = colnames(newclin)
@@ -84,7 +94,7 @@ clin$stage = ""
 for(i in 1:nrow(clin)){
   pat = clin$patient[i]
   z =which(newclin$patient.bcr_patient_barcode ==pat)
-  clin$stage[i] = newclin$patient.stage_event.pathologic_stage[z]
+  clin$stage[i] = newclin$patient.stage_event.clinical_stage[z]
   clin$grade[i] = newclin$patient.neoplasm_histologic_grade[z]
 }
 
@@ -95,34 +105,33 @@ clin$grade[clin$grade == "g1"] = 1
 clin$grade[clin$grade == "g2"] = 2
 clin$grade[clin$grade == "g3"] = 3
 clin$grade[clin$grade == "g4"] = 4
-z = which(clin$grade == "gx")
+z = which(clin$grade %in% c("gb", "gx"))
 clin = clin[-z,]
 
-clin$stage[clin$stage == "stage i"] = 1
-clin$stage[clin$stage == "stage ia"] = 1
-clin$stage[clin$stage == "stage ib"] = 1
-
+clin$stage[clin$stage == "stage ic"] = 1
 clin$stage[clin$stage == "stage iia"] = 2
 clin$stage[clin$stage == "stage iib"] = 2
-
-clin$stage[clin$stage == "stage iii"] = 3
+clin$stage[clin$stage == "stage iic"] = 2
+clin$stage[clin$stage == "stage iiia"] = 3
+clin$stage[clin$stage == "stage iiib"] = 3
+clin$stage[clin$stage == "stage iiic"] = 3
 clin$stage[clin$stage == "stage iv"] = 4
 
 z = which(is.na(clin$stage))
 clin = clin[-z,]
 z = which(is.na(clin$grade))
-#clin = clin[-z,]
+clin = clin[-z,]
 
 clin$grade = as.numeric(clin$grade)
 clin$stage = as.numeric(clin$stage)
 canc_data = subset(canc_data, patient %in% clin$patient)
-saveRDS(canc_data, file="PAAD_169_pats_RNASeq_data_Feb7.rds")
+saveRDS(canc_data, file="OV_295_pats_RNASeq_data_Feb7.rds")
 
 ###---------------------------------------------------------------
 ###Cands - 10 batches of 1000 CV 
 ###---------------------------------------------------------------
 
-genes = readRDS("final_candidates_10batches_of1000CV_PAAD_cancer_patientsFeb6.RDS")
+genes = readRDS("final_candidates_10batches_of1000CV_305ovarian_cancer_patientsJan23.RDS")
 cands = as.data.frame(table(genes$gene))
 colnames(cands)[1] = "gene"
 cands$name = ""
@@ -132,7 +141,7 @@ for(i in 1:nrow(cands)){
 }
 
 #only keep those that appreared in 9-10 of 10 batches 
-cands = subset(cands, Freq >=9)
+cands = subset(cands, Freq >=5)
 
 ###---------------------------------------------------------------
 ###Survival analysis 
@@ -140,15 +149,15 @@ cands = subset(cands, Freq >=9)
 
 #1. Data set-up
 genes = as.list(as.character(cands$gene))
-canc_data[,1:2335] = log1p(canc_data[,1:2335])
-sums = apply(canc_data[,1:2335], 2, sum) #134 with 0 expression in ALL patients 
+canc_data[,1:2358] = log1p(canc_data[,1:2358])
+sums = apply(canc_data[,1:2358], 2, sum) #134 with 0 expression in ALL patients 
 zeroes = names(sums[which(sums ==0)]) #what are they?
 z <- which(colnames(canc_data) %in% zeroes)
 if(!(length(z)==0)){
   canc_data = canc_data[,-z]
 }
 
-canc_data = canc_data[,-c(2335:2338)]
+canc_data = canc_data[,-c(2356:2359)]
 canc_data = merge(canc_data, clin, by=c("patient"))
 rownames(canc_data) = canc_data$patient
 canc_data = canc_data[,-1]
@@ -203,7 +212,7 @@ results$low95 = as.numeric(results$low95)
 results$low95 = round(results$low95, digits=4)
 results$upper95 = as.numeric(results$upper95)
 results$upper95 = round(results$upper95, digits=4)
-results$canc = "Pancreatic adenocarcinoma"
+results$canc = "Ovarian serous cystadenocarcinoma"
 results$name = ""
 for(i in 1:nrow(results)){
   n = fantom$CAT_geneName[which(fantom$gene %in% results$gene[i])]
@@ -220,7 +229,7 @@ sortme <- function(dt, sort.field) dt[order(-abs(dt[[sort.field]]))]
 results = sortme(results, sort.field)
 results = as.data.frame(results)
 
-pdf("2_cands_10batches_1000CV_PAAD_170ishpatients_Feb6.pdf", pointsize=6, width=10, height=8)
+pdf("9_cands_10batches_1000CV_OV_265patients_Feb7.pdf", pointsize=6, width=10, height=8)
 require(gridExtra)
 
 for(i in 1:nrow(results)){
@@ -229,7 +238,7 @@ for(i in 1:nrow(results)){
   #gene = fantom$gene[which(fantom$CAT_geneName %in% results_cox$name[i])]
   z <- which(colnames(df) %in% results$gene[i])
   if(!(length(z)==0)){
-  df <- df[,c(z,2336:ncol(df))]  
+  df <- df[,c(z,2359:ncol(df))]  
 
   df[,1] <- log1p(df[,1])
 
@@ -237,7 +246,7 @@ for(i in 1:nrow(results)){
   df$median <- ""
   median2 <- quantile(as.numeric(df[,1]), 0.5)
   if(median2 ==0){
-  	median2 = mean(as.numeric(df[,1]))
+    median2 = mean(as.numeric(df[,1]))
   }
   #median2 <- median(df[,1])
   for(y in 1:nrow(df)){
@@ -323,40 +332,10 @@ res2$r
 res2$P
 # Insignificant correlation are crossed
 library(corrplot)
-pdf("2cands_from10batches_PAAD_1000CV_corrplotFeb6.pdf")
+pdf("9cands_from10batches_OV_1000CV_corrplotFeb7.pdf")
 corrplot(res2$r, type="upper", order="hclust", 
          p.mat = res2$P, sig.level = 0.05, insig = "blank")
 dev.off()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

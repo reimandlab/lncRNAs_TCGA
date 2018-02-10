@@ -11,14 +11,14 @@
 ###Load Libraries
 ###---------------------------------------------------------------
 
-source("source_code_Cox_MonteCarlo_CV_PAAD_Feb5.R")
+source("source_code_Cox_MonteCarlo_CV_Jan12.R")
 require(caTools)
 
 #start with only lncRNA_intergenic
 lincs = subset(fantom, CAT_geneClass == "lncRNA_intergenic")
 z = which(colnames(rna) %in% lincs$gene)
 rna = as.data.frame(rna)
-rna = rna[,c(z, 5749:5753)]
+rna = rna[,c(z, 5786:5790)]
 
 ###[2.] Data splitting 
 
@@ -27,7 +27,6 @@ rna = rna[,c(z, 5749:5753)]
 ###---------------------------------------------------------------
 
 #check if this person is in my analysis: TCGA-61-2095
-
 library(glmnet)
 library(survcomp)
 library(caret)
@@ -35,15 +34,14 @@ library(stringr)
 
 #Going to work on each cancer seperatley 
 #for now start with one cancer 
-cancer = cancers[[1]] #PAAD
+cancer = cancers[[1]] #OV 
 canc_data = rna[which(rna$canc == cancer),]
 canc_data = as.data.frame(canc_data)
 
-clin = canc_data[,2336:ncol(canc_data)]
+clin = canc_data[,2359:ncol(canc_data)]
 
 #New clinical file from Firehose 
-#New clinical file from Firehose 
-newclin = readRDS("185_PAAD_pats_clinical_data_Feb5_firehose.rds")
+newclin = readRDS("377_LIHC_pats_clinical_data_Jan29_firehose.rds")
 z = which(newclin$patient.bcr_patient_barcode %in% clin$patient)
 newclin = newclin[z,]
 colss = colnames(newclin)
@@ -68,7 +66,7 @@ for(i in 1:nrow(newclin)){
 }
 
 z = which(is.na(clin$time))
-#clin = clin[-z,]
+clin = clin[-z,]
 ind <- clin$time == clin$newtime
 clin[ind, "newtime"] <- "EQUAL"
 ind <- clin$status == clin$newstatus
@@ -95,18 +93,16 @@ clin$grade[clin$grade == "g1"] = 1
 clin$grade[clin$grade == "g2"] = 2
 clin$grade[clin$grade == "g3"] = 3
 clin$grade[clin$grade == "g4"] = 4
-z = which(clin$grade == "gx")
-clin = clin[-z,]
 
 clin$stage[clin$stage == "stage i"] = 1
-clin$stage[clin$stage == "stage ia"] = 1
-clin$stage[clin$stage == "stage ib"] = 1
-
-clin$stage[clin$stage == "stage iia"] = 2
-clin$stage[clin$stage == "stage iib"] = 2
-
+clin$stage[clin$stage == "stage ii"] = 2
 clin$stage[clin$stage == "stage iii"] = 3
+clin$stage[clin$stage == "stage iiia"] = 3
+clin$stage[clin$stage == "stage iiib"] = 3
+clin$stage[clin$stage == "stage iiic"] = 3
 clin$stage[clin$stage == "stage iv"] = 4
+clin$stage[clin$stage == "stage iva"] = 4
+clin$stage[clin$stage == "stage ivb"] = 4
 
 z = which(is.na(clin$stage))
 clin = clin[-z,]
@@ -115,14 +111,12 @@ z = which(is.na(clin$grade))
 
 clin$grade = as.numeric(clin$grade)
 clin$stage = as.numeric(clin$stage)
-canc_data = subset(canc_data, patient %in% clin$patient)
-saveRDS(canc_data, file="PAAD_169_pats_RNASeq_data_Feb7.rds")
 
 ###---------------------------------------------------------------
 ###Cands - 10 batches of 1000 CV 
 ###---------------------------------------------------------------
 
-genes = readRDS("final_candidates_10batches_of1000CV_PAAD_cancer_patientsFeb6.RDS")
+genes = readRDS("final_candidates_10batches_of1000CV_LIHC_cancer_patientsFeb2.RDS")
 cands = as.data.frame(table(genes$gene))
 colnames(cands)[1] = "gene"
 cands$name = ""
@@ -140,15 +134,15 @@ cands = subset(cands, Freq >=9)
 
 #1. Data set-up
 genes = as.list(as.character(cands$gene))
-canc_data[,1:2335] = log1p(canc_data[,1:2335])
-sums = apply(canc_data[,1:2335], 2, sum) #134 with 0 expression in ALL patients 
+canc_data[,1:2358] = log1p(canc_data[,1:2358])
+sums = apply(canc_data[,1:2358], 2, sum) #134 with 0 expression in ALL patients 
 zeroes = names(sums[which(sums ==0)]) #what are they?
 z <- which(colnames(canc_data) %in% zeroes)
 if(!(length(z)==0)){
   canc_data = canc_data[,-z]
 }
 
-canc_data = canc_data[,-c(2335:2338)]
+canc_data = canc_data[,-c(2338:2341)]
 canc_data = merge(canc_data, clin, by=c("patient"))
 rownames(canc_data) = canc_data$patient
 canc_data = canc_data[,-1]
@@ -203,7 +197,7 @@ results$low95 = as.numeric(results$low95)
 results$low95 = round(results$low95, digits=4)
 results$upper95 = as.numeric(results$upper95)
 results$upper95 = round(results$upper95, digits=4)
-results$canc = "Pancreatic adenocarcinoma"
+results$canc = "Liver hepatocellular carcinoma"
 results$name = ""
 for(i in 1:nrow(results)){
   n = fantom$CAT_geneName[which(fantom$gene %in% results$gene[i])]
@@ -220,7 +214,7 @@ sortme <- function(dt, sort.field) dt[order(-abs(dt[[sort.field]]))]
 results = sortme(results, sort.field)
 results = as.data.frame(results)
 
-pdf("2_cands_10batches_1000CV_PAAD_170ishpatients_Feb6.pdf", pointsize=6, width=10, height=8)
+pdf("9_cands_10batches_1000CV_LIHC_269patients_Feb2.pdf", pointsize=6, width=10, height=8)
 require(gridExtra)
 
 for(i in 1:nrow(results)){
@@ -229,7 +223,7 @@ for(i in 1:nrow(results)){
   #gene = fantom$gene[which(fantom$CAT_geneName %in% results_cox$name[i])]
   z <- which(colnames(df) %in% results$gene[i])
   if(!(length(z)==0)){
-  df <- df[,c(z,2336:ncol(df))]  
+  df <- df[,c(z,2359:ncol(df))]  
 
   df[,1] <- log1p(df[,1])
 
@@ -323,7 +317,7 @@ res2$r
 res2$P
 # Insignificant correlation are crossed
 library(corrplot)
-pdf("2cands_from10batches_PAAD_1000CV_corrplotFeb6.pdf")
+pdf("9cands_from10batches_LIHC_1000CV_corrplotFeb2.pdf")
 corrplot(res2$r, type="upper", order="hclust", 
          p.mat = res2$P, sig.level = 0.05, insig = "blank")
 dev.off()

@@ -112,6 +112,8 @@ z = which(is.na(clin$grade))
 
 clin$grade = as.numeric(clin$grade)
 clin$stage = as.numeric(clin$stage)
+canc_data = subset(canc_data, patient %in% clin$patient)
+saveRDS(canc_data, file="LIHC_269_pats_RNASeq_data_Feb7.rds")
 
 ###---------------------------------------------------------------
 ###Cands - 10 batches of 1000 CV 
@@ -127,7 +129,7 @@ for(i in 1:nrow(cands)){
 }
 
 #only keep those that appreared in 9-10 of 10 batches 
-cands = subset(cands, Freq >=9)
+cands = subset(cands, Freq >=5)
 
 ###---------------------------------------------------------------
 ###Survival analysis 
@@ -143,7 +145,7 @@ if(!(length(z)==0)){
   canc_data = canc_data[,-z]
 }
 
-canc_data = canc_data[,-c(2338:2341)]
+canc_data = canc_data[,-c(2337:2340)]
 canc_data = merge(canc_data, clin, by=c("patient"))
 rownames(canc_data) = canc_data$patient
 canc_data = canc_data[,-1]

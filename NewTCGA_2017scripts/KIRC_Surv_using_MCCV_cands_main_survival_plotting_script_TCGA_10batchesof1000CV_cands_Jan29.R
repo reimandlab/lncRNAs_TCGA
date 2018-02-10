@@ -31,6 +31,7 @@ rna = rna[,c(z, 5786:5790)]
 library(glmnet)
 library(survcomp)
 library(caret)
+library(stringr)
 
 #Going to work on each cancer seperatley 
 #for now start with one cancer 
@@ -105,6 +106,8 @@ clin = clin[-z,]
 
 clin$grade = as.numeric(clin$grade)
 clin$stage = as.numeric(clin$stage)
+canc_data = subset(canc_data, patient %in% clin$patient)
+saveRDS(canc_data, file="KIRC_463_pats_RNASeq_data_Feb7.rds")
 
 ###---------------------------------------------------------------
 ###Cands - 10 batches of 1000 CV 
@@ -120,7 +123,7 @@ for(i in 1:nrow(cands)){
 }
 
 #only keep those that appreared in 9-10 of 10 batches 
-cands = subset(cands, Freq >=9)
+cands = subset(cands, Freq >=5)
 
 ###---------------------------------------------------------------
 ###Survival analysis 

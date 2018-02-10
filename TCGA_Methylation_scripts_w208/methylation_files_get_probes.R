@@ -1,4 +1,5 @@
-###check if any of the CNAs from TCGA actually cover any of the lncRNAs - especially the candidates
+###methylation files 
+###identify probes overlapping lncRNAs 
 
 library(data.table)
 library(plyr)
@@ -6,37 +7,11 @@ library(dplyr)
 library(stringr)
 
 #Data
-#1. CNAs
-cnas = readRDS("OvaryLiverPancreasKIRC_CNA_TCGA_files_wTCGA_IDs_Feb7.rds")
-
-#add cancer type to each one 
-#TCGA source codes
-tss_codes = read.csv("TCGA_TissueSourceSite_Codes2017.csv")
-source_codes = source = read.csv("TCGA_sample_codes.csv")
-
-cnas$source = ""
-get_source = function(id){
-	source = unlist(strsplit(as.character(id), '-'))[4]
-	source = substr(source, 1, 2)
-	return(source)
-}
-cnas$source = llply(cnas$Sample, get_source, .progress="text")
-#only keep primary solid tumour samples 
-cnas = dplyr::filter(cnas, source =="01")
-clean_tcga_id = function(id){
-	s1 = unlist(strsplit(id, '-'))[1]
-	s2 = unlist(strsplit(id, '-'))[2]
-	s3 = unlist(strsplit(id, '-'))[3]
-	return(paste(s1, s2, s3, sep="-"))
-}
-cnas$patient = llply(cnas$Sample, clean_tcga_id, .progress="text")
-cnas = as.data.table(cnas)
-#Process files 
-cnas_bed = cnas[,c(2:9)]
-#keep only those with >10 probes and abs mean >0.2
-cnas_bed = dplyr::filter(cnas_bed, Num_Probes>=10)
-cnas_bed$patient = unlist(cnas_bed$patient)
-cnas_bed$source = unlist(cnas_bed$source)
+#1. Probes 450 
+probe_coordinates = fread("hm450.hg19.manifest")
+#strand is 6th column 
+probe_coordinates = probe_coordinates[,c(1:3, 5,9,4)]
+write.table(probe_coordinates, file="450meth_probe_coordinates.bed", quote=F, row.names=F, col.names=F, sep="\t")
 
 #2. GENCODE V27 lncRNAs GTF file
 lncrnas = fread("gencode.v27lift37.long_noncoding_RNAs.gtf")
@@ -52,8 +27,8 @@ get_gene = function(gene){
 genenames = llply(genelist, get_gene)
 genes$V9 = unlist(genenames)
 coords = cbind(coords, genes)
-coords_bed = coords[,c(1, 4:5, 9)]
-colnames(coords_bed) = c("chr", "start", "end", "gene")
+coords_bed = coords[,c(1, 4:5, 8,9,7)]
+colnames(coords_bed) = c("chr", "start", "end", "rand", "gene", "strand")
 
 #3. FANTOM lncRNAs 
 fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
@@ -102,15 +77,11 @@ lncs_coords <- ldply(lncs_coords, data.frame)
 #candidate lncrnas 
 cands = readRDS("36_unique_cands_4cancers_TCGA_Feb6.rds")
 lncs_coords = lncs_coords[which(lncs_coords$gene %in% cands$gene),] #35/36 are here in GENCODE 
-
-write.table(cnas_bed, file="cnas_bed_TCGA.bed", col.names=F, row.names=F, quote=F, sep="\t")
-write.table(lncs_coords, file="lncrna_coords_bed.bed", col.names=F, row.names=F, quote=F, sep="\t")
+write.table(lncs_coords, file="lncrna_coords_bed.bed", quote=F, row.names=F, col.names=F, sep="\t")
 
 #################BEDTOOLS#########################################################################
 
-bedtools intersect -a lncrna_coords_bed.bed -b cnas_bed_TCGA.bed -f 0.90 -wa -wb > fantom_lncrnas_wTCGA_CNAs_4cancers.bed
+bedtools intersect -a 450meth_probe_coordinates.bed -b lncrna_coords_bed.bed -wa -wb -s > fantom_lncrnas_mapped_to450_probes.bed
 
-
-
-
-
+#3. OV Methylation 
+ov_meth = fread("OV.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt")
