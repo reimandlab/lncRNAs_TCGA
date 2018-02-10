@@ -87,7 +87,7 @@ pcg_rna$patient <- rownames(pcg_rna)
 #remove duplicated column names 
 dups <- colnames(pcg_rna)[which(duplicated(colnames(pcg_rna)))]   
 #save them in a list for future reference 
-pcg_rna <- pcg_rna[,-(which(colnames(pcg_rna) %in% dups))]
+#pcg_rna <- pcg_rna[,-(which(colnames(pcg_rna) %in% dups))]
 
 #Clinical file - available only for 485/497 patients 
 clin_pats <- readRDS("Jan26_PCAWG_clinical")
@@ -101,7 +101,7 @@ pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin_pats$icgc_donor_id),] #485 
 table(ucsc[,7][ucsc[,8] %in% colnames(pcg_rna)])
 #Remove 
 z <- which(colnames(pcg_rna) %in% fantom[,2])
-pcg_rna <- pcg_rna[,-z]
+#pcg_rna <- pcg_rna[,-z]
 
 #---------------------------------------------------------
 #Pre-Processing - set up lnc/PCG matrix for LM
@@ -167,26 +167,26 @@ print("pass2")
 #make scatter plot showing patient vs lncRNA candidate expression
 #what does the curve look like? how close are the points to each other?
 
-simplePlot <- function(d){
-	toplot <- as.data.table(d[,1:4])
-	colnames(toplot)[2] <- "lnc"
-	toplot <- toplot[order(lnc)]
-	toplot$id <- rownames(toplot)
-	toplot$exp[toplot$exp==0] <- "Low lncRNA"
-	toplot$exp[toplot$exp==1] <- "High lncRNA"
+	simplePlot <- function(d){
+		toplot <- as.data.table(d[,1:4])
+		colnames(toplot)[2] <- "lnc"
+		toplot <- toplot[order(lnc)]
+		toplot$id <- rownames(toplot)
+		toplot$exp[toplot$exp==0] <- "Low lncRNA"
+		toplot$exp[toplot$exp==1] <- "High lncRNA"
 
-	toplot$exp <- as.factor(toplot$exp)
-	g <- ggscatter(toplot, x = "id", y = "lnc", color = "exp",
-  				palette = mypal)
-	g <- ggpar(g, xlab=FALSE,  legend = "right", legend.title = "lncRNA Group", ylab="lncRNA log1p(FPKM) Expression",
-		main = paste(colnames(d)[2], "Expression Distribution"))
-	g <- g + rremove("x.ticks")
-	print(g + rremove("x.text"))
-}
+		toplot$exp <- as.factor(toplot$exp)
+		g <- ggscatter(toplot, x = "id", y = "lnc", color = "exp",
+	  				palette = mypal)
+		g <- ggpar(g, xlab=FALSE,  legend = "right", legend.title = "lncRNA Group", ylab="lncRNA log1p(FPKM) Expression",
+			main = paste(colnames(d)[2], "Expression Distribution"))
+		g <- g + rremove("x.ticks")
+		print(g + rremove("x.text"))
+	}
 
-pdf("6lncRNAcandidates_distributionofExp_Nov23.pdf", pointsize=6)
-llply(dividedWpcgs, simplePlot, .progress = "text")
-dev.off()
+	pdf("6lncRNAcandidates_distributionofExp_Nov23.pdf", pointsize=6)
+	llply(dividedWpcgs, simplePlot, .progress = "text")
+	dev.off()
 
 ##Helper function to calcualte wilcoxon 
 check_wilcoxon = function(PCG){
