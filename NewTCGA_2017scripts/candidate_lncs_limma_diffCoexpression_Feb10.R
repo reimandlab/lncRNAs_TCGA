@@ -284,7 +284,7 @@ diffE <- function(d){
 	
 	# cluster on correlation
 
-	hc <- hclust(as.dist(1 - cor(t(heat))), method="ward.D2")
+	hc <- hclust(as.dist(1 - cor(t(heat))), method="complete")
 	# draw a heatmap
 	my_palette <- colorRampPalette(c("blue", "white", "orange"))(n = 100)
 	heatmap.2(as.matrix(heat), col=my_palette, ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6, Rowv=as.dendrogram(hc), trace="none", scale="row")
@@ -328,7 +328,7 @@ diffE <- function(d){
 #should figure out at some point why ^ doesn't work ? 
 #too big a function? 
 
-for(i in 28:length(dividedWpcgs)){
+for(i in 1:length(dividedWpcgs)){
 	d = dividedWpcgs[[i]]
 	diffE(d)
 	print(i)
