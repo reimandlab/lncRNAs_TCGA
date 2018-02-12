@@ -110,7 +110,9 @@ pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #485 patie
 #Subset lncRNA Expression dataset to those lncRNAs with 
 #high expression in at leat one canc 215 total lncRNAs
 #---------------------------------------------------------
-genes = readRDS("final_candidates_10batches_of1000CV_LIHC_cancer_patientsFeb2.RDS")
+genes = readRDS("36_unique_cands_4cancers_TCGA_Feb6.rds")
+#subset to LIHC 
+genes = subset(genes, canc == "liver")
 cands = as.data.frame(table(genes$gene))
 colnames(cands)[1] = "gene"
 cands$name = ""
@@ -120,8 +122,8 @@ for(i in 1:nrow(cands)){
 }
 
 #only keep those that appreared in 9-10 of 10 batches 
-cands = subset(cands, Freq >=9)
-
+cands = subset(cands, Freq >=5)
+cands$gene = as.character(cands$gene)
 #top3genes = c("ENSG00000227486", "ENSG00000227544", "ENSG00000232124", "ENSG00000235572", "ENSG00000249662", 
  # "ENSG00000258082", "ENSG00000265369")
 
@@ -158,9 +160,9 @@ lnc_rna$status[lnc_rna$status=="deceased"] <- 1
 lnc_rna$status <- as.numeric(lnc_rna$status)
 lnc_rna$time <- as.numeric(lnc_rna$time)
 
-for(i in 1:9){
+for(i in 1:13){
   #1. Subset lnc_rna to those patients in cancer
-  df <- lnc_rna[,c(i, 10:14)]
+  df <- lnc_rna[,c(i, 14:18)]
   
   #2. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
@@ -209,9 +211,9 @@ results_cox$HR = as.numeric(results_cox$HR)
 pdf("Validating9_lncRNAs_fromTCGA_LIHC_Feb22018.pdf", pointsize=6, width=9, height=8)
 require(gridExtra)
 
-for(i in 1:9){
+for(i in 1:13){
   #1. Subset lnc_rna to those patients in cancer
-  df <- lnc_rna[,c(i, 10:14)]
+  df <- lnc_rna[,c(i, 14:18)]
 
   #2. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""

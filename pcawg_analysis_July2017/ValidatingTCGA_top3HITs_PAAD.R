@@ -110,7 +110,9 @@ pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #485 patie
 #Subset lncRNA Expression dataset to those lncRNAs with 
 #high expression in at leat one canc 215 total lncRNAs
 #---------------------------------------------------------
-genes = readRDS("final_candidates_10batches_of1000CV_PAAD_cancer_patientsFeb6.RDS")
+genes = readRDS("36_unique_cands_4cancers_TCGA_Feb6.rds")
+#subset to PAAD 
+genes = subset(genes, canc == "pancreas")
 cands = as.data.frame(table(genes$gene))
 colnames(cands)[1] = "gene"
 cands$name = ""
@@ -120,7 +122,7 @@ for(i in 1:nrow(cands)){
 }
 
 #only keep those that appreared in 9-10 of 10 batches 
-cands = subset(cands, Freq >=9)
+cands = subset(cands, Freq >=5)
 
 #top3genes = c("ENSG00000227486", "ENSG00000227544", "ENSG00000232124", "ENSG00000235572", "ENSG00000249662", 
  # "ENSG00000258082", "ENSG00000265369")
@@ -164,7 +166,7 @@ for(i in 1:2){
   
   #2. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
-  median2 <- quantile(as.numeric(df[,1]), 0.75)
+  median2 <- quantile(as.numeric(df[,1]), 0.5)
   #median2 <- median(df[,1])
   if(median2 == 0){
     median2 = mean(df[,1])
