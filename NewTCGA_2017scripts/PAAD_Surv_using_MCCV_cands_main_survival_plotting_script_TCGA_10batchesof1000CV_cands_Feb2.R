@@ -148,7 +148,7 @@ if(!(length(z)==0)){
   canc_data = canc_data[,-z]
 }
 
-canc_data = canc_data[,-c(2335:2338)]
+canc_data = canc_data[,-c(2332:2335)]
 canc_data = merge(canc_data, clin, by=c("patient"))
 rownames(canc_data) = canc_data$patient
 canc_data = canc_data[,-1]

@@ -217,7 +217,7 @@ for(i in 1:2){
 
   #2. Add Median cutoff tag High or Low to each patient per each gene 
   df$median <- ""
-  median2 <- quantile(as.numeric(df[,1]), 0.25)
+  median2 <- quantile(as.numeric(df[,1]), 0.5)
   #median2 <- median(df[,1])
   if(median2 == 0){
     median2 = mean(df[,1])
