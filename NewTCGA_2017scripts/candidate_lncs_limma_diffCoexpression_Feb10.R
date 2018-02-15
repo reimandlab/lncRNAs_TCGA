@@ -116,7 +116,10 @@ getExpression <- function(row){
 	#First divide patients into high and low based on median expression of lnc
 	lncData <- lnc_rna[, c(which(colnames(lnc_rna) %in% lnc), 5920:5924)]
 	lncData <- lncData[lncData$canc==canc,]
-	med <- mean(as.numeric(lncData[,1]))
+	med <- median(as.numeric(lncData[,1]))
+	if(med == 0){
+		med = mean(as.numeric(lncData[,1]))
+	}
 	lncData$exp[lncData[,1] >= med] <- 1
 	lncData$exp[lncData[,1] < med] <- 0 
 	return(lncData)
@@ -243,7 +246,9 @@ diffE <- function(d){
     t <- as.data.table(t)
     #first by adj p values then by decreasing FC
     #t <- t[order(adj.P.Val)]
-    #t <- t[order(-abs(as.numeric(logFC)))]
+    t <- t[order(-abs(as.numeric(logFC)))]
+    t = filter(t, abs(logFC) >=2)
+    if(dim(t)[1] >= 5){
 
     #save top gene names 
     top <- c(paste(colnames(d)[6], d$canc[1]), t$ID)
@@ -268,9 +273,9 @@ diffE <- function(d){
     point <- quantile(as.numeric(-log10(t$P.Value)),0.95)
 
     #pdf("plot.pdf")
-    print(ggplot(aes(x=logFC, y= -log10(P.Value)), data=t) + geom_point(aes(colour = -log10(adj.P.Val)), size = 0.85) + scale_colour_gradient(low = "blue", high="red") +
-    	labs(colour = "-log10(fdr)", x = "Limma logFC", y= "-log10(p-value)") + ggtitle(paste(colnames(d)[6], d$canc[1], "Differential Expression")) + 
-    	  geom_text(aes(label=ifelse(-log10(P.Value) >= point,as.character(ID),'')),hjust=0,vjust=0, check_overlap = TRUE, size=3))
+    #print(ggplot(aes(x=logFC, y= -log10(P.Value)), data=t) + geom_point(aes(colour = -log10(adj.P.Val)), size = 0.85) + scale_colour_gradient(low = "blue", high="red") +
+    #	labs(colour = "-log10(fdr)", x = "Limma logFC", y= "-log10(p-value)") + ggtitle(paste(colnames(d)[6], d$canc[1], "Differential Expression")) + 
+    #	  geom_text(aes(label=ifelse(-log10(P.Value) >= point,as.character(ID),'')),hjust=0,vjust=0, check_overlap = TRUE, size=3))
     #dev.off()
 
     #generate heatmap 
@@ -284,7 +289,7 @@ diffE <- function(d){
 	
 	# cluster on correlation
 
-	hc <- hclust(as.dist(1 - cor(t(heat))), method="complete")
+	hc <- hclust(as.dist(1 - cor(t(heat))), method="ward.D2")
 	# draw a heatmap
 	my_palette <- colorRampPalette(c("blue", "white", "orange"))(n = 100)
 	heatmap.2(as.matrix(heat), col=my_palette, ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6, Rowv=as.dendrogram(hc), trace="none", scale="row")
@@ -298,7 +303,7 @@ diffE <- function(d){
 	l2 <- filter(t, logFC >0)
 	list[[2]] <- l2$ID #postivie fold change, more expressed in the low lncRNA group 
 
-	combined_paths <- gprofiler(list, organism = "hsapiens", exclude_iea=TRUE, ordered_query= TRUE, min_set_size=5, max_set_size = 300, min_isect_size=8, correction_method="fdr")
+	combined_paths <- gprofiler(list, organism = "hsapiens", exclude_iea=TRUE, ordered_query= TRUE, min_set_size=5, max_set_size = 300, min_isect_size=1, correction_method="fdr")
 	print(dim(combined_paths)[1])
 
 	if(!(dim(combined_paths)[1]==0)){
@@ -320,8 +325,8 @@ diffE <- function(d){
     if(dim(t)[1] <= 1){
     	top <- c(paste(colnames(d)[6], d$canc[1]), "none")
    	}
-
     return(t)   	
+}
 }
 
 #diffExpressed <- llply(dividedWpcgs, diffE, .progress = "text")
