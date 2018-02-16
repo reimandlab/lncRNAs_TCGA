@@ -217,7 +217,7 @@ sortme <- function(dt, sort.field) dt[order(-abs(dt[[sort.field]]))]
 results = sortme(results, sort.field)
 results = as.data.frame(results)
 
-pdf("9_cands_10batches_1000CV_LIHC_269patients_Feb2.pdf", pointsize=6, width=10, height=8)
+pdf("9_cands_10batches_1000CV_LIHC_269patients_Feb2.pdf", pointsize=6, width=9, height=8)
 require(gridExtra)
 
 for(i in 1:nrow(results)){
@@ -272,11 +272,11 @@ for(i in 1:nrow(results)){
           fit, 
           xlab = "Time (Years)", 
           surv.median.line = "hv",
-          font.main = c(16, "bold", "black"),
-          font.x = c(14, "plain", "black"),
-          font.y = c(14, "plain", "black"),
-          font.tickslab = c(14, "plain", "black"),
-          font.legend = 12,
+          font.main = c(20, "bold", "black"),
+          font.x = c(19, "plain", "black"),
+          font.y = c(19, "plain", "black"),
+          font.tickslab = c(19, "plain", "black"),
+          font.legend = 16,
           risk.table.fontsize = 5, 
           legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
           data = df,      # data used to fit survival curves. 

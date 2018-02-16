@@ -144,7 +144,7 @@ getPCGS <- function(df){
 	meds <- apply(all[,8:ncol(all)], 2, median)
 
 	#names of pcgs with median <5 
-	low <- names(meds[which(meds <10)]) 
+	low <- names(meds[which(meds <1500)]) #1st qu of median expression 
 	all <- all[,-(which(colnames(all) %in% low))] 
 	#log all gene expression values
 	all[,c(6,8:(ncol(all)))] <- log1p(all[,c(6,8:(ncol(all)))])
@@ -202,11 +202,12 @@ genes = res2$column
 d = d[,c(1:7, which(colnames(d) %in% genes))]
 gene_data = d[,8:ncol(d)]
 x <- model.matrix( ~., gene_data)
-y <- as.factor(d$exp)
 
-fit = glmnet(x, y, family = "binomial")
-cvfit = cv.glmnet(x, y, family = "binomial", alpha =1) #uses cross validation to select
-
+#y <- as.factor(d$exp)
+#fit = glmnet(x, y, family = "binomial")
+#cvfit = cv.glmnet(x, y, family = "binomial", alpha =1) #uses cross validation to select
+y = as.numeric(d[,6])
+cvfit = cv.glmnet(x, y, alpha =1)
 #the best lamda and then use lambda to see which features remain in model 
 cvfit$lambda.min #left vertical line
 cvfit$lambda.1se #right vertical line 
@@ -243,7 +244,7 @@ combined_paths <- combined_paths[,c(9,12, 3, 3, 1, 14)]
 colnames(combined_paths) <- c("GO.ID", "Description", "p.Val", "FDR", "Phenotype", "Genes")
 combined_paths$Phenotype[combined_paths$Phenotype==1] = "1"
 combined_paths$Phenotype[combined_paths$Phenotype==2] = "-1"
-write.table(combined_paths, sep= "\t", file=paste(colnames(d)[6], d$canc[1], "PathwaysUsingtALL_DEgenesFeb12.txt", sep="_"), quote=F, row.names=F)
+write.table(combined_paths, sep= "\t", file=paste(colnames(d)[6], d$canc[1], "PathwaysUsingtALL_DEgenesFeb16_linearLASSO.txt", sep="_"), quote=F, row.names=F)
 }
 
 #heatmap 
@@ -268,7 +269,7 @@ heatmap.2(as.matrix(heat), main = paste(colnames(d)[6], d$canc[1]),col=my_palett
 
 for(i in 1:length(dividedWpcgs)){
 	d = dividedWpcgs[[i]]
-	pdf(paste(colnames(d)[6], d$canc[1], "PCG_analysis_Feb15.pdf", sep="_"))
+	pdf(paste(colnames(d)[6], d$canc[1], "linear_lasso_PCG_analysis_Feb16.pdf", sep="_"))
 	find_correlated_PCGS(d)
 	dev.off()
 	print(i)

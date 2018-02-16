@@ -83,26 +83,32 @@ get_data = function(lnc){
 		x = "Segment_Mean", y = "gene",
                color = "median", palette = "jco",
                size = 3, alpha = 0.6, add = "reg.line",                         # Add regression line
-          	   ggtheme = theme_light(), ylab = "log1p(FPKM) Expression", xlab="Segment Mean SCNA") + stat_cor() 
+          	   ggtheme = theme_light(), ylab = "log1p(FPKM) Expression", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
+          font.tickslab = c(15, "plain", "black"), xlab="Segment Mean SCNA") + stat_cor() 
 	
 	xplot = ggboxplot(df, main= paste(df$name[1], df$canc[1], "CNA vs Exp", "n=", length(unique(df$patient))),
-		x = "median", y = "Segment_Mean", legend.title = "Expression Tag",
-                   color = "median", fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(), xlab="Expression", ylab="Segment Mean SCNA")+rotate()
+		x = "median", y = "Segment_Mean", legend.title = "Expression Tag", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
+          font.tickslab = c(15, "plain", "black"),
+                  fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(), xlab="Expression", ylab="Segment Mean SCNA")+rotate()
 	xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5)
-	yplot <- ggboxplot(df, x = "median", y = "gene",
-                   color = "median", fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(),
+	yplot <- ggboxplot(df, x = "median", y = "gene", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
+          font.tickslab = c(15, "plain", "black"), fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(),
                     xlab="Expression", ylab="log1p(FPKM) Expression")
 	yplot= yplot + stat_compare_means(label = "p.signif", label.x = 1.5)
     yplot = yplot + rremove("legend")
     sp = sp + rremove("legend")
-    p = plot_grid(xplot, NULL, sp, yplot, ncol = 2, nrow =2,align = "hv", 
-          rel_widths = c(2, 1), rel_heights = c(1, 2))
+    #p = plot_grid(xplot, NULL, sp, yplot, ncol = 2, nrow =2,align = "hv", 
+    #      rel_widths = c(2, 1), rel_heights = c(1, 2))
+   
+    plots <- align_plots(xplot, sp, align = 'v', axis = 'l')
+    bottom_row <- plot_grid(plots[[2]], yplot, labels = c('B', 'C'), align = 'h', rel_widths = c(2.85, 1))
+    p = plot_grid(plots[[1]], bottom_row, labels = c('A', ''), ncol = 1, rel_heights = c(1, 1.5))
     print(p)
     print(lnc)
     return(dat)
 }
 }
-pdf("candidate_lncRNAs_CNA_versus_Expression_Feb7.pdf", width=13, height =11)
+pdf("candidate_lncRNAs_CNA_versus_Expression_Feb7.pdf", height=5.5, width=8.3)
 lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
 dev.off()
 

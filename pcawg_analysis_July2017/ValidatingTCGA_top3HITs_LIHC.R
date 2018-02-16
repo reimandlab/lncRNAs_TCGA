@@ -255,11 +255,11 @@ for(i in 1:13){
           fit, 
           xlab = "Time (Years)", 
           surv.median.line = "hv",
-          font.main = c(16, "bold", "black"),
-          font.x = c(14, "plain", "black"),
-          font.y = c(14, "plain", "black"),
-          font.tickslab = c(14, "plain", "black"),
-          font.legend = 12,
+          font.main = c(20, "bold", "black"),
+          font.x = c(19, "plain", "black"),
+          font.y = c(19, "plain", "black"),
+          font.tickslab = c(19, "plain", "black"),
+          font.legend = 16,
           risk.table.fontsize = 5, 
           legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
           data = df,      # data used to fit survival curves. 
