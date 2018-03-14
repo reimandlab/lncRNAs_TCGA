@@ -142,16 +142,16 @@ saveRDS(cancers_keep, file="tcga_id_cancer_type_conversion.txt")
 #3. Subset RNA file 
 z <- which(colnames(rna) %in% cancers_keep$TCGA_id)
 rna = as.data.frame(rna)
-rna = rna[,c(z,9247)]
+rna = rna[,c(z,ncol(rna))]
 
 #4. Keep only lncRNA genes 
 z <- which(rna$gene %in% fantom$CAT_geneID)
 lnc_rna = rna[z,]
-saveRDS(lnc_rna, "5919_lncs4matched_normal_tissues_TCGAnew.rds")
+saveRDS(lnc_rna, "5919_all_tumours_7501_tissues_TCGAnew.rds")
 
 #everything else (includes PCGS, other lncRNAs not in FANTOM)
 pcg_rna = rna[-z,]
-saveRDS(pcg_rna, "54564_PCGS4cancers_TCGAnew.rds")
+saveRDS(pcg_rna, "54564_PCGs_all_tumours_7501_tissues_TCGAnew.rds")
 
 
 
