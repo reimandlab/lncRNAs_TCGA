@@ -91,8 +91,12 @@ paad = rbind(paad_cinds_clin, paad_cinds_combined)
 paad$canc = "paad"
 
 #Make box plots for cindices#-----------------------------
-all_cancers = rbind(lihc, kirc, paad)
-ggboxplot(all_cancers, x="predictor", y="cindex", facet.by="canc")
+all_cancers = rbind(lihc, kirc, paad, ov)
+pdf("100CVs_prebinary_labelled_predictor_cindecides_fixed_dichotomization.pdf", width=9, height=9)
+ggboxplot(all_cancers, x="predictor", y="cindex", facet.by="canc", fill="predictor", palette=mypal) +
+stat_boxplot(geom = "errorbar", width = 0.5) + stat_compare_means(method = "wilcox.test", label = "p.signif") +
+geom_hline(yintercept = 0.5, linetype = 2, colour="red")
+dev.off()
 
 #Which features were selected#----------------------------
 lihc_features = as.data.table(table(unlist(lihc_genes_results)))
@@ -116,6 +120,6 @@ paad_features = dplyr::filter(paad_features, N >=50)
 paad_features$canc = "paad"
 
 all_chosen_features = rbind(lihc_features, ov_features, kirc_features, paad_features)
-saveRDS(all_chosen_features, file="chosen_features_100CVs_cts_predictors_March14.rds")
+saveRDS(all_chosen_features, file="chosen_features_100CVs_prebinary_predictors_fixed_dichotomization_March14.rds")
 
 
