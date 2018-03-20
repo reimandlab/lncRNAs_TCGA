@@ -118,38 +118,35 @@ clin$status[clin$status=="Dead"] <- 1
 exp_canc_data = canc_data
 
 for(k in 1:(ncol(canc_data)-5)){
-    median2 <- quantile(as.numeric(canc_data[,k]), 0.5)
-    if(median2 ==0){
+    med <- quantile(as.numeric(canc_data[,k]), 0.5)
+    if(med ==0){
     #if median = 0 then anyone greater than zero is 1 
-    for(m in 1:nrow(canc_data)){
-    genexp <- canc_data[m,k]
-    if(genexp > 0){
-      canc_data[m,k] <- 1
-      }
-    if(genexp == 0 ){
-      canc_data[m,k] <- 0
-      }
-    } 
+    l1 = which(canc_data[,k] > 0)
+    l2 = which(canc_data[,k] ==0)
+    canc_data[l1,k] = 1
+    canc_data[l2, k] = 0
     }
-    if(!(median2 ==0)){
-    for(m in 1:nrow(canc_data)){
-    genexp <- canc_data[m,k]
-    if(genexp >= median2){
-      canc_data[m,k] <- 1
-      }
-    if(genexp < median2){
-      canc_data[m,k] <- 0
-      }
-    } 
+
+    if(!(med ==0)){
+    l1 = which(canc_data[,k] >= med)
+    l2 = which(canc_data[,k] < med)
+    canc_data[l1,k] = 1
+    canc_data[l2, k] = 0
     }
 }    
 
 ###---------------------------------------------------------------
 ###Cands - 10 batches of 1000 CV 
 ###---------------------------------------------------------------
+kirc_genes_results = readRDS(file="ALL_KIRC_pats_prebin_predictors_list_of_sig_genes_CV_100March19nokeep.rds")
+kirc_features = as.data.table(table(unlist(kirc_genes_results)))
+kirc_features = kirc_features[order(N)]
+kirc_features = dplyr::filter(kirc_features, N >=50)
+kirc_features$canc = "kirc"
 
 genes = readRDS("chosen_features_100CVs_prebinary_predictors_March14.rds")
 genes = subset(genes, canc == "kirc")
+genes = kirc_features
 genes$name = ""
 genes = genes[which(str_detect(genes$V1, "ENSG")),]
 for(i in 1:nrow(genes)){
@@ -220,7 +217,7 @@ sortme <- function(dt, sort.field) dt[order(-abs(dt[[sort.field]]))]
 results = sortme(results, sort.field)
 results = as.data.frame(results)
 
-pdf("11_cands_100CV_KIRC_463patients_March14_preLabelled_binarypred.pdf", pointsize=6, width=10, height=8)
+pdf("5_cands_100CV_KIRC_463patients_March19_binarypred.pdf", pointsize=6, width=10, height=8)
 require(gridExtra)
 
 for(i in 1:nrow(results)){
