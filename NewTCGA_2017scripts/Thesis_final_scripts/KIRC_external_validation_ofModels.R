@@ -43,24 +43,25 @@ rna = as.data.frame(rna)
 ###[2.] Data splitting 
 
 ###canc data
-source("ov_source_canc_dataMar21.R")
-canc_data = readRDS("OV_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
-corlncs = readRDS("OV_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21_mostcorrelated_lncs.rds")
+source("kirc_source_canc_dataMar21.R")
+canc_data = readRDS("KIRC_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
+corlncs = readRDS("KIRC_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21_mostcorrelated_lncs.rds")
 
 
 #------FEATURES-----------------------------------------------------
-ov_genes_results = readRDS(file="OV_100CV_SIG_genes_detectable_correlated_lncs_PCAWGtcga_mar21.rds")
-ov_features = as.data.table(table(unlist(ov_genes_results)))
-ov_features = ov_features[order(N)]
-ov_features = dplyr::filter(ov_features, N >=40)
-ov_features$canc = "ov"
-ov_features$name = ""
-for(i in 1:nrow(ov_features)){
-  z = which(fantom$gene == ov_features$V1[i])
-  ov_features$name[i] = fantom$CAT_geneName[z]
+kirc_genes_results = readRDS(file="KIRC_100CV_SIG_genes_detectable_correlated_lncs_PCAWGtcga_mar21.rds")
+kirc_features = as.data.table(table(unlist(kirc_genes_results)))
+kirc_features = kirc_features[order(N)]
+kirc_features = dplyr::filter(kirc_features, N >=500)
+kirc_features$canc = "kirc"
+kirc_features$name = ""
+for(i in 1:nrow(kirc_features)){
+  z = which(fantom$gene == kirc_features$V1[i])
+  kirc_features$name[i] = fantom$CAT_geneName[z]
 }
 
-z = which(colnames(canc_data) %in% c(ov_features$V1, "canc", "time", "status", "sex", "patient"))
+
+z = which(colnames(canc_data) %in% c(kirc_features$V1, "canc", "time", "status", "sex", "patient"))
 canc_data = canc_data[,z]
 
 #add high low tag
@@ -89,7 +90,7 @@ canc_data$status[canc_data$status=="Dead"] <- 1
 canc_data$status = as.numeric(canc_data$status)
 
 #####Train model using all TCGA data and the chosen predictor lncRNAs 
-canc_data = canc_data[,which(colnames(canc_data) %in% c(ov_features$V1, "time", "status"))]
+canc_data = canc_data[,which(colnames(canc_data) %in% c(kirc_features$V1, "time", "status"))]
 justlncs = coxph(Surv(time, status)  ~ ., data = canc_data)
 #keep = names(which(summary(justlncs)$coefficients[,5] <=0.05))
 #if(!(length(keep)==0)){
@@ -100,7 +101,7 @@ justlncs = coxph(Surv(time, status)  ~ ., data = canc_data)
 
 #------PCAWG DATA---------------------------------------------------
 pcawg_data = readRDS("lncRNA_clinical_data_PCAWG_March20.rds")
-pcawg_data = subset(pcawg_data, canc == "Ovary Serous cystadenocarcinoma")
+pcawg_data = subset(pcawg_data, canc == "Kidney Adenocarcinoma, clear cell type")
 z = which(colnames(pcawg_data) %in% c(colnames(canc_data), "time", "status"))
 pcawg_data = pcawg_data[,z]
 #add high low tag
@@ -147,7 +148,7 @@ dev.off()
 
 #------individual lncs-----------------------------------------
 
-pdf("topCands_OV_individual_survivaplots_TCGA.pdf")
+pdf("topCands_KIRC_individual_survivaplots_TCGA.pdf")
 results_cox1 <- as.data.frame(matrix(ncol=6)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95")
 for(i in 1:(ncol(canc_data)-2)){
 	dat = canc_data[,c(i, ncol(canc_data), (ncol(canc_data)-1))]
@@ -194,7 +195,7 @@ results_cox1 = results_cox1[-1,]
 
 #------individual lncs-----------------------------------------
 
-pdf("topCands_OV_individual_survivaplots_PCAWG.pdf")
+pdf("topCands_KIRC_individual_survivaplots_PCAWG.pdf")
 results_cox2 <- as.data.frame(matrix(ncol=6)) ; colnames(results_cox2) <- c("gene", "coef", "HR", "pval", "low95", "upper95")
 for(i in 1:(ncol(pcawg_data)-2)){
 	dat = pcawg_data[,c(i, ncol(pcawg_data), (ncol(pcawg_data)-1))]
@@ -238,6 +239,31 @@ for(i in 1:(ncol(pcawg_data)-2)){
 }
 dev.off()
 results_cox2 = results_cox2[-1,]
+
+###add HR and pvalues to list of lncRNAs 
+all_features = readRDS("chosen_features_all_cancesr_Mar22_1000CVs_8020split.rds")
+all_features$TCGA_HR = ""
+all_features$TCGA_pval = ""
+all_features$PCAWG_HR = ""
+all_features$PCAWG_pval = ""
+for(i in 1:nrow(results_cox2)){
+  z = which(all_features$V1 == results_cox2$gene[i])
+  all_features$PCAWG_HR[z] = results_cox2$HR[i]
+  all_features$PCAWG_pval[z] = results_cox2$pval[i]
+}
+for(i in 1:nrow(results_cox1)){
+  z = which(all_features$V1 == results_cox1$gene[i])
+  all_features$TCGA_HR[z] = results_cox1$HR[i]
+  all_features$TCGA_pval[z] = results_cox1$pval[i]
+}
+
+saveRDS(all_features, file = "chosen_features_all_cancesr_Mar22_1000CVs_8020split.rds")
+
+
+
+
+
+
 
 
 

@@ -146,6 +146,9 @@ detectable$canc = "Kidney renal clear cell carcinoma"
 z = which(colnames(canc_data) %in% c(detectable$gene, "canc", "time", "status", "sex", "patient"))
 canc_data = canc_data[,z]
 
+#save clinical file
+saveRDS(canc_data, file="KIRC_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
+
 #------PCAWG DATA---------------------------------------------------
 pcawg_data = readRDS("lncRNA_clinical_data_PCAWG_March20.rds")
 pcawg_data = subset(pcawg_data, canc == "Kidney Adenocarcinoma, clear cell type")
@@ -206,3 +209,10 @@ rcors = rcors[-z]
 corlncs = rcors[which(rcors >=0.1)]
 z = which(colnames(canc_data) %in% c(names(corlncs), "canc", "time", "status", "sex", "patient"))
 canc_data = canc_data[,z]
+
+saveRDS(canc_data, file="KIRC_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21_mostcorrelated_lncs.rds")
+
+#END--------------------------------------------------------------------------------------------------------------------------------
+
+
+

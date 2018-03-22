@@ -28,8 +28,9 @@ require(caTools)
 #start with only lncRNA_intergenic
 lincs = subset(fantom, (CAT_geneClass == "lncRNA_intergenic") & (CAT_geneCategory %in% c("e_lncRNA", "p_lncRNA_intergenic")))
 z = which(colnames(rna) %in% lincs$gene)
+#z = which(colnames(rna) %in% lnc_info$gene) <-------- 
 rna = as.data.frame(rna)
-rna = rna[,c(z, (ncol(rna)-5):ncol(rna))]
+#rna = rna[,c(z, (ncol(rna)-5):ncol(rna))] <----------
 
 ###[2.] Data splitting 
 
@@ -54,14 +55,14 @@ z = which(sums==0)
 #Going to work on each cancer seperatley 
 #for now start with one cancer
 cancers = cancers[which(cancers %in% rna$canc)] 
-cancer = cancers[[2]] #LIHC 
+cancer = cancers[[4]] #PAAD 
 canc_data = rna[which(rna$canc == cancer),]
 canc_data = as.data.frame(canc_data)
 
 clin = canc_data[,(ncol(canc_data)-4):ncol(canc_data)]
 
 #New clinical file from Firehose 
-newclin = readRDS("377_LIHC_pats_clinical_data_Jan29_firehose.rds")
+newclin = readRDS("185_PAAD_pats_clinical_data_Feb5_firehose.rds")
 z = which(newclin$patient.bcr_patient_barcode %in% clin$patient)
 newclin = newclin[z,]
 colss = colnames(newclin)
@@ -86,7 +87,7 @@ for(i in 1:nrow(newclin)){
 }
 
 z = which(is.na(clin$time))
-clin = clin[-z,]
+#clin = clin[-z,]
 ind <- clin$time == clin$newtime
 clin[ind, "newtime"] <- "EQUAL"
 ind <- clin$status == clin$newstatus
@@ -108,28 +109,28 @@ for(i in 1:nrow(clin)){
   clin$age[i] = newclin$patient.age_at_initial_pathologic_diagnosis[z]
 }
 
-#292 LIHC patients with clinical data 
 #change stage and grade to numeric values
 clin$grade[clin$grade == "g1"] = 1
 clin$grade[clin$grade == "g2"] = 2
 clin$grade[clin$grade == "g3"] = 3
 clin$grade[clin$grade == "g4"] = 4
+z = which(clin$grade == "gx")
+clin = clin[-z,]
 
 clin$stage[clin$stage == "stage i"] = 1
-clin$stage[clin$stage == "stage ii"] = 2
+clin$stage[clin$stage == "stage ia"] = 1
+clin$stage[clin$stage == "stage ib"] = 1
+
+clin$stage[clin$stage == "stage iia"] = 2
+clin$stage[clin$stage == "stage iib"] = 2
+
 clin$stage[clin$stage == "stage iii"] = 3
-clin$stage[clin$stage == "stage iiia"] = 3
-clin$stage[clin$stage == "stage iiib"] = 3
-clin$stage[clin$stage == "stage iiic"] = 3
 clin$stage[clin$stage == "stage iv"] = 4
-clin$stage[clin$stage == "stage iva"] = 4
-clin$stage[clin$stage == "stage ivb"] = 4
 
 z = which(is.na(clin$stage))
 clin = clin[-z,]
 z = which(is.na(clin$grade))
 #clin = clin[-z,]
-#269 LIHC patients with clinical data 
 
 clin$grade = as.numeric(clin$grade)
 clin$stage = as.numeric(clin$stage)
@@ -139,31 +140,80 @@ clin$status[clin$status=="Alive"] <- 0
 clin$status[clin$status=="Dead"] <- 1
 
 detectable = readRDS("PCAWG_detectable_genes_4cancers_March20.rds")
-detectable = subset(detectable, canc == "Kidney-RCC")
-detectable$canc = "Kidney renal clear cell carcinoma"
+detectable = subset(detectable, canc == "Panc-AdenoCA")
+detectable$canc = "Pancreatic adenocarcinoma"
 
 z = which(colnames(canc_data) %in% c(detectable$gene, "canc", "time", "status", "sex", "patient"))
 canc_data = canc_data[,z]
+#save clinical file
+saveRDS(canc_data, file="PAAD_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
 
 
+#------PCAWG DATA---------------------------------------------------
+pcawg_data = readRDS("lncRNA_clinical_data_PCAWG_March20.rds")
+pcawg_data = subset(pcawg_data, canc == "Pancreas Pancreatic ductal carcinoma")
+z = which(colnames(pcawg_data) %in% c(colnames(canc_data), "time", "status"))
+pcawg_data = pcawg_data[,z]
+
+lncs = as.list(colnames(canc_data)[1:349])
+
+set.seed(140)
+
+check_cor_lnc = function(lnc){
+  p = pcawg_data[,which(colnames(pcawg_data) == lnc)]
+  p = log1p(p)
+  p = as.data.frame(p) 
+  colnames(p)[1] = "pcawg"
+  z = dim(p)[1]
+  t = canc_data[,which(colnames(canc_data) == lnc)]
+  t = as.data.frame(t)
+  colnames(t)[1] = "tcga"
+  r = c()
+  plots <- list()  # new empty list
+  for(k in 1:10){
+  train_ind <- sample(seq_len(nrow(t)), size = z)
+  t = t[train_ind,]
+  t = as.data.frame(t)
+  colnames(t)[1] = "tcga"
+  lnc_dat = cbind(p, t)
+  library("ggpubr")
+  g = ggscatter(lnc_dat, x = "pcawg", y = "tcga", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "pcawg log1p(fpkm)", ylab = "tcga log1p(fpkm)", main = paste(lnc, "correlation"))
+  g = g + geom_hline(yintercept = median(lnc_dat$tcga), linetype = 2, colour="red") + geom_vline(xintercept=median(lnc_dat$pcawg), 
+    linetype=2, colour="orange")
+
+  plots[[k]] <- g 
+  r = c(r, cor(lnc_dat$pcawg, lnc_dat$tcga))
+  }
+  if(length(which(r > 0))>=5){
+  rnew = mean(r[which(r > 0)])
+  names(rnew) = lnc
+  multiplot(plotlist = plots, cols = 2)
+  }
+  if(!(length(which(r>0))>=5)){
+  rnew = "not_correlated"
+  names(rnew) = lnc
+  }
+  return(rnew)
+}
+
+pdf("lnc_exp_correlation_bw_pcawg_tcga_mar21_PAAD.pdf", height=12, width=10)
+rcors = llply(lncs, check_cor_lnc, .progress="text")
+dev.off()
+rcors = unlist(rcors)
+z = which(rcors == "not_correlated")
+rcors = rcors[-z]
+
+corlncs = rcors[which(rcors >=0.1)]
+z = which(colnames(canc_data) %in% c(names(corlncs), "canc", "time", "status", "sex", "patient"))
+canc_data = canc_data[,z]
+
+saveRDS(canc_data, file="PAAD_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21_mostcorrelated_lncs.rds")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#END--------------------------------------------------------------------------------------------------------------------------------
 
 
 

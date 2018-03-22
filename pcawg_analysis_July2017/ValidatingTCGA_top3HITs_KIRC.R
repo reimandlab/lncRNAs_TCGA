@@ -111,37 +111,14 @@ pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #485 patie
 #high expression in at leat one canc 215 total lncRNAs
 #---------------------------------------------------------
 
-kirc_genes_results = readRDS(file="ALL_KIRC_pats_prebin_predictors_list_of_sig_genes_CV_100March19nokeep.rds")
-kirc_features = as.data.table(table(unlist(kirc_genes_results)))
-kirc_features = kirc_features[order(N)]
-kirc_features = dplyr::filter(kirc_features, N >=50)
-kirc_features$canc = "kirc"
-kirc_features$name = ""
-for(i in 1:nrow(kirc_features)){
-  z = which(fantom$gene == kirc_features$V1[i])
-  kirc_features$name[i] = fantom$CAT_geneName[z]
-}
-
-#genes = readRDS("36_unique_cands_4cancers_TCGA_Feb6.rds")
+genes = readRDS("chosen_features_all_cancesr_Mar22_1000CVs_8020split.rds")
 #subset to KIRC 
-#genes = subset(genes, canc == "kidney")
-#cands = as.data.frame(table(genes$gene))
+genes = subset(genes, canc == "kirc")
+cands = genes
+colnames(cands)[1] = "gene"
 
-colnames(kirc_features)[1] = "gene"
-cands = kirc_features
-cands$name = ""
-for(i in 1:nrow(cands)){
-  n = fantom$CAT_geneName[which(fantom$gene %in% cands$gene[i])]
-  cands$name[i] = n
-}
-
-#only keep those that appreared in 9-10 of 10 batches 
-#cands = subset(cands, Freq >=5)
-
-#top3genes = c("ENSG00000227486", "ENSG00000227544", "ENSG00000232124", "ENSG00000235572", "ENSG00000249662", 
- # "ENSG00000258082", "ENSG00000265369")
-
-#lnc_rna <- lnc_rna[,c((which(colnames(lnc_rna) %in% cands$gene)), 6014,6015)] 
+lnc_rna <- lnc_rna[,c((which(colnames(lnc_rna) %in% cands$gene)), 6014,6015)] 
+lnc_rna = subset(lnc_rna, canc =='Kidney Adenocarcinoma, clear cell type')
 
 #For each patient add survival status and days since last seen 
 lnc_rna$status <- ""
@@ -161,8 +138,6 @@ for(i in 1:nrow(lnc_rna)){
         lnc_rna$time[i] <- t
 }
 
-lnc_rna = subset(lnc_rna, canc =='Kidney Adenocarcinoma, clear cell type')
-
 #---------------------------------------------------------
 #Run survival analysis on each gene-cancer combo
 #from high_lncs 
@@ -175,7 +150,6 @@ lnc_rna$status <- as.numeric(lnc_rna$status)
 lnc_rna$time <- as.numeric(lnc_rna$time)
 
 saveRDS(lnc_rna, file="lncRNA_clinical_data_PCAWG_March20.rds")
-
 
 for(i in 1:4){
   #1. Subset lnc_rna to those patients in cancer

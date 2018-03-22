@@ -54,8 +54,8 @@ cinds_clin = c()
 cinds_justlncs = c()
 cinds_combined = c()
 
-for(j in 1:100){
-smp_size <- floor(0.7 * nrow(canc_data))
+for(j in 1:1000){
+smp_size <- floor(0.8 * nrow(canc_data))
 train_ind <- sample(seq_len(nrow(canc_data)), size = smp_size)
 train <- canc_data[train_ind, c(1:(ncol(canc_data)-6), ncol(canc_data))]
 test <- canc_data[-train_ind, c(1:(ncol(canc_data)-6), ncol(canc_data))]

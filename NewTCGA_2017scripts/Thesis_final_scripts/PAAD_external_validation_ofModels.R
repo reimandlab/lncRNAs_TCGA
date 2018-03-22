@@ -43,24 +43,23 @@ rna = as.data.frame(rna)
 ###[2.] Data splitting 
 
 ###canc data
-source("ov_source_canc_dataMar21.R")
-canc_data = readRDS("OV_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
-corlncs = readRDS("OV_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21_mostcorrelated_lncs.rds")
-
+source("paad_source_canc_dataMar21.R")
+canc_data = readRDS("PAAD_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
+corlncs = readRDS("PAAD_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21_mostcorrelated_lncs.rds")
 
 #------FEATURES-----------------------------------------------------
-ov_genes_results = readRDS(file="OV_100CV_SIG_genes_detectable_correlated_lncs_PCAWGtcga_mar21.rds")
-ov_features = as.data.table(table(unlist(ov_genes_results)))
-ov_features = ov_features[order(N)]
-ov_features = dplyr::filter(ov_features, N >=40)
-ov_features$canc = "ov"
-ov_features$name = ""
-for(i in 1:nrow(ov_features)){
-  z = which(fantom$gene == ov_features$V1[i])
-  ov_features$name[i] = fantom$CAT_geneName[z]
+paad_genes_results = readRDS(file="PAAD_8020_100CV_SIG_genes_detectable_correlated_lncs_PCAWGtcga_mar21.rds")
+paad_features = as.data.table(table(unlist(paad_genes_results)))
+paad_features = paad_features[order(N)]
+paad_features = dplyr::filter(paad_features, N >=500)
+paad_features$canc = "paad"
+paad_features$name = ""
+for(i in 1:nrow(paad_features)){
+  z = which(fantom$gene == paad_features$V1[i])
+  paad_features$name[i] = fantom$CAT_geneName[z]
 }
 
-z = which(colnames(canc_data) %in% c(ov_features$V1, "canc", "time", "status", "sex", "patient"))
+z = which(colnames(canc_data) %in% c(paad_features$V1, "canc", "time", "status", "sex", "patient"))
 canc_data = canc_data[,z]
 
 #add high low tag
@@ -89,7 +88,7 @@ canc_data$status[canc_data$status=="Dead"] <- 1
 canc_data$status = as.numeric(canc_data$status)
 
 #####Train model using all TCGA data and the chosen predictor lncRNAs 
-canc_data = canc_data[,which(colnames(canc_data) %in% c(ov_features$V1, "time", "status"))]
+canc_data = canc_data[,which(colnames(canc_data) %in% c(paad_features$V1, "time", "status"))]
 justlncs = coxph(Surv(time, status)  ~ ., data = canc_data)
 #keep = names(which(summary(justlncs)$coefficients[,5] <=0.05))
 #if(!(length(keep)==0)){
@@ -100,7 +99,7 @@ justlncs = coxph(Surv(time, status)  ~ ., data = canc_data)
 
 #------PCAWG DATA---------------------------------------------------
 pcawg_data = readRDS("lncRNA_clinical_data_PCAWG_March20.rds")
-pcawg_data = subset(pcawg_data, canc == "Ovary Serous cystadenocarcinoma")
+pcawg_data = subset(pcawg_data, canc == "Pancreas Pancreatic ductal carcinoma")
 z = which(colnames(pcawg_data) %in% c(colnames(canc_data), "time", "status"))
 pcawg_data = pcawg_data[,z]
 #add high low tag
@@ -129,7 +128,7 @@ pcawg_data$status = as.numeric(pcawg_data$status)
 ####Test on the PCAWG data
 
 #using all 8 candidate lncRNAs 
-pdf("timedependentAUC_externalPCAWG_OV.pdf")
+pdf("timedependentAUC_external_PAAD_PCAWG.pdf")
 lpnew <- predict(justlncs, newdata=pcawg_data)
 Surv.rsp <- Surv(canc_data$time, canc_data$status)
 Surv.rsp.new <- Surv(pcawg_data$time, pcawg_data$status)
@@ -145,9 +144,34 @@ plot(BrierScore)
 abline(h = 0.25)
 dev.off()
 
+#c-indices bootrstapping
+TR <- canc_data
+TE <- pcawg_data
+train.fit  <- coxph(Surv(time, status)  ~ ., data = canc_data)
+
+lp <- predict(train.fit)
+lpnew <- predict(train.fit, newdata=TE)
+Surv.rsp <- Surv(TR$time, TR$status)
+Surv.rsp.new <- Surv(TE$time, TE$status)
+Cstat <- BeggC(Surv.rsp, Surv.rsp.new, lp, lpnew)
+Cstat
+
+#ROC curve for TCGA
+cutoff <- 365*2
+paad_roc = survivalROC(Stime=canc_data$time,
+status=canc_data$status,
+marker = canc_data$ENSG00000272667,
+predict.time =  cutoff, method="KM")
+plot(paad_roc$FP, paad_roc$TP, type="l", xlim=c(0,1), ylim=c(0,1),
+xlab=paste( "FP", "\n", "AUC = ",round(paad_roc$AUC,3)),
+ylab="TP",main="ENSG00000272667, Method = KM \n Year = 2")
+abline(0,1)
+dev.off()
+
+
 #------individual lncs-----------------------------------------
 
-pdf("topCands_OV_individual_survivaplots_TCGA.pdf")
+pdf("topCands_PAAD_individual_survivaplots_TCGA.pdf")
 results_cox1 <- as.data.frame(matrix(ncol=6)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95")
 for(i in 1:(ncol(canc_data)-2)){
 	dat = canc_data[,c(i, ncol(canc_data), (ncol(canc_data)-1))]
@@ -194,7 +218,7 @@ results_cox1 = results_cox1[-1,]
 
 #------individual lncs-----------------------------------------
 
-pdf("topCands_OV_individual_survivaplots_PCAWG.pdf")
+pdf("topCands_PAAD_individual_survivaplots_PCAWG.pdf")
 results_cox2 <- as.data.frame(matrix(ncol=6)) ; colnames(results_cox2) <- c("gene", "coef", "HR", "pval", "low95", "upper95")
 for(i in 1:(ncol(pcawg_data)-2)){
 	dat = pcawg_data[,c(i, ncol(pcawg_data), (ncol(pcawg_data)-1))]
@@ -238,6 +262,28 @@ for(i in 1:(ncol(pcawg_data)-2)){
 }
 dev.off()
 results_cox2 = results_cox2[-1,]
+
+###add HR and pvalues to list of lncRNAs 
+all_features = readRDS("chosen_features_all_cancesr_Mar22_1000CVs_8020split.rds")
+
+for(i in 1:nrow(results_cox2)){
+  z = which(all_features$V1 == results_cox2$gene[i])
+  all_features$PCAWG_HR[z] = results_cox2$HR[i]
+  all_features$PCAWG_pval[z] = results_cox2$pval[i]
+}
+for(i in 1:nrow(results_cox1)){
+  z = which(all_features$V1 == results_cox1$gene[i])
+  all_features$TCGA_HR[z] = results_cox1$HR[i]
+  all_features$TCGA_pval[z] = results_cox1$pval[i]
+}
+
+saveRDS(all_features, file = "chosen_features_all_cancesr_Mar22_1000CVs_8020split.rds")
+
+
+
+
+
+
 
 
 

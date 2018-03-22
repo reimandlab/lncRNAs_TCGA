@@ -79,12 +79,12 @@ clin = clin[,1:90]
 
 #RNA-Seq file 
 #lncRNA
-lnc_rna <- readRDS("5919_lncRNAs_tcga_all_cancers_Dec20_wclinical_data.rds")
+lnc_rna <- readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
 lnc_rna <- as.data.frame(lnc_rna)
 lnc_rna$patient <- rownames(lnc_rna)
 
 #PCGs
-pcg_rna <- readRDS("19438_lncRNAs_tcga_all_cancers_Dec20_wclinical_data.rds")
+pcg_rna <- readRDS("19438_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
 pcg_rna <- as.data.frame(pcg_rna)
 pcg_rna$patient <- rownames(pcg_rna)
 
@@ -104,19 +104,20 @@ z <- which(colnames(pcg_rna) %in% fantom[,2])
 #---------------------------------------------------------
 
 #List of canddidates and cox results
-allCands <- readRDS("36_unique_cands_4cancers_TCGA_Feb6.rds")
-allCands = filter(allCands, canc %in% c("kidney", "ovary", "liver"))
-allCands$canc[allCands$canc =="liver"] = "Liver hepatocellular carcinoma"
-allCands$canc[allCands$canc =="ovary"] = "Ovarian serous cystadenocarcinoma"
-allCands$canc[allCands$canc =="kidney"] = "Kidney renal clear cell carcinoma"
+allCands <- readRDS("chosen_features_wFANTOM_data_Mar22_1000CVs_8020splits.rds")
+allCands$Cancer[allCands$Cancer =="lihc"] = "Liver hepatocellular carcinoma"
+allCands$Cancer[allCands$Cancer =="ov"] = "Ovarian serous cystadenocarcinoma"
+allCands$Cancer[allCands$Cancer =="kirc"] = "Kidney renal clear cell carcinoma"
+allCands$Cancer[allCands$Cancer =="kirc"] = "Kidney renal clear cell carcinoma"
+allCands$Cancer[allCands$Cancer =="paad"] = "Pancreatic adenocarcinoma"
+
 z = which(duplicated(allCands$gene))
-allCands = allCands[-z,]
 
 lnc_rna[,1:5919] = log1p(lnc_rna[,1:5919])
 
 getExpression <- function(row){
 	lnc <- row[[1]]
-	canc <- row[[4]]
+	canc <- row[[3]]
 	#First divide patients into high and low based on median expression of lnc
 	lncData <- lnc_rna[, c(which(colnames(lnc_rna) %in% lnc), 5920:5924)]
 	lncData <- lncData[lncData$canc==canc,]
@@ -175,7 +176,7 @@ print("pass2")
 		print(g + rremove("x.text"))
 	}
 
-	pdf("36lncRNAcandidates_distributionofExp_Feb12.pdf", pointsize=6, width=10, height=7)
+	pdf("25lncRNAcandidates_distributionofExp_Mar22.pdf", pointsize=6, width=10, height=7)
 	llply(dividedWpcgs, simplePlot, .progress = "text")
 	dev.off()
 

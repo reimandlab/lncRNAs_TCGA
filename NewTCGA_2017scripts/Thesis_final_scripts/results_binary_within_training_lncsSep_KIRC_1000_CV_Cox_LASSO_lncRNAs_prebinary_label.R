@@ -1,7 +1,20 @@
 ###source_file.R
 
-#Preamble#-------------------------------------------------
 options(stringsAsFactors=F)
+
+#Later on - incorporate FANTOM5 and CRISPRi lncRNAs 
+lnc_info = read.csv("fantom_genebased_evidence_supp_table_17.csv")
+lnc_info = lnc_info[which(str_detect(lnc_info$CAT_geneID, "ENSG")),]
+#lnc_info = subset(lnc_info, lnc_info$CAT_geneCategory %in% c("e_lncRNA", "p_lncRNA_divergent", "p_lncRNA_intergenic"))
+#shorten the gene names 
+extract3 <- function(row){
+  gene <- as.character(row[[1]])
+  ens <- gsub("\\..*","",gene)
+  return(ens)
+}
+lnc_info[,1] <- apply(lnc_info[,1:2], 1, extract3) #5049 lncRNAs 
+fantom = lnc_info
+colnames(fantom)[1] = "gene"
 
 #Later on - incorporate FANTOM5 and CRISPRi lncRNAs 
 
@@ -60,7 +73,7 @@ kirc$canc = "kirc"
 
 #Make box plots for cindices#-----------------------------
 #all_cancers = rbind(lihc, kirc, paad, ov)
-pdf("100CVs_KIRC_march20th_fdr0.05_pcawgdet_correlated_lncs.pdf", width=9, height=9)
+pdf("1000CVs_KIRC_march20th_fdr0.05_pcawgdet_correlated_lncs.pdf", width=9, height=9)
 ggboxplot(kirc, x="predictor", y="cindex", fill="predictor", palette=mypal) +
 stat_boxplot(geom = "errorbar", width = 0.5) + stat_compare_means(method = "wilcox.test", label = "p.signif", ref.group="clinical") +
 geom_hline(yintercept = 0.5, linetype = 2, colour="red")
@@ -68,7 +81,7 @@ dev.off()
 
 kirc_features = as.data.table(table(unlist(kirc_genes_results)))
 kirc_features = kirc_features[order(N)]
-kirc_features = dplyr::filter(kirc_features, N >=40)
+kirc_features = dplyr::filter(kirc_features, N >=500)
 kirc_features$canc = "kirc"
 kirc_features$name = ""
 for(i in 1:nrow(kirc_features)){

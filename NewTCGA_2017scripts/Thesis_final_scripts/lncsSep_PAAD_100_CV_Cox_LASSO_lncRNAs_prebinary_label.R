@@ -138,229 +138,63 @@ clin$time = as.numeric(clin$time)
 clin$status[clin$status=="Alive"] <- 0
 clin$status[clin$status=="Dead"] <- 1
 
-## set the seed to make your partition reproductible
-set.seed(911)
+detectable = readRDS("PCAWG_detectable_genes_4cancers_March20.rds")
+detectable = subset(detectable, canc == "Kidney-RCC")
+detectable$canc = "Kidney renal clear cell carcinoma"
 
-############
-###START####
-############
+z = which(colnames(canc_data) %in% c(detectable$gene, "canc", "time", "status", "sex", "patient"))
+canc_data = canc_data[,z]
 
-genes_results = list()
-cinds_clin = c()
-cinds_justlncs = c()
-cinds_combined = c()
+#------PCAWG DATA---------------------------------------------------
+pcawg_data = readRDS("lncRNA_clinical_data_PCAWG_March20.rds")
+pcawg_data = subset(pcawg_data, canc == "Kidney Adenocarcinoma, clear cell type")
+z = which(colnames(pcawg_data) %in% c(colnames(canc_data), "time", "status"))
+pcawg_data = pcawg_data[,z]
 
-for(k in 1:(ncol(canc_data)-5)){
-    median2 <- quantile(as.numeric(canc_data[,k]), 0.5)
-    if(median2 ==0){
-    #if median = 0 then anyone greater than zero is 1 
-    for(m in 1:nrow(canc_data)){
-    genexp <- canc_data[m,k]
-    if(genexp > 0){
-      canc_data[m,k] <- 1
-      }
-    if(genexp == 0 ){
-      canc_data[m,k] <- 0
-      }
-    } 
-    }
-    if(!(median2 ==0)){
-    for(m in 1:nrow(canc_data)){
-    genexp <- canc_data[m,k]
-    if(genexp >= median2){
-      canc_data[m,k] <- 1
-      }
-    if(genexp < median2){
-      canc_data[m,k] <- 0
-      }
-    } 
-    }
-} 
+lncs = as.list(colnames(canc_data)[1:544])
 
-for(j in 1:100){
-smp_size <- floor(0.7 * nrow(canc_data))
-train_ind <- sample(seq_len(nrow(canc_data)), size = smp_size)
-train <- canc_data[train_ind, c(1:(ncol(canc_data)-6), ncol(canc_data))]
-test <- canc_data[-train_ind, c(1:(ncol(canc_data)-6), ncol(canc_data))]
+pdf("lnc_exp_correlation_bw_pcawg_tcga_mar20.pdf")
 
-###[2.] Feature selection 
+check_cor_lnc = function(lnc){
+  p = pcawg_data[,which(colnames(pcawg_data) == lnc)]
+  p = log1p(p)
+  p = as.data.frame(p) 
+  colnames(p)[1] = "pcawg"
+  z = dim(p)[1]
+  t = canc_data[,which(colnames(canc_data) == lnc)]
+  t = as.data.frame(t)
+  colnames(t)[1] = "tcga"
+  r = c()
+  for(k in 1:5){
+  train_ind <- sample(seq_len(nrow(t)), size = z)
+  t = t[train_ind,]
+  t = as.data.frame(t)
+  colnames(t)[1] = "tcga"
+  lnc_dat = cbind(p, t)
+  library("ggpubr")
+  g = ggscatter(lnc_dat, x = "pcawg", y = "tcga", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "pcawg log1p(fpkm)", ylab = "tcga log1p(fpkm)", main = paste(lnc, "correlation"))
+  g = g + geom_hline(yintercept = median(lnc_dat$tcga), linetype = 2, colour="red") + geom_vline(xintercept=median(lnc_dat$pcawg), 
+    linetype=2, colour="orange")
 
-###---------------------------------------------------------------
-###Extract significant predictors in training data 
-###---------------------------------------------------------------
-
-source("survival_script_march14_already_labelled_highlow.R")
-#means = apply(train[,1:(ncol(train)-1)], 2, mean) #134 with 0 expression in ALL patients 
-#zeroes = names(means[which(means ==0)]) #what are they?
-#z <- which(colnames(train) %in% zeroes)
-#if(!(length(z)==0)){
-#  train = train[,-z]
-#}
-#train[,1:(ncol(train)-1)] = log1p(train[,1:(ncol(train)-1)])
-sums = apply(train[,1:(ncol(train)-1)], 2, sum) #134 with 0 expression in ALL patients 
-zeroes = names(sums[which(sums <5)]) #if less than 5, then unbalanced 
-z <- which(colnames(train) %in% zeroes)
-if(!(length(z)==0)){
-  train = train[,-z]
-}
-#means = apply(train[,1:(ncol(train)-1)], 2, mean) #134 with 0 expression in ALL patients 
-#zeroes = names(means[which(means <1)]) #what are they?
-#z <- which(colnames(train) %in% zeroes)
-#if(!(length(z)==0)){
- # train = train[,-z]
-#}
-
-train = merge(train, clin, by=c("patient"))
-rownames(train) = train$patient
-train = train[,-1]
-train$status = as.numeric(train$status)
-
-test = merge(test, clin, by=c("patient"))
-rownames(test) = test$patient
-test = test[,-1]
-test$status = as.numeric(test$status)
-
-#surv_test is the loaded survival function which takes in gene 
-#name as input and conducts a univariate cox regression model 
-genes = as.list(colnames(train)[1:(ncol(train)-9)])
-#genes = genes[1:100]
-tests_survival2 = llply(genes, surv_test, .progress="text")
-tests_survival3 = ldply(tests_survival2, rbind)
-tests_survival3$pval = as.numeric(tests_survival3$pval)
-
-#keep sig, how many ? don't want to be more than # of deaths
-#so filter by HR and keep the max 
-tests_survival3 = subset(tests_survival3, pval <=0.05)
-length(unique(tests_survival3$gene))
-sortme <- function(dt, sort.field) dt[order(-abs(dt[[sort.field]]))]
-tests_survival3$HR = as.numeric(tests_survival3$HR)
-tests_survival3 = as.data.table(tests_survival3)
-sort.field = "HR"
-tests_survival3 = sortme(tests_survival3, sort.field)
-
-tests_survival3 = as.data.table(tests_survival3)
-tests_survival3$coef = as.numeric(unlist(tests_survival3$coef))
-tests_survival3 = tests_survival3[order(-abs(coef))]
-
-z = table(train$status)[2]
-tests_survival3 = as.data.frame(tests_survival3)
-if(z < dim(tests_survival3)[1]){
-tests_survival3 = tests_survival3[1:z, ]
+  print(g)
+  r = c(r, cor(lnc_dat$pcawg, lnc_dat$tcga))
+  }
+  if(length(which(r > 0))==5){
+  r = mean(r)
+  }
+  if(!(length(which(r>0))==5)){
+  r = "not_correlated"
+  }
+  return(r)
 }
 
-#using LASSO 
-#with 5fold cross validation to get optimal lamda penalization parameter
-z <- which(colnames(train) %in% tests_survival3$gene)
-train = train[,c(z, (ncol(train)-8):ncol(train))]
-
-###[1]. just clinical model
-clin_cox_model = coxph(Surv(time, status)  ~ grade +  stage + age, data = train)
-test = test[,which(colnames(test) %in% colnames(train))]
-pred_validation = predict(clin_cox_model, newdata = test)
-# Determine concordance
-cindex_validation = concordance.index(pred_validation, surv.time = test$time,
-                                       surv.event=test$status, method = "noether")
-
-cindex_validation = cindex_validation$c.index
-cinds_clin = c(cinds_clin, cindex_validation)
-
-###[2]. clinical and lncRNA expression model
-gene_data = as.data.frame(train[,1:(ncol(train)-9)])
-#colnames(gene_data) = colnames(train)[1:(ncol(train)-2)]
-
-#there might be a imbalance between how many patients in each group after dividing patients by the mean 
-genes = as.list(colnames(gene_data))
-#gene_data = log1p(gene_data)
-#gene_data = cbind(gene_data, train[,(ncol(train)-2):ncol(train)])
-x <- model.matrix( ~., gene_data)
-y <- Surv(train$time, train$status)
-
-#Since the Cox Model is not commonly used for prediction, we do not give an illustrative example on prediction. 
-#If needed, users can refer to the help file by typing help(predict.glmnet).
-#Also, the function cv.glmnet can be used to compute k
-#-fold cross-validation for the Cox model. The usage is similar to that for other families except for two main differences.
-cvfit = cv.glmnet(x, y, family = "cox", alpha =1) #uses cross validation to select
-
-#the best lamda and then use lambda to see which features remain in model 
-cvfit$lambda.min #left vertical line
-cvfit$lambda.1se #right vertical line 
-
-#active covariates and their coefficients 
-coef.min = coef(cvfit, s = "lambda.min") 
-active.min = which(coef.min != 0)
-index.min = coef.min[active.min]
-
-genes_keep = rownames(coef.min)[active.min]
-print(genes_keep)
-genes_results[j] = list(as.list(genes_keep))
-trainlncs = train[,c(which(colnames(train) %in% c(genes_keep,"time", "status")))]
-justlncs = coxph(Surv(time, status)  ~ ., data = trainlncs)
-
-#which ones actually have significant p-value in multivariate model
-#keep = names(which(summary(combined_cox_model)$coefficients[,5] <=0.05))
-#train = train[,c(which(colnames(train) %in% c(keep,"time", "status")))]
-#combined_cox_model = coxph(Surv(time, status)  ~ ., data = train)
-
-#create survival estimates on validation data
-testlncs = test[,which(colnames(test) %in% colnames(trainlncs))]
-
-#Add high/low tags to each gene 
-colss = colnames(testlncs)
-colsskeep = which(str_detect(colss, "ENSG"))
-#test[,colsskeep] = log1p(test[,colsskeep])
-
-pred_validation = predict(justlncs, newdata = testlncs)
-# Determine concordance
-cindex_validation = concordance.index(pred_validation, surv.time = testlncs$time,
-                                       surv.event=testlncs$status, method = "noether")
-
-cindex_validation = cindex_validation$c.index
-cinds_justlncs = c(cinds_justlncs, cindex_validation)
-
-#combined lncRNAs plus the chosen lncRNAs from above
-train = train[,c(which(colnames(train) %in% colnames(trainlncs)), which(colnames(train) %in% c("stage", "age", "grade")))]
-combined = coxph(Surv(time, status)  ~ ., data = train)
-test = test[,which(colnames(test) %in% colnames(train))]
-pred_validation = predict(combined, newdata = test)
-# Determine concordance
-cindex_validation = concordance.index(pred_validation, surv.time = test$time,
-                                       surv.event=test$status, method = "noether")
-
-cindex_validation = cindex_validation$c.index
-cinds_combined = c(cinds_combined, cindex_validation)
-
-print(paste("run is", j))
-}
-
-saveRDS(cinds_clin, file="ALL_PAAD_pats_prebin_predictors_clin_cindeces_CV_100_March16_justlncsaswell.rds")
-saveRDS(cinds_combined, file="ALL_PAAD_prebin_predictors_combined_cindeces_CV_100_March16_justlncsaswell.rds")
-saveRDS(cinds_justlncs, file="ALL_PAAD_prebin_predictors_justlncs_cindeces_CV_100_March16_justlncsaswell.rds")
-saveRDS(genes_results, file="ALL_PAAD_pats_prebin_predictors_list_of_sig_genes_CV_100March16_justlncsaswell.rds")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+rcors = llply(lncs, check_cor_lnc, .progress="text")
+dev.off()
+rcors = unlist(rcors)
+which(rcors >=0.1)
 
 
 

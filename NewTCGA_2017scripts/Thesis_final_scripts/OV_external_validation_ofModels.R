@@ -47,18 +47,18 @@ source("ov_source_canc_dataMar21.R")
 canc_data = readRDS("OV_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
 corlncs = readRDS("OV_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21_mostcorrelated_lncs.rds")
 
-
 #------FEATURES-----------------------------------------------------
-ov_genes_results = readRDS(file="OV_100CV_SIG_genes_detectable_correlated_lncs_PCAWGtcga_mar21.rds")
+ov_genes_results = readRDS(file="8020_OV_100CV_SIG_genes_detectable_correlated_lncs_PCAWGtcga_mar21.rds")
 ov_features = as.data.table(table(unlist(ov_genes_results)))
 ov_features = ov_features[order(N)]
-ov_features = dplyr::filter(ov_features, N >=40)
+ov_features = dplyr::filter(ov_features, N >=500)
 ov_features$canc = "ov"
 ov_features$name = ""
 for(i in 1:nrow(ov_features)){
   z = which(fantom$gene == ov_features$V1[i])
   ov_features$name[i] = fantom$CAT_geneName[z]
 }
+
 
 z = which(colnames(canc_data) %in% c(ov_features$V1, "canc", "time", "status", "sex", "patient"))
 canc_data = canc_data[,z]
@@ -238,6 +238,28 @@ for(i in 1:(ncol(pcawg_data)-2)){
 }
 dev.off()
 results_cox2 = results_cox2[-1,]
+
+###add HR and pvalues to list of lncRNAs 
+all_features = readRDS("chosen_features_all_cancesr_Mar22_1000CVs_8020split.rds")
+
+for(i in 1:nrow(results_cox2)){
+  z = which(all_features$V1 == results_cox2$gene[i])
+  all_features$PCAWG_HR[z] = results_cox2$HR[i]
+  all_features$PCAWG_pval[z] = results_cox2$pval[i]
+}
+for(i in 1:nrow(results_cox1)){
+  z = which(all_features$V1 == results_cox1$gene[i])
+  all_features$TCGA_HR[z] = results_cox1$HR[i]
+  all_features$TCGA_pval[z] = results_cox1$pval[i]
+}
+
+saveRDS(all_features, file = "chosen_features_all_cancesr_Mar22_1000CVs_8020split.rds")
+
+
+
+
+
+
 
 
 
