@@ -109,6 +109,15 @@ allCands <- readRDS("chosen_features_wFANTOM_data_Mar22_1000CVs_8020splits.rds")
 #can always subset the protein coding gene expression file later 
 lncs <- fread("lncs_ensg_fromFantom5paper_downjune7th")
 
+#seperate first by "."
+extract <- function(row){
+	gene <- as.character(row[[1]])
+	ens <- unlist(strsplit(gene, "\\..*"))
+	return(ens)
+}
+rna[,1] <- apply(rna[,1:2], 1, extract) 
+lncs[,1] <- apply(lncs[,1], 1, extract) ; 
+
 #ucsc genes
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 
@@ -132,15 +141,6 @@ all_cancers_scored = rbind(pcawg_scores, new_tcga_scores)
 
 #1. Want to only look at ENSG genes in rna file
 #split feature column and extract third component, write function and apply
-
-#seperate first by "."
-extract <- function(row){
-	gene <- as.character(row[[1]])
-	ens <- unlist(strsplit(gene, "\\..*"))
-	return(ens)
-}
-rna[,1] <- apply(rna[,1:2], 1, extract) 
-lncs[,1] <- apply(lncs[,1], 1, extract) ; 
 
 #2. remove duplicates 
 rna <- rna[! rna$Description %in% unique(rna[duplicated(rna$Description), "Description"]), ]
@@ -244,8 +244,23 @@ for(i in 1:length(tissues)){
 	allScored <- allScoredLncsgtexANDpcawg[allScoredLncsgtexANDpcawg$canc == tissues[i],]
 	cands <- filter(allCands, Cancer==tissues[i])
 	allScored <- allScored[which(allScored$gene %in% cands$name),]
+	allScored$HR = ""
+	for(k in 1:length(unique(allScored$gene))){
+		lnc = unique(allScored$gene)[k]
+		z = which((allScored$data == "PCAWG") & (allScored$gene == lnc))
+		allScored$HR[z] = allCands$PCAWG_HR[which(allCands$name == lnc)]
+		z = which((allScored$data == "TCGA") & (allScored$gene == lnc))
+		allScored$HR[z] = allCands$TCGA_HR[which(allCands$name == lnc)]
+	}
+	allScored$HR[allScored$HR >= 1] = "Hazardous"
+	allScored$HR[allScored$HR < 1] = "Protective"
+	allScored$HR[allScored$data == "GTEX"] = "Normal"
+
+	allScored$HR = factor(allScored$HR, levels = c("Hazardous", "Protective", "Normal"))
+	colors <- c(mypal[1], mypal[2],mypal[3])
+
 	my_comparisons <- list( c("PCAWG", "TCGA"), c("TCGA", "GTEX"), c("PCAWG", "GTEX") )
-	f <- ggboxplot(allScored, x="data", y="score", color="data", palette=mypal, facet.by= "gene", short.panel.labs=FALSE)
+	f <- ggboxplot(allScored, x="data", y="score", fill="HR", palette=mypal, facet.by= "gene", short.panel.labs=FALSE)
 	f = f + stat_compare_means(comparisons = my_comparisons, label.y = c(1.05, 1.12, 1.16), label = "p.signif")
 	f <- ggpar(f, xlab="Candidate lncRNAs", main= paste(length(unique(allScored$gene)), "Candidate Genes in", allScored$canc[1]) ,ylab="Score",
 	 x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,1.6))
@@ -254,126 +269,8 @@ for(i in 1:length(tissues)){
 dev.off()
 
 #----------------------------------------------------------------------------------------------------------------
-#PLOT2 - for each cancer type, show the distribution of ranks between PCAWG, TCGA and GTEX with wilcoxon p-value
+#PLOT2 - add HR whether it's >1 or <1 in addition to whether the lncRNA is expressed more in cancer or normal
 #----------------------------------------------------------------------------------------------------------------
-
-#old boxplots
-f <- ggboxplot(new_matrix, x="gene", y="score", color="data", fill="data", palette=mypal[c(3,4,5)], ggtheme=theme_bw())
-f <- f + facet_grid (.~ canc, scales = "free_x", space = "free_x") + 
- 	theme(strip.background =element_rect(fill=mypal[9]))+
-  	theme(strip.text = element_text(colour = 'white', size = 15))
-f <- ggpar(f, xlab="Candidate lncRNAs", ylab="Score", x.text.angle=65, font.tickslab=c(14, "plain", "black"), legend="right", ylim=c(0,1))
-f <- f + rremove("y.grid") + rremove("xlab") + rremove("x.text")
-
-#Instead of boxplots, label each point as gtex or pcawg, showing in which dataset it's more highlyE
-
-#HAZARD RATIOS
-p <- ggscatter(new_matrix, x="gene", y="HR", palette= mypal, ggtheme=theme_bw(), color="Hazard", size=8)
-p <- p + facet_grid (.~ canc, scales = "free_x", space = "free_x") + 
- 	theme(strip.background =element_rect(fill=mypal[9]))+
-  	theme(strip.text = element_text(colour = 'white', size = 15))
-p <- ggpar(p, xlab="Candidate lncRNAs", ylab="Hazard Ratio", x.text.angle=65, font.tickslab=c(14, "plain", "black"), legend="right", ylim=c(0,2.5))
-p <- p + rremove("y.grid")
-
-#p <- p + rremove("y.grid") + rremove("xlab") + rremove("x.text")
-
-
-#TIER AND PREDICTION STATUS 
-new_matrix$Tier <- as.factor(new_matrix$Tier)
-
-g <- ggscatter(new_matrix, x="gene", y="Tier", palette= c("grey", mypal[c(1,2)]), ggtheme=theme_bw(), color="Prediction")
-g <- g + facet_grid (.~ canc, scales = "free_x", space = "free_x") + 
- 	theme(strip.background =element_rect(fill=mypal[9]))+
-  	theme(strip.text = element_text(colour = 'white'))
-g <- ggpar(g, xlab="Candidate lncRNAs", ylab="Tier", x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right")
-g <- g + rremove("y.grid")
-
-#pdf("plot1_pcawgVSgtex_38candidatesV4ordered_justcandsPLUShazardratios.pdf", pointsize=14, width=13, height=14)
-#plot_grid(f, p, g,  labels = c("A", "B", "C"), align = "v", nrow = 3)
-#dev.off()
-
-
-pdf("new_pcawgVSgtex_6candidatesV4ordered_justcandsPLUShazardratios.pdf", pointsize=14, width=18, height=13)
-plot_grid(f, p, labels = c("A", "B"), align = "v", nrow = 2)
-dev.off()
-
-#plot for GS1 in Ovarian cancer 
-cands_for_plottingV3 = as.data.table(cands_for_plottingV3)
-ov = filter(cands_for_plottingV3, canc == "Ovary", gene == "GS1-251I9.4")
-
-pdf("GS1_ovary_GTEX_vsPCAWG.pdf", pointsize=10)
-my_comparisons <- list( c("GTEX", "Low"), c("Low", "High"), c("GTEX", "High") )
-f = ggboxplot(ov, x="data", y="score", color="data", fill="data", palette=mypal[c(3,4,1)], ggtheme=theme_bw(), order=c("GTEX", "Low", "High"), add="jitter")
-f = ggpar(f, ylab="Score", x.text.angle=65, font.tickslab=c(14, "plain", "black"), legend="right", ylim=c(0.5,1),
-	font.x = c(18, "plain", "black"),
-   font.y = c(18, "plain", "black"))
-#f = f + rremove("y.grid") 
-f = f + stat_compare_means(comparisons = my_comparisons, label.y = c(0.8, 0.9, 0.95))
-print(f)
-dev.off()
-
-
-
-#plot for NEAT1 in Liver cancer
-liv = filter(cands_for_plottingV3, canc == "Liver", gene == "NEAT1")
-pdf("Neat1_liver_GTEX_vsPCAWG.pdf", pointsize=10)
-my_comparisons <- list( c("GTEX", "Low"), c("Low", "High"), c("GTEX", "High") )
-f = ggboxplot(liv, x="data", y="score", color="data", fill="data", palette=mypal[c(3,4,1)], ggtheme=theme_bw(), order=c("GTEX", "Low", "High"), add="jitter")
-f = ggpar(f, ylab="Score", x.text.angle=65, font.tickslab=c(14, "plain", "black"), legend="right", ylim=c(0.5,1.05),
-	font.x = c(18, "plain", "black"),
-   font.y = c(18, "plain", "black"))
-#f = f + rremove("y.grid") 
-f = f + stat_compare_means(comparisons = my_comparisons, label.y = c(1.02, 1.035, 1.055))
-print(f)
-dev.off()
-
-
-
-
-
-
-
-
-
-multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
-  library(grid)
-
-  # Make a list from the ... arguments and plotlist
-  plots <- c(list(...), plotlist)
-
-  numPlots = length(plots)
-
-  # If layout is NULL, then use 'cols' to determine layout
-  if (is.null(layout)) {
-    # Make the panel
-    # ncol: Number of columns of plots
-    # nrow: Number of rows needed, calculated from # of cols
-    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
-                    ncol = cols, nrow = ceiling(numPlots/cols))
-  }
-
- if (numPlots==1) {
-    print(plots[[1]])
-
-  } else {
-    # Set up the page
-    grid.newpage()
-    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
-
-    # Make each plot, in the correct location
-    for (i in 1:numPlots) {
-      # Get the i,j matrix positions of the regions that contain this subplot
-      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
-
-      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
-                                      layout.pos.col = matchidx$col))
-    }
-  }
-}
-
-
-
-
 
 
 

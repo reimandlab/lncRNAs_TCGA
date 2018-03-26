@@ -75,7 +75,9 @@ lncs_coords = llply(lncs, shorten, .progress="text")
 lncs_coords <- ldply(lncs_coords, data.frame)
 
 #candidate lncrnas 
-cands = readRDS("36_unique_cands_4cancers_TCGA_Feb6.rds")
+cands = readRDS("chosen_features_wFANTOM_data_Mar22_1000CVs_8020splits.rds")
+colnames(cands)[3] = "canc"
+
 lncs_coords = lncs_coords[which(lncs_coords$gene %in% cands$gene),] #35/36 are here in GENCODE 
 write.table(lncs_coords, file="lncrna_coords_bed.bed", quote=F, row.names=F, col.names=F, sep="\t")
 

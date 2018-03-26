@@ -1,5 +1,4 @@
 ###check if any of the CNAs from TCGA actually cover any of the lncRNAs - especially the candidates
-
 library(data.table)
 library(plyr)
 library(dplyr)
@@ -100,8 +99,8 @@ lncs_coords = llply(lncs, shorten, .progress="text")
 lncs_coords <- ldply(lncs_coords, data.frame)
 
 #candidate lncrnas 
-cands = readRDS("36_unique_cands_4cancers_TCGA_Feb6.rds")
-lncs_coords = lncs_coords[which(lncs_coords$gene %in% cands$gene),] #35/36 are here in GENCODE 
+cands = readRDS("chosen_features_wFANTOM_data_Mar22_1000CVs_8020splits.rds")
+lncs_coords = lncs_coords[which(lncs_coords$gene %in% cands$gene),] #21/25 are here in GENCODE 
 
 write.table(cnas_bed, file="cnas_bed_TCGA.bed", col.names=F, row.names=F, quote=F, sep="\t")
 write.table(lncs_coords, file="lncrna_coords_bed.bed", col.names=F, row.names=F, quote=F, sep="\t")

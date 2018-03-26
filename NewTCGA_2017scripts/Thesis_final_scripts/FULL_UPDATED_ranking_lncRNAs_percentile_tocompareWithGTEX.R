@@ -45,6 +45,8 @@ mypal = pal_npg("nrc", alpha = 0.7)(10)
 #Data-------------------------------------------------------
 
 #List of canddidates and cox results
+#allCands <- fread("7tier1_35tier2_lncRNA_candidates_August28th.txt", sep=";")
+#List of canddidates and cox results
 allCands <- readRDS("chosen_features_wFANTOM_data_Mar22_1000CVs_8020splits.rds")
 
 #UCSC gene info
@@ -74,60 +76,20 @@ fantom <- fantom[-z,]
 
 #RNA-Seq file 
 #lncRNA
-lnc_rna <- readRDS("5607_pcawg_lncRNAs_RNASeq_data.rds")
+lnc_rna <- readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
 lnc_rna <- as.data.frame(lnc_rna)
 lnc_rna$patient <- rownames(lnc_rna)
-for(y in 1:(ncol(lnc_rna)-2)){
-	lnc = fantom$CAT_geneID[which(fantom$CAT_geneName %in% colnames(lnc_rna)[y])]
-	colnames(lnc_rna)[y] = lnc
-}
 
 #PCGs
-pcg_rna <- readRDS("20166_pcawg_PCGs_RNASeq_data.rds")
+pcg_rna <- readRDS("19438_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
 pcg_rna <- as.data.frame(pcg_rna)
 pcg_rna$patient <- rownames(pcg_rna)
 
 #remove duplicated column names 
 dups <- colnames(pcg_rna)[which(duplicated(colnames(pcg_rna)))]   
 
-#Clinical file - available only for 485/497 patients 
-clin <- readRDS("Jan26_PCAWG_clinical")
-z <- which(clin$icgc_donor_id %in% rownames(lnc_rna))
-clin <- clin[z,]
-
-lnc_rna <- lnc_rna[which(rownames(lnc_rna) %in% clin$icgc_donor_id),] #485 patients remain
-pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #485 patients remain 
-
-#make sure there aren't any lncRNAs in protein coding file 
-table(ucsc[,7][ucsc[,8] %in% colnames(pcg_rna)])
-#Remove 
-z <- which(colnames(pcg_rna) %in% fantom[,2])
-
 #Combined into one dataframe because need to get ranks 
-all <- merge(lnc_rna, pcg_rna, by=c("patient", "canc"))
-
-#---------------------------------------------------------
-#Subset lncRNA Expression dataset to those lncRNAs with 
-#high expression in at leat one canc 215 total lncRNAs
-#---------------------------------------------------------
-
-#For each patient add survival status and days since last seen 
-all$status <- ""
-all$time <- ""
-all$sex <- ""
-
-#lncs
-for(i in 1:nrow(all)){
-  pat <- all$patient[i]
-  z <- which(clin$icgc_donor_id %in% pat)
-  all$status[i] <- clin$donor_vital_status[z]
-  all$sex[i] <- clin$donor_sex[z]
-  t <- clin$donor_survival_time[z]
-  if(is.na(t)){
-        t <- clin$donor_interval_of_last_followup[z]
-        }
-        all$time[i] <- t
-}
+all <- merge(lnc_rna, pcg_rna, by = c("canc", "time", "status", "sex", "patient"))
 
 #------------------------------------------------------------------
 #Within each tissue type, rank lncRNAs by which percentile of 
@@ -135,11 +97,11 @@ for(i in 1:nrow(all)){
 #------------------------------------------------------------------
 
 #1. log1p
-all[,3:(dim(all)[2]-3)] <- log1p(all[,3:(dim(all)[2]-3)])
+all[,6:ncol(all)] <- log1p(all[,6:ncol(all)])
 
 #2. Get lncRNA - median within each tissue type
 tissues <- unique(all$canc)
-tissues <- tissues[c(2,5,6,7)]
+tissues <- tissues[c(7,9,12,13)]
 
 #3. Want ranking seperatley for high lncRNA expression group versus low lncRNA expression group
 
@@ -158,7 +120,7 @@ tissues_data <- lapply(tissues, get_tissue_specific)
 #each patient 
 getScores <- function(row){
 	score=""
-	expression <- data.frame(exp=as.numeric(row[3:(length(row)-3)]), gene=names(row)[3:(length(row)-3)])
+	expression <- data.frame(exp=as.numeric(row[6:length(row)]), gene=names(row)[6:length(row)])
 	expression$score <- score
 	
 	expression <- as.data.table(expression)
@@ -176,10 +138,10 @@ addScores <- function(dataframe){
 	patients <- apply(dataframe, 1, getScores) #list of dataframes, need to coerce together
 	names <- rownames(dataframe)
 	patients <- rbindlist(patients)
-	patients$patient <- rep(names, each=20) #20 lncRNA candidates 
+	patients$patient <- rep(names, each=25) #25 lncRNA candidates 
 	patients <- as.data.frame(patients)
 	patients$canc <- dataframe$canc[1]
-	patients$data <- "PCAWG"
+	patients$data <- "TCGA"
 	patients$canc <- lapply(patients$canc, function(x) unlist(strsplit(x, " "))[1])
 	return(patients)
 }	
@@ -191,11 +153,12 @@ all_cancers_scored <- as.data.frame(all_cancers_scored)
 #one for each tissue/cancer type
 #each gene is scored within each patient 
 #can now make violin plot showing distributon of scores for each candidate lncRNA 
+#just need to subset to genes interested in plotting 
 
-saveRDS(all_cancers_scored, file="PCAWG_four_cancers_ranked_Genes_Mar26.rds")
+saveRDS(all_cancers_scored, file="TCGA_four_cancers_scored_byindexMar26.rds")
 
 #save list of genes in total used to also compare with GTEX 
-write.table(colnames(all), file="all_genes_used_inRankingAnalysisPCAWG_Mar26.txt", quote=F, row.names=F, sep=";")
+write.table(colnames(all), file="all_genes_used_inRankingAnalysisTCGA_Mar26.txt", quote=F, row.names=F, sep=";")
 
 
 

@@ -13,8 +13,14 @@ lncswcnas = fread("fantom_lncrnas_wTCGA_CNAs_4cancers.bed")
 lncswcnas = as.data.frame(lncswcnas)
 
 #2. cands 
-cands = readRDS("36_unique_cands_4cancers_TCGA_Feb6.rds")
+cands = readRDS("chosen_features_wFANTOM_data_Mar22_1000CVs_8020splits.rds")
+colnames(cands)[3] = "canc"
 colnames(lncswcnas)[4] = "gene"
+colnames(lncswcnas)[11] = "canc"
+lncswcnas$canc[lncswcnas$canc=="ovary"] = "ov"
+lncswcnas$canc[lncswcnas$canc=="liver"] = "lihc"
+lncswcnas$canc[lncswcnas$canc=="kidney"] = "kirc"
+lncswcnas$canc[lncswcnas$canc=="pancreas"] = "paad"
 
 #keep gene-cancer combinations, don't really care right now if gene has CNA
 #for a different cancer where it's not a candidate 
@@ -24,21 +30,22 @@ colnames(lncswcnas) = c("lnc_chr", "lnc_start", "lnc_end", "gene", "name", "Chro
 lncswcnas$rm = NULL
 
 #3. Expression data 
-liver = readRDS("LIHC_269_pats_RNASeq_data_Feb7.rds")
-liver$canc = "liver"
-ov = readRDS("OV_295_pats_RNASeq_data_Feb7.rds")
+lihc = readRDS("LIHC_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
+lihc$canc = "lihc"
+ov = readRDS("OV_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
 ov$canc = "ovary"
-kidney = readRDS("KIRC_463_pats_RNASeq_data_Feb7.rds")
-kidney$canc = "kidney"
-pancreas = readRDS("PAAD_169_pats_RNASeq_data_Feb7.rds")
-pancreas$canc = "pancreas"
-expression_data = list(liver, ov, kidney, pancreas)
-order_cancers = c("liver", "ovary", "kidney", "pancreas")
+kirc = readRDS("KIRC_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
+kirc$canc = "kirc"
+paad = readRDS("PAAD_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
+paad$canc = "paad"
+expression_data = list(lihc, ov, kirc, paad)
+order_cancers = c("lihc", "ov", "kirc", "paad")
 
 get_data = function(lnc){
 	cancer = cands$canc[which(cands$gene == lnc)][1]
 	dat = dplyr::filter(lncswcnas, canc == cancer, gene == lnc)
-	z = which(order_cancers == cancer)
+	dat$canc = NULL
+  z = which(order_cancers == cancer)
 	exp_data = expression_data[[z]]
 	#assign high or low to each patient in expression file
 	z <- which(colnames(exp_data) %in% lnc)
@@ -73,14 +80,14 @@ get_data = function(lnc){
   	#get summary of SCNA in lncRNA for each patient 
   	#take mean segment mean for all cnas in patient 
   	#covering that lncRNA
-  	df = merge(df, dat, by=c("patient", "canc"))
-  	colnames(df)[3] = "gene"
+  	df = merge(df, dat, by=c("patient"))
+  	colnames(df)[2] = "geneexp"
   	#is copy number aberation associated with expression? 
-  	df$gene = log1p(df$gene)
+  	df$geneexp = log1p(df$geneexp)
   	df$median = factor(df$median, levels=c("Low", "High"))
   	library("ggExtra")
 	sp = ggscatter(df, 
-		x = "Segment_Mean", y = "gene",
+		x = "Segment_Mean", y = "geneexp",
                color = "median", palette = "jco",
                size = 3, alpha = 0.6, add = "reg.line",                         # Add regression line
           	   ggtheme = theme_light(), ylab = "log1p(FPKM) Expression", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
@@ -91,7 +98,7 @@ get_data = function(lnc){
           font.tickslab = c(15, "plain", "black"),
                   fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(), xlab="Expression", ylab="Segment Mean SCNA")+rotate()
 	xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5)
-	yplot <- ggboxplot(df, x = "median", y = "gene", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
+	yplot <- ggboxplot(df, x = "median", y = "geneexp", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
           font.tickslab = c(15, "plain", "black"), fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(),
                     xlab="Expression", ylab="log1p(FPKM) Expression")
 	yplot= yplot + stat_compare_means(label = "p.signif", label.x = 1.5)
@@ -108,7 +115,7 @@ get_data = function(lnc){
     return(dat)
 }
 }
-pdf("candidate_lncRNAs_CNA_versus_Expression_Feb7.pdf", height=5.5, width=8.3)
+pdf("candidate_lncRNAs_CNA_versus_Expression_Mar24.pdf", height=5.5, width=8.3)
 lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
 dev.off()
 

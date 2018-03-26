@@ -15,6 +15,9 @@ source_codes = source = read.csv("TCGA_sample_codes.csv")
 
 #1. cands 
 cands = readRDS("36_unique_cands_4cancers_TCGA_Feb6.rds")
+#candidate lncrnas 
+cands = readRDS("chosen_features_wFANTOM_data_Mar22_1000CVs_8020splits.rds")
+colnames(cands)[3] = "canc"
 colnames(lncswcnas)[4] = "gene"
 
 #2. lncRNAs that intersected with probes
@@ -41,16 +44,16 @@ paad = readRDS("PAAD_methylation_data_lncs_cands.rds")
 methylation_data = list(lihc, ov, kirc, paad)
 
 #4. Expression data 
-liver = readRDS("LIHC_269_pats_RNASeq_data_Feb7.rds")
-liver$canc = "liver"
-ov = readRDS("OV_295_pats_RNASeq_data_Feb7.rds")
+lihc = readRDS("LIHC_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
+lihc$canc = "lihc"
+ov = readRDS("OV_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
 ov$canc = "ovary"
-kidney = readRDS("KIRC_463_pats_RNASeq_data_Feb7.rds")
-kidney$canc = "kidney"
-pancreas = readRDS("PAAD_169_pats_RNASeq_data_Feb7.rds")
-pancreas$canc = "pancreas"
-expression_data = list(liver, ov, kidney, pancreas)
-order_cancers = c("liver", "ovary", "kidney", "pancreas")
+kirc = readRDS("KIRC_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
+kirc$canc = "kirc"
+paad = readRDS("PAAD_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
+paad$canc = "paad"
+expression_data = list(lihc, ov, kirc, paad)
+order_cancers = c("lihc", "ov", "kirc", "paad")
 
 get_data = function(lnc){
 	cancer = cands$canc[which(cands$gene == lnc)][1]
@@ -212,10 +215,12 @@ get_data = function(lnc){
 }
 }
 
-pdf("candidate_lncRNAs_methylation_versus_Expression_Feb15.pdf", height=5.5, width=8.3)
+pdf("candidate_lncRNAs_methylation_versus_Expression_Mar24.pdf", height=5.5, width=8.3)
 genes = as.list(unique(cands$gene[which(cands$gene %in% probes$ensg)])) #23 have methylation probes overlapping them 
 lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
 dev.off()
+
+
 
 
 
