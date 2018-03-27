@@ -91,6 +91,11 @@ dups <- colnames(pcg_rna)[which(duplicated(colnames(pcg_rna)))]
 #Combined into one dataframe because need to get ranks 
 all <- merge(lnc_rna, pcg_rna, by = c("canc", "time", "status", "sex", "patient"))
 
+genes <- fread("all_genes_used_inRankingAnalysisPCAWG_Mar26.txt", sep=";")
+z = which(colnames(all) %in% genes$x)
+all = all[,c(1:5, z)]
+all = all[,-c(6:10)]
+
 #------------------------------------------------------------------
 #Within each tissue type, rank lncRNAs by which percentile of 
 #expression they fall into to then compare with PCAWG lncRNAS exp

@@ -126,16 +126,9 @@ pcawg_scores = readRDS("PCAWG_four_cancers_ranked_Genes_Mar26.rds")
 
 #TCGA scores 
 tcga_scores = readRDS("TCGA_four_cancers_scored_byindexMar26.rds")
-convert = function(row){
-	z = which(lncs$CAT_geneID == row[[2]])
-	row[[2]] = lncs$CAT_geneName[z]
-	return(row)
-}
-new_tcga_scores = apply(tcga_scores, 1, convert)
-new_tcga_scores <- rbindlist(new_tcga_scores)
-z = which(new_tcga_scores$gene %in% pcawg_scores$gene)
-new_tcga_scores = new_tcga_scores[z,]
-all_cancers_scored = rbind(pcawg_scores, new_tcga_scores)
+z = which(tcga_scores$gene %in% pcawg_scores$gene)
+tcga_scores = tcga_scores[z,]
+all_cancers_scored = rbind(pcawg_scores, tcga_scores)
 
 ###Processing#################################################head()
 
@@ -148,10 +141,10 @@ rna <- rna[! rna$Description %in% unique(rna[duplicated(rna$Description), "Descr
 #ALL GENES USED IN PCAWG
 genes <- fread("all_genes_used_inRankingAnalysisPCAWG_Mar26.txt", sep=";")
 
-z <- which(rna[,2] %in% genes$x)
+z <- which(rna[,1] %in% genes$x)
 rna <- rna[z,] #25125 both pcgs and lncrnas 
 
-rownames(rna) <- rna[,2]
+rownames(rna) <- rna[,1]
 rna <- rna[,-c(1,2)]
 rna <- t(rna)
 rna <- as.data.frame(rna)
@@ -199,7 +192,7 @@ getScores <- function(row){
 	expression$score <- as.numeric(rownames(expression))/length(rownames(expression))
 	
 	#subset to just lnc candidates - we just want their score 
-	z <- which(expression$gene %in% allCands$name)
+	z <- which(expression$gene %in% allCands$gene)
 	expression <- expression[z, ]
 	return(expression)
 }
@@ -238,31 +231,37 @@ allScoredLncsgtexANDpcawg$canc[allScoredLncsgtexANDpcawg$canc == "Pancreas"] = "
 #----------------------------------------------------------------------------------------------------------------
 
 tissues <- unique(allScoredLncsgtexANDpcawg$canc) #keep only candidates pancreas, kidney, liver and ovary 
+allCands = subset(allCands, allCands$gene %in% allScoredLncsgtexANDpcawg$gene)
 
-pdf("plot1_Version3_pcawgVSgtex_6candidatesWithinEachCancer.pdf", pointsize=8, width=12, height=10)
-for(i in 1:length(tissues)){
-	allScored <- allScoredLncsgtexANDpcawg[allScoredLncsgtexANDpcawg$canc == tissues[i],]
-	cands <- filter(allCands, Cancer==tissues[i])
-	allScored <- allScored[which(allScored$gene %in% cands$name),]
+
+pdf("plot1_Version3_pcawgVSgtex_6candidatesWithinEachCancer_Mar27.pdf", pointsize=8)
+for(i in 1:length(unique(allCands$gene))){
+	allScored <- allScoredLncsgtexANDpcawg[allScoredLncsgtexANDpcawg$gene == allCands$gene[i],]
+	cancer = allCands$Cancer[i]
+	allScored = subset(allScored, canc == cancer)
+
 	allScored$HR = ""
 	for(k in 1:length(unique(allScored$gene))){
 		lnc = unique(allScored$gene)[k]
 		z = which((allScored$data == "PCAWG") & (allScored$gene == lnc))
-		allScored$HR[z] = allCands$PCAWG_HR[which(allCands$name == lnc)]
+		allScored$HR[z] = allCands$PCAWG_HR[which(allCands$gene == lnc)]
 		z = which((allScored$data == "TCGA") & (allScored$gene == lnc))
-		allScored$HR[z] = allCands$TCGA_HR[which(allCands$name == lnc)]
+		allScored$HR[z] = allCands$TCGA_HR[which(allCands$gene == lnc)]
 	}
 	allScored$HR[allScored$HR >= 1] = "Hazardous"
 	allScored$HR[allScored$HR < 1] = "Protective"
 	allScored$HR[allScored$data == "GTEX"] = "Normal"
-
-	allScored$HR = factor(allScored$HR, levels = c("Hazardous", "Protective", "Normal"))
-	colors <- c(mypal[1], mypal[2],mypal[3])
+	
+	for(k in 1:nrow(allScored)){
+		lnc = allCands$name[which(allCands$gene == allScored$gene[k])]
+		allScored$gene[k] = lnc
+	}
 
 	my_comparisons <- list( c("PCAWG", "TCGA"), c("TCGA", "GTEX"), c("PCAWG", "GTEX") )
-	f <- ggboxplot(allScored, x="data", y="score", fill="HR", palette=mypal, facet.by= "gene", short.panel.labs=FALSE)
-	f = f + stat_compare_means(comparisons = my_comparisons, label.y = c(1.05, 1.12, 1.16), label = "p.signif")
-	f <- ggpar(f, xlab="Candidate lncRNAs", main= paste(length(unique(allScored$gene)), "Candidate Genes in", allScored$canc[1]) ,ylab="Score",
+	f <- ggboxplot(allScored, x="data", y="score", fill="HR", palette=mypal, short.panel.labs=FALSE)
+	f = f + stat_compare_means(comparisons = my_comparisons, label.y = c(1.05, 1.12, 1.16), label = "p.signif") 
+	
+	f <- ggpar(f, xlab="Candidate lncRNAs", main= paste(unique(allScored$gene), "Candidate Gene in", allScored$canc[1]) ,ylab="Score",
 	 x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,1.6))
 	print(f)
 }
