@@ -47,7 +47,6 @@ source("ov_source_canc_dataMar21.R")
 canc_data = readRDS("OV_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
 corlncs = readRDS("OV_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21_mostcorrelated_lncs.rds")
 
-
 #------FEATURES-----------------------------------------------------
 ov_genes_results = readRDS(file="OV_100CV_SIG_genes_detectable_correlated_lncs_PCAWGtcga_mar21.rds")
 ov_features = as.data.table(table(unlist(ov_genes_results)))
