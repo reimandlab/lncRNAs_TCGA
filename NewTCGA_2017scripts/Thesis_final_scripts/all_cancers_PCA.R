@@ -35,6 +35,23 @@ z = which(colnames(rna) %in% detectable$gene)
 rna = as.data.frame(rna)
 rna = rna[,c(z, 5786:ncol(rna))]
 
+#how many detectable genes/cancer
+cancgenes = as.data.table(table(detectable$canc))
+cancgenes = cancgenes[order(N)]
+pdf("num_detectacle_genesperCAncer.pdf", width=5, height=5)
+ggbarplot(cancgenes, x = "V1", y = "N",
+          main = "Number of detectable genes in each cancer type",
+          fill = "V1",               # change fill color by cyl
+          color = "white",            # Set bar border colors to white
+          palette = "Dark2",            # jco journal color palett. see ?ggpar
+          sort.val = "desc",          # Sort the value in dscending order
+          sort.by.groups = FALSE,     # Don't sort inside each group
+          x.text.angle = 65, legend="none",
+          ggtheme = theme_minimal()           # Rotate vertically x axis texts
+          )
+dev.off()
+
+
 #remove 0 sums
 sums = apply(rna[,1:(ncol(rna)-5)], 2, sum)
 z = which(sums==0)
@@ -79,7 +96,7 @@ ggbarplot(pats, x = "V1", y = "N",
           palette = "Dark2",            # jco journal color palett. see ?ggpar
           sort.val = "desc",          # Sort the value in dscending order
           sort.by.groups = FALSE,     # Don't sort inside each group
-          x.text.angle = 90, legend="none",
+          x.text.angle = 65, legend="none",
           ggtheme = theme_minimal()           # Rotate vertically x axis texts
           )
 dev.off()
@@ -121,7 +138,7 @@ ggbarplot(pats, x = "V1", y = "N",
           palette = "Dark2",            # jco journal color palett. see ?ggpar
           sort.val = "desc",          # Sort the value in dscending order
           sort.by.groups = FALSE,     # Don't sort inside each group
-          x.text.angle = 90, legend="none",
+          x.text.angle = 65, legend="none",
           ggtheme = theme_minimal()           # Rotate vertically x axis texts
           )
 dev.off()
@@ -288,8 +305,15 @@ sums = apply(pcg_rna[,1:(ncol(pcg_rna)-2)], 2, sum)
 z = which(sums==0)
 pcg_rna = pcg_rna[,-(which(colnames(pcg_rna) == names(z)))]
 
+
+####################################################
 #2. get median FPKM for each gene 
-meds_lncs = apply(lnc_rna[,1:(ncol(lnc_rna)-4)], 2, median)
+#####PLOTTING#######################################
+
+pdf("dist_lncRNA_medians_PCAWG_ind_cancers.pdf", width=5, height=5)
+for(i in 1:length(unique(lnc_rna$canc))){
+canc = subset(lnc_rna, canc == unique(lnc_rna$canc)[i])
+meds_lncs = apply(canc[,1:(ncol(canc)-4)], 2, median)
 meds_lncs = as.data.frame(meds_lncs)
 meds_lncs$gene = rownames(meds_lncs)
 meds_lncs$type = ""
@@ -300,7 +324,8 @@ for(i in 1:nrow(meds_lncs)){
 colnames(meds_lncs)[1] = "median"
 meds_lncs = as.data.table(meds_lncs)
 
-meds_pcgs = apply(pcg_rna[,1:(ncol(pcg_rna)-2)], 2, median)
+pcg_canc = pcg_rna[which(rownames(pcg_rna) %in% rownames(canc)),]
+meds_pcgs = apply(pcg_canc[,1:(ncol(pcg_canc)-2)], 2, median)
 meds_pcgs = as.data.frame(meds_pcgs)
 meds_pcgs$gene = rownames(meds_pcgs)
 meds_pcgs$type = "pcg"
@@ -311,62 +336,37 @@ all_meds = rbind(meds_lncs, meds_pcgs)
 #all_meds$median = floor(all_meds$median)
 all_meds$type = as.factor(all_meds$type)
 
-#zoomed in 
-pdf("distribution_PCAWG_fantom_lncRNAs_compared_toPCGs.pdf")
-p = ggdensity(all_meds, x = "median", 
-   color = "type", fill = "type", alpha=0.35,
-   palette = "Dark2", add = "mean", ggtheme = theme_minimal())           # Rotate vertically x axis texts)
-ggpar(p, xlim=c(0,100))
-dev.off()
-
-#zoomed out
-pdf("distribution_PCAWG_fantom_lncRNAs_compared_toPCGs_zoomedout.pdf")
-p = ggdensity(all_meds, x = "median", 
-   color = "type", fill = "type",
-   palette = "Dark2", add = "mean", ggtheme = theme_minimal()) 
-#ggpar(p, xlim=c(0,250))
-p
-dev.off()
-
-#3. get max FPKM for each gene 
-meds_lncs = apply(lnc_rna[,1:(ncol(lnc_rna)-4)], 2, max)
-meds_lncs = as.data.frame(meds_lncs)
-meds_lncs$gene = rownames(meds_lncs)
-meds_lncs$type = ""
-for(i in 1:nrow(meds_lncs)){
-	z = which(fantom$gene == meds_lncs$gene[i])
-	meds_lncs$type[i] = fantom$CAT_geneCategory[z]
+#remove super highly expressed outliers
+z = which(all_meds$median >= 1000)
+if(!(length(z)==0)){
+all_meds = all_meds[-z,]
 }
-colnames(meds_lncs)[1] = "max"
-meds_lncs = as.data.table(meds_lncs)
-
-meds_pcgs = apply(pcg_rna[,1:(ncol(pcg_rna)-2)], 2, max)
-meds_pcgs = as.data.frame(meds_pcgs)
-meds_pcgs$gene = rownames(meds_pcgs)
-meds_pcgs$type = "pcg"
-colnames(meds_pcgs)[1] = "max"
-meds_pcgs = as.data.table(meds_pcgs)
-
-all_meds = rbind(meds_lncs, meds_pcgs)
-#all_meds$median = floor(all_meds$median)
-all_meds$type = as.factor(all_meds$type)
 
 #zoomed in 
-pdf("distribution_PCAWGmax_fantom_lncRNAs_compared_toPCGs.pdf")
-p = ggdensity(all_meds, x = "max", 
-   color = "type", fill="type", alpha=0.35,
-   palette = "Dark2", ggtheme = theme_minimal())           # Rotate vertically x axis texts)
-ggpar(p, xlim=c(0,2000))
-dev.off()
+all_meds$gene = NULL
+gg <- ggplot(all_meds) + labs(title=canc$canc[1], y = "density", x="median FPKM")
+gg <- gg + geom_density(aes(x=median, y=..scaled.., colour=type, fill=type), alpha=0.01)
+gg <- gg + theme_bw()
+print(ggpar(gg, xlim=c(0,100)))
 
 #zoomed out
-pdf("distribution_PCAWGmax_fantom_lncRNAs_compared_toPCGs_zoomedout.pdf")
-p = ggdensity(all_meds, x = "max", 
-   color = "type", fill = "type",
-   palette = "Dark2", add = "mean", ggtheme = theme_minimal()) 
+gg <- ggplot(all_meds) + labs(title=canc$canc[1], y = "density", x="median FPKM")
+gg <- gg + geom_density(aes(x=median, y=..scaled.., colour=type, fill=type), alpha=0.01)
+gg <- gg + theme_bw()
 #ggpar(p, xlim=c(0,250))
-p
+print(gg)
+
+#3. log medians first 
+all_meds$median = log1p(all_meds$median)
+#zoomed in 
+gg <- ggplot(all_meds) + labs(title=canc$canc[1], y = "density", x="log1p(median FPKM)")
+gg <- gg + geom_density(aes(x=median, y=..scaled.., colour=type, fill=type), alpha=0.01)
+gg <- gg + theme_bw()
+print(gg)
+#print(ggpar(gg, xlim=c(0,100)))
+}
 dev.off()
+
 
 #####-----------------------------------------------------------------------------------------------
 ####Looking at only detectable lncRNAs--------------------------------------------------------------
@@ -374,19 +374,23 @@ dev.off()
 
 #detectable only lncs
 lnc_rna = lnc_rna[,c(which(colnames(lnc_rna) %in% detectable$gene), 6013:ncol(lnc_rna))]
-#2. get median FPKM for each gene 
-meds_lncs = apply(lnc_rna[,1:(ncol(lnc_rna)-4)], 2, median)
+#PLOTTING - get medians 
+pdf("dist_lncRNA_medians_PCAWG_ind_cancers_ONLY_detectable_ones.pdf", width=5, height=5)
+for(i in 1:length(unique(lnc_rna$canc))){
+canc = subset(lnc_rna, canc == unique(lnc_rna$canc)[i])
+meds_lncs = apply(canc[,1:(ncol(canc)-4)], 2, median)
 meds_lncs = as.data.frame(meds_lncs)
 meds_lncs$gene = rownames(meds_lncs)
 meds_lncs$type = ""
 for(i in 1:nrow(meds_lncs)){
-	z = which(fantom$gene == meds_lncs$gene[i])
-	meds_lncs$type[i] = fantom$CAT_geneCategory[z]
+  z = which(fantom$gene == meds_lncs$gene[i])
+  meds_lncs$type[i] = fantom$CAT_geneCategory[z]
 }
 colnames(meds_lncs)[1] = "median"
 meds_lncs = as.data.table(meds_lncs)
 
-meds_pcgs = apply(pcg_rna[,1:(ncol(pcg_rna)-2)], 2, median)
+pcg_canc = pcg_rna[which(rownames(pcg_rna) %in% rownames(canc)),]
+meds_pcgs = apply(pcg_canc[,1:(ncol(pcg_canc)-2)], 2, median)
 meds_pcgs = as.data.frame(meds_pcgs)
 meds_pcgs$gene = rownames(meds_pcgs)
 meds_pcgs$type = "pcg"
@@ -397,61 +401,35 @@ all_meds = rbind(meds_lncs, meds_pcgs)
 #all_meds$median = floor(all_meds$median)
 all_meds$type = as.factor(all_meds$type)
 
-#zoomed in 
-pdf("distribution_PCAWG_fantom_lncRNAs_compared_toPCGsONLY_detectable.pdf")
-p = ggdensity(all_meds, x = "median", 
-   color = "type", fill = "type", alpha=0.35,
-   palette = "Dark2", add = "mean", ggtheme = theme_minimal())           # Rotate vertically x axis texts)
-ggpar(p, xlim=c(0,100))
-dev.off()
-
-#zoomed out
-pdf("distribution_PCAWG_fantom_lncRNAs_compared_toPCGs_zoomedoutONLY_detectable.pdf")
-p = ggdensity(all_meds, x = "median", 
-   color = "type", fill = "type",
-   palette = "Dark2", add = "mean", ggtheme = theme_minimal()) 
-#ggpar(p, xlim=c(0,250))
-p
-dev.off()
-
-#3. get max FPKM for each gene 
-meds_lncs = apply(lnc_rna[,1:(ncol(lnc_rna)-4)], 2, max)
-meds_lncs = as.data.frame(meds_lncs)
-meds_lncs$gene = rownames(meds_lncs)
-meds_lncs$type = ""
-for(i in 1:nrow(meds_lncs)){
-	z = which(fantom$gene == meds_lncs$gene[i])
-	meds_lncs$type[i] = fantom$CAT_geneCategory[z]
+#remove super highly expressed outliers
+z = which(all_meds$median >= 1000)
+if(!(length(z)==0)){
+all_meds = all_meds[-z,]
 }
-colnames(meds_lncs)[1] = "max"
-meds_lncs = as.data.table(meds_lncs)
-
-meds_pcgs = apply(pcg_rna[,1:(ncol(pcg_rna)-2)], 2, max)
-meds_pcgs = as.data.frame(meds_pcgs)
-meds_pcgs$gene = rownames(meds_pcgs)
-meds_pcgs$type = "pcg"
-colnames(meds_pcgs)[1] = "max"
-meds_pcgs = as.data.table(meds_pcgs)
-
-all_meds = rbind(meds_lncs, meds_pcgs)
-#all_meds$median = floor(all_meds$median)
-all_meds$type = as.factor(all_meds$type)
 
 #zoomed in 
-pdf("distribution_PCAWGmax_fantom_lncRNAs_compared_toPCGsONLY_detectable.pdf")
-p = ggdensity(all_meds, x = "max", 
-   color = "type", fill="type", alpha=0.35,
-   palette = "Dark2", ggtheme = theme_minimal())           # Rotate vertically x axis texts)
-ggpar(p, xlim=c(0,2000))
-dev.off()
+all_meds$gene = NULL
+gg <- ggplot(all_meds) + labs(title=canc$canc[1], y = "density", x="median FPKM")
+gg <- gg + geom_density(aes(x=median, y=..scaled.., colour=type, fill=type), alpha=0.01)
+gg <- gg + theme_bw()
+print(ggpar(gg, xlim=c(0,100)))
 
 #zoomed out
-pdf("distribution_PCAWGmax_fantom_lncRNAs_compared_toPCGs_zoomedoutONLY_detectable.pdf")
-p = ggdensity(all_meds, x = "max", 
-   color = "type", fill = "type",
-   palette = "Dark2", add = "mean", ggtheme = theme_minimal()) 
+gg <- ggplot(all_meds) + labs(title=canc$canc[1], y = "density", x="median FPKM")
+gg <- gg + geom_density(aes(x=median, y=..scaled.., colour=type, fill=type), alpha=0.01)
+gg <- gg + theme_bw()
 #ggpar(p, xlim=c(0,250))
-p
+print(gg)
+
+#3. log medians first 
+all_meds$median = log1p(all_meds$median)
+#zoomed in 
+gg <- ggplot(all_meds) + labs(title=canc$canc[1], y = "density", x="log1p(median FPKM)")
+gg <- gg + geom_density(aes(x=median, y=..scaled.., colour=type, fill=type), alpha=0.01)
+gg <- gg + theme_bw()
+print(gg)
+#print(ggpar(gg, xlim=c(0,100)))
+}
 dev.off()
 
 

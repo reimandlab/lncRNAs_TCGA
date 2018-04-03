@@ -143,37 +143,45 @@ get_data = function(lnc){
 	}
 	z =length(table(df$probe))
 	if(z > 1){
-	sp = ggscatter(df, font.x = c(15, "plain", "black"),
+	for(k in 1:z){
+	new = subset(df, df$probe == unique(df$probe)[k])
+	new$gene = as.numeric(new$gene)
+	new$beta = as.numeric(new$beta)
+
+	sp = ggscatter(new, font.x = c(15, "plain", "black"), main= paste(name, new$canc[1], unique(new$probe)[1]), 
           font.y = c(15, "plain", "black"),
           font.tickslab = c(15, "plain", "black"), 
-		x = "beta", y = "gene", facet.by = "probe", 
+		x = "beta", y = "gene", 
                color = "median", palette = "jco",
                size = 3, alpha = 0.6, add = "reg.line",                         # Add regression line
           	   shape = "median", ggtheme = theme_light(), ylab = "log1p(FPKM) Expression", xlab="Beta Value") + stat_cor() 
 	
-	xplot = ggboxplot(df, main= paste(name, df$canc[1], "Methylation vs Exp", "n=", length(unique(df$patient))),
-		x = "median", y = "beta", legend.title = "Expression Tag",facet.by = "probe", font.x = c(15, "plain", "black"),
-          font.y = c(15, "plain", "black"),
-          font.tickslab = c(15, "plain", "black"), 
-                   color = "median", fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(), xlab="Expression", ylab="Beta Value")+rotate()
-	xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5) + stat_boxplot(geom = "errorbar", width = 0.3)
-	
-	yplot <- ggboxplot(df, x = "median", y = "gene", font.x = c(15, "plain", "black"),
-          font.y = c(15, "plain", "black"),
-          font.tickslab = c(15, "plain", "black"), 
-                   color = "median", fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(),
-                    xlab="Expression", ylab="log1p(FPKM) Expression")
-	yplot= yplot + stat_compare_means(label = "p.signif", label.x = 1.5) + stat_boxplot(geom = "errorbar", width = 0.5)
-    yplot = yplot + rremove("legend")
+	print(sp)
 
-    sp = sp + rremove("legend")
-    plots <- align_plots(xplot, sp, align = 'v', axis = 'l')
-    bottom_row <- plot_grid(plots[[2]], yplot, labels = c('B', 'C'), align = 'h', rel_widths = c(4.3, 1))
-	p = plot_grid(plots[[1]], bottom_row, labels = c('A', ''), ncol = 1, rel_heights = c(1, 1.5))
-    #p = plot_grid(xplot, NULL, sp, yplot, ncol = 2, nrow =2,align = "hv", 
-    #      rel_widths = c(2, 1), rel_heights = c(1, 2))
-    print(p)
+	xplot = ggboxplot(new, main= paste(name, new$canc[1], "Methylation vs Exp", "n=", length(unique(new$patient))),
+		x = "median", y = "beta", legend.title = "Expression Tag", font.x = c(15, "plain", "black"),
+          font.y = c(15, "plain", "black"),
+          font.tickslab = c(15, "plain", "black"), 
+                   fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(), xlab="Expression", ylab="Beta Value")+rotate()
+	xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5) 
+	print(xplot)
+
+	yplot <- ggboxplot(new, x = "median", y = "gene", font.x = c(15, "plain", "black"),
+          font.y = c(15, "plain", "black"),
+          font.tickslab = c(15, "plain", "black"), 
+                   fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(),
+                    xlab="Expression", ylab="log1p(FPKM) Expression")
+	yplot= yplot + stat_compare_means(label = "p.signif", label.x = 1.5) 
+    yplot = yplot + rremove("legend")
+    print(yplot)
+
+    #sp = sp + rremove("legend")
+    #plots <- align_plots(xplot, sp, align = 'v', axis = 'l')
+    #bottom_row <- plot_grid(plots[[2]], yplot, labels = c('B', 'C'), align = 'h', rel_widths = c(4.3, 1))
+	#p = plot_grid(plots[[1]], bottom_row, labels = c('A', ''), ncol = 1, rel_heights = c(1, 1.5))
+    #print(p)
     print(lnc)
+	}
 	}
 
 	if(z==1){
@@ -190,14 +198,14 @@ get_data = function(lnc){
 		legend.title = "Expression Tag", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
           font.tickslab = c(15, "plain", "black"),order=(c("Low", "High")),  ggtheme = theme_light(),
           xlab="Expression", ylab="Beta Value")
-	xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5) + stat_boxplot(geom = "errorbar", width = 0.2)
+	xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5) 
 	
 	yplot <- ggboxplot(df, x = "median", y = "gene", font.x = c(15, "plain", "black"),
           font.y = c(15, "plain", "black"),
           font.tickslab = c(15, "plain", "black"), 
                    fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(),
                     xlab="Expression", ylab="log1p(FPKM) Expression")
-	yplot= yplot + stat_compare_means(label = "p.signif", label.x = 1.5) + stat_boxplot(geom = "errorbar", width = 0.2)
+	yplot= yplot + stat_compare_means(label = "p.signif", label.x = 1.5) 
     yplot = yplot + rremove("legend")
 
     sp = sp + rremove("legend")
@@ -215,7 +223,7 @@ get_data = function(lnc){
 }
 }
 
-pdf("candidate_lncRNAs_methylation_versus_Expression_Mar24.pdf", height=5.5, width=8.3)
+pdf("candidate_lncRNAs_methylation_versus_Expression_April3.pdf", height=5, width=6)
 genes = as.list(unique(cands$gene[which(cands$gene %in% probes$ensg)])) #23 have methylation probes overlapping them 
 lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
 dev.off()
