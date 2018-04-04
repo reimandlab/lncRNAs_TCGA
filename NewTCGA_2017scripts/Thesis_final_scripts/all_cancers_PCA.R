@@ -73,6 +73,29 @@ cands = readRDS("chosen_features_wFANTOM_data_Mar22_1000CVs_8020splits.rds")
 z = which(colnames(rna) %in% cands$gene)
 rna = rna[,c(z, 899:ncol(rna))]
 groups <- as.factor(rna$canc)
+
+#how many candidate lncRNAs per cancer in TCGA
+candsgenes = as.data.table(table(cands$Cancer))
+candsgenes = candsgenes[order(N)]
+candsgenes$validated = c(1, 2, 2, 3)
+colnames(candsgenes) = c("Cancer", "NumTCGAcandidates", "validated")
+candsgenes$validated = as.factor(candsgenes$validated)
+
+pdf("num_candidate_lncRNAs_perTCGAcancer.pdf", width=5, height=5)
+ggbarplot(candsgenes, x = "Cancer", y = "NumTCGAcandidates",
+          main = "Number of candidate genes in each cancer type",
+          fill = "validated",               # change fill color by cyl
+          color = "white",            # Set bar border colors to white
+          palette = "Dark2",            # jco journal color palett. see ?ggpar
+          sort.val = "desc",          # Sort the value in dscending order
+          sort.by.groups = FALSE,     # Don't sort inside each group
+          x.text.angle = 65, legend="right",
+          ggtheme = theme_minimal()           # Rotate vertically x axis texts
+          )
+dev.off()
+
+
+
 res.pca <- prcomp(rna[,1:(ncol(rna)-5)],  scale = TRUE)
 pdf("PCA_inTCGA_using_only_25cands.pdf")
 # Change title and axis labels

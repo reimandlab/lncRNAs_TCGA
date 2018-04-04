@@ -127,7 +127,7 @@ getScores <- function(row){
 	score=""
 	expression <- data.frame(exp=as.numeric(row[6:length(row)]), gene=names(row)[6:length(row)])
 	expression$score <- score
-	
+	expression$patient = row$patient
 	expression <- as.data.table(expression)
 	expression <- expression[order(exp)]
 	expression$score <- as.numeric(rownames(expression))/length(rownames(expression))

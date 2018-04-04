@@ -115,6 +115,16 @@ ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 #PCAWG scores
 pcawg_scores = readRDS("PCAWG_four_cancers_ranked_Genes_Mar26.rds")
 
+#seperate first by "."
+extract <- function(row){
+	gene <- as.character(row[[1]])
+	ens <- unlist(strsplit(gene, "\\..*"))
+	return(ens)
+}
+rna[,1] <- apply(rna[,1:2], 1, extract) 
+lncs[,1] <- apply(lncs[,1], 1, extract) ; 
+
+
 #TCGA scores 
 tcga_scores = readRDS("TCGA_four_cancers_scored_byindexMar26.rds")
 convert = function(row){
@@ -132,15 +142,6 @@ all_cancers_scored = rbind(pcawg_scores, new_tcga_scores)
 
 #1. Want to only look at ENSG genes in rna file
 #split feature column and extract third component, write function and apply
-
-#seperate first by "."
-extract <- function(row){
-	gene <- as.character(row[[1]])
-	ens <- unlist(strsplit(gene, "\\..*"))
-	return(ens)
-}
-rna[,1] <- apply(rna[,1:2], 1, extract) 
-lncs[,1] <- apply(lncs[,1], 1, extract) ; 
 
 #2. remove duplicates 
 rna <- rna[! rna$Description %in% unique(rna[duplicated(rna$Description), "Description"]), ]
