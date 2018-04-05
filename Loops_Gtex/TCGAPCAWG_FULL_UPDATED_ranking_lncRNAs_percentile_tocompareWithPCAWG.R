@@ -259,10 +259,10 @@ for(i in 1:length(unique(allCands$gene))){
 
 	my_comparisons <- list( c("PCAWG", "TCGA"), c("TCGA", "GTEX"), c("PCAWG", "GTEX") )
 	f <- ggboxplot(allScored, x="data", y="score", fill="HR", palette=mypal, short.panel.labs=FALSE)
-	f = f + stat_compare_means(comparisons = my_comparisons, label.y = c(1.05, 1.12, 1.16), label = "p.signif") 
+	f = f + stat_compare_means(comparisons = my_comparisons, label = "p.signif") 
 	
 	f <- ggpar(f, xlab="Candidate lncRNAs", main= paste(unique(allScored$gene), "Candidate Gene in", allScored$canc[1]) ,ylab="Score",
-	 x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right", ylim=c(0,1.6))
+	 x.text.angle=65, font.tickslab=c(10, "plain", "black"), legend="right")
 	print(f)
 }
 dev.off()
