@@ -31,6 +31,12 @@ rownames(pcg) = pcg$gene
 pcg$gene = NULL
 pcg = t(pcg)
 
+#--normal 
+norm = readRDS("all_genes_563_matched_normal_samples_TCGA_April11.rds")
+rownames(norm) = norm$gene
+norm$gene = NULL
+norm = t(norm)
+
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 z <- which(ucsc$hg19.ensemblSource.source %in% "protein_coding")
 ucsc <- ucsc[z,]
@@ -42,8 +48,10 @@ z <- which(colnames(pcg) %in% ucsc$hg19.ensGene.name2)
 pcg = pcg[,z]
 
 #2. Clinical data
-clin = read.csv("all_clin_XML_tcgaSept2017.csv")
-clin = clin[,1:90]
+#clin = read.csv("all_clin_XML_tcgaSept2017.csv")
+#clin = clin[,1:90]
+
+clin = fread("mmc1_clinical_data_cellpaper2018.txt")
 
 #3. Fantom data 
 fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
@@ -65,9 +73,14 @@ fantom <- fantom[-z,]
 
 #5. TCGA ID cancer type conversion 
 canc_conversion = readRDS("tcga_id_cancer_type_conversion.txt")
+norm_conversion = readRDS("tcga_id_NORMAL_samples_type_conversion.txt")
 
 #6. List of TCGA IDs used in PCAWG - to remove
 ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
+
+#norm
+z = which(colnames(norm) %in% c(colnames(rna), colnames(pcg)))
+norm = norm[,z]
 
 ###---------------------------------------------------------------
 ###Process Data 
@@ -82,79 +95,43 @@ change = function(rowname){
 rownames(rna) = sapply(rownames(rna), change)
 rownames(pcg) = sapply(rownames(pcg), change)
 
+change = function(rowname){
+  new = norm_conversion$id[which(norm_conversion$TCGA_id %in% rowname)]
+  return(new)  
+}
+rownames(norm) = sapply(rownames(norm), change)
+
 #Keep only those patients with both RNA-Seq AND clinical data
 z <- which(rownames(rna) %in% clin$bcr_patient_barcode)
 rna = rna[z,] #all have clinical data - 7387 patients 
 #Keep only those patients with both RNA-Seq AND clinical data
 z <- which(rownames(pcg) %in% clin$bcr_patient_barcode)
 pcg = pcg[z,] #all have clinical data - 7387 patients 
+z <- which(rownames(norm) %in% clin$bcr_patient_barcode)
+norm = norm[z,] #all have clinical data - 563 patients (matched normals)
 
-#Add survival info to rna file
+#Add survival info to RNA file
 rna = as.data.frame(rna)
-rna$canc = "" 
-rna$time = ""
-rna$status = ""
-rna$sex = ""
-
-for(i in 1:dim(rna)[1]){
-	pat = rownames(rna)[i]
-	z <- which(clin$bcr_patient_barcode == pat)
-	if(length(z) >1){z = z[1]}
-	status = clin$vital_status[z]
-	time = clin$days_to_death[z]
-	if(is.na(time)){
-		time = clin$days_to_last_followup[z]
-	}
-	rna$status[i] = status
-	rna$time[i] = time
-	rna$sex[i] = clin$gender[z]
-}
-
-for(i in 1:dim(rna)[1]){
-	pat = rownames(rna)[i]
-	z = which(canc_conversion$id == pat)
-	canc = canc_conversion$Cancer[z]
-	rna$canc[i] = canc
-}
+rna$patient = rownames(rna)
+colnames(clin)[2] = "patient"
+rna = merge(rna, clin, by="patient")
 
 saveRDS(rna, "5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
 
-#Add survival info to rna file
+#Add survival info to RNA file - normal matched 
+norm = as.data.frame(norm)
+norm$patient = rownames(norm)
+colnames(clin)[2] = "patient"
+norm = merge(norm, clin, by="patient")
+
+saveRDS(norm, "all_genes_matched_normals_563_March13_wclinical_data.rds")
+
+#Add survival info to PCG file
 pcg = as.data.frame(pcg)
-pcg$canc = "" 
-pcg$time = ""
-pcg$status = ""
-pcg$sex = ""
-
-for(i in 1:dim(pcg)[1]){
-  pat = rownames(pcg)[i]
-  z <- which(clin$bcr_patient_barcode == pat)
-  if(length(z) >1){z = z[1]}
-  status = clin$vital_status[z]
-  time = clin$days_to_death[z]
-  if(is.na(time)){
-    time = clin$days_to_last_followup[z]
-  }
-  pcg$status[i] = status
-  pcg$time[i] = time
-  pcg$sex[i] = clin$gender[z]
-}
-
-for(i in 1:dim(pcg)[1]){
-  pat = rownames(pcg)[i]
-  z = which(canc_conversion$id == pat)
-  canc = canc_conversion$Cancer[z]
-  pcg$canc[i] = canc
-}
+pcg$patient = rownames(pcg)
+pcg = merge(pcg, clin, by="patient")
 
 saveRDS(pcg, "19438_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
-
-
-
-
-
-
-
 
 
 

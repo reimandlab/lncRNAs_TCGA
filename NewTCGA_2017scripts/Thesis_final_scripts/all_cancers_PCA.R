@@ -2,7 +2,7 @@
 ###Load libraries and data 
 ###---------------------------------------------------------------
 
-source("source_code_Cox_MonteCarlo_CV_Mar13.R")
+source("source_code_Cox_MonteCarlo_CV_April12.R")
 require(caTools)
 
 #start with only lncRNA_intergenic
@@ -26,14 +26,14 @@ library(caret)
 library(stringr)
 library(factoextra)
 
-detectable = readRDS("PCAWG_detectable_genes_4cancers_March20.rds")
+#detectable = readRDS("PCAWG_detectable_genes_4cancers_March20.rds")
 
-rna = subset(rna, canc %in% c("Kidney renal clear cell carcinoma", "Liver hepatocellular carcinoma", 
-	"Ovarian serous cystadenocarcinoma", "Pancreatic adenocarcinoma"))
+#rna = subset(rna, Cancer %in% c("Kidney renal clear cell carcinoma", "Liver hepatocellular carcinoma", 
+#	"Ovarian serous cystadenocarcinoma", "Pancreatic adenocarcinoma"))
 
-z = which(colnames(rna) %in% detectable$gene)
+#z = which(colnames(rna) %in% detectable$gene)
 rna = as.data.frame(rna)
-rna = rna[,c(z, 5786:ncol(rna))]
+#rna = rna[,c(z, 5786:ncol(rna))]
 
 #how many detectable genes/cancer
 cancgenes = as.data.table(table(detectable$canc))

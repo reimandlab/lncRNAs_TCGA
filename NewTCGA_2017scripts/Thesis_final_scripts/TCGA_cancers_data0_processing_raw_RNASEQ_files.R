@@ -22,9 +22,12 @@ ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
 #2. TCGA Tumour Codes Table
 tss_codes = read.csv(" TCGA_TissueSourceSite_Codes2017 .csv"     )
 
-#3. TCGA new clinical file
-clin = read.csv("all_clin_XML_tcgaSept2017.csv")
-clin = clin[,1:90]
+#3. TCGA new clinical file - downloaded previously 
+#clin = read.csv("all_clin_XML_tcgaSept2017.csv")
+#clin = clin[,1:90]
+
+#3B. New clinical data from CELL paper PANCAN release 
+clin = fread("mmc1_clinical_data_cellpaper2018.txt")
 
 #4. RNA-Seq File
 rna = readRDS("9246rnaSEQfiles.rds") #doesn't include GBM or PAAD 
@@ -109,6 +112,7 @@ for(i in 1:nrow(cancers_keep)){
 }
 
 #Keep only tumours for now, save normal for later
+normals_keep = cancers_keep[cancers_keep$source == "11", ]
 cancers_keep = cancers_keep[cancers_keep$source == "01", ]
 
 clean_tcga_id = function(row){
@@ -121,16 +125,22 @@ clean_tcga_id = function(row){
 
 cancers_keep$id = ""
 cancers_keep[,4] = apply(cancers_keep, 1, clean_tcga_id) 
+normals_keep$id = ""
+normals_keep[,4] = apply(normals_keep, 1, clean_tcga_id) 
 
 #remove those patients already used in PCAWG
 ids_remove = unique(clin$bcr_patient_barcode[which(clin$bcr_patient_barcode %in% ids_remove$bcr_patient_barcode)]) 
 z = which(cancers_keep$id %in% ids_remove)
 cancers_keep = cancers_keep[-z,]
+z = which(normals_keep$id %in% ids_remove)
+normals_keep = normals_keep[-z,]
 
 #remove duplciated patient samples = all kidney clear cell for some reason
 dups = cancers_keep[which(duplicated(cancers_keep[,4])),4]
 z <- which(cancers_keep$id %in% dups$id)
 cancers_keep = cancers_keep[-z,] #7564 unique TCGA tumour IDs 
+z <- which(normals_keep$id %in% dups$id)
+normals_keep = normals_keep[-z,] #563 unique TCGA normal IDs 
 
 table(cancers_keep$Cancer)
 
@@ -138,8 +148,13 @@ z = which(cancers_keep$Cancer == "") #remove those patients with no cancer type
 cancers_keep = cancers_keep[-z,] #7501 samples in total with both RNA_Sequencing and clinical data 
 
 saveRDS(cancers_keep, file="tcga_id_cancer_type_conversion.txt")
+saveRDS(normals_keep, file="tcga_id_NORMAL_samples_type_conversion.txt")
 
 #3. Subset RNA file 
+z <- which(colnames(rna) %in% normals_keep$TCGA_id)
+norm = as.data.frame(rna)
+norm = norm[,c(z,ncol(norm))]
+
 z <- which(colnames(rna) %in% cancers_keep$TCGA_id)
 rna = as.data.frame(rna)
 rna = rna[,c(z,ncol(rna))]
@@ -153,7 +168,8 @@ saveRDS(lnc_rna, "5919_all_tumours_7501_tissues_TCGAnew.rds")
 pcg_rna = rna[-z,]
 saveRDS(pcg_rna, "54564_PCGs_all_tumours_7501_tissues_TCGAnew.rds")
 
-
+#4. normal patients --> lncRNA and pcg data 
+saveRDS(norm, "all_genes_563_matched_normal_samples_TCGA_April11.rds")
 
 
 
