@@ -23,7 +23,7 @@ atts = fread("GTEx_v7_Annotations_SampleAttributesDS.txt")
 atts = filter(atts, SAMPID %in% colnames(gene_reads))
 atts = as.data.table(atts)
 #for now just need liver
-atts = filter(atts, SMTS == "Liver")
+#atts = filter(atts, SMTS == "Liver")
 
 cols = colnames(gene_reads)[which(colnames(gene_reads) %in% atts$SAMPID)]
 cols = c(c("Name", "Description"), cols)
@@ -61,8 +61,8 @@ fantom = fantom[z,]
 
 #6. UCSC Hg19
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
-z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
-ucsc <- ucsc[z,]
+#z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
+#ucsc <- ucsc[z,]
 z <- which(duplicated(ucsc[,6]))
 ucsc <- ucsc[-z,]
 
@@ -70,7 +70,7 @@ colnames(ucsc)[6] = "CAT_geneID"
 fantom = merge(fantom, ucsc, by = "CAT_geneID")
 fantom = as.data.table(fantom)
 
-filter(fantom, functional_evidence == 4)
+#filter(fantom, functional_evidence == 4)
 
 z <- which(gene_reads[,1] %in% fantom$CAT_geneID)
 lncRNA = gene_reads[z,]
