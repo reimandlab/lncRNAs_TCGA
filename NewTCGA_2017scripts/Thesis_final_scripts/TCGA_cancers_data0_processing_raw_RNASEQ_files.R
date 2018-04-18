@@ -30,13 +30,8 @@ tss_codes = read.csv(" TCGA_TissueSourceSite_Codes2017 .csv"     )
 clin = fread("mmc1_clinical_data_cellpaper2018.txt")
 
 #4. RNA-Seq File
-rna = readRDS("9246rnaSEQfiles.rds") #doesn't include GBM or PAAD 
+rna = readRDS("11052rnaSEQfiles.rds") #doesn't include GBM or PAAD 
 rna[,1] = as.character(rna[,1])
-
-paad = readRDS("182rnaSEQfiles_PAAD.rds") 
-paad[,1] = as.character(paad[,1])
-
-rna = merge(rna, paad, by = "V1")
 
 #5. Fantom data 
 fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
@@ -113,6 +108,7 @@ for(i in 1:nrow(cancers_keep)){
 
 #Keep only tumours for now, save normal for later
 normals_keep = cancers_keep[cancers_keep$source == "11", ]
+metastatic_keep = cancers_keep[cancers_keep$source == "06", ]
 cancers_keep = cancers_keep[cancers_keep$source == "01", ]
 
 clean_tcga_id = function(row){
@@ -125,6 +121,8 @@ clean_tcga_id = function(row){
 
 cancers_keep$id = ""
 cancers_keep[,4] = apply(cancers_keep, 1, clean_tcga_id) 
+metastatic_keep$id = ""
+metastatic_keep[,4] = apply(metastatic_keep, 1, clean_tcga_id)
 normals_keep$id = ""
 normals_keep[,4] = apply(normals_keep, 1, clean_tcga_id) 
 
@@ -134,6 +132,8 @@ z = which(cancers_keep$id %in% ids_remove)
 cancers_keep = cancers_keep[-z,]
 z = which(normals_keep$id %in% ids_remove)
 normals_keep = normals_keep[-z,]
+z = which(metastatic_keep$id %in% ids_remove)
+metastatic_keep = metastatic_keep[-z,]
 
 #remove duplciated patient samples = all kidney clear cell for some reason
 dups = cancers_keep[which(duplicated(cancers_keep[,4])),4]
@@ -149,14 +149,18 @@ cancers_keep = cancers_keep[-z,] #7501 samples in total with both RNA_Sequencing
 
 saveRDS(cancers_keep, file="tcga_id_cancer_type_conversion.txt")
 saveRDS(normals_keep, file="tcga_id_NORMAL_samples_type_conversion.txt")
+saveRDS(metastatic_keep, file="tcga_id_Metastatic_samples_type_conversion.txt")
 
 #3. Subset RNA file 
 z <- which(colnames(rna) %in% normals_keep$TCGA_id)
 norm = as.data.frame(rna)
 norm = norm[,c(z,ncol(norm))]
 
-z <- which(colnames(rna) %in% cancers_keep$TCGA_id)
+z <- which(colnames(rna) %in% metastatic_keep$TCGA_id)
 rna = as.data.frame(rna)
+met = rna[,c(z,ncol(rna))]
+
+z <- which(colnames(rna) %in% cancers_keep$TCGA_id)
 rna = rna[,c(z,ncol(rna))]
 
 #4. Keep only lncRNA genes 
@@ -170,7 +174,7 @@ saveRDS(pcg_rna, "54564_PCGs_all_tumours_7501_tissues_TCGAnew.rds")
 
 #4. normal patients --> lncRNA and pcg data 
 saveRDS(norm, "all_genes_563_matched_normal_samples_TCGA_April11.rds")
-
+saveRDS(met, "all_genes_354_matched_metastatic_tumours_TCGA_april.rds")
 
 
 

@@ -28,7 +28,7 @@ atts = as.data.table(atts)
 cols = colnames(gene_reads)[which(colnames(gene_reads) %in% atts$SAMPID)]
 cols = c(c("Name", "Description"), cols)
 
-#RNASeq data for 175 liver samples 
+#RNASeq data for all tissue types 
 gene_reads = gene_reads[, ..cols]
 #1. Gene IDs 
 extract3 <- function(row){
@@ -71,65 +71,87 @@ fantom = merge(fantom, ucsc, by = "CAT_geneID")
 fantom = as.data.table(fantom)
 
 #filter(fantom, functional_evidence == 4)
-
 z <- which(gene_reads[,1] %in% fantom$CAT_geneID)
-lncRNA = gene_reads[z,]
-saveRDS(lncRNA, file="lncRNAs_GTEX_V7.rds")
-
-pcg = gene_reads[-z,]
-saveRDS(pcg, file = "PCGs_GTEX_V7.rds")
+#lncRNA = gene_reads[z,]
+#saveRDS(lncRNA, file="lncRNAs_GTEX_V7.rds")
+#pcg = gene_reads[-z,]
+#saveRDS(pcg, file = "PCGs_GTEX_V7.rds")
 
 ###---------------------------------------------------------------
 ###Process Data
 ###---------------------------------------------------------------
 
-#add mean tpm to each gene and sort 
-gene_reads = as.data.frame(gene_reads)
-gene_reads$mean = apply(gene_reads[,3:177], 1, mean)
-gene_reads$type[gene_reads$Name %in% lncRNA$Name] = "lncRNA"
-
-pro = ucsc[ucsc$hg19.ensemblSource.source == "protein_coding",]
-gene_reads$type[gene_reads$Name %in% pro$CAT_geneID] = "pcg"
-gene_reads = as.data.table(gene_reads)
-
-gene_reads = filter(gene_reads, type %in% c("lncRNA", "pcg"))
-gene_reads = as.data.table(gene_reads)
-
-gene_reads = gene_reads[order(mean)]
-
-tcga_genes = fread("genes_used_TCGA.txt")
-gene_reads = filter(gene_reads, Name %in% tcga_genes$x)
+#tcga_genes = fread("genes_used_TCGA.txt")
+tcga_genes = readRDS("all_genes_used_in_TCGA_april17.rds")
+gene_reads = filter(gene_reads, Name %in% tcga_genes$gene)
 gene_reads = as.data.table(gene_reads)
 genes_gtex = gene_reads$Name
-write.table(genes_gtex, file = "genes_used_GTEx.txt")
+write.table(genes_gtex, file = "genes_used_GTExApril17.txt")
 
 ###---------------------------------------------------------------
 ###Add scores 
 ###---------------------------------------------------------------
+rna = gene_reads
+rna$Description = NULL
+rna = as.data.frame(rna)
+rownames(rna) = rna$Name
+rna$Name = NULL
+rna = t(rna)
 
-get_score = function(patient){
-	z = which(colnames(gene_reads) %in% patient)
-	z =  c(z, 1:2, 178:179)
-	data = gene_reads[,..z]
-	data = as.data.frame(data)
-	data$order = data[,1]
-	data = as.data.table(data)
-	data = data[order(order)]
-	data$rank = 1:nrow(data)
-	data$score = data$rank/nrow(data)
-	data$patient = patient
-	data$canc = "liver_gtex"
-	data = as.data.frame(data)
-	data = data[,-1]
-	return(data)
+#1. log1p
+rna = log1p(rna)
+
+#2. Get lncRNA - median within each tissue type
+tissues <- unique(atts$SMTS)
+
+#Function 1
+#input: tissue 
+#output: list of dataframes by tissue
+get_tissue_specific <- function(tissue){
+	z = which(atts$SMTS == tissue)
+	pats = atts$SAMPID[z]
+	z = which(rownames(rna) %in% pats)
+	tis = rna[z,]
+	tis = as.data.frame(tis)
+	tis$tis = tissue
+	return(tis)
+}
+tissues_data <- lapply(tissues, get_tissue_specific)
+
+#Function 2
+#input: dataframe with lncRNA/pcg-RNAseq data 
+#output: new row added to dataframe indicating gene's score within 
+#each patient 
+getScores <- function(row){
+	score=""
+	expression <- data.frame(exp=as.numeric(row[1:(length(row)-1)]), gene=names(row)[1:(length(row)-1)])
+	expression$score <- score
+	
+	expression <- as.data.table(expression)
+	expression <- expression[order(exp)]
+	expression$score <- as.numeric(rownames(expression))/length(rownames(expression))
+	
+	#subset to just lncrnas
+	lncs = tcga_genes$gene[tcga_genes$type == "lncRNA"]
+	z <- which(expression$gene %in% lncs)
+	expression <- expression[z, ]
+	return(expression)
 }
 
-patients = as.list(colnames(gene_reads)[3:(ncol(gene_reads)-2)])
-ranked_genes = llply(patients, get_score)
-ranked_genes = ldply(ranked_genes, data.frame)
+addScores <- function(dataframe){
+	patients <- apply(dataframe, 1, getScores) #list of dataframes, need to coerce together
+	names <- rownames(dataframe)
+	patients <- rbindlist(patients)
+	patients$patient <- rep(names, each=20) #20 lncRNA candidates 
+	patients <- as.data.frame(patients)
+	patients$canc <- dataframe$tissue[1]
+	patients$data <- "GTEX"
+	patients$tis = dataframe$tis[1]
+	return(patients)
+}	
 
-saveRDS(ranked_genes, file="GTEX_liver_ranked_genes_Dec14.rds")
-
+scored <- llply(tissues_data, addScores, .progress="text") #list of dataframes
+all_tissues_scored <-  rbindlist(scored)
 
 
 

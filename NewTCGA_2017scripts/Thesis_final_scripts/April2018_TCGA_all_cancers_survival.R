@@ -27,6 +27,24 @@ library(stringr)
 library(factoextra)
 
 rna = as.data.frame(rna)
+dim(rna)
+dim(pcg)
+dim(norm)
+dim(met)
+
+all_genes = as.data.frame(unique(c(colnames(rna), colnames(pcg))))
+z = which(str_detect(all_genes[,1], "ENSG"))
+all_genes = all_genes[z,]
+all_genes = as.data.frame(all_genes)
+colnames(all_genes)[1] = "gene"
+
+all_genes$type = ""
+z = which(all_genes$gene %in% colnames(rna))
+all_genes$type[z] = "lncRNA"
+z = which(all_genes$gene %in% colnames(pcg))
+all_genes$type[z] = "pcg"
+
+saveRDS(all_genes, file="all_genes_used_in_TCGA_april17.rds")
 
 ###---------------------------------------------------------------
 

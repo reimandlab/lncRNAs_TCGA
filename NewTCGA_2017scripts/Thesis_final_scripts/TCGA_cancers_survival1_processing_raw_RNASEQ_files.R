@@ -37,6 +37,12 @@ rownames(norm) = norm$gene
 norm$gene = NULL
 norm = t(norm)
 
+#--metastatic
+met = readRDS("all_genes_354_matched_metastatic_tumours_TCGA_april.rds")
+rownames(met) = met$gene
+met$gene = NULL
+met = t(met)
+
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 z <- which(ucsc$hg19.ensemblSource.source %in% "protein_coding")
 ucsc <- ucsc[z,]
@@ -74,6 +80,7 @@ fantom <- fantom[-z,]
 #5. TCGA ID cancer type conversion 
 canc_conversion = readRDS("tcga_id_cancer_type_conversion.txt")
 norm_conversion = readRDS("tcga_id_NORMAL_samples_type_conversion.txt")
+met_conversion = readRDS("tcga_id_Metastatic_samples_type_conversion.txt")
 
 #6. List of TCGA IDs used in PCAWG - to remove
 ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
@@ -81,6 +88,10 @@ ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
 #norm
 z = which(colnames(norm) %in% c(colnames(rna), colnames(pcg)))
 norm = norm[,z]
+
+#met
+z = which(colnames(met) %in% c(colnames(rna), colnames(pcg)))
+met = met[,z]
 
 ###---------------------------------------------------------------
 ###Process Data 
@@ -101,14 +112,23 @@ change = function(rowname){
 }
 rownames(norm) = sapply(rownames(norm), change)
 
+change = function(rowname){
+  new = met_conversion$id[which(met_conversion$TCGA_id %in% rowname)]
+  return(new)  
+}
+rownames(met) = sapply(rownames(met), change)
+
+
 #Keep only those patients with both RNA-Seq AND clinical data
 z <- which(rownames(rna) %in% clin$bcr_patient_barcode)
-rna = rna[z,] #all have clinical data - 7387 patients 
+rna = rna[z,] #all have clinical data - 8725 patients 
 #Keep only those patients with both RNA-Seq AND clinical data
 z <- which(rownames(pcg) %in% clin$bcr_patient_barcode)
-pcg = pcg[z,] #all have clinical data - 7387 patients 
+pcg = pcg[z,] #all have clinical data - 8725 patients 
 z <- which(rownames(norm) %in% clin$bcr_patient_barcode)
 norm = norm[z,] #all have clinical data - 563 patients (matched normals)
+z <- which(rownames(met) %in% clin$bcr_patient_barcode)
+met = met[z,] #all have clinical data - 563 patients (matched normals)
 
 #Add survival info to RNA file
 rna = as.data.frame(rna)
@@ -125,6 +145,14 @@ colnames(clin)[2] = "patient"
 norm = merge(norm, clin, by="patient")
 
 saveRDS(norm, "all_genes_matched_normals_563_March13_wclinical_data.rds")
+
+#Add survival info to RNA file - metastatic matched 
+met = as.data.frame(met)
+met$patient = rownames(met)
+colnames(clin)[2] = "patient"
+met = merge(met, clin, by="patient")
+
+saveRDS(met, "all_genes_matched_metastatic_300_March13_wclinical_data.rds")
 
 #Add survival info to PCG file
 pcg = as.data.frame(pcg)

@@ -32,11 +32,12 @@ readALLfiles <- function(f){
 #apply to each file in list
 named.list <- llply(temp, readALLfiles, .progress = "text")
 
-saveRDS(named.list, file="9246rnaSEQfilesLIST.rds")
+saveRDS(named.list, file="11052rnaSEQfilesLIST.rds")
+print("finished saving/making list")
 
 new <- named.list %>% Reduce(function(dtf1,dtf2) left_join(dtf1,dtf2,by="V1"), .)
 
-saveRDS(new, file="9246rnaSEQfiles.rds")
+saveRDS(new, file="11052rnaSEQfiles.rds")
 
 #columns of files.matrix = order of metafast files UUIDS
 
