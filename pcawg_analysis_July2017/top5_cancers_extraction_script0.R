@@ -189,9 +189,9 @@ dev.off()
 
 
 ###MOST PATIENTS + GOOD DISTRIBUTION AMONG SUBTYPES
-#--> KIDNEY, OVARY, LIVER, PANCREAS, BREAST 
+#--> KIDNEY, OVARY, LIVER, PANCREAS, BREAST, LUNG 
 
-canc <- c("Kidney", "Ovary", "Liver", "Breast", "Pancreas") ; canc <- as.vector(unlist(canc))
+canc <- c("Kidney", "Ovary", "Liver", "Breast", "Pancreas", "Lung", "Uterus") ; canc <- as.vector(unlist(canc))
 z <- which(tum_clin$histology_tier2 %in% canc)
 top50_tum_clin <- tum_clin[z,]
 
@@ -225,7 +225,7 @@ ggpar(p,
  legend="right", font.legend = c(8, "plain", "black"), legend.title="Histological Subtype")
 dev.off()
 
-
+saveRDS(tum_types, file="PCAWG_cancers_with_enough_samples_May2.rds")
 
 
 

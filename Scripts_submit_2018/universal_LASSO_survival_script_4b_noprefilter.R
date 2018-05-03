@@ -5,7 +5,7 @@ source("universal_LASSO_survival_script.R")
 set.seed(911)
 
 #lasso_cv = function(dat){
-for(p in 1:length(canc_datas)){
+for(p in 2:length(canc_datas)){
   dat = canc_datas[[p]]
   genes_results = list()
   cinds_clin = c()
@@ -25,7 +25,7 @@ for(p in 1:length(canc_datas)){
   if(!(length(z)==0)){
     dat = dat[-z,]}
   
-  for(j in 1:100){
+  for(j in 1:4){
     
     smp_size <- floor(0.7 * nrow(dat))
     train_ind <- sample(seq_len(nrow(dat)), size = smp_size)
@@ -82,18 +82,11 @@ for(p in 1:length(canc_datas)){
     #-----------------------------------
     #TRAINING using just lncRNAs 
     #-----------------------------------
-    
-    z = which(str_detect(colnames(train), "ENSG"))
-    if(!(length(z)) == 0){
-    gene_data = train[,z]
-    #gene_data = as.data.frame(train[,1:(ncol(train)-35)])
+    gene_data = as.data.frame(train[,1:(ncol(train)-35)])
     genes = as.list(colnames(gene_data))
     x <- model.matrix( ~., gene_data)
     train$OS = as.numeric(train$OS)
     y <- Surv(train$OS.time, train$OS)
-
-    if(table(train$OS)[2] >=10){
-
     cvfit = cv.glmnet(x, y, family = "cox", alpha =1) #uses cross validation to select
     #the best lamda and then use lambda to see which features remain in model 
     cvfit$lambda.min #left vertical line
@@ -210,8 +203,6 @@ for(p in 1:length(canc_datas)){
         }
       }
       
-      #make sure there isn't only one class of some sort for example only one patient wtih "not available"
-
       trainclin = train[,c(which(colnames(train) %in% c(colnames(clin_train),"OS", "OS.time")))]
       trainclin$age_at_initial_pathologic_diagnosis = as.numeric(trainclin$age_at_initial_pathologic_diagnosis)
       justclin = coxph(Surv(OS.time, OS)  ~ ., data = trainclin)
@@ -238,9 +229,6 @@ for(p in 1:length(canc_datas)){
       variables = unique(c(colnames(trainclin), colnames(trainlncs)))
       trainboth = train[,which(colnames(train) %in% variables)]
       trainboth$age_at_initial_pathologic_diagnosis = as.numeric(trainboth$age_at_initial_pathologic_diagnosis)
-
-      #check if have any nas 
-
       both = coxph(Surv(OS.time, OS)  ~ ., data = trainboth)
       #testboth = test[,which(colnames(test) %in% colnames(trainboth))]
       testlncs$patient = rownames(testlncs)
@@ -254,9 +242,7 @@ for(p in 1:length(canc_datas)){
                                             surv.event=testboth$OS, method = "noether", na.rm=TRUE)
       cindex_validation = cindex_validation$c.index
       cinds_combined = c(cinds_combined, cindex_validation)
-     
-    }  
-    }
+      
     } #if(!(length(z)==0))
     
 }#dim(pvalues)[1] >2
@@ -281,10 +267,10 @@ if(!(length(cinds_combined)==0)){
   cinds_justlncs$type = "cinds_justlncs"
   
   all_cinds = rbind(cinds_combined, cinds_clin, cinds_justlncs)
-  filename_cinds = paste(dat$Cancer[1], "cindices_1000CV_no_prefilter.rds", sep="_")
+  filename_cinds = paste(dat$Cancer[1], "cindices_1000CV_no_fdr.rds", sep="_")
   saveRDS(all_cinds, file=filename_cinds)
   
-  filename = paste(dat$Cancer[1], "lncRNAs_selected_1000CV_no_prefiler.rds", sep="_")
+  filename = paste(dat$Cancer[1], "lncRNAs_selected_1000CV_no_fdr.rds", sep="_")
   saveRDS(genes_results, file=filename)
 }
 }

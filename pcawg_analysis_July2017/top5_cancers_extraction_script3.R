@@ -84,7 +84,7 @@ conversion <- fread("pcawgConversion.tsv", data.table=F)
 rna <- fread("joint_fpkm_uq.tsv", data.table=F)
 
 #Cancers to use 
-tum_types <- fread("top5_cancers_andHISTO_to_keepJuly20.txt", data.table=F)
+tum_types <- readRDS("PCAWG_cancers_with_enough_samples_May2.rds")
 
 #---------------------------------------------------------
 #Processing
@@ -228,8 +228,82 @@ for(i in 1:nrow(lnc_rna_top5)){
 
 
 saveRDS(lnc_rna_top5, "6028_pcawg_lncRNAs_RNASeq_data.rds")
-
 saveRDS(pcg_rna_top5, "20166_pcawg_PCGs_RNASeq_data.rds")
+
+#---add clinical data
+
+lnc_rna <- readRDS("6028_pcawg_lncRNAs_RNASeq_data.rds")
+lnc_rna <- as.data.frame(lnc_rna)
+lnc_rna$patient <- rownames(lnc_rna)
+
+#PCGs
+pcg_rna <- readRDS("20166_pcawg_PCGs_RNASeq_data.rds")
+pcg_rna <- as.data.frame(pcg_rna)
+pcg_rna$patient <- rownames(pcg_rna)
+
+#remove duplicated column names 
+dups <- colnames(pcg_rna)[which(duplicated(colnames(pcg_rna)))]   
+#save them in a list for future reference 
+#pcg_rna <- pcg_rna[,-(which(colnames(pcg_rna) %in% dups))]
+
+#Clinical file - available only for 485/497 patients 
+clin <- readRDS("Jan26_PCAWG_clinical")
+z <- which(clin$icgc_donor_id %in% rownames(lnc_rna))
+clin <- clin[z,]
+
+lnc_rna <- lnc_rna[which(rownames(lnc_rna) %in% clin$icgc_donor_id),] #485 patients remain
+pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #485 patients remain 
+
+#only look at lncRNAs included in fantom
+z = which(colnames(lnc_rna) %in% lincs$gene)
+lnc_rna = lnc_rna[,z]
+#which are detectable in all cancers?
+meds = apply(lnc_rna, 2, median)
+det = meds[meds>=1]
+
+#For each patient add survival status and days since last seen 
+lnc_rna$canc = ""
+lnc_rna$status = ""
+lnc_rna$time = ""
+lnc_rna$sex = ""
+
+#lncs
+for(i in 1:nrow(lnc_rna)){
+  pat <- rownames(lnc_rna)[i]
+  z <- which(clin$icgc_donor_id %in% pat)
+  lnc_rna$canc[i] <- clin$histology_abbreviation[z]
+  lnc_rna$status[i] <- clin$donor_vital_status[z]
+  lnc_rna$sex[i] <- clin$donor_sex[z]
+  t <- clin$donor_survival_time[z]
+  if(is.na(t)){
+        t <- clin$donor_interval_of_last_followup[z]
+        }
+        lnc_rna$time[i] <- t
+}
+
+#pcgs
+pcg_rna$canc = ""
+pcg_rna$status = ""
+pcg_rna$time = ""
+pcg_rna$sex = ""
+
+#lncs
+for(i in 1:nrow(pcg_rna)){
+  pat <- rownames(pcg_rna)[i]
+  z <- which(clin$icgc_donor_id %in% pat)
+  pcg_rna$canc[i] <- clin$histology_abbreviation[z]
+  pcg_rna$status[i] <- clin$donor_vital_status[z]
+  pcg_rna$sex[i] <- clin$donor_sex[z]
+  t <- clin$donor_survival_time[z]
+  if(is.na(t)){
+        t <- clin$donor_interval_of_last_followup[z]
+        }
+        pcg_rna$time[i] <- t
+}
+
+
+saveRDS(lnc_rna, file="lncRNA_clinical_data_PCAWG_May2.rds")
+saveRDS(pcg_rna, file="pcg_clinical_data_PCAWG_May2.rds")
 
 #---------------------------------------------------------
 #Analysis - how many/which lncRNAs are specific to each

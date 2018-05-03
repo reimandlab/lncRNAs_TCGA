@@ -73,7 +73,7 @@ pcg_rna$patient <- rownames(pcg_rna)
 #remove duplicated column names 
 dups <- colnames(pcg_rna)[which(duplicated(colnames(pcg_rna)))]   
 #save them in a list for future reference 
-pcg_rna <- pcg_rna[,-(which(colnames(pcg_rna) %in% dups))]
+#pcg_rna <- pcg_rna[,-(which(colnames(pcg_rna) %in% dups))]
 
 #Clinical file - available only for 485/497 patients 
 clin <- readRDS("Jan26_PCAWG_clinical")
@@ -109,6 +109,31 @@ for(i in 1:nrow(lnc_rna)){
         }
         lnc_rna$time[i] <- t
 }
+
+#pcgs
+pcg_rna$canc = ""
+pcg_rna$status = ""
+pcg_rna$time = ""
+pcg_rna$sex = ""
+
+#lncs
+for(i in 1:nrow(pcg_rna)){
+  pat <- rownames(pcg_rna)[i]
+  z <- which(clin$icgc_donor_id %in% pat)
+  pcg_rna$canc[i] <- clin$histology_abbreviation[z]
+  pcg_rna$status[i] <- clin$donor_vital_status[z]
+  pcg_rna$sex[i] <- clin$donor_sex[z]
+  t <- clin$donor_survival_time[z]
+  if(is.na(t)){
+        t <- clin$donor_interval_of_last_followup[z]
+        }
+        pcg_rna$time[i] <- t
+}
+
+
+saveRDS(lnc_rna, file="lncRNA_clinical_data_PCAWG_May2.rds")
+saveRDS(pcg_rna, file="pcg_clinical_data_PCAWG_May2.rds")
+
 
 #############################################################################
 #Get list of lncRNAs detectable in each cancer-------------------------------

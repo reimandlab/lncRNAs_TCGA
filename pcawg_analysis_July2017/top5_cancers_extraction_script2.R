@@ -88,7 +88,7 @@ conversion <- fread("pcawgConversion.tsv", data.table=F)
 rna <- fread("joint_fpkm_uq.tsv", data.table=F)
 
 #Cancers to use 
-tum_types <- fread("top5_cancers_andHISTO_to_keepJuly20.txt", data.table=F)
+tum_types <- readRDS("PCAWG_cancers_with_enough_samples_May2.rds")
 
 #---------------------------------------------------------
 #Processing
