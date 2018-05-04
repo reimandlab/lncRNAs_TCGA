@@ -6,35 +6,35 @@ source("source_file.R")
 library(stringr)
 
 ###Data
-gtex = readRDS("all_lncRNAs_exp_scores_inGTEX_all_tissues_April17.rds")
-tcga = readRDS("all_lncRNAs_exp_scores_inTCGA_all_tissues_April17.rds")
+gtex = readRDS("all_lncRNAs_exp_scores_inGTEX_all_tissues_May3.rds")
+tcga = readRDS("TCGA_all_TCGA_cancers_scored_byindexMay4.rds")
 
 ###Functions
 
 #1. Divide data into matching tissues, one dataframe wtih both GTEx and TCGA 
 #for one tissue
 
-tcga_tis = unique(tcga$tis)
+tcga_canc = unique(tcga$canc)
 
-gtex$tis = str_sub(gtex$tis, 1, 4)
-gtex_tis = unique(gtex$tis)
+gtex$canc = str_sub(gtex$canc, 1, 4)
+gtex_canc = unique(gtex$canc)
 
 tis_match = as.data.frame(matrix(ncol=2)) ; colnames(tis_match) = c("cancer", "tis")
 
-for(i in 1:length(gtex_tis)){
-	 z = (which(str_detect(tcga_tis, gtex_tis[i])))
+for(i in 1:length(gtex_canc)){
+	 z = (which(str_detect(tcga_canc, gtex_canc[i])))
 	 if(!(length(z)==0)){
 	 	if(length(z)==1){
-		 	canc = tcga_tis[z]
-		 	tis = gtex_tis[i]
+		 	canc = tcga_canc[z]
+		 	tis = gtex_canc[i]
 		 	row = c(canc, tis)
 		 	names(row) = names(tis_match)
 		 	tis_match = rbind(tis_match, row)
 		 	}
 	 	if(length(z)>1){
 	 		for(k in 1:length(z)){
-	 			canc = tcga_tis[z][k]
-			 	tis = gtex_tis[i]
+	 			canc = tcga_canc[z][k]
+			 	tis = gtex_canc[i]
 			 	row = c(canc, tis)
 			 	names(row) = names(tis_match)
 			 	tis_match = rbind(tis_match, row)
@@ -50,10 +50,10 @@ tis_match = tis_match[-1,]
 cancers = unique(tis_match$cancer)
 
 get_data = function(cancer){
-	z = which(tcga$tis == cancer)
+	z = which(tcga$canc == cancer)
 	dat_canc = tcga[z,]
 	t = tis_match$tis[which(tis_match$cancer ==cancer)]
-	z = which(gtex$tis == t)
+	z = which(gtex$canc == t)
 	dat_gt = gtex[z,]
 	all = rbind(dat_canc, dat_gt)
 	return(all)
@@ -61,7 +61,15 @@ get_data = function(cancer){
 
 all_datas = llply(cancers, get_data)
 
-#3. get fold change and p-value for each gene 
+#3. get median rank for each gene within tumour and gtex 
+allCands <- readRDS("all_candidates_combined_cancers_typesAnalysis_May3rd.rds")
+
+#plot resepctive candidates wtihin this cancer type 
+
+
+
+
+#4. get fold change and p-value for each gene 
 
 get_fc = function(dataframee){
 	genes = as.list(unique(dataframee$gene))

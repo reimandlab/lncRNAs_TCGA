@@ -30,7 +30,7 @@ tss_codes = read.csv(" TCGA_TissueSourceSite_Codes2017 .csv"     )
 clin = fread("mmc1_clinical_data_cellpaper2018.txt")
 
 #4. RNA-Seq File
-rna = readRDS("11052rnaSEQfiles.rds") #doesn't include GBM or PAAD 
+rna = readRDS("11052rnaSEQfiles.rds") 
 rna[,1] = as.character(rna[,1])
 
 #5. Fantom data 

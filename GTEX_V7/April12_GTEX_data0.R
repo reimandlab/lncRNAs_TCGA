@@ -5,6 +5,7 @@
 ###---------------------------------------------------------------
 
 source("source_file.R")
+library(stringr)
 
 ###---------------------------------------------------------------
 ###Load Data 
@@ -82,8 +83,8 @@ z <- which(gene_reads[,1] %in% fantom$CAT_geneID)
 ###---------------------------------------------------------------
 
 #tcga_genes = fread("genes_used_TCGA.txt")
-tcga_genes = readRDS("all_genes_used_in_TCGA_april17.rds")
-gene_reads = filter(gene_reads, Name %in% tcga_genes$gene)
+tcga_genes = fread("all_genes_used_inRankingAnalysisTCGA_May4th.txt")
+gene_reads = filter(gene_reads, Name %in% tcga_genes$x)
 gene_reads = as.data.table(gene_reads)
 genes_gtex = gene_reads$Name
 write.table(genes_gtex, file = "genes_used_GTExApril17.txt")
@@ -122,36 +123,44 @@ tissues_data <- lapply(tissues, get_tissue_specific)
 #input: dataframe with lncRNA/pcg-RNAseq data 
 #output: new row added to dataframe indicating gene's score within 
 #each patient 
+
+allCands <- readRDS("all_candidates_combined_cancers_typesAnalysis_May3rd.rds")
+
+
 getScores <- function(row){
 	score=""
-	expression <- data.frame(exp=as.numeric(row[1:(length(row)-1)]), gene=names(row)[1:(length(row)-1)])
+	z = which(str_detect(names(row), "ENSG"))	
+	expression <- data.frame(exp=as.numeric(row[z]), gene=names(row)[z])
 	expression$score <- score
-	
+	expression$patient = rownames(row)[1]
 	expression <- as.data.table(expression)
 	expression <- expression[order(exp)]
 	expression$score <- as.numeric(rownames(expression))/length(rownames(expression))
 	
-	#subset to just lncrnas
-	lncs = tcga_genes$gene[tcga_genes$type == "lncRNA"]
-	z <- which(expression$gene %in% lncs)
+	#subset to just lnc candidates - we just want their score 
+	z <- which(expression$gene %in% as.character(allCands$Name))
 	expression <- expression[z, ]
 	return(expression)
 }
+
 
 addScores <- function(dataframe){
 	patients <- apply(dataframe, 1, getScores) #list of dataframes, need to coerce together
 	names <- rownames(dataframe)
 	patients <- rbindlist(patients)
-	patients$patient <- rep(names, each=length(unique(patients$gene))) 
+	patients$patient <- rep(names, each=length(unique(patients$gene))) #25 lncRNA candidates 
 	patients <- as.data.frame(patients)
-	patients$canc <- dataframe$tissue[1]
+	patients$canc <- dataframe$tis[1]
 	patients$data <- "GTEX"
-	patients$tis = dataframe$tis[1]
+	patients$canc <- lapply(patients$canc, function(x) unlist(strsplit(x, " "))[1])
 	return(patients)
 }	
 
 scored <- llply(tissues_data, addScores, .progress="text") #list of dataframes
 all_tissues_scored <-  rbindlist(scored)
+
+saveRDS(all_tissues_scored, file="all_lncRNAs_exp_scores_inGTEX_all_tissues_May3.rds")
+
 
 #make boxplot of variation of lncRNA score for each patient within a cancer type 
 
@@ -163,7 +172,6 @@ for(i in 1:length(unique(all_tissues_scored$tis))){
 
 dev.off()
 
-saveRDS(all_tissues_scored, file="all_lncRNAs_exp_scores_inGTEX_all_tissues_April17.rds")
 
 
 

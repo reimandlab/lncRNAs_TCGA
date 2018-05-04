@@ -55,7 +55,7 @@ all_combined$V1 <- factor(all_combined$V1, levels = myorder)
 myorder = unique(all_combined$V2)
 all_combined$V2 <- factor(all_combined$V2, levels = myorder)
 	
-pdf("summary_howmanytimes_across_types_filtering_candidates.pdf", width=20)
+pdf("summary_howmanytimes_across_types_filtering_candidates.pdf", width=17, height=9)
 g = ggdotchart(all_combined, x = "V1", y = "freq",
           color = "V2", size = 3,
           #dd = "segment",

@@ -82,8 +82,8 @@ z <- which(gene_reads[,1] %in% fantom$CAT_geneID)
 ###---------------------------------------------------------------
 
 #tcga_genes = fread("genes_used_TCGA.txt")
-tcga_genes = readRDS("all_genes_used_in_TCGA_april17.rds")
-gene_reads = filter(gene_reads, Name %in% tcga_genes$gene)
+tcga_genes = fread("all_genes_used_inRankingAnalysisTCGA_May4th.txt")
+gene_reads = filter(gene_reads, Name %in% tcga_genes$x)
 gene_reads = as.data.table(gene_reads)
 genes_gtex = gene_reads$Name
 write.table(genes_gtex, file = "genes_used_GTExApril17.txt")

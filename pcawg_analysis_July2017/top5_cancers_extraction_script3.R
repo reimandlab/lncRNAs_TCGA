@@ -255,14 +255,15 @@ lnc_rna <- lnc_rna[which(rownames(lnc_rna) %in% clin$icgc_donor_id),] #485 patie
 pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #485 patients remain 
 
 #only look at lncRNAs included in fantom
-z = which(colnames(lnc_rna) %in% lincs$gene)
-lnc_rna = lnc_rna[,z]
+#z = which(colnames(lnc_rna) %in% lincs$gene)
+#lnc_rna = lnc_rna[,z]
 #which are detectable in all cancers?
-meds = apply(lnc_rna, 2, median)
-det = meds[meds>=1]
+#meds = apply(lnc_rna, 2, median)
+#det = meds[meds>=1]
 
 #For each patient add survival status and days since last seen 
 lnc_rna$canc = ""
+lnc_rna$histo = ""
 lnc_rna$status = ""
 lnc_rna$time = ""
 lnc_rna$sex = ""
@@ -271,7 +272,8 @@ lnc_rna$sex = ""
 for(i in 1:nrow(lnc_rna)){
   pat <- rownames(lnc_rna)[i]
   z <- which(clin$icgc_donor_id %in% pat)
-  lnc_rna$canc[i] <- clin$histology_abbreviation[z]
+  lnc_rna$canc[i] <- clin$histology_tier2[z]
+  lnc_rna$histo[i] <- clin$histology_tier4[z]
   lnc_rna$status[i] <- clin$donor_vital_status[z]
   lnc_rna$sex[i] <- clin$donor_sex[z]
   t <- clin$donor_survival_time[z]
@@ -283,6 +285,7 @@ for(i in 1:nrow(lnc_rna)){
 
 #pcgs
 pcg_rna$canc = ""
+pcg_rna$histo = ""
 pcg_rna$status = ""
 pcg_rna$time = ""
 pcg_rna$sex = ""
@@ -291,7 +294,8 @@ pcg_rna$sex = ""
 for(i in 1:nrow(pcg_rna)){
   pat <- rownames(pcg_rna)[i]
   z <- which(clin$icgc_donor_id %in% pat)
-  pcg_rna$canc[i] <- clin$histology_abbreviation[z]
+  pcg_rna$canc[i] <- clin$histology_tier2[z]
+  pcg_rna$histo[i] <- clin$histology_tier4[z]
   pcg_rna$status[i] <- clin$donor_vital_status[z]
   pcg_rna$sex[i] <- clin$donor_sex[z]
   t <- clin$donor_survival_time[z]
