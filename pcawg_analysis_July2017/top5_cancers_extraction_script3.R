@@ -230,6 +230,8 @@ for(i in 1:nrow(lnc_rna_top5)){
 saveRDS(lnc_rna_top5, "6028_pcawg_lncRNAs_RNASeq_data.rds")
 saveRDS(pcg_rna_top5, "20166_pcawg_PCGs_RNASeq_data.rds")
 
+
+
 #---add clinical data
 
 lnc_rna <- readRDS("6028_pcawg_lncRNAs_RNASeq_data.rds")

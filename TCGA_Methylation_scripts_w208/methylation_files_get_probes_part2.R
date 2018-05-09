@@ -58,3 +58,18 @@ lihc_meth = fread("LIHC_lnc_probes.txt")
 colnames(lihc_meth) = c("probe", lihc_pats)
 saveRDS(lihc_meth, file="LIHC_methylation_data_lncs_cands.rds")
 
+#lung adeno
+#LUAD.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt
+
+head -n 1 LIHC.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > LIHC_patients.txt
+grep -f unique_cgprobes_mapping_to_lncRNA_cands.txt LIHC.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > LIHC_lnc_probes.txt
+
+lihc_pats = read.table("LIHC_patients.txt")
+lihc_pats = lihc_pats[,3:ncol(lihc_pats)]
+lihc_pats = as.character(unlist(lihc_pats))
+lihc_meth = fread("LIHC_lnc_probes.txt")
+colnames(lihc_meth) = c("probe", lihc_pats)
+saveRDS(lihc_meth, file="LIHC_methylation_data_lncs_cands.rds")
+
+#breast
+#BRCA.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt

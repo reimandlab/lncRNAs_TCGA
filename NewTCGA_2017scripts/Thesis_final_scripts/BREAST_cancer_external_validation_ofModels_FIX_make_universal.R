@@ -86,6 +86,102 @@ filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
 #Breast cancer 
 dtt = filtered_data_tagged[[13]]
 
+#breast cancer protein coding gene data
+gene = "ENSG00000237870"
+
+#PCG data
+z = which(pcg$patient %in% rownames(dtt))
+breastpcg = pcg[z,]
+
+#get CAV2 exp
+z = which(colnames(pcg) %in% c("patient", "ENSG00000105971"))
+pcg = pcg[,z]
+
+#merge together
+dtt$patient = rownames(dtt)
+dtt =merge(dtt, pcg, by = "patient")
+
+#look at how it's associated with survival 
+z = which(rna$patient %in% dtt$patient)
+breastrna = rna[z,]
+
+z = which(colnames(breastrna) %in% c("patient", "ENSG00000237870"))
+breastrna = as.data.frame(breastrna)
+breastrna = breastrna[,z]
+
+genexp = merge(breastrna, pcg, by="patient")
+genexp[,2:3] = log1p(genexp[,2:3])
+colnames(genexp)[2:3] = c("AC073130", "CAV2")
+
+dtt = dtt[,which(colnames(dtt) %in% c("patient", "ENSG00000237870", "ENSG00000105971", "OS", "OS.time", "Cancer"))]
+genexp = merge(dtt, genexp, by="patient")
+genexp$OS = as.numeric(genexp$OS)
+genexp$OS.time = as.numeric(genexp$OS.time)
+cav2_med = median(as.numeric(genexp$CAV2))
+
+for(y in 1:nrow(genexp)){
+  exp = genexp$CAV2[y]
+  if(exp >=cav2_med){
+    genexp$ENSG00000105971[y] = 1
+  }
+  if(exp < cav2_med){
+    genexp$ENSG00000105971[y] = 0
+  }
+}
+
+genexp$OS.time = genexp$OS.time/365
+
+coxph(Surv(OS.time, OS)  ~ ENSG00000237870 + ENSG00000105971, data = genexp)
+pdf("CAV2_survival_plot_breastcancer_May8th.pdf", width=9)
+fit <- survfit(Surv(OS.time, OS) ~ ENSG00000105971, data = genexp)
+          s <- ggsurvplot(
+          title = "CAV2 expression in Breast Cancer",
+          fit, 
+          xlab = "Time (Years)", 
+          surv.median.line = "hv",
+          font.main = c(16, "bold", "black"),
+          font.x = c(14, "plain", "black"),
+          font.y = c(14, "plain", "black"),
+          font.tickslab = c(14, "plain", "black"),
+          font.legend = 12,
+          risk.table.fontsize = 5, 
+          #legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
+          data = genexp,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,5),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          palette = mypal[c(4,1)],
+          #ggtheme = theme_minimal(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          print(s) 
+dev.off()      
+
+
+
+# Basic plot
+# +++++++++++++++++++++++++++
+pdf("breast_cancer_CAV2_lncRNA_correlation_May8.pdf")
+ggscatter(genexp, x = "AC073130", y = "CAV2",
+   color = "ENSG00000237870", shape = 21, size = 3, # Points color, shape and size
+   add = "reg.line",  # Add regressin line
+   #add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+   #conf.int = TRUE, # Add confidence interval
+   cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+   cor.coeff.args = list(method = "pearson", label.x = 3, label.sep = "\n")
+   )
+dev.off()
+
+
+
 pdf("breast_cancer_candidates_survival_plots_final_cands_May7th.pdf")
 
   results_cox1 <- as.data.frame(matrix(ncol=7)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer")

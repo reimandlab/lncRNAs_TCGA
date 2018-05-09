@@ -24,6 +24,18 @@ ov_cna = fread("OV.snp__genome_wide_snp_6__broad_mit_edu__Level_3__segmented_scn
 ov_cna$canc = "ovary"
 ov_cna$Chromosome = paste("chr", ov_cna$Chromosome, sep="")
 
-allcnas = rbind(lihc_cna, kirc_cna, paad_cna, ov_cna)
+#5. BRCA
+brca_cna = fread("BRCA.snp__genome_wide_snp_6__broad_mit_edu__Level_3__segmented_scna_minus_germline_cnv_hg19__seg.seg.txt")
+brca_cna$canc = "brca"
+brca_cna$Chromosome = paste("chr", brca_cna$Chromosome, sep="")
 
-saveRDS(allcnas, file="OvaryLiverPancreasKIRC_CNA_TCGA_files_wTCGA_IDs_Feb7.rds")
+allcnas = rbind(lihc_cna, kirc_cna, paad_cna, ov_cna, brca_cna)
+
+#6. LUAD
+luad_cna = fread("LUAD.snp__genome_wide_snp_6__broad_mit_edu__Level_3__segmented_scna_minus_germline_cnv_hg19__seg.seg.txt")
+luad_cna$canc = "luad"
+luad_cna$Chromosome = paste("chr", luad_cna$Chromosome, sep="")
+
+allcnas = rbind(lihc_cna, kirc_cna, paad_cna, ov_cna, brca_cna, luad_cna)
+
+saveRDS(allcnas, file="6cancers_types_7candidates_May9th_COPYNUMBER_CNAs.rds")

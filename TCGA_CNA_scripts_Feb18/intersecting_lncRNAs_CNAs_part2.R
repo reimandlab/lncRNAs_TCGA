@@ -9,59 +9,75 @@ library(ggthemes)
 
 
 #1. See if any candidates have CNAs
-lncswcnas = fread("fantom_lncrnas_wTCGA_CNAs_4cancers.bed")
+lncswcnas = fread("fantom_lncrnas_wTCGA_CNAs_6cancers.bed")
 lncswcnas = as.data.frame(lncswcnas)
 
 #2. cands 
-cands = readRDS("chosen_features_wFANTOM_data_Mar22_1000CVs_8020splits.rds")
-colnames(cands)[3] = "canc"
+cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+cands = filter(cands, data == "PCAWG", pval <=0.05)
+colnames(cands)[7] = "canc"
 colnames(lncswcnas)[4] = "gene"
 colnames(lncswcnas)[11] = "canc"
-lncswcnas$canc[lncswcnas$canc=="ovary"] = "ov"
-lncswcnas$canc[lncswcnas$canc=="liver"] = "lihc"
-lncswcnas$canc[lncswcnas$canc=="kidney"] = "kirc"
-lncswcnas$canc[lncswcnas$canc=="pancreas"] = "paad"
+
+cands$canc[cands$canc=="Ovarian serous cystadenocarcinoma"] = "OV"
+cands$canc[cands$canc=="Liver hepatocellular carcinoma"] = "LIHC"
+cands$canc[cands$canc=="Kidney renal clear cell carcinoma"] = "KIRC"
+cands$canc[cands$canc=="Lung squamous cell carcinoma"] = "LUSC"
+cands$canc[cands$canc=="Breast invasive carcinoma"] = "BRCA"
+cands$canc[cands$canc=="Lung adenocarcinoma"] = "LUAD"
+cands$canc[cands$canc=="Pancreatic adenocarcinoma"] = "PAAD"
+
+lncswcnas$canc[lncswcnas$canc=="ovary"] = "OV"
+lncswcnas$canc[lncswcnas$canc=="liver"] = "LIHC"
+lncswcnas$canc[lncswcnas$canc=="kidney"] = "KIRC"
+lncswcnas$canc[lncswcnas$canc=="brca"] = "BRCA"
+lncswcnas$canc[lncswcnas$canc=="luad"] = "LUAD"
+lncswcnas$canc[lncswcnas$canc=="pancreas"] = "PAAD"
 
 #keep gene-cancer combinations, don't really care right now if gene has CNA
 #for a different cancer where it's not a candidate 
-genes = as.list(unique(cands$gene[which(cands$gene %in% lncswcnas$gene)])) #29/33 have CNAs overlapping them 
+genes = as.list(unique(as.character(cands$gene[which(cands$gene %in% lncswcnas$gene)]))) #29/33 have CNAs overlapping them 
 colnames(lncswcnas) = c("lnc_chr", "lnc_start", "lnc_end", "gene", "name", "Chromosome" , "Start" , 
 	"End", "Num_Probes" , "Segment_Mean", "canc", "rm", "patient")
 lncswcnas$rm = NULL
 
-#3. Expression data 
-lihc = readRDS("LIHC_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
-lihc$canc = "lihc"
-ov = readRDS("OV_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
-ov$canc = "ovary"
-kirc = readRDS("KIRC_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
-kirc$canc = "kirc"
-paad = readRDS("PAAD_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
-paad$canc = "paad"
-expression_data = list(lihc, ov, kirc, paad)
-order_cancers = c("lihc", "ov", "kirc", "paad")
+  ##3. Expression data 
+  #lihc = readRDS("LIHC_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
+  #lihc$canc = "lihc"
+  #ov = readRDS("OV_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
+  #ov$canc = "ovary"
+  #kirc = readRDS("KIRC_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
+  #kirc$canc = "kirc"
+  #paad = readRDS("PAAD_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
+  #paad$canc = "paad"
+  #expression_data = list(lihc, ov, kirc, paad)
+  #order_cancers = c("lihc", "ov", "kirc", "paad")
+
+
+rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
+unique(rna$type)
 
 get_data = function(lnc){
 	cancer = cands$canc[which(cands$gene == lnc)][1]
 	dat = dplyr::filter(lncswcnas, canc == cancer, gene == lnc)
 	dat$canc = NULL
-  z = which(order_cancers == cancer)
-	exp_data = expression_data[[z]]
+
+	exp_data = subset(rna, type == cancer)
 	#assign high or low to each patient in expression file
 	z <- which(colnames(exp_data) %in% lnc)
   	if(!(length(z)==0)){
   	df = as.data.frame(exp_data)
-  	df <- df[,c(z,(ncol(exp_data)-4):ncol(exp_data))]  
+  	df <- df[,c(1, z,(ncol(exp_data)-32):ncol(exp_data))]  
 
 	df$median <- ""
- 	median2 <- quantile(as.numeric(df[,1]), 0.5)
+ 	median2 <- quantile(as.numeric(df[,2]), 0.5)
   	if(median2 ==0){
-    median2 = mean(as.numeric(df[,1]))
+    median2 = mean(as.numeric(df[,2]))
   	}
 
   	#median2 <- median(df[,1])
   	for(y in 1:nrow(df)){
-    genexp <- df[y,1]
+    genexp <- df[y,2]
     if(genexp >= median2){
       df$median[y] <- 1
       }
@@ -69,11 +85,9 @@ get_data = function(lnc){
       df$median[y] <- 0
       }
     } 
-  	gene <- colnames(df)[1]
-  	df$status[df$status=="Alive"] <- 0
-  	df$status[df$status=="Dead"] <- 1
-  	df$status <- as.numeric(df$status)
-  	df$time <- as.numeric(df$time)
+  	gene <- colnames(df)[2]
+  	df$OS <- as.numeric(df$OS)
+  	df$OS.time <- as.numeric(df$OS.time)
   	df$median[df$median ==0] = "Low"
   	df$median[df$median==1] = "High"
 
@@ -86,7 +100,7 @@ get_data = function(lnc){
   	df$geneexp = log1p(df$geneexp)
   	df$median = factor(df$median, levels=c("Low", "High"))
   	library("ggExtra")
-	 sp = ggscatter(df, main = df$name[1], 
+	 sp = ggscatter(df, main = paste(df$gene[1], df$type[1]), 
 		x = "Segment_Mean", y = "geneexp",
                color = "median", palette = "jco",
                size = 3, alpha = 0.6, add = "reg.line",                         # Add regression line
@@ -118,7 +132,7 @@ get_data = function(lnc){
     return(dat)
 }
 }
-pdf("candidate_lncRNAs_CNA_versus_Expression_Mar24.pdf", height=5.5, width=8.3)
+pdf("candidate_lncRNAs_CNA_versus_Expression_May9.pdf", height=5.5, width=8.3)
 lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
 dev.off()
 

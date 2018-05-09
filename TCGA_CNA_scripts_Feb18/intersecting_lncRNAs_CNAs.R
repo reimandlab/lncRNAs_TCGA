@@ -6,7 +6,7 @@ library(stringr)
 
 #Data
 #1. CNAs
-cnas = readRDS("OvaryLiverPancreasKIRC_CNA_TCGA_files_wTCGA_IDs_Feb7.rds")
+cnas = readRDS("6cancers_types_7candidates_May9th_COPYNUMBER_CNAs.rds")
 
 #add cancer type to each one 
 #TCGA source codes
@@ -99,7 +99,8 @@ lncs_coords = llply(lncs, shorten, .progress="text")
 lncs_coords <- ldply(lncs_coords, data.frame)
 
 #candidate lncrnas 
-cands = readRDS("chosen_features_wFANTOM_data_Mar22_1000CVs_8020splits.rds")
+cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+cands = filter(cands, data == "PCAWG", pval <=0.05)
 lncs_coords = lncs_coords[which(lncs_coords$gene %in% cands$gene),] #21/25 are here in GENCODE 
 
 write.table(cnas_bed, file="cnas_bed_TCGA.bed", col.names=F, row.names=F, quote=F, sep="\t")
@@ -107,7 +108,7 @@ write.table(lncs_coords, file="lncrna_coords_bed.bed", col.names=F, row.names=F,
 
 #################BEDTOOLS#########################################################################
 
-bedtools intersect -a lncrna_coords_bed.bed -b cnas_bed_TCGA.bed -f 0.90 -wa -wb > fantom_lncrnas_wTCGA_CNAs_4cancers.bed
+bedtools intersect -a lncrna_coords_bed.bed -b cnas_bed_TCGA.bed -f 0.90 -wa -wb > fantom_lncrnas_wTCGA_CNAs_6cancers.bed
 
 
 

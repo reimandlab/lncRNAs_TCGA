@@ -79,7 +79,7 @@ get_survival_models = function(dtt){
   dat$new_tumor_event_type = NULL
   dat$treatment_outcome_first_course = NULL
 
-  z = which(str_detect(colnames(dtt), "ENSG"))
+  num_genes = which(str_detect(colnames(dtt), "ENSG"))
   check_contrasts = function(col){
         check = dim(table(col))
         if(check >1){
@@ -94,9 +94,8 @@ get_survival_models = function(dtt){
   dat$OS.time = as.numeric(dat$OS.time)
   dat$age_at_initial_pathologic_diagnosis = as.numeric(dat$age_at_initial_pathologic_diagnosis)
 
-  for(i in 1:length(z)){
-
-  gene = z[i]  
+  for(i in 1:length(num_genes)){
+  gene = num_genes[i]  
   k = which(!(str_detect(colnames(dat), "ENSG")))
 
   newdat = dat[,c(gene,k)]
@@ -139,6 +138,21 @@ get_survival_models = function(dtt){
                             # in legend of risk table
           )
           print(s)
+
+   #generate boxplot 
+   z = which(cancers == dtt$Cancer[1])
+   exp_data = canc_datas[[z]]
+   exp_data = exp_data[,which(colnames(exp_data) %in% c(gene, "patient"))]
+   newdat$patient = rownames(newdat)
+   exp_data = merge(exp_data, newdat, by="patient")
+   colnames(exp_data)[2] = "geneexp"
+   p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
+          color = "gene",
+         palette = mypal[c(4,1)], title = paste(gene, "Expression", dtt$Cancer[1] , sep=" "), 
+          add = "jitter", ylab = "FPKM",  ggtheme = theme_minimal())
+        # Change method
+  p = p + stat_compare_means(method = "wilcox.test")
+  print(p)
 }
 
 results_cox1 = results_cox1[-1,]
@@ -234,11 +248,11 @@ get_survival_models = function(dtt){
 
   dat$status = as.numeric(dat$status)
   dat$time = as.numeric(dat$time)
-  z = which(str_detect(colnames(dat), "ENSG"))
+  num_genes = which(str_detect(colnames(dat), "ENSG"))
 
-  for(i in 1:length(z)){
-
-  gene = z[i]  
+  for(i in 1:length(num_genes)){
+  print(i)
+  gene = num_genes[i]  
   k = which(!(str_detect(colnames(dat), "ENSG")))
 
   newdat = dat[,c(gene,k)]
@@ -281,6 +295,21 @@ get_survival_models = function(dtt){
                             # in legend of risk table
           )
           print(s)
+    #generate boxplot 
+      z = which(cancers_tests == dtt$canc[1])
+      exp_data = filtered_data[[z]]
+      exp_data$patient = rownames(exp_data)
+      exp_data = exp_data[,which(colnames(exp_data) %in% c(gene, "patient"))]
+      newdat$patient = rownames(newdat)
+      exp_data = merge(exp_data, newdat, by="patient")
+      colnames(exp_data)[2] = "geneexp"
+      p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
+          color = "gene",
+         palette = mypal[c(4,1)], title = paste(gene, "Expression", dtt$canc[1] , sep=" "), 
+          add = "jitter", ylab = "FPKM",  ggtheme = theme_minimal())
+        # Change method
+       p = p + stat_compare_means(method = "wilcox.test")
+       print(p)
 }
 
 results_cox1 = results_cox1[-1,]
@@ -326,6 +355,9 @@ colnames(lnc_info)[1] = "gene"
 all_results = merge(all_results, lnc_info, by="gene")
 colnames(all_cands)[1] = "gene"
 all_results = merge(all_results, all_cands, by ="gene")
+
+all_results = all_results[order(data, pval)]
+
 
 saveRDS(all_results, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
 
