@@ -38,6 +38,8 @@ p + stat_compare_means(method = "wilcox.test")
 
 #only pancreatic**************************************************************************
 panc = names(patient2cancer_type)[patient2cancer_type == "Panc-AdenoCA"]
+#panc patients that have mutation 
+fmre_muts[fmre_muts$patient %in% panc,]
 panc =subset(pcg_rna, pcg_rna$patient %in% panc)
 
 #pdf("TP53_exp_FMRE_vs_no_pancreatic_cancer_only.pdf")
@@ -144,6 +146,17 @@ bladder =subset(pcg_rna, pcg_rna$patient %in% bladder)
 p <- ggboxplot(bladder, x = "fmre", y = "ENSG00000141510",
 	color = "fmre",
          palette = "jco", title = paste("Bladder Cancer - TP53 exp ~ FMRE", table(bladder$fmre)[1], "muts", table(bladder$fmre)[2], "nomuts", sep=" "), 
+          add = "jitter")
+# Change method
+p + stat_compare_means(method = "wilcox.test")
+
+#only prosate*************************************************************************
+prostate = names(patient2cancer_type)[patient2cancer_type == "Prost-AdenoCA"]
+prostate =subset(pcg_rna, pcg_rna$patient %in% prostate)
+
+p <- ggboxplot(prostate, x = "fmre", y = "ENSG00000141510",
+  color = "fmre",
+         palette = "jco", title = paste("Prostate Cancer - TP53 exp ~ FMRE", table(prostate$fmre)[1], "muts", table(prostate$fmre)[2], "nomuts", sep=" "), 
           add = "jitter")
 # Change method
 p + stat_compare_means(method = "wilcox.test")

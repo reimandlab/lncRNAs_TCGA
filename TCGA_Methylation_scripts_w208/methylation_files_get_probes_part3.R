@@ -17,8 +17,10 @@ source_codes = source = read.csv("TCGA_sample_codes.csv")
 cands = readRDS("36_unique_cands_4cancers_TCGA_Feb6.rds")
 #candidate lncrnas 
 cands = readRDS("chosen_features_wFANTOM_data_Mar22_1000CVs_8020splits.rds")
-colnames(cands)[3] = "canc"
-colnames(lncswcnas)[4] = "gene"
+cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+#cands = filter(cands, data == "PCAWG", pval <=0.05)
+colnames(cands)[7] = "canc"
+#colnames(cands)[3] = "canc"
 
 #2. lncRNAs that intersected with probes
 probes = fread("fantom_lncrnas_mapped_to450_probes.bed")
@@ -34,32 +36,163 @@ probes$canc = llply(probes$cgid, add_canc, .progress="text")
 
 #3. methylation files
 #KIRC
-kirc = readRDS("KIRC_methylation_data_lncs_cands.rds")
+KIRC = readRDS("KIRC_methylation_data_lncs_cands.rds")
 #LIHC
-lihc = readRDS("LIHC_methylation_data_lncs_cands.rds")
+LIHC = readRDS("LIHC_methylation_data_lncs_cands.rds")
 #OV
-ov = readRDS("OV_methylation_data_lncs_cands.rds")
+OV = readRDS("OV_methylation_data_lncs_cands.rds")
 #PAAD
-paad = readRDS("PAAD_methylation_data_lncs_cands.rds")
-methylation_data = list(lihc, ov, kirc, paad)
+PAAD = readRDS("PAAD_methylation_data_lncs_cands.rds")
+#LUAD
+LUAD = readRDS("LUADmethylation_data_lncs_cands.rds")
+#BRCA
+BRCA = readRDS("BRCAmethylation_data_lncs_cands.rds")
+#
+ACC = readRDS(file="ACCmethylation_data_lncs_cands.rds")
+
+ESCA = readRDS(file="ESCAmethylation_data_lncs_cands.rds")
+
+GBM = readRDS(file="GBMmethylation_data_lncs_cands.rds")
+
+HNSC = readRDS(file="HNSCmethylation_data_lncs_cands.rds")
+
+LGG = readRDS(file="LGGmethylation_data_lncs_cands.rds")
+
+MESO = readRDS(file="MESOmethylation_data_lncs_cands.rds")
+
+READ = readRDS(file="READmethylation_data_lncs_cands.rds")
+
+THCA = readRDS(file="THCAmethylation_data_lncs_cands.rds")
+
+UVM = readRDS(file="UVMmethylation_data_lncs_cands.rds")
+
+CESC = readRDS(file="CESCmethylation_data_lncs_cands.rds")
+
+KIRP = readRDS(file="KIRPmethylation_data_lncs_cands.rds")
+
+STAD = readRDS(file="STADmethylation_data_lncs_cands.rds")
+
+LUSC = readRDS(file="LUSCmethylation_data_lncs_cands.rds")
+
+BLCA =  readRDS(file="BLCAmethylation_data_lncs_cands.rds")
+
+COAD = readRDS(file="COADmethylation_data_lncs_cands.rds")
+
+UCEC = readRDS(file="UCECmethylation_data_lncs_cands.rds")
+
+SARC = readRDS(file="SARCmethylation_data_lncs_cands.rds")
+
+#combine all 
+methylation_data = list(KIRC,
+LIHC,
+OV,
+PAAD,
+LUAD,
+BRCA,
+BRCA,
+ACC,
+ESCA,
+GBM,
+HNSC,
+LGG,
+MESO,
+READ,
+THCA,
+UVM,
+CESC,
+KIRP,
+STAD,
+LUSC,
+BLCA,
+COAD,
+UCEC,
+SARC)
+
+cancers_order = c("KIRC",
+"LIHC",
+"OV",
+"PAAD",
+"LUAD",
+"BRCA",
+"BRCA",
+"ACC",
+"ESCA",
+"GBM",
+"HNSC",
+"LGG",
+"MESO",
+"READ",
+"THCA",
+"UVM",
+"CESC",
+"KIRP",
+"STAD",
+"LUSC",
+"BLCA",
+"COAD",
+"UCEC",
+"SARC")
+
+cands$canc[cands$canc=="Ovarian serous cystadenocarcinoma"] = "OV"
+cands$canc[cands$canc=="Liver hepatocellular carcinoma"] = "LIHC"
+cands$canc[cands$canc=="Kidney renal clear cell carcinoma"] = "KIRC"
+cands$canc[cands$canc=="Lung squamous cell carcinoma"] = "LUSC"
+cands$canc[cands$canc=="Breast invasive carcinoma"] = "BRCA"
+cands$canc[cands$canc=="Lung adenocarcinoma"] = "LUAD"
+cands$canc[cands$canc=="Pancreatic adenocarcinoma"] = "PAAD"
+cands$canc[cands$canc=="Adrenocortical carcinoma"] = "ACC"
+cands$canc[cands$canc=="Bladder Urothelial Carcinoma"] = "BLCA"
+cands$canc[cands$canc=="Stomach adenocarcinoma"] = "STAD"
+cands$canc[cands$canc=="Head and Neck squamous cell carcinoma"] = "HNSC"
+cands$canc[cands$canc=="Brain Lower Grade Glioma"] = "LGG"
+cands$canc[cands$canc=="Sarcoma"] = "SARC"
+cands$canc[cands$canc=="Kidney renal papillary cell carcinoma"] = "KIRP"
+cands$canc[cands$canc=="Mesothelioma"] = "MESO"
+cands$canc[cands$canc=="Uterine Corpus Endometrial Carcinoma"] = "UCEC"
+cands$canc[cands$canc=="Uveal Melanoma"] = "UVM"
+cands$canc[cands$canc=="Cervical squamous cell carcinoma and endocervical adenocarcinoma"] = "CESC"
+cands$canc[cands$canc=="Colon adenocarcinoma"] = "COAD"
+cands$canc[cands$canc=="Rectum adenocarcinoma"] = "READ"
+cands$canc[cands$canc=="Thyroid carcinoma"] = "THCA"
+cands$canc[cands$canc=="Glioblastoma multiforme"] = "GBM"
+cands$canc[cands$canc=="Esophageal carcinoma"] = "ESCA"
+
+
+probes$canc[probes$canc=="Ovarian serous cystadenocarcinoma"] = "OV"
+probes$canc[probes$canc=="Liver hepatocellular carcinoma"] = "LIHC"
+probes$canc[probes$canc=="Kidney renal clear cell carcinoma"] = "KIRC"
+probes$canc[probes$canc=="Lung squamous cell carcinoma"] = "LUSC"
+probes$canc[probes$canc=="Breast invasive carcinoma"] = "BRCA"
+probes$canc[probes$canc=="Lung adenocarcinoma"] = "LUAD"
+probes$canc[probes$canc=="Pancreatic adenocarcinoma"] = "PAAD"
+probes$canc[probes$canc=="Adrenocortical carcinoma"] = "ACC"
+probes$canc[probes$canc=="Bladder Urothelial Carcinoma"] = "BLCA"
+probes$canc[probes$canc=="Stomach adenocarcinoma"] = "STAD"
+probes$canc[probes$canc=="Head and Neck squamous cell carcinoma"] = "HNSC"
+probes$canc[probes$canc=="Brain Lower Grade Glioma"] = "LGG"
+probes$canc[probes$canc=="Sarcoma"] = "SARC"
+probes$canc[probes$canc=="Kidney renal papillary cell carcinoma"] = "KIRP"
+probes$canc[probes$canc=="Mesothelioma"] = "MESO"
+probes$canc[probes$canc=="Uterine Corpus Endometrial Carcinoma"] = "UCEC"
+probes$canc[probes$canc=="Uveal Melanoma"] = "UVM"
+probes$canc[probes$canc=="Cervical squamous cell carcinoma and endocervical adenocarcinoma"] = "CESC"
+probes$canc[probes$canc=="Colon adenocarcinoma"] = "COAD"
+probes$canc[probes$canc=="Rectum adenocarcinoma"] = "READ"
+probes$canc[probes$canc=="Thyroid carcinoma"] = "THCA"
+probes$canc[probes$canc=="Glioblastoma multiforme"] = "GBM"
+probes$canc[probes$canc=="Esophageal carcinoma"] = "ESCA"
+
+
 
 #4. Expression data 
-lihc = readRDS("LIHC_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
-lihc$canc = "lihc"
-ov = readRDS("OV_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
-ov$canc = "ovary"
-kirc = readRDS("KIRC_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
-kirc$canc = "kirc"
-paad = readRDS("PAAD_tcga_RNA_data_only_detectable_iPCAWG_lncs_mar21.rds")
-paad$canc = "paad"
-expression_data = list(lihc, ov, kirc, paad)
-order_cancers = c("lihc", "ov", "kirc", "paad")
+rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
+unique(rna$type)
 
 get_data = function(lnc){
 	cancer = cands$canc[which(cands$gene == lnc)][1]
 	dat = dplyr::filter(probes, canc == cancer, ensg == lnc)
 	if(!(dim(dat)[1]==0)){
-	z = which(order_cancers == cancer)
+	z = which(cancers_order == cancer)
 	meth_dat = methylation_data[[z]]
 	z = which(meth_dat$probe %in% dat$cgid)
 	meth_dat = meth_dat[z,]
@@ -95,8 +228,7 @@ get_data = function(lnc){
 		}	
 	dat$patient = llply(dat$patient, clean_tcga_id, .progress="text")
 
-	z = which(order_cancers == cancer)
-	exp_data = expression_data[[z]]
+	exp_data = rna[which(rna$patient %in% dat$patient), ]
 	#assign high or low to each patient in expression file
 	z <- which(colnames(exp_data) %in% lnc)
   	if(!(length(z)==0)){
@@ -224,7 +356,7 @@ get_data = function(lnc){
 }
 
 pdf("candidate_lncRNAs_methylation_versus_Expression_April3.pdf", height=5, width=6)
-genes = as.list(unique(cands$gene[which(cands$gene %in% probes$ensg)])) #23 have methylation probes overlapping them 
+genes = as.list(unique(cands$gene[which(cands$gene %in% probes$ensg)])) #110/190 have methylation probes overlapping them 
 lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
 dev.off()
 

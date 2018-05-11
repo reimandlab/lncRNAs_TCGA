@@ -75,8 +75,9 @@ lncs_coords = llply(lncs, shorten, .progress="text")
 lncs_coords <- ldply(lncs_coords, data.frame)
 
 #candidate lncrnas 
-cands = readRDS("chosen_features_wFANTOM_data_Mar22_1000CVs_8020splits.rds")
-colnames(cands)[3] = "canc"
+cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+#cands = filter(cands, data == "PCAWG", pval <=0.05)
+colnames(cands)[7] = "canc"
 
 lncs_coords = lncs_coords[which(lncs_coords$gene %in% cands$gene),] #35/36 are here in GENCODE 
 write.table(lncs_coords, file="lncrna_coords_bed.bed", quote=F, row.names=F, col.names=F, sep="\t")
@@ -86,4 +87,4 @@ write.table(lncs_coords, file="lncrna_coords_bed.bed", quote=F, row.names=F, col
 bedtools intersect -a 450meth_probe_coordinates.bed -b lncrna_coords_bed.bed -wa -wb -s > fantom_lncrnas_mapped_to450_probes.bed
 
 #3. OV Methylation 
-ov_meth = fread("OV.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt")
+#ov_meth = fread("OV.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt")

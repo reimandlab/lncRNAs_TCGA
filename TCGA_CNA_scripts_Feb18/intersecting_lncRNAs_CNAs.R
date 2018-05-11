@@ -6,7 +6,7 @@ library(stringr)
 
 #Data
 #1. CNAs
-cnas = readRDS("6cancers_types_7candidates_May9th_COPYNUMBER_CNAs.rds")
+cnas = readRDS("23cancers_types_ALL_TCGA_candidates_May11th_COPYNUMBER_CNAs.rds")
 
 #add cancer type to each one 
 #TCGA source codes
@@ -100,8 +100,8 @@ lncs_coords <- ldply(lncs_coords, data.frame)
 
 #candidate lncrnas 
 cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
-cands = filter(cands, data == "PCAWG", pval <=0.05)
-lncs_coords = lncs_coords[which(lncs_coords$gene %in% cands$gene),] #21/25 are here in GENCODE 
+#cands = filter(cands, data == "PCAWG", pval <=0.05)
+lncs_coords = lncs_coords[which(lncs_coords$gene %in% cands$gene),] #178/190 are here in GENCODE 
 
 write.table(cnas_bed, file="cnas_bed_TCGA.bed", col.names=F, row.names=F, quote=F, sep="\t")
 write.table(lncs_coords, file="lncrna_coords_bed.bed", col.names=F, row.names=F, quote=F, sep="\t")
