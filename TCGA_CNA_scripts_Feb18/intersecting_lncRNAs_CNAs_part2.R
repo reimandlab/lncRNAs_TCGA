@@ -91,20 +91,36 @@ get_data = function(lnc){
 
 	df$median <- ""
  	median2 <- quantile(as.numeric(df[,2]), 0.5)
-  	if(median2 ==0){
-    median2 = mean(as.numeric(df[,2]))
-  	}
+  	
+  if(median2 ==0){
+        #if median = 0 then anyone greater than zero is 1 
+        l1 = which(df[,2] > 0)
+        l2 = which(df[,2] ==0)
+        df$median[l1] = 1
+        df$median[l2] = 0
+        }
+
+    if(!(median2 ==0)){
+        l1 = which(df[,2] >= median2)
+        l2 = which(df[,2] < median2)
+        df$median[l1] = 1
+        df$median[l2] = 0
+    }
+
+ #if(median2 ==0){
+ #   median2 = mean(as.numeric(df[,2]))
+ # 	}
 
   	#median2 <- median(df[,1])
-  	for(y in 1:nrow(df)){
-    genexp <- df[y,2]
-    if(genexp >= median2){
-      df$median[y] <- 1
-      }
-    if(genexp < median2){
-      df$median[y] <- 0
-      }
-    } 
+#  	for(y in 1:nrow(df)){
+#    genexp <- df[y,2]
+#    if(genexp >= median2){
+#      df$median[y] <- 1
+#      }
+#    if(genexp < median2){
+#      df$median[y] <- 0
+#      }
+#    } 
   	gene <- colnames(df)[2]
   	df$OS <- as.numeric(df$OS)
   	df$OS.time <- as.numeric(df$OS.time)
@@ -171,7 +187,7 @@ get_data = function(lnc){
           	   ggtheme = theme_light(), ylab = "log1p(FPKM) Expression", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
           font.tickslab = c(15, "plain", "black"), xlab="Segment Mean SCNA") + stat_cor() 
     	print(sp)
-	     xplot = ggboxplot(df, main= paste(df$name[1], df$canc[1], "CNA vs Exp", "n=", length(unique(df$patient))),
+	     xplot = ggboxplot(df, main= paste(df$name[1], cancer, "CNA vs Exp", "n=", length(unique(df$patient))),
 		    x = "median", y = "Segment_Mean", legend.title = "Expression Tag", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
           font.tickslab = c(15, "plain", "black"),
                   fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(), xlab="Expression", ylab="Segment Mean SCNA")+rotate()
@@ -194,9 +210,15 @@ dev.off()
 
 lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
 lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
-lnc_cna_cancer_data2 = lnc_cna_cancer_data2[order(wilcoxon_pval, -numHighCNAmatch, -numLowCNAmatch)]
+
 lnc_cna_cancer_data2$wilcoxon_pval = as.numeric(as.character(lnc_cna_cancer_data2$wilcoxon_pval))
-sig_diff = filter(lnc_cna_cancer_data2, wilcoxon_pval <=0.05)
+lnc_cna_cancer_data2 = lnc_cna_cancer_data2[order(wilcoxon_pval)]
+lnc_cna_cancer_data2$fdr = p.adjust(lnc_cna_cancer_data2$wilcoxon_pval, method="fdr")
+sig_diff = filter(lnc_cna_cancer_data2, fdr <=0.05)
+
+
+lnc_cna_cancer_data2 = lnc_cna_cancer_data2[order(fdr, -numHighCNAmatch, -numLowCNAmatch)]
+
 sig_diff = as.data.frame(sig_diff)
 sig_diff$no_match = ""
 get_nomatch = function(row){
@@ -242,6 +264,25 @@ ggpar(p,
 dev.off()
 
 write.table(lnc_cna_cancer_data2, file="wilcoxon_CNA_expression_Results_all_cancers_TCGA_cands_May10.txt", quote=F, sep="\t", row.names=F)
+
+#change to percentages then will be more clear 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #how to make sense of this? 
 #plot segment? and where within it lies lncRNA? 
 
@@ -254,3 +295,50 @@ write.table(lnc_cna_cancer_data2, file="wilcoxon_CNA_expression_Results_all_canc
     #bottom_row <- plot_grid(plots[[2]], yplot, labels = c('B', 'C'), align = 'h', rel_widths = c(2.85, 1))
     #p = plot_grid(plots[[1]], bottom_row, labels = c('A', ''), ncol = 1, rel_heights = c(1, 1.5))
     #print(p)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

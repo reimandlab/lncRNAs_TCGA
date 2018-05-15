@@ -17,6 +17,7 @@ library(patchwork)
 #------FEATURES-----------------------------------------------------
 
 all_cands = readRDS("all_candidates_combined_cancers_typesAnalysis_May3rd.rds")
+all_cands = filter(all_cands, freq>=2)
 
 #-------------------------------------------------------------------
 
@@ -166,6 +167,8 @@ dev.off()
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
+tcga_results1$pval = as.numeric(tcga_results1$pval)
+tcga_results1 = filter(tcga_results1, pval <=0.05)
 
 #-------------------------------------------------------------------
 #------PCAWG DATA---------------------------------------------------

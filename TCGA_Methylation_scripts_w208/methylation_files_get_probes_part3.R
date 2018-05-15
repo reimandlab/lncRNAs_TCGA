@@ -89,7 +89,6 @@ OV,
 PAAD,
 LUAD,
 BRCA,
-BRCA,
 ACC,
 ESCA,
 GBM,
@@ -113,7 +112,6 @@ cancers_order = c("KIRC",
 "OV",
 "PAAD",
 "LUAD",
-"BRCA",
 "BRCA",
 "ACC",
 "ESCA",
@@ -210,6 +208,12 @@ get_data = function(lnc){
 	newdats = llply(pats, rearrange, .progress="text")
 	dat <- ldply(newdats, data.table)
 	dat$gene = lnc
+	z = which(is.na(dat$beta))
+	if(!(length(z)==0)){
+		dat = dat[-z,]
+	}
+
+	if(!(dim(dat)[1] == 0)){
 
 	dat$source = ""
 	get_source = function(id){
@@ -228,34 +232,39 @@ get_data = function(lnc){
 		}	
 	dat$patient = llply(dat$patient, clean_tcga_id, .progress="text")
 
-	exp_data = rna[which(rna$patient %in% dat$patient), ]
+	#exp_data = rna[which(rna$patient %in% dat$patient), ]
+	exp_data = rna[which(rna$type %in% cancer),]
 	#assign high or low to each patient in expression file
 	z <- which(colnames(exp_data) %in% lnc)
   	if(!(length(z)==0)){
   	df = as.data.frame(exp_data)
-  	df <- df[,c(z,(ncol(exp_data)-4):ncol(exp_data))]  
+  	df <- df[,c(1, z,(ncol(exp_data)-30):ncol(exp_data))]  
 
 	df$median <- ""
- 	median2 <- quantile(as.numeric(df[,1]), 0.5)
-  	if(median2 ==0){
-    median2 = mean(as.numeric(df[,1]))
-  	}
+ 	median2 <- quantile(as.numeric(df[,2]), 0.5)
+  	#if(median2 ==0){
+    #median2 = mean(as.numeric(df[,2]))
+  	#}
 
-  	#median2 <- median(df[,1])
-  	for(y in 1:nrow(df)){
-    genexp <- df[y,1]
-    if(genexp >= median2){
-      df$median[y] <- 1
-      }
-    if(genexp < median2){
-      df$median[y] <- 0
-      }
-    } 
-  	gene <- colnames(df)[1]
-  	df$status[df$status=="Alive"] <- 0
-  	df$status[df$status=="Dead"] <- 1
-  	df$status <- as.numeric(df$status)
-  	df$time <- as.numeric(df$time)
+  	 if(median2 ==0){
+		    #if median = 0 then anyone greater than zero is 1 
+		    l1 = which(df[,2] > 0)
+		    l2 = which(df[,2] ==0)
+		    df$median[l1] = 1
+		    df$median[l2] = 0
+		    }
+
+	  if(!(median2 ==0)){
+		    l1 = which(df[,2] >= median2)
+		    l2 = which(df[,2] < median2)
+		    df$median[l1] = 1
+		    df$median[l2] = 0
+		}
+
+
+  	gene <- colnames(df)[2]
+  	df$OS <- as.numeric(df$OS)
+  	df$OS.time <- as.numeric(df$OS.time)
   	df$median[df$median ==0] = "Low"
   	df$median[df$median==1] = "High"
   	df$median = factor(df$median, levels=c("Low", "High"))
@@ -264,9 +273,9 @@ get_data = function(lnc){
   	#take mean segment mean for all cnas in patient 
   	#covering that lncRNA
   	df = merge(df, dat, by=c("patient"))
-  	colnames(df)[2] = "gene"
+  	colnames(df)[2] = "geneExp"
   	#is copy number aberation associated with expression? 
-  	df$gene = log1p(df$gene)
+  	df$geneExp = log1p(df$geneExp)
   	library("ggExtra")
   	name = probes$lncname[which(probes$ensg == lnc)][1]
 	z = which(is.na(df$beta))
@@ -274,16 +283,229 @@ get_data = function(lnc){
 		df = df[-z,]
 	}
 	z =length(table(df$probe))
+	
+	dim1 = table(df$median)[1]
+	dim2 = table(df$median)[2]
+	both = (dim1>=1) & (dim2 >=1)
+
+	if(both){
+
 	if(z > 1){
+		results_all_probes = as.data.frame(matrix(ncol = 9)) ; colnames(results_all_probes) = c("cancer", "gene", "num_patients", "mean_beta_low", 
+			"mean_beta_high", "median_beta_low", "median_beta_high", "wilcoxon_pval", "probe")
 	for(k in 1:z){
 	new = subset(df, df$probe == unique(df$probe)[k])
-	new$gene = as.numeric(new$gene)
+	new$geneExp = as.numeric(new$geneExp)
 	new$beta = as.numeric(new$beta)
 
+		wilcoxon_pval = wilcox.test(beta ~ median, data =new)$p.value  
+		mean_low = mean(new$beta[new$median=="Low"])
+		median_low = median(new$beta[new$median=="Low"])
+		mean_high = mean(new$beta[new$median=="High"])
+		median_high = median(new$beta[new$median=="High"])
+		probe = unique(new$probe)
+		p =  ggdensity(new, x = "beta", color = "median", fill="median", alpha=0.25, xlab="DNA Methylation",
+			title = paste(cancer, probe, gene, "Expression vs Methylation", "\npats wHigh Exp=", length(df$median=="High"),
+				"\npats wLow Exp=" , length(new$median=="Low"), "\nwilcoxon p-val =", round(wilcoxon_pval, digits=5)))
+		p = p + geom_vline(xintercept = c(0, 0.5, 1), linetype="dotted", 
+                color = "blue")
+		print(p)
+
+    results = c(cancer, gene, length(unique(new$patient)), mean_low, mean_high, median_low, median_high, wilcoxon_pval, probe)
+    names(results) = c("cancer", "gene", "num_patients", "mean_beta_low", "mean_beta_high", "median_beta_low", "median_beta_high", "wilcoxon_pval", "probe")
+    results_all_probes = rbind(results_all_probes, results)
+
+
+    print(lnc)
+	}
+	results_all_probes = results_all_probes[-1,]
+	results = results_all_probes
+	}
+
+	if(z==1){
+
+		#get wilcoxon p-value stored between low and high exp patients - get avg beta value for each group 
+		wilcoxon_pval = wilcox.test(beta ~ median, data =df)$p.value  
+		mean_low = mean(df$beta[df$median=="Low"])
+		median_low = median(df$beta[df$median=="Low"])
+		mean_high = mean(df$beta[df$median=="High"])
+		median_high = median(df$beta[df$median=="High"])
+		probe = unique(df$probe)
+
+    results = c(cancer, gene, length(unique(df$patient)), mean_low, mean_high, median_low, median_high, wilcoxon_pval, probe)
+    names(results) = c("cancer", "gene", "num_patients", "mean_beta_low", "mean_beta_high", "median_beta_low", "median_beta_high", "wilcoxon_pval", "probe")
+
+   		p =  ggdensity(df, x = "beta", color = "median", fill="median", alpha=0.25, xlab="DNA Methylation",
+			title = paste(cancer, probe, gene, "Expression vs Methylation", "\npats wHigh Exp=", length(df$median=="High"),
+				"\npats wLow Exp=" , length(df$median=="Low"), "\nwilcoxon p-val =", round(wilcoxon_pval, digits=5)))
+   		p = p + geom_vline(xintercept = c(0, 0.5, 1), linetype="dotted", 
+                color = "blue")
+		print(p)
+    print(lnc)
+	}
+	}
+
+	if(!(both)){
+		results = as.data.frame(matrix(ncol = 9)) ; colnames(results) = c("cancer", "gene", "num_patients", "mean_beta_low", 
+			"mean_beta_high", "median_beta_low", "median_beta_high", "wilcoxon_pval", "probe")
+	}
+
+    return(results)
+}
+}
+}
+}
+
+pdf("candidate_lncRNAs_methylation_versus_Expression_May15_only_NOFDR_candidates.pdf")
+cands = filter(cands, AnalysisType == "noFDR")
+genes = as.list(unique(cands$gene[which(cands$gene %in% probes$ensg)])) #110/190 have methylation probes overlapping them 
+lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
+dev.off()
+
+
+#########################################################################################################################
+#SUMMARIZE#
+#########################################################################################################################
+
+lnc_meth_cancer_data2 = as.data.frame(do.call("rbind", lnc_meth_cancer_data))
+z = which(is.na(lnc_meth_cancer_data2[,1]))
+lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,]
+
+lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
+
+lnc_meth_cancer_data2$wilcoxon_pval = as.numeric(as.character(lnc_meth_cancer_data2$wilcoxon_pval))
+lnc_meth_cancer_data2 = lnc_meth_cancer_data2[order(wilcoxon_pval)]
+lnc_meth_cancer_data2$fdr = p.adjust(lnc_meth_cancer_data2$wilcoxon_pval, method="fdr")
+
+sig_diff = filter(lnc_meth_cancer_data2, fdr <=0.05)
+sig_diff = as.data.frame(sig_diff)
+
+sig_diff$mean_beta_high = as.numeric(sig_diff$mean_beta_high)
+sig_diff$mean_beta_low = as.numeric(sig_diff$mean_beta_low)
+sig_diff$median_beta_high = as.numeric(sig_diff$median_beta_high)
+sig_diff$median_beta_low = as.numeric(sig_diff$median_beta_low)
+
+
+sig_diff$mean_diff = sig_diff$mean_beta_low/sig_diff$mean_beta_high
+sig_diff$median_diff = sig_diff$median_beta_low/sig_diff$median_beta_high
+
+gene_ids = cands[,c(1,9)]
+sig_diff = merge(sig_diff, gene_ids, by="gene")
+
+#sig_diff = sig_diff[order(-median_diff)]
+
+#check which probes have higher mean and median beta vlaue in the low expression group and if they are also
+#in the promoter 
+sig_diff$meth_status = ""
+
+check_meth_exp = function(row){
+	mean_diff = row[[11]]
+	if(mean_diff > 1.2){
+		stat = "LowExpHighMeth"
+	}
+	if(mean_diff < 0.8){
+		stat = "HighExpHighMeth"
+	}
+	if((mean_diff >=0.8) & (mean_diff <= 1.2)){
+		stat = "noDifferent"
+	}
+	return(stat)
+}
+
+sig_diff$meth_status = apply(sig_diff, 1, check_meth_exp)
+
+#summary how many lncRNAs have methylation correlation 
+
+sig_diff$mean_diff = log2(sig_diff$mean_diff)
+sig_diff$median_diff = log2(sig_diff$median_diff)
+
+sig_diff$combo = paste(sig_diff$gene, sig_diff$probe, sig_diff$cancer, sep="_")
+sig_diff = sig_diff[!duplicated(sig_diff), ]
+
+#is probe in promoter or exon? 
+colnames(probes)[11] = "gene"
+probes = probes[,c(1:4, 6:9, 11:14)]
+colnames(sig_diff)[9] = "cgid"
+sig_diff = merge(sig_diff, probes, by=c("gene", "cgid"))
+
+check_promoter = function(row){
+	strand = row$lncstrand
+	lnc_prom_start = row$lncstart-2000
+	lnc_prom_end = row$lncstart+2000
+	cpg = row$cpg_start+1
+
+	#promoter
+	if((cpg >lnc_prom_start) & (cpg<lnc_prom_end)){
+		region="promoter"
+	}
+
+	if(!((cpg >lnc_prom_start) & (cpg<lnc_prom_end))){
+		region="body"
+	}
+	return(region)
+}
+sig_diff$region = apply(sig_diff, 1, check_promoter)
+
+pdf("summary_methylation_of_candidates_noFDR_candidates_only.pdf", width=18)
+ggbarplot(sig_diff, x = "combo", y = "mean_diff",
+          #facet.by = "cancer",
+          fill = "region",           # change fill color by mpg_level
+          color = "region",            # Set bar border colors to white
+          #palette = "jco",            # jco journal color palett. see ?ggpar
+          sort.val = "asc",           # Sort the value in ascending order
+          #sort.by.groups = FALSE,     # Don't sort inside each group
+          x.text.angle = 90,          # Rotate vertically x axis texts
+          ylab = "Mean Beta Value",
+          xlab = FALSE,
+          legend.title = "Region bound by CpG"
+          ) + theme(axis.text.x = element_text(size=6, angle=90))
+
+dev.off()
+
+write.table(sig_diff, file="methylation_analysis_of_candidate_lncRNAs_wilcoxon_resutls_May15.txt", quote=F, row.names=F, sep="\t")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###plot 
+#z > 1
 	sp = ggscatter(new, font.x = c(15, "plain", "black"), main= paste(name, new$canc[1], unique(new$probe)[1]), 
           font.y = c(15, "plain", "black"),
           font.tickslab = c(15, "plain", "black"), 
-		x = "beta", y = "gene", 
+		x = "beta", y = "geneExp", 
                color = "median", palette = "jco",
                size = 3, alpha = 0.6, add = "reg.line",                         # Add regression line
           	   shape = "median", ggtheme = theme_light(), ylab = "log1p(FPKM) Expression", xlab="Beta Value") + stat_cor() 
@@ -298,7 +520,7 @@ get_data = function(lnc){
 	xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5) 
 	print(xplot)
 
-	yplot <- ggboxplot(new, x = "median", y = "gene", font.x = c(15, "plain", "black"),
+	yplot <- ggboxplot(new, x = "median", y = "geneExp", font.x = c(15, "plain", "black"),
           font.y = c(15, "plain", "black"),
           font.tickslab = c(15, "plain", "black"), 
                    fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(),
@@ -312,27 +534,25 @@ get_data = function(lnc){
     #bottom_row <- plot_grid(plots[[2]], yplot, labels = c('B', 'C'), align = 'h', rel_widths = c(4.3, 1))
 	#p = plot_grid(plots[[1]], bottom_row, labels = c('A', ''), ncol = 1, rel_heights = c(1, 1.5))
     #print(p)
-    print(lnc)
-	}
-	}
 
-	if(z==1){
-	sp = ggscatter(df, font.x = c(15, "plain", "black"),
+
+###previous plots
+sp = ggscatter(df, font.x = c(15, "plain", "black"),
           font.y = c(15, "plain", "black"),
           font.tickslab = c(15, "plain", "black"), 
-		x = "beta", y = "gene", 
+		x = "beta", y = "geneExp", 
                color = "median", palette = "jco",
                size = 3, alpha = 0.6, add = "reg.line",                         # Add regression line
           	   shape = "median", ggtheme = theme_light(), ylab = "log1p(FPKM) Expression", xlab="Beta Value") + stat_cor() 
 	
 	
-	xplot = ggboxplot(df, x="median", y="beta", orientation="horizontal", palette="jco", fill="median", main= paste(name, df$canc[1], "Methylation vs Exp", "n=", length(unique(df$patient)), df$probe[1]),
+	xplot = ggboxplot(df, x="median", y="beta", orientation="horizontal", palette="jco", fill="median", main= paste(name, cancer, "Methylation vs Exp", "n=", length(unique(df$patient)), df$probe[1]),
 		legend.title = "Expression Tag", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
           font.tickslab = c(15, "plain", "black"),order=(c("Low", "High")),  ggtheme = theme_light(),
           xlab="Expression", ylab="Beta Value")
 	xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5) 
 	
-	yplot <- ggboxplot(df, x = "median", y = "gene", font.x = c(15, "plain", "black"),
+	yplot <- ggboxplot(df, x = "median", y = "geneExp", font.x = c(15, "plain", "black"),
           font.y = c(15, "plain", "black"),
           font.tickslab = c(15, "plain", "black"), 
                    fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(),
@@ -346,21 +566,6 @@ get_data = function(lnc){
 	p = plot_grid(plots[[1]], bottom_row, labels = c('A', ''), ncol = 1, rel_heights = c(1, 1.5))
     #p = plot_grid(xplot, NULL, sp, yplot, ncol = 2, nrow =2,align = "hv", 
     #      rel_widths = c(2, 1), rel_heights = c(1, 2))
-    print(p)
-    print(lnc)
-	}
-
-    return(dat)
-}
-}
-}
-
-pdf("candidate_lncRNAs_methylation_versus_Expression_April3.pdf", height=5, width=6)
-genes = as.list(unique(cands$gene[which(cands$gene %in% probes$ensg)])) #110/190 have methylation probes overlapping them 
-lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
-dev.off()
-
-
 
 
 
