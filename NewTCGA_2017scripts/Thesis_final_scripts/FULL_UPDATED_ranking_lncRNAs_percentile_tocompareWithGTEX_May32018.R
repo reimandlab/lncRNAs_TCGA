@@ -50,6 +50,8 @@ mypal = pal_npg("nrc", alpha = 0.7)(10)
 #List of canddidates and cox results
 allCands <- readRDS("all_candidates_combined_cancers_typesAnalysis_May3rd.rds")
 
+cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+
 #UCSC gene info
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
