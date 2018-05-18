@@ -138,8 +138,8 @@ getScores <- function(row){
 	expression$score <- as.numeric(rownames(expression))/length(rownames(expression))
 	
 	#subset to just lnc candidates - we just want their score 
-	z <- which(expression$gene %in% as.character(allCands$Name))
-	expression <- expression[z, ]
+	#z <- which(expression$gene %in% as.character(allCands$Name))
+	#expression <- expression[z, ]
 	return(expression)
 }
 
@@ -164,13 +164,13 @@ saveRDS(all_tissues_scored, file="all_lncRNAs_exp_scores_inGTEX_all_tissues_May3
 
 #make boxplot of variation of lncRNA score for each patient within a cancer type 
 
-for(i in 1:length(unique(all_tissues_scored$tis))){
-	dat = subset(all_tissues_scored, tis == unique(all_tissues_scored$tis)[i])
-	dat = dat[200:10000,]
-	print(ggscatter(dat, x= "exp", "score", title= unique(all_tissues_scored$tis)[i]))
-}
+#for(i in 1:length(unique(all_tissues_scored$tis))){
+#	dat = subset(all_tissues_scored, tis == unique(all_tissues_scored$tis)[i])
+#	dat = dat[200:10000,]
+#	print(ggscatter(dat, x= "exp", "score", title= unique(all_tissues_scored$tis)[i]))
+#}
 
-dev.off()
+#dev.off()
 
 
 

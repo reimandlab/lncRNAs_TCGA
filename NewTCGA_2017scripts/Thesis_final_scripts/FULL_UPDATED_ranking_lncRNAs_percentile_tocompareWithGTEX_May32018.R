@@ -123,8 +123,8 @@ getScores <- function(row){
 	expression$score <- as.numeric(rownames(expression))/length(rownames(expression))
 	
 	#subset to just lnc candidates - we just want their score 
-	z <- which(expression$gene %in% as.character(allCands$Name))
-	expression <- expression[z, ]
+	#z <- which(expression$gene %in% as.character(allCands$Name))
+	#expression <- expression[z, ]
 	return(expression)
 }
 

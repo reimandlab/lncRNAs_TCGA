@@ -9,6 +9,12 @@ library(stringr)
 gtex = readRDS("all_lncRNAs_exp_scores_inGTEX_all_tissues_May3.rds")
 tcga = readRDS("TCGA_all_TCGA_cancers_scored_byindexMay4.rds")
 
+#summary of lncRNAs detected in each cancer 
+lncs_det = readRDS("all_TCGA_cancers_lncRNAs_detectable_May18.rds")
+lncs_det_info = readRDS("summary_detectable_lncs_howmanycancers_typesLNCRNAS.rds")
+
+#********get distribution of lncRNA rank ? ****************************************
+
 ###Functions
 
 #1. Divide data into matching tissues, one dataframe wtih both GTEx and TCGA 
@@ -65,8 +71,6 @@ all_datas = llply(cancers, get_data)
 allCands <- readRDS("all_candidates_combined_cancers_typesAnalysis_May3rd.rds")
 
 #plot resepctive candidates wtihin this cancer type 
-
-
 
 
 #4. get fold change and p-value for each gene 

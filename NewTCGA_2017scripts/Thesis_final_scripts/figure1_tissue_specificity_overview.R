@@ -32,7 +32,7 @@ ucsc <- ucsc[-z,]
 
 #add location to lncRNAs 
 
-#how many lncRNAs  --> 5,786 
+#how many lncRNAs  --> 5,785
 
 rownames(rna) = rna$patient
 
@@ -55,16 +55,39 @@ colnames(ucsc)[6] = "gene"
 ucsc = ucsc[,c(6, 2, 4,5)]
 colnames(ucsc) = c("gene", "chr", "start", "end")
 
+#need to figure out % of people that have expression greater than 1 FPKM 
+#in the cohort 
+
 get_medians = function(dtt){
 	z1 = which(str_detect(colnames(dtt), "ENSG"))	
-	dtt[,z1] = log1p(dtt[,z1])
+	#dtt[,z1] = log1p(dtt[,z1])
 	#meds 
-	meds = apply(dtt[,z1], 2, median)
-	meds = as.data.frame(meds)
-	meds$canc = dtt$Cancer[1]
-	meds$gene = rownames(meds)
-	meds = merge(meds, ucsc, by="gene")
-	return(meds)
+	lncs = colnames(dtt)[1:5785]
+	calc_freq = function(lnc){
+		print(lnc)
+		newdat = dtt[,which(colnames(dtt) %in% lnc)]
+		l = (length(which(newdat >=1)))/nrow(dtt)
+		if(l > 0.1){
+			stat = "detectable"
+		}
+		if(l <= 0.1){
+			stat = "NOTdetectable"
+		}
+		return(stat)
+	}
+
+	summary_dat = as.data.frame(matrix(ncol = 3, nrow=length(lncs))) ; colnames(summary_dat) = c("cancer", "lncRNA", "status")
+	summary_dat$cancer = dtt$Cancer[1]
+	summary_dat$lncRNA = lncs
+	summary_dat$status = unlist(llply(lncs, calc_freq))
+
+	#meds = apply(dtt[,z1], 2, median)
+	#meds = as.data.frame(meds)
+	#meds$canc = dtt$Cancer[1]
+	#meds$gene = rownames(meds)
+	#meds = merge(meds, ucsc, by="gene")
+	return(summary_dat)
+
 }
 
 meds_cancers = llply(canc_datas, get_medians, .progress="text")

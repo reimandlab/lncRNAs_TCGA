@@ -55,6 +55,10 @@ all_combined$V1 <- factor(all_combined$V1, levels = myorder)
 myorder = unique(all_combined$V2)
 all_combined$V2 <- factor(all_combined$V2, levels = myorder)
 	
+
+all_combined = filter(all_combined, V3 == "noFDR")
+
+
 pdf("summary_howmanytimes_across_types_filtering_candidates.pdf", width=17, height=9)
 g = ggdotchart(all_combined, x = "V1", y = "freq",
           color = "V2", size = 3,
@@ -77,5 +81,5 @@ dev.off()
 all_combined$N = NULL
 colnames(all_combined) = c("Name", "Cancer", "AnalysisType", "Combo", "freq")
 
-saveRDS(all_combined, file="all_candidates_combined_cancers_typesAnalysis_May3rd.rds")
+saveRDS(all_combined, file="all_candidates_combined_cancers_typesAnalysis_May18rd.rds")
 

@@ -67,8 +67,13 @@ canc_datas = llply(cancers, get_canc)
 
 #4. function that calculates survival for each gene 
 
+det_lncs = readRDS("all_TCGA_cancers_lncRNAs_detectable_May18.rds")
+det_lncs =filter(det_lncs, status =="detectable")
+
 canc_survival_genes = function(dato){
-	genes = as.list(colnames(dato)[2:(ncol(dato)-34)])
+	#genes = as.list(colnames(dato)[2:(ncol(dato)-34)])
+	genes = unique(det_lncs$lncRNA[which(det_lncs$cancer %in% dato$Cancer[1])])	
+
 	#genes = genes[1:100]
 	canc_data_genes_analyze = dato 
 	
@@ -111,11 +116,17 @@ canc_survival_genes = function(dato){
 	colnames(genes_survival_res) = c("gene", "coef", "HR", "pval", "low95", "upper95")
 	genes_survival_res$fdr = p.adjust(as.numeric(genes_survival_res$pval), method="fdr")
 	genes_survival_res$canc = dato$Cancer[1]
+	genes_survival_res = as.data.table(genes_survival_res)
+	genes_survival_res = genes_survival_res[order(fdr)]
 	return(genes_survival_res)
 }
 
 all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text")
 all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
+
+
+saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_for_plotting_HAzard_Ratios_Pvalues_May18.rds")
+
 
 ###---------------------------------------------------------------
 
