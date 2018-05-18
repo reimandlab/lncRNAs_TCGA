@@ -100,7 +100,7 @@ tissues <- unique(allCands$cancer)
 #tissues <- tissues[c(7,9,12,13)]
 
 ####TEST
-tissues = tissues[c(4, 12)]
+tissues = tissues[1:4]
 ####TEST
 
 
@@ -238,9 +238,9 @@ get_pcg_enrichment = function(dat){
 }
 
 all_canc_lnc_data = all_canc_lnc_data[1:2]
-pdf("lnc_rna_candidates_cancers_PCG_targets_predicted.pdf")
+#pdf("lnc_rna_candidates_cancers_PCG_targets_predicted.pdf")
 all_canc_lnc_data = llply(all_canc_lnc_data, get_pcg_enrichment, .progress="text")
-dev.off()
+#dev.off()
 
 
 all_canc_lnc_data1 = as.data.frame(do.call("rbind", all_canc_lnc_data))
@@ -264,8 +264,8 @@ low_risk_matrix = acast(low_risk, pcg ~ lnc, function(x) {sort(as.character(x))[
 
 #columns are lncRNAs and rows are PCGs
 
-saveRDS(high_risk_matrix, file="high_risk_matrix_lncRNA_candidates_May16.rds")
-saveRDS(low_risk_matrix, file="low_risk_matrix_lncRNA_candidates_May16.rds")
+#saveRDS(high_risk_matrix, file="high_risk_matrix_lncRNA_candidates_May16.rds")
+#saveRDS(low_risk_matrix, file="low_risk_matrix_lncRNA_candidates_May16.rds")
 
 
 
