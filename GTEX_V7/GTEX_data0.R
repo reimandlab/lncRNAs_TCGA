@@ -88,6 +88,11 @@ gene_reads = as.data.table(gene_reads)
 genes_gtex = gene_reads$Name
 write.table(genes_gtex, file = "genes_used_GTExApril17.txt")
 
+
+tcga_genes$type = ""
+tcga_genes$type[tcga_genes$x %in% fantom$CAT_geneID] = "lncRNA"
+tcga_genes$type[is.na(tcga_genes$type)] = "pcg"
+
 ###---------------------------------------------------------------
 ###Add scores 
 ###---------------------------------------------------------------
@@ -103,6 +108,7 @@ rna = log1p(rna)
 
 #2. Get lncRNA - median within each tissue type
 tissues <- unique(atts$SMTS)
+tissues = tissues[c(1, 5, 6, 8, 9, 11, 12, 13, 14, 16, 26, 27)]
 
 #Function 1
 #input: tissue 
@@ -132,7 +138,7 @@ getScores <- function(row){
 	expression$score <- as.numeric(rownames(expression))/length(rownames(expression))
 	
 	#subset to just lncrnas
-	lncs = tcga_genes$gene[tcga_genes$type == "lncRNA"]
+	lncs = tcga_genes$gene[tcga_genes$x == "lncRNA"]
 	z <- which(expression$gene %in% lncs)
 	expression <- expression[z, ]
 	return(expression)

@@ -1,11 +1,31 @@
+#Libraries#------------------------------------------------
 library(data.table)
 library(plyr)
+library(survival)
+library(ggplot2)
+library(ggfortify)
+library(cluster)
 library(dplyr)
-library(stringr)
+library(rafalib)
+library(RColorBrewer) 
+library(gplots) ##Available from CRAN
+library(survminer)
+library(MASS)
+library(Hmisc)
+library(gProfileR)
+library(wesanderson)
+library(ggsci)
+library(gridExtra)
 library(ggpubr)
-library(ggExtra)
-library(cowplot)
 library(ggthemes)
+library(tidyr)
+library(cowplot)
+library(broom)
+library(tidyverse)
+library(parallel)
+library(limma)
+
+mypal = pal_npg("nrc", alpha = 0.7)(10)
 
 
 #1. See if any candidates have CNAs
@@ -15,6 +35,7 @@ lncswcnas = as.data.frame(lncswcnas)
 #2. cands 
 cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
 #cands = filter(cands, data == "PCAWG", pval <=0.05)
+cands = filter(cands, AnalysisType == "noFDR")
 colnames(cands)[7] = "canc"
 colnames(lncswcnas)[4] = "gene"
 colnames(lncswcnas)[11] = "canc"
@@ -72,7 +93,6 @@ lncswcnas$rm = NULL
   #paad$canc = "paad"
   #expression_data = list(lihc, ov, kirc, paad)
   #order_cancers = c("lihc", "ov", "kirc", "paad")
-
 
 rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
 unique(rna$type)
@@ -182,7 +202,7 @@ get_data = function(lnc){
   	library("ggExtra")
 	    sp = ggscatter(df, main = paste(df$gene[1], df$type[1]), 
 	   	x = "Segment_Mean", y = "geneexp",
-               color = "median", palette = "jco",
+               color = "median", palette = mypal[c(4,1)],
                size = 3, alpha = 0.6, add = "reg.line",                         # Add regression line
           	   ggtheme = theme_light(), ylab = "log1p(FPKM) Expression", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
           font.tickslab = c(15, "plain", "black"), xlab="Segment Mean SCNA") + stat_cor() 
@@ -190,11 +210,11 @@ get_data = function(lnc){
 	     xplot = ggboxplot(df, main= paste(df$name[1], cancer, "CNA vs Exp", "n=", length(unique(df$patient))),
 		    x = "median", y = "Segment_Mean", legend.title = "Expression Tag", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
           font.tickslab = c(15, "plain", "black"),
-                  fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(), xlab="Expression", ylab="Segment Mean SCNA")+rotate()
+                  fill = "median", palette = mypal[c(4,1)], order=(c("Low", "High")), ggtheme = theme_light(), xlab="Expression", ylab="Segment Mean SCNA")+rotate()
     	xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5)
     	print(xplot)
        yplot <- ggboxplot(df, x = "median", y = "geneexp", main = df$name[1], font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
-          font.tickslab = c(15, "plain", "black"), fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(),
+          font.tickslab = c(15, "plain", "black"), fill = "median", palette = mypal[c(4,1)], order=(c("Low", "High")), ggtheme = theme_light(),
                     xlab="Expression", ylab="log1p(FPKM) Expression")
 	     yplot= yplot + stat_compare_means(label = "p.signif", label.x = 1.5)
     
@@ -213,9 +233,9 @@ lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
 
 lnc_cna_cancer_data2$wilcoxon_pval = as.numeric(as.character(lnc_cna_cancer_data2$wilcoxon_pval))
 lnc_cna_cancer_data2 = lnc_cna_cancer_data2[order(wilcoxon_pval)]
+lnc_cna_cancer_data2$wilcoxon_pval = as.numeric(lnc_cna_cancer_data2$wilcoxon_pval)
 lnc_cna_cancer_data2$fdr = p.adjust(lnc_cna_cancer_data2$wilcoxon_pval, method="fdr")
 sig_diff = filter(lnc_cna_cancer_data2, fdr <=0.05)
-
 
 lnc_cna_cancer_data2 = lnc_cna_cancer_data2[order(fdr, -numHighCNAmatch, -numLowCNAmatch)]
 
@@ -239,7 +259,7 @@ colnames(match_l)[5] = "num_cna_exp_match"
 match_l$type = "LowExpDel"
 match_l$num_cna_exp_match = as.numeric(as.character(match_l$num_cna_exp_match))
 
-match_no = sig_diff[,c(1:4, 8)]
+match_no = sig_diff[,c(1:4, 9)]
 colnames(match_no)[5] = "num_cna_exp_match"
 match_no$type = "NoExpCNAMatch"
 
@@ -248,39 +268,36 @@ matched_sig = as.data.table(matched_sig)
 matched_sig = matched_sig[order(num_cna_exp_match, -type)]
 matched_sig = as.data.frame(matched_sig)
 order = as.character(unique(matched_sig$gene))
-matched_sig$gene <- factor(matched_sig$gene, levels = x$name[order(x$val)])
+matched_sig$gene <- factor(matched_sig$gene, levels = order)
 matched_sig$gene  # notice the changed order of factor levels
 
+#for each lncRNA turn fractions into percentages 
+matched_sig$num_cna_exp_match = (as.numeric(matched_sig$num_cna_exp_match))/(as.numeric(as.character(matched_sig$num_patients)))
+matched_sig$num_cna_exp_match = round(matched_sig$num_cna_exp_match, digits=3)
+
+matched_sig = as.data.table(matched_sig)
+matched_sig = matched_sig[order(type, num_cna_exp_match)]
+
+order = unique(matched_sig$name)
+matched_sig$name <- factor(matched_sig$name, levels = order)
+
+#labels = (matched_sig$cancer)
+
 # Stacked bar plots, add labels inside bars
-pdf("num_matching_CNA_exp_tags_23cancers_57lncs.pdf", width= 10)
+pdf("num_matching_CNA_exp_tags_23cancers_57lncs.pdf", width= 10, height=6)
 p = ggbarplot(matched_sig, x = "name", y = "num_cna_exp_match",
   fill = "type", color = "type", 
-  palette = "jco",
-  label = TRUE, lab.col = "white", lab.pos = "in", lab.size=1.5)
+  palette = mypal)
+  #label = TRUE, lab.col = "white", lab.pos = "in", lab.size=1.8)
 ggpar(p,
- font.tickslab = c(5,"plain", "black"),
+ font.tickslab = c(8,"plain", "black"),
  xtickslab.rt = 45)
 
 dev.off()
 
-write.table(lnc_cna_cancer_data2, file="wilcoxon_CNA_expression_Results_all_cancers_TCGA_cands_May10.txt", quote=F, sep="\t", row.names=F)
+#write.table(lnc_cna_cancer_data2, file="wilcoxon_CNA_expression_Results_all_cancers_TCGA_cands_May10.txt", quote=F, sep="\t", row.names=F)
 
 #change to percentages then will be more clear 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 #how to make sense of this? 

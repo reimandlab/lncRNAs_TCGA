@@ -128,6 +128,11 @@ all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
 saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_for_plotting_HAzard_Ratios_Pvalues_May18.rds")
 
 
+
+all_cancers_genes_surv_comb = readRDS("lncRNAs_for_plotting_HAzard_Ratios_Pvalues_May18.rds")
+
+
+
 ###---------------------------------------------------------------
 
 #plot scatter plot - HR versus p-value draw line for FDR = 0.05
@@ -142,7 +147,7 @@ z1 = which(all_cancers_genes_surv_comb$fdr == "Inf")
 z2 = which(all_cancers_genes_surv_comb$upper95 == "Inf")
 all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-c(z1,z2),]
 
-z = which(all_cancers_genes_surv_comb$HR > 5)
+z = which(all_cancers_genes_surv_comb$HR > 10)
 all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-z,]
 
 lineval = -log10(0.05)
@@ -150,19 +155,36 @@ lineval = -log10(0.05)
 all_cancers_genes_surv_comb$fdrsig = ""
 all_cancers_genes_surv_comb$fdrsig[all_cancers_genes_surv_comb$fdr >= lineval] = "FDRsig"
 all_cancers_genes_surv_comb$fdrsig[all_cancers_genes_surv_comb$fdr < lineval] = "FDRnotSig"
-z = which((all_cancers_genes_surv_comb$fdr < lineval) & (all_cancers_genes_surv_comb$fdr > -log10(0.1)))
-all_cancers_genes_surv_comb$fdrsig[z] = "FDR00.1"
+#z = which((all_cancers_genes_surv_comb$fdr < lineval) & (all_cancers_genes_surv_comb$fdr > -log10(0.1)))
+#all_cancers_genes_surv_comb$fdrsig[z] = "FDR00.1"
 
 #facet by cancer type 
-pdf("HR_vs_pval_survival_all_cancers_volcano_plots.pdf", width=12, height=12)
-ggscatter(all_cancers_genes_surv_comb, x = "HR", y = "pval", color = "fdrsig", facet.by = "canc", palette=mypal[c(2,1,3)], ylab="-log10(p-value)") +
-geom_hline(yintercept=lineval, linetype="dashed", color = "red") + geom_vline(xintercept = 1, linetype="dashed", color = "blue")
+
+#order by most significant to least significant 
+order = as.data.table(filter(as.data.table(table(all_cancers_genes_surv_comb$canc, all_cancers_genes_surv_comb$fdrsig)), V2=="FDRsig"))
+order = order[order(N)]
+order = order$V1
+
+all_cancers_genes_surv_comb$canc <- factor(all_cancers_genes_surv_comb$canc, levels = order)
+all_cancers_genes_surv_comb$canc  # notice the changed order of factor levels
+
+pdf("HR_vs_pval_survival_all_cancers_scatter_plot_May19.pdf", width=12, height=9)
+
+g = ggscatter(all_cancers_genes_surv_comb, x = "canc", y = "HR", color="fdrsig", palett=mypal, size = 1.1) + 
+geom_hline(yintercept=1, linetype="dashed", color = "red")
+
+ggpar(g,
+ font.xtickslab = c(8,"plain", "black"),
+ xtickslab.rt = 90)
+
 dev.off()
 
-saveRDS(all_cancers_genes_surv_comb, file="all_cancers_all_genes_univariate_survival_results_April16.rds")
 
+#saveRDS(all_cancers_genes_surv_comb, file="all_cancers_all_genes_univariate_survival_results_April16.rds")
 
-
+#ggscatter(all_cancers_genes_surv_comb, x = "HR", y = "pval", color = "fdrsig", facet.by = "canc", palette=mypal[c(2,1,3)], ylab="-log10(p-value)") +
+#geom_hline(yintercept=lineval, linetype="dashed", color = "red") + geom_vline(xintercept = 1, linetype="dashed", color = "blue")
+#dev.off()
 
 
 

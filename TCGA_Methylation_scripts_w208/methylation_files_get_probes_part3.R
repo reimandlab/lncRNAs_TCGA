@@ -9,6 +9,33 @@ library(ggpubr)
 library(ggExtra)
 library(cowplot)
 library(ggthemes)
+library(data.table)
+library(plyr)
+library(survival)
+library(ggplot2)
+library(ggfortify)
+library(cluster)
+library(dplyr)
+library(rafalib)
+library(RColorBrewer) 
+library(gplots) ##Available from CRAN
+library(survminer)
+library(MASS)
+library(Hmisc)
+library(gProfileR)
+library(wesanderson)
+library(ggsci)
+library(gridExtra)
+library(ggpubr)
+library(ggthemes)
+library(tidyr)
+library(cowplot)
+library(broom)
+library(tidyverse)
+library(parallel)
+library(limma)
+
+mypal = pal_npg("nrc", alpha = 0.7)(10)
 
 tss_codes = read.csv("TCGA_TissueSourceSite_Codes2017.csv")
 source_codes = source = read.csv("TCGA_sample_codes.csv")
@@ -311,6 +338,16 @@ get_data = function(lnc){
                 color = "blue")
 		print(p)
 
+
+	xplot = ggboxplot(new, main= paste(name, new$canc[1], "Methylation vs Exp", "n=", length(unique(new$patient))),
+		x = "median", y = "beta", legend.title = "Expression Tag", font.x = c(15, "plain", "black"),
+          font.y = c(15, "plain", "black"),
+          font.tickslab = c(15, "plain", "black"), 
+                   fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(), xlab="Expression", ylab="Beta Value")+rotate()
+	xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5) 
+	print(xplot)
+
+
     results = c(cancer, gene, length(unique(new$patient)), mean_low, mean_high, median_low, median_high, wilcoxon_pval, probe)
     names(results) = c("cancer", "gene", "num_patients", "mean_beta_low", "mean_beta_high", "median_beta_low", "median_beta_high", "wilcoxon_pval", "probe")
     results_all_probes = rbind(results_all_probes, results)
@@ -341,6 +378,17 @@ get_data = function(lnc){
    		p = p + geom_vline(xintercept = c(0, 0.5, 1), linetype="dotted", 
                 color = "blue")
 		print(p)
+
+		xplot = ggboxplot(df, main= paste(name, new$canc[1], "Methylation vs Exp", "n=", length(unique(new$patient))),
+		x = "median", y = "beta", legend.title = "Expression Tag", font.x = c(15, "plain", "black"),
+          font.y = c(15, "plain", "black"),
+          font.tickslab = c(15, "plain", "black"), 
+                   fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(), xlab="Expression", ylab="Beta Value")+rotate()
+			xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5) 
+			print(xplot)
+
+
+
     print(lnc)
 	}
 	}
@@ -451,7 +499,7 @@ ggbarplot(sig_diff, x = "combo", y = "mean_diff",
           #facet.by = "cancer",
           fill = "region",           # change fill color by mpg_level
           color = "region",            # Set bar border colors to white
-          #palette = "jco",            # jco journal color palett. see ?ggpar
+          palette = mypal[c(4,1),            # jco journal color palett. see ?ggpar
           sort.val = "asc",           # Sort the value in ascending order
           #sort.by.groups = FALSE,     # Don't sort inside each group
           x.text.angle = 90,          # Rotate vertically x axis texts

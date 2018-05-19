@@ -25,10 +25,11 @@ tcga_canc = unique(tcga$canc)
 gtex$canc = str_sub(gtex$canc, 1, 4)
 gtex_canc = unique(gtex$canc)
 
-tis_match = as.data.frame(matrix(ncol=2)) ; colnames(tis_match) = c("cancer", "tis")
+tis_match = as.data.frame(matrix(ncol=2)) ; 
+colnames(tis_match) = c("cancer", "tis")
 
 for(i in 1:length(gtex_canc)){
-	 z = (which(str_detect(tcga_canc, gtex_canc[i])))
+	 z = (which(str_detect(tcga_canc, gtex_canc[[i]])))
 	 if(!(length(z)==0)){
 	 	if(length(z)==1){
 		 	canc = tcga_canc[z]
