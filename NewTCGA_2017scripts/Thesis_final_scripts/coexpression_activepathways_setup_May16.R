@@ -55,6 +55,9 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.
 allCands = filter(allCands, AnalysisType == "noFDR", data=="TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
 #23 unique cancer types 
 
+pcawg = filter(allCands, AnalysisType == "noFDR", data=="TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
+
+
 #which cancer types are the non-unique lncRNAs from?
 allCands$Combo = NULL
 allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "CAT_geneName")]

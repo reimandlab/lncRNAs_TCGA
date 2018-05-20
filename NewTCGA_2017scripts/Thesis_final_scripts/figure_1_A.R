@@ -66,11 +66,11 @@ get_medians = function(dtt){
 	calc_freq = function(lnc){
 		print(lnc)
 		newdat = dtt[,which(colnames(dtt) %in% lnc)]
-		l = (length(which(newdat >=1)))/nrow(dtt)
-		if(l > 0.1){
+		l = (length(which(newdat >=5)))/nrow(dtt)
+		if(l > 0.25){
 			stat = "detectable"
 		}
-		if(l <= 0.1){
+		if(l <= 0.25){
 			stat = "NOTdetectable"
 		}
 		return(stat)
