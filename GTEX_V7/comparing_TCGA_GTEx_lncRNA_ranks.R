@@ -6,8 +6,8 @@ source("source_file.R")
 library(stringr)
 
 ###Data
-gtex = readRDS("all_lncRNAs_exp_scores_inGTEX_all_tissues_May3.rds")
-tcga = readRDS("TCGA_all_TCGA_cancers_scored_byindexMay4.rds")
+gtex = readRDS("allGTEX_lncRNAs_scored_May23.rds")
+tcga = readRDS("TCGA_all_lncRNAs_cancers_scored_byindexMay23.rds")
 
 #summary of lncRNAs detected in each cancer 
 lncs_det = readRDS("all_TCGA_cancers_lncRNAs_detectable_May18.rds")
@@ -22,8 +22,8 @@ lncs_det_info = readRDS("summary_detectable_lncs_howmanycancers_typesLNCRNAS.rds
 
 tcga_canc = unique(tcga$canc)
 
-gtex$canc = str_sub(gtex$canc, 1, 4)
-gtex_canc = unique(gtex$canc)
+gtex$tis = str_sub(gtex$tis, 1, 4)
+gtex_canc = unique(gtex$tis)
 
 tis_match = as.data.frame(matrix(ncol=2)) ; 
 colnames(tis_match) = c("cancer", "tis")
@@ -60,13 +60,13 @@ get_data = function(cancer){
 	z = which(tcga$canc == cancer)
 	dat_canc = tcga[z,]
 	t = tis_match$tis[which(tis_match$cancer ==cancer)]
-	z = which(gtex$canc == t)
+	z = which(gtex$tis == t)
 	dat_gt = gtex[z,]
-	all = rbind(dat_canc, dat_gt)
+	all = rbind(dat_canc, dat_gt) #fix order of columns 
 	return(all)
 }
 
-all_datas = llply(cancers, get_data)
+all_datas = llply(cancers, get_data, .progress="text")
 
 #3. get median rank for each gene within tumour and gtex 
 allCands <- readRDS("all_candidates_combined_cancers_typesAnalysis_May3rd.rds")

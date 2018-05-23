@@ -24,11 +24,10 @@ library(survival)
 library(ggplot2)
 library(ggfortify)
 library(cluster)
-library(qqman)
 library(dplyr)
 library(rafalib)
 library(RColorBrewer) 
-library(genefilter)
+#library(genefilter)
 library(gplots) ##Available from CRAN
 library(survminer)
 library(MASS)
@@ -48,9 +47,8 @@ mypal = pal_npg("nrc", alpha = 0.7)(10)
 #List of canddidates and cox results
 #allCands <- fread("7tier1_35tier2_lncRNA_candidates_August28th.txt", sep=";")
 #List of canddidates and cox results
-allCands <- readRDS("all_candidates_combined_cancers_typesAnalysis_May3rd.rds")
-
-cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+#allCands <- readRDS("all_candidates_combined_cancers_typesAnalysis_May3rd.rds")
+#cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
 
 #UCSC gene info
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
@@ -83,6 +81,10 @@ all = all[,1:25170]
 #z = which(colnames(all) %in% genes$x)
 #all = all[,c(1, z)]
 
+tcga_genes = fread("all_genes_used_inRankingAnalysisTCGA_May4th.txt")
+tcga_genes$type = ""
+tcga_genes$type[tcga_genes$x %in% fantom$CAT_geneID] = "lncRNA"
+tcga_genes$type[is.na(tcga_genes$type)] = "pcg"
 
 #------------------------------------------------------------------
 #Within each tissue type, rank lncRNAs by which percentile of 
@@ -112,45 +114,53 @@ tissues_data <- llply(tissues, get_tissue_specific, .progress="text")
 #input: dataframe with lncRNA/pcg-RNAseq data 
 #output: new row added to dataframe indicating gene's score within 
 #each patient 
-getScores <- function(row){
+
+addScores <- function(dtt){
+	names <- as.list(rownames(dtt))
+	getScores <- function(patient){
+	z = which(rownames(dtt) %in% patient)
+	row = dtt[z,]
+	z = which(str_detect(names(row), "ENSG"))
+
 	score=""
-	z = which(str_detect(names(row), "ENSG"))	
 	expression <- data.frame(exp=as.numeric(row[z]), gene=names(row)[z])
 	expression$score <- score
-	expression$patient = row[1]
+	
 	expression <- as.data.table(expression)
 	expression <- expression[order(exp)]
 	expression$score <- as.numeric(rownames(expression))/length(rownames(expression))
 	
-	#subset to just lnc candidates - we just want their score 
-	#z <- which(expression$gene %in% as.character(allCands$Name))
-	#expression <- expression[z, ]
+	#subset to just lncrnas
+	lncs = tcga_genes$x[tcga_genes$type == "lncRNA"]
+	z <- which(expression$gene %in% lncs)
+	expression <- expression[z, ]
+	expression = as.data.frame(expression)
+	expression$patient = ""
+	expression$patient = patient 
 	return(expression)
-}
-
-
-addScores <- function(dataframe){
-	patients <- apply(dataframe, 1, getScores) #list of dataframes, need to coerce together
-	names <- rownames(dataframe)
-	patients <- rbindlist(patients)
-	#patients$patient <- rep(names, each=length(unique(as.character((allCands$Name))))) #25 lncRNA candidates 
-	patients <- as.data.frame(patients)
-	patients$canc <- dataframe$Cancer[1]
-	patients$data <- "TCGA"
-	patients$canc <- lapply(patients$canc, function(x) unlist(strsplit(x, " "))[1])
-	return(patients)
+		}
+	patients <- llply(names, getScores, .progress="text") #list of dataframes, need to coerce together
+	#names <- rownames(dataframe)
+	patients1 <- rbindlist(patients)
+	patients1 <- as.data.frame(patients1)
+	patients1$tis <- dtt$Cancer[1]
+	patients1$data <- "TCGA"
+	#patients1$tis = dataframe$tis[1]
+	return(patients1)
 }	
 
 scored <- llply(tissues_data, addScores, .progress="text") #list of dataframes
-all_cancers_scored <-  rbindlist(scored)
-all_cancers_scored <- as.data.frame(all_cancers_scored)
+all_tissues_scored <-  rbindlist(scored)
+
+all_cancers_scored <- as.data.frame(all_tissues_scored)
 
 #one for each tissue/cancer type
 #each gene is scored within each patient 
 #can now make violin plot showing distributon of scores for each candidate lncRNA 
 #just need to subset to genes interested in plotting 
+all_cancers_scored$exp = as.numeric(all_cancers_scored$exp)
 
-saveRDS(all_cancers_scored, file="TCGA_all_TCGA_cancers_scored_byindexMay4.rds")
+saveRDS(all_cancers_scored, file="TCGA_all_lncRNAs_cancers_scored_byindexMay23.rds")
 
 #save list of genes in total used to also compare with GTEX 
 write.table(colnames(all), file="all_genes_used_inRankingAnalysisTCGA_May4th.txt", quote=F, row.names=F, sep=";")

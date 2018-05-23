@@ -108,7 +108,7 @@ rna = log1p(rna)
 
 #2. Get lncRNA - median within each tissue type
 tissues <- unique(atts$SMTS)
-tissues = tissues[c(1, 5, 6, 8, 9, 11, 12, 13, 14, 16, 26, 27)]
+tissues = tissues[c(1, 5, 6, 8, 9, 11, 12, 13, 14, 16, 26, 17, 27)]
 
 #Function 1
 #input: tissue 
@@ -128,9 +128,15 @@ tissues_data <- lapply(tissues, get_tissue_specific)
 #input: dataframe with lncRNA/pcg-RNAseq data 
 #output: new row added to dataframe indicating gene's score within 
 #each patient 
-getScores <- function(row){
+
+addScores <- function(dtt){
+	names <- as.list(rownames(dtt))
+	
+	getScores <- function(patient){
+	z = which(rownames(dtt) %in% patient)
+	row = dtt[z,]
 	score=""
-	expression <- data.frame(exp=as.numeric(row[1:(length(row)-1)]), gene=names(row)[1:(length(row)-1)])
+	expression <- data.frame(exp=as.numeric(row[1:(length(row)-1)]), gene=names(row)[1:(length(row)-1)]) #check if characters 
 	expression$score <- score
 	
 	expression <- as.data.table(expression)
@@ -138,27 +144,29 @@ getScores <- function(row){
 	expression$score <- as.numeric(rownames(expression))/length(rownames(expression))
 	
 	#subset to just lncrnas
-	lncs = tcga_genes$gene[tcga_genes$x == "lncRNA"]
+	lncs = tcga_genes$x[tcga_genes$type == "lncRNA"]
 	z <- which(expression$gene %in% lncs)
 	expression <- expression[z, ]
+	expression = as.data.frame(expression)
+	expression$patient = ""
+	expression$patient = patient 
 	return(expression)
-}
+		}
 
-addScores <- function(dataframe){
-	patients <- apply(dataframe, 1, getScores) #list of dataframes, need to coerce together
-	names <- rownames(dataframe)
-	patients <- rbindlist(patients)
-	patients$patient <- rep(names, each=20) #20 lncRNA candidates 
-	patients <- as.data.frame(patients)
-	patients$canc <- dataframe$tissue[1]
-	patients$data <- "GTEX"
-	patients$tis = dataframe$tis[1]
-	return(patients)
+	patients <- llply(names, getScores, .progress="text") #list of dataframes, need to coerce together
+	#names <- rownames(dataframe)
+	patients1 <- rbindlist(patients)
+	patients1 <- as.data.frame(patients1)
+	patients1$data <- "GTEX"
+	patients1$tis = dtt$tis[1]
+	return(patients1)
 }	
 
 scored <- llply(tissues_data, addScores, .progress="text") #list of dataframes
 all_tissues_scored <-  rbindlist(scored)
+all_tissues_scored$exp = as.numeric(all_tissues_scored$exp)
 
+saveRDS(all_tissues_scored, "allGTEX_lncRNAs_scored_May23.rds")
 
 
 

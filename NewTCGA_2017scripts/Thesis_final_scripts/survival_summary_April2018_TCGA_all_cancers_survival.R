@@ -132,7 +132,6 @@ saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_for_plotting_HAzard_Ratios_Pv
 all_cancers_genes_surv_comb = readRDS("lncRNAs_for_plotting_HAzard_Ratios_Pvalues_May18.rds")
 
 
-
 ###---------------------------------------------------------------
 
 #plot scatter plot - HR versus p-value draw line for FDR = 0.05
@@ -191,28 +190,34 @@ dev.off()
 #geom_hline(yintercept=lineval, linetype="dashed", color = "red") + geom_vline(xintercept = 1, linetype="dashed", color = "blue")
 #dev.off()
 
+head(all_cancers_genes_surv_comb)
+
+# Change violin plot colors by groups
+pdf("HR_vs_pval_survival_all_cancers_scatter_plot_May23.pdf", width=13, height=7)
+
+p = ggplot(all_cancers_genes_surv_comb, aes(x=canc, y=HR, fill=fdrsig)) +
+  geom_violin() + geom_hline(yintercept=1, linetype="dashed", color = "red")
 
 
+# Add dots
+#p = p + geom_dotplot(binaxis='y', stackdir='center',
+#                 position=position_dodge(1), dotsize = 0.1)
+
+ggpar(p,
+ font.xtickslab = c(8,"plain", "black"),
+ xtickslab.rt = 90)
+
+dev.off()
 
 
+all_cancers_genes_surv_comb = as.data.table(all_cancers_genes_surv_comb)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+sig = as.data.table(filter(all_cancers_genes_surv_comb, fdrsig %in% c("FDRsig", "Significant")))
+sig_counts = as.data.table(table(sig$gene, sig$canc))
+sig_counts = as.data.table(filter(sig_counts, N >0))
+sig_counts = sig_counts[order(N)]
+sig_counts = as.data.table(table(sig_counts$V1))
+sig_counts = sig_counts[order(N)]
 
 
 
