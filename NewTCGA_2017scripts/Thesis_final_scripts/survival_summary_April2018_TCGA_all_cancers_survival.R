@@ -72,6 +72,7 @@ det_lncs =filter(det_lncs, status =="detectable")
 
 canc_survival_genes = function(dato){
 	#genes = as.list(colnames(dato)[2:(ncol(dato)-34)])
+	#looking only at the detectable lncRNAs within respective cancer type 
 	genes = unique(det_lncs$lncRNA[which(det_lncs$cancer %in% dato$Cancer[1])])	
 
 	#genes = genes[1:100]
@@ -89,26 +90,27 @@ canc_survival_genes = function(dato){
   	if(!(length(z) ==0)){
   	dat = dat[-z,]}
 	med_gene = median(as.numeric(dat[,2]))  	
-	if(med_gene == 0){
-		med_gene = mean(as.numeric(dat[,2]))
-	}
-	if(!(med_gene == 0)){
 	dat$med = ""
-	for(y in 1:nrow(dat)){
-		check = dat[y,2] > med_gene
-		if(check){
-			dat$med[y] = 1
-		}
-		if(!(check)){
-			dat$med[y] = 0
-		}
-	}
+	if(med_gene ==0){
+        #if median = 0 then anyone greater than zero is 1 
+        l1 = which(dat[,2] > 0)
+        l2 = which(dat[,2] ==0)
+        dat$med[l1] = 1
+        dat$med[l2] = 0
+        }
+
+    if(!(med_gene ==0)){
+        l1 = which(dat[,2] >= med_gene)
+        l2 = which(dat[,2] < med_gene)
+        dat$med[l1] = 1
+        dat$med[l2] = 0
+    }
+
 	res.cox <- coxph(Surv(OS.time, OS) ~ med, data = dat)
   	row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)],  summary(res.cox)$conf.int[1,c(3,4)])
   	names(row) <- names(results_cox)
   	return(row)
   	}
-	}
 
 	genes_survival = llply(genes, get_survival, .progress="text")
 	genes_survival_res = ldply(genes_survival, rbind)
@@ -128,7 +130,6 @@ all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
 saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_for_plotting_HAzard_Ratios_Pvalues_May18.rds")
 
 
-
 all_cancers_genes_surv_comb = readRDS("lncRNAs_for_plotting_HAzard_Ratios_Pvalues_May18.rds")
 
 
@@ -140,7 +141,7 @@ all_cancers_genes_surv_comb$fdr = -log10(all_cancers_genes_surv_comb$fdr)
 all_cancers_genes_surv_comb$HR = as.numeric(all_cancers_genes_surv_comb$HR)
 
 z = which(is.na(all_cancers_genes_surv_comb$pval))
-all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-z,]
+if(!(length(z)==0)){all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-z,]}
 
 z1 = which(all_cancers_genes_surv_comb$fdr == "Inf")
 z2 = which(all_cancers_genes_surv_comb$upper95 == "Inf")
@@ -162,9 +163,15 @@ all_cancers_genes_surv_comb$fdrsig[all_cancers_genes_surv_comb$fdr >= lineval] =
 #facet by cancer type 
 
 #order by most significant to least significant 
-order = as.data.table(filter(as.data.table(table(all_cancers_genes_surv_comb$canc, all_cancers_genes_surv_comb$fdrsig)), V2=="FDRsig"))
-order = order[order(N)]
-order = order$V1
+order = as.data.table(filter(as.data.table(table(all_cancers_genes_surv_comb$canc, all_cancers_genes_surv_comb$fdrsig)), V2 %in% c("FDRsig", "Significant")))
+order = order[order(-V2,N)]
+
+z = order[order(order$V1, -order$N),]
+# Remove duplicates
+z1 = z[!duplicated(z$V1),]
+#order again
+z1 = z1[order(-V2,N)]
+order = z1$V1
 
 all_cancers_genes_surv_comb$canc <- factor(all_cancers_genes_surv_comb$canc, levels = order)
 all_cancers_genes_surv_comb$canc  # notice the changed order of factor levels
@@ -172,43 +179,42 @@ all_cancers_genes_surv_comb$canc  # notice the changed order of factor levels
 order_cols = c("NotSignificant", "Significant", "FDRsig")
 all_cancers_genes_surv_comb$fdrsig <- factor(all_cancers_genes_surv_comb$fdrsig, levels = order_cols)
 
-pdf("HR_vs_pval_survival_all_cancers_scatter_plot_May19.pdf", width=12, height=9)
 
+#Variation 1 of survival overview plot
+
+pdf("HR_vs_pval_survival_all_cancers_scatter_plot_May19.pdf", width=12, height=9)
 g = ggscatter(all_cancers_genes_surv_comb, x = "canc", y = "HR", color="fdrsig", palett=c("gray34", mypal[1], "lightskyblue3"), size = 0.85) + 
 geom_hline(yintercept=1, linetype="dashed", color = "red")
-
 ggpar(g,
  font.xtickslab = c(8,"plain", "black"),
  xtickslab.rt = 90)
-
 dev.off()
 
 
-#saveRDS(all_cancers_genes_surv_comb, file="all_cancers_all_genes_univariate_survival_results_April16.rds")
-
-#ggscatter(all_cancers_genes_surv_comb, x = "HR", y = "pval", color = "fdrsig", facet.by = "canc", palette=mypal[c(2,1,3)], ylab="-log10(p-value)") +
-#geom_hline(yintercept=lineval, linetype="dashed", color = "red") + geom_vline(xintercept = 1, linetype="dashed", color = "blue")
-#dev.off()
+#Variation 2 of survival overview plot
 
 head(all_cancers_genes_surv_comb)
 
+all_cancers_genes_surv_comb$HR = log2(all_cancers_genes_surv_comb$HR)
+
 # Change violin plot colors by groups
-pdf("HR_vs_pval_survival_all_cancers_scatter_plot_May23.pdf", width=13, height=7)
+pdf("HR_vs_pval_survival_all_cancers_scatter_plot_May23.pdf", width=10, height=8)
 
-p = ggplot(all_cancers_genes_surv_comb, aes(x=canc, y=HR, fill=fdrsig)) +
-  geom_violin() + geom_hline(yintercept=1, linetype="dashed", color = "red")
+g = ggplot(all_cancers_genes_surv_comb, aes(canc, HR)) +
+  geom_violin() + 
+  geom_jitter(height = 0.005, width = 0.005, aes(colour = factor(fdrsig)), size=0.15, alpha=0.5) +
+  scale_colour_manual(name="colour", values=c("pink", "purple", "orange"))+ geom_hline(yintercept=log2(1), linetype="dashed", color = "red")
 
 
-# Add dots
-#p = p + geom_dotplot(binaxis='y', stackdir='center',
-#                 position=position_dodge(1), dotsize = 0.1)
-
-ggpar(p,
- font.xtickslab = c(8,"plain", "black"),
+ggpar(g,
+ font.xtickslab = c(8,"plain", "black"), ylab="log2(HR)",
  xtickslab.rt = 90)
 
 dev.off()
 
+
+
+####summarize how many significant lncRNAs per cancer type
 
 all_cancers_genes_surv_comb = as.data.table(all_cancers_genes_surv_comb)
 
