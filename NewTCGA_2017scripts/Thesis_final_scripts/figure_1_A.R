@@ -139,7 +139,7 @@ det_lncs = table(det_lncs$V1)
 det_lncs = as.data.table(det_lncs)
 det_lncs = det_lncs[order(N)]
 
-#31 not detectable in any cancer --> are they detectable in normal tissues 
+#414 not detectable in any cancer --> are they detectable in normal tissues 
 
 highlncs = fantom$gene[which(fantom$CAT_geneName %in% c("MALAT1", "NEAT1", "HOTAIR", "XIST"))]
 colnames(det_lncs)[1] = "gene"
@@ -147,13 +147,33 @@ det_lncs  = as.data.frame(det_lncs)
 det_lncs$gene = as.factor(det_lncs$gene)
 labels = det_lncs$gene
 
+det_lncs$N = as.numeric(det_lncs$N)
+det_lncs$group = ""
+det_lncs$group[det_lncs$N %in% c(1:5)] = "1:5"
+det_lncs$group[det_lncs$N %in% c(6:10)] = "6:10"
+det_lncs$group[det_lncs$N %in% c(11:15)] = "10:15"
+det_lncs$group[det_lncs$N %in% c(16:20)] = "16:20"
+det_lncs$group[det_lncs$N %in% c(21:25)] = "21:25"
+det_lncs$group[det_lncs$N %in% c(26:30)] = "26:30"
+det_lncs$group[det_lncs$N %in% c(31:32)] = "31:32"
+
+cancersperlncs = as.data.table(table(det_lncs$group))
+order = c("1:5",
+"6:10",
+"10:15",
+"16:20",
+"21:25",
+"26:30",
+"31:32")
+
+cancersperlncs$N = cancersperlncs$N/5785
+
 pdf("Figure1A_part2_FPKM5.pdf", height=5, width=7)
 
-g = gghistogram(det_lncs, x = "N", y = "..density..",
+g = ggbarplot(cancersperlncs, x = "V1", y = "N",
             xlab = "Number of detectable cancers",
-            ylab = "Number of lncRNAs",
-            binwidth = 1, 
-            fill = "steelblue", color = "steelblue", rug = TRUE,)
+            ylab = "Number of lncRNAs", order=order, 
+            fill = "steelblue", color = "steelblue") + theme_light() 
 #ggpar(g, xticks.by =2)
 g
 dev.off()
@@ -164,7 +184,7 @@ det_lncs = as.data.table(det_lncs)
 all_cancers = as.data.table(filter(det_lncs, N ==32))
 
 #within those expressed in all cancer types 
-#65% of them, what kinds of lcnRNAs are they? 
+#40% of them, what kinds of lcnRNAs are they? 
 all_cancers_types = as.data.table(table(all_cancers$CAT_geneCategory))
 all_cancers_types = as.data.table(all_cancers_types[order(N)])
 
@@ -183,6 +203,31 @@ ggpar(g,
  font.tickslab = c(10,"plain", "black"),
  xtickslab.rt = 45)
 
+dev.off()
+
+
+#is there a signficinat enrichment of divergent? 
+expected = table(det_lncs$CAT_geneCategory)/nrow(det_lncs)
+all_cancers_types = as.data.table(table(all_cancers$CAT_geneCategory))
+all_cancers_types = as.data.table(all_cancers_types[order(N)])
+observed = all_cancers_types$N 
+names(observed) = all_cancers_types$V1
+expected = expected[c(4, 1, 2, 3)]
+
+
+observed = as.data.frame(observed)
+expected = table(det_lncs$CAT_geneCategory)/nrow(det_lncs)*sum(observed$observed)
+expected = expected[c(4, 1, 2, 3)]
+
+observed$expected = expected
+observed$type = rownames(observed)
+observed = melt(observed)
+
+observed$value = round(observed$value, digits=1)
+pdf("expected_vs_observed_fractions_lncRNA_types.pdf", width=9, height=5)
+ggbarplot(observed, x="type", y="value", fill="variable", palette = "Paired",
+  label = TRUE,
+  position = position_dodge(0.9)) + theme_light() 
 dev.off()
 
 

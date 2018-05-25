@@ -84,10 +84,12 @@ wilcox.test(all_meds$medianFPKM[all_meds$type=="lncRNA"], all_meds$medianFPKM[al
 
 #not logged --> remvoe outliers 
 mypal = wes_palette("Royal2")
+require(scales)
 
 pdf("figure1supllementB_notlogged.pdf", width=6, height=7)
 g = ggboxplot(all_meds, x = "type", y = "medianFPKM", color="black", fill="type", palette = mypal, notch = TRUE, size=0.5, width=0.5) +
-stat_compare_means(method = "wilcox.test") + theme_minimal() + geom_jitter(position=position_jitter(width=0.05,height=0),
+stat_compare_means(method = "wilcox.test") + theme_light() +
+	scale_y_continuous(labels = comma) + geom_jitter(position=position_jitter(width=0.05,height=0),
          alpha=0.1,
          size=0.75) + ylab("FPKM") 
 print(g)
@@ -98,7 +100,7 @@ all_meds$logged = log1p(all_meds$medianFPKM)
 
 pdf("figure1supllementB.pdf", width=6, height=7)
 g = ggboxplot(all_meds, x = "type", y = "logged", color="black", fill="type", palette = mypal, notch = TRUE, size=0.5, width=0.5)+
-stat_compare_means(method = "wilcox.test") + theme_minimal() + geom_jitter(position=position_jitter(width=0.05,height=0),
+stat_compare_means(method = "wilcox.test") + theme_light() + geom_jitter(position=position_jitter(width=0.05,height=0),
          alpha=0.1,
          size=0.75) + ylab("log1p(FPKM)") + 
   scale_y_continuous(breaks = round(seq(min(all_meds$logged), max(all_meds$logged), by = 5),1))
@@ -110,7 +112,7 @@ dev.off()
 
 pdf("figure1supllementB_alltypes.pdf", width=6, height=7)
 g = ggboxplot(all_meds, x = "genetype", y = "logged", color="black", fill="genetype", order =c("others", "e_lncRNA", "p_lncRNA_intergenic", "p_lncRNA_divergent", "pcg"), palette = mypal, size=0.5, width=0.5, notch = TRUE)+
-stat_compare_means() + theme_minimal() + geom_jitter(position=position_jitter(width=0.05,height=0),
+stat_compare_means() + theme_light() + geom_jitter(position=position_jitter(width=0.05,height=0),
          alpha=0.1,
          size=0.75) + ylab("log1p(FPKM)") + 
   scale_y_continuous(breaks = round(seq(min(all_meds$logged), max(all_meds$logged), by = 5),1))
@@ -129,6 +131,68 @@ library(patchwork)
 pdf("combined_boxplot.pdf", width=11)
 a + b
 dev.off()
+
+
+#how many lncRNAs have median expression graeter than PCG median 
+
+pcg_median = median(all_meds$medianFPKM[all_meds$type == "pcg"])
+
+z = (which(all_meds$medianFPKM >= pcg_median))
+high_meds = all_meds[z,]
+high_meds = subset(high_meds, type == "lncRNA")
+
+#what lcnRNAs are they?
+high_meds = merge(high_meds, fantom, by="gene")
+
+high_meds = as.data.table(high_meds)
+high_meds = high_meds[order(medianFPKM)]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
