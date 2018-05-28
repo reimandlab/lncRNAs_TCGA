@@ -21,9 +21,17 @@ library(survcomp)
 library(caret)
 library(stringr)
 library(factoextra)
+library(plyr)
+library(doParallel)
 
 rna = as.data.frame(rna)
 norm = as.data.frame(norm)
+
+
+#only look at cancers with at least 50 patients in them 
+cancers_dist = filter(as.data.table(table(rna$Cancer)), N >=50)
+rna = subset(rna, rna$Cancer %in% cancers_dist$V1)
+norm = subset(norm, norm$Cancer %in% rna$Cancer)
 
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 #z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
@@ -137,7 +145,7 @@ pats = pats[!duplicated(pats), ]
 colnames(pats)[1] = "Cancer"
 colnames(pats)[3] ="tissuetype"
 
-all_detectable = subset(meds_cancers1, status="detectable")
+all_detectable = subset(meds_cancers1, status=="detectable")
 
 lncspercancer = as.data.table(table(meds_cancers1$cancer, meds_cancers1$type, meds_cancers1$status))
 lncspercancer = filter(lncspercancer, V3 == "detectable")
@@ -183,45 +191,120 @@ all_meds$median = log1p(all_meds$median)
 
 summary(all_meds$median)
 pdf("mad_dis_tum_vs_normal.pdf")
-ggdensity(all_meds, x = "median", color="type", palette = mypal, xlab="MAD") +  theme_light()
+ggviolin(all_meds, x = "type", y = "median", color="type", palette = mypal, xlab="MAD") +  theme_light() +  stat_compare_means()    
 dev.off()
 
 
 ########calculate number of lncRNAs up/downregulated for each cancer type 
 
+#for each cancer types, get number of lncRNAs "differentailly expressed"
+
+get_diff_exp = function(dtt){
+	library(stringr)
+	z1 = which(str_detect(colnames(dtt), "ENSG"))	
+	lncs = as.list(colnames(dtt)[z1]) #5781 
+	#for each lncRNA calculate mean difference in expression
+	#plot expression
+	pdf(file=paste(dtt$Cancer[1], "diff_expressed_lncRNAs.pdf", sep="_"))
+
+	each_lnc = function(lnc, dtt){
+		#subset data to lncRNA
+		z = which(colnames(dtt) %in% c(lnc, "type"))
+		justlnc= dtt[,z]
+		justlnc[,1] = log1p(justlnc[,1])
+		colnames(justlnc)[1] ="lncRNA"
+		w = wilcox.test(justlnc$lncRNA[justlnc$type=="cancer"], justlnc$lncRNA[justlnc$type=="normal"])$p.value
+		median_diff = median(justlnc$lncRNA[justlnc$type=="cancer"]) / median(justlnc$lncRNA[justlnc$type=="normal"])
+		mean_diff = mean(justlnc$lncRNA[justlnc$type=="cancer"]) / mean(justlnc$lncRNA[justlnc$type=="normal"])
+		library(ggpubr)
+		#print(ggdensity(justlnc, x="lncRNA", color="type", title=paste(dtt$Cancer[1], lnc, "wilcoxon-p=", round(w, digits=2))))
+		row = c(dtt$Cancer[1], lnc, w, median_diff, mean_diff)
+		names(row) = c("Cancer", "lnc", "Wilcoxon_p", "median_diff", "mean_diff")
+		return(row)
+	}
+	library(parallel)
+	cl <- makeCluster(5)
+	library(doParallel)
+	registerDoParallel(cl)
+	opts <- list(preschedule=TRUE)
+	clusterSetRNGStream(cl, 123)
+	#lncs = lncs[1:100]
+	lncs_summary = llply(lncs, dtt, 
+           .fun = each_lnc,
+           .parallel = TRUE,
+           .paropts = list(.options.snow=opts))
+	dev.off()
+	#combine
+	library(data.table)
+	lncs_summary1 = do.call("rbind", lncs_summary)
+	lncs_summary1 = as.data.frame(lncs_summary1)
+	lncs_summary1$fdr = ""
+	lncs_summary1$fdr = p.adjust(as.numeric(lncs_summary1$Wilcoxon_p), method="fdr")
+	lncs_summary1 = as.data.table(lncs_summary1)
+	lncs_summary1 = lncs_summary1[order(fdr)]
+	return(lncs_summary1)
+}
+
+#cl <- makeCluster(5)
+#registerDoParallel(cl)
+#opts <- list(preschedule=TRUE)
+#clusterSetRNGStream(cl, 123)
+
+#canc_datas = canc_datas[1:2]
+
+lncs_summary_all = llply(canc_datas,
+           .fun = get_diff_exp,
+          	.progress = "text")
+
+lncs_summary_all = ldply(lncs_summary_all, data.frame)
+
+saveRDS(lncs_summary_all, "cancer_normals_lncRNA_diff_expression_analysis_May28.rds")
 
 
+#keep only fdr significant 
+lncs_summary_all = as.data.table(lncs_summary_all)
+lncs_summary_all = as.data.table(filter(lncs_summary_all, fdr <=0.05))
+lncs_summary_all = lncs_summary_all[order(mean_diff)]
+z = which(lncs_summary_all$median_diff == "Inf")
+lncs_summary_all = lncs_summary_all[-z,]
+z = which(lncs_summary_all$mean_diff == "Inf")
+lncs_summary_all = lncs_summary_all[-z,]
+lncs_summary_all$fdr = as.numeric(lncs_summary_all$fdr)
+lncs_summary_all$mean_diff = as.numeric(lncs_summary_all$mean_diff)
+lncs_summary_all$mean_diff = log2(lncs_summary_all$mean_diff)
 
 
+pdf("summary_tumour_normal_diff_expression_May28th.pdf", width=9, height=7)
+g = ggviolin(lncs_summary_all, x="Cancer", y="mean_diff", ylab="log2(Difference in mean expression)", fill="fdr", add = "mean_sd") + theme_light() + 
+geom_jitter(aes(colour = fdr), position=position_jitter(width=0.05,height=0),
+         alpha=0.7,
+         size=0.5) + scale_color_gradient(low = "black", high = "red")
+
+ggpar(g,
+ font.tickslab = c(7,"plain", "black"),
+ xtickslab.rt = 65) + geom_hline(yintercept=c(-(log2(2/3)), log2(0.5)), linetype="dashed", color = "red") 
+
+dev.off()
+
+#summarize how many significant "diff expressed" lncRNAs for each cancer type
+
+lncs_summary_all$diff = ""
+lncs_summary_all$diff[lncs_summary_all$mean_diff > log2(1.5)] = "Upregulated"
+lncs_summary_all$diff[lncs_summary_all$mean_diff <= log2(2/3)] = "Downregulated"
+lncs_summary_all$diff[lncs_summary_all$diff == ""] = "NotDiff"
+
+summary_diff = as.data.table(table(lncs_summary_all$Cancer, lncs_summary_all$diff))
+summary_diff = subset(summary_diff, V2 %in% c("Downregulated", "Upregulated"))
+colnames(summary_diff) = c("Cancer", "TypeRegulated", "NumberofLNCRNAS")
 
 
+pdf("summary_barplot_tumour_normal_diff_expression_May28th.pdf", width=9, height=7)
+ggbarplot(summary_diff, "Cancer", "NumberofLNCRNAS", fill = "TypeRegulated", color = "grey", palette = "Paired",
+  label = TRUE,
+  position = position_dodge(0.9))
+dev.off()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+saveRDS(summary_diff, "summary_detectable_cancer_normals_lncRNA_diff_expression_analysis_May28.rds")
 
 
 

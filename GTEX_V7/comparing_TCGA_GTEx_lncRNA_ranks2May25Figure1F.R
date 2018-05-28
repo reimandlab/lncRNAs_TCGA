@@ -145,5 +145,59 @@ dev.off()
 #combine the three plots 
 
 
-
 #161 lncRNAs in both so might be uprgulated in some cancers and downregulated in other cancers 
+#compare results to results from TCGA
+gtex_results = new_results
+gtex_results$diff = ""
+gtex_results$diff[gtex_results$median_difference > 0] = "Upregulated"
+gtex_results$diff[gtex_results$median_difference < 0] = "Downregulated"
+gtex_results$diff[gtex_results$diff == ""] = "NotDiff"
+
+tcga_results = readRDS("cancer_normals_lncRNA_diff_expression_analysis_May28.rds")
+#keep only fdr significant 
+tcga_results = as.data.table(tcga_results)
+tcga_results$fdr = as.numeric(tcga_results$fdr)
+tcga_results = as.data.table(filter(tcga_results, fdr <=0.05))
+tcga_results = tcga_results[order(mean_diff)]
+z = which(tcga_results$median_diff == "Inf")
+tcga_results = tcga_results[-z,]
+z = which(tcga_results$mean_diff == "Inf")
+tcga_results = tcga_results[-z,]
+tcga_results$fdr = as.numeric(tcga_results$fdr)
+tcga_results$mean_diff = as.numeric(tcga_results$mean_diff)
+tcga_results$mean_diff = log2(tcga_results$mean_diff)
+z = which(tcga_results$mean_diff == "-Inf")
+tcga_results = tcga_results[-z,]
+
+tcga_results$diff = ""
+tcga_results$diff[tcga_results$mean_diff > log2(1.5)] = "Upregulated"
+tcga_results$diff[tcga_results$mean_diff <= log2(2/3)] = "Downregulated"
+tcga_results$diff[tcga_results$diff == ""] = "NotDiff"
+tcga_results = filter(tcga_results, diff %in% c("Upregulated", "Downregulated"))
+
+z = which(tcga_results$Cancer %in% gtex_results$canc)
+tcga_results = tcga_results[z,]
+
+
+#look at individual cancer type from both files and see overlap 
+#how many up in gtex also up in tcga 
+#how many low also low in tcga 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
