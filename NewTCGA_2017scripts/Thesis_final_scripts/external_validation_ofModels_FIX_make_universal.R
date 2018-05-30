@@ -16,8 +16,10 @@ library(patchwork)
 
 #------FEATURES-----------------------------------------------------
 
-all_cands = readRDS("all_candidates_combined_cancers_typesAnalysis_May3rd.rds")
-all_cands = filter(all_cands, freq>=2)
+cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+#cands = filter(cands, data == "PCAWG", pval <=0.05)
+cands = filter(cands, AnalysisType == "noFDR")
+all_cands = cands
 
 #-------------------------------------------------------------------
 
@@ -29,7 +31,7 @@ cancer_data = canc_datas[z] #cancers list and canc_datas list should be the same
 
 get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates 
-  z = which(colnames(dtt) %in% c(as.character(all_cands$Name[all_cands$Cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
+  z = which(colnames(dtt) %in% c(as.character(all_cands$gene[all_cands$Cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
     "new_tumor_event_type", "Cancer"))
   dtt = dtt[,z]

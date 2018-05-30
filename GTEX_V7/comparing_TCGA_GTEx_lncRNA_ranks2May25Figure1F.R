@@ -4,6 +4,8 @@
 
 source("source_file.R")
 library(stringr)
+library(VennDiagram)
+
 
 ###Data
 gtex = readRDS("allGTEX_lncRNAs_scored_May23.rds")
@@ -183,9 +185,40 @@ tcga_results = tcga_results[z,]
 #how many up in gtex also up in tcga 
 #how many low also low in tcga 
 
+cancers = as.list(unique(tcga_results$Cancer))
+
+check_overlap = function(canc){
+	lncs_tcga_pos = tcga_results$lnc[which((tcga_results$Cancer == canc) & (tcga_results$diff == "Upregulated"))]
+	lncs_gtex_pos = gtex_results$gene[which((gtex_results$canc == canc) & (gtex_results$diff == "Upregulated"))]
+	overlap_pos = lncs_tcga_pos[which(lncs_tcga_pos %in% lncs_gtex_pos)]
 
 
+	lncs_tcga_neg = tcga_results$lnc[which((tcga_results$Cancer == canc) & (tcga_results$diff == "Downregulated"))]
+	lncs_gtex_neg = gtex_results$gene[which((gtex_results$canc == canc) & (gtex_results$diff == "Downregulated"))]
+	overlap_neg = lncs_tcga_neg[which(lncs_tcga_neg %in% lncs_gtex_neg)]
 
+
+	grid.newpage()
+	draw.pairwise.venn(length(unique(lncs_tcga_pos)), length(unique(lncs_gtex_pos)), length(unique(overlap_pos)), category = c("TCGA upregulated", "GTEx upregulated"), lty = rep("blank", 
+    2), fill = c("light blue", "pink"), alpha = rep(0.5, 2), cat.pos = c(0, 
+    0), cat.dist = rep(0.025, 2), tilte=canc)
+
+	grid.newpage()
+	draw.pairwise.venn(length(unique(lncs_tcga_neg)), length(unique(lncs_gtex_neg)), length(unique(overlap_neg)), category = c("TCGA downregulated", "GTEx downregulated"), lty = rep("blank", 
+    2), fill = c("light blue", "pink"), alpha = rep(0.5, 2), cat.pos = c(0, 
+    0), cat.dist = rep(0.025, 2), tilte=canc)
+
+	row = c(canc, length(unique(lncs_tcga_pos)), length(unique(lncs_gtex_pos)), length(unique(overlap_pos)), 
+	 length(unique(lncs_tcga_neg)), length(unique(lncs_gtex_neg)), length(unique(overlap_neg)))
+	names(row) = c("Cancer", "num_tcga_up", "num_gtex_up", "num_both_up", "num_tcga_down", "num_gtex_down", 'num_both_down')
+
+	return(row)
+
+}
+
+pdf("ven_diagram_overlaps_tcga_gtex.pdf")
+llply(cancers, check_overlap)
+dev.off()
 
 
 

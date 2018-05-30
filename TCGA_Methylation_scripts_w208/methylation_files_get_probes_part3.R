@@ -41,11 +41,9 @@ tss_codes = read.csv("TCGA_TissueSourceSite_Codes2017.csv")
 source_codes = source = read.csv("TCGA_sample_codes.csv")
 
 #1. cands 
-cands = readRDS("36_unique_cands_4cancers_TCGA_Feb6.rds")
-#candidate lncrnas 
-cands = readRDS("chosen_features_wFANTOM_data_Mar22_1000CVs_8020splits.rds")
 cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
 #cands = filter(cands, data == "PCAWG", pval <=0.05)
+cands = filter(cands, AnalysisType == "noFDR")
 colnames(cands)[7] = "canc"
 #colnames(cands)[3] = "canc"
 
@@ -60,6 +58,8 @@ add_canc = function(probeid){
 	return(canc)
 }
 probes$canc = llply(probes$cgid, add_canc, .progress="text")
+z = which(is.na(probes$canc))
+probes = probes[-z,]
 
 #3. methylation files
 #KIRC
@@ -208,7 +208,6 @@ probes$canc[probes$canc=="Glioblastoma multiforme"] = "GBM"
 probes$canc[probes$canc=="Esophageal carcinoma"] = "ESCA"
 
 
-
 #4. Expression data 
 rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
 unique(rna$type)
@@ -216,6 +215,7 @@ unique(rna$type)
 get_data = function(lnc){
 	cancer = cands$canc[which(cands$gene == lnc)][1]
 	dat = dplyr::filter(probes, canc == cancer, ensg == lnc)
+	
 	if(!(dim(dat)[1]==0)){
 	z = which(cancers_order == cancer)
 	meth_dat = methylation_data[[z]]
@@ -299,10 +299,26 @@ get_data = function(lnc){
   	#get summary of SCNA in lncRNA for each patient 
   	#take mean segment mean for all cnas in patient 
   	#covering that lncRNA
-  	df = merge(df, dat, by=c("patient"))
   	colnames(df)[2] = "geneExp"
-  	#is copy number aberation associated with expression? 
+  	df = merge(df, dat, by=c("patient"))
+  	
+    #is high expression or low expression associated with worse prognosis? 
+    df$median <- factor(df$median, levels = c("Low", "High"))
+    df$median  # notice the changed order of factor levels
+    HR = summary(coxph(Surv(OS.time, OS) ~ median, data = df))$coefficients[2]	
+    
+    if(HR >1){
+      risk = "high_expression"
+    }
+    if(HR <1){
+      risk = "low_expression"
+    }
+
+    df$risk = risk
+
+    #is copy number aberation associated with expression? 
   	df$geneExp = log1p(df$geneExp)
+
   	library("ggExtra")
   	name = probes$lncname[which(probes$ensg == lnc)][1]
 	z = which(is.na(df$beta))
@@ -315,41 +331,99 @@ get_data = function(lnc){
 	dim2 = table(df$median)[2]
 	both = (dim1>=1) & (dim2 >=1)
 
-	if(both){
+	if(both & (length(unique(df$patient)) >=10)){
 
+	#multiple probes present 	
 	if(z > 1){
-		results_all_probes = as.data.frame(matrix(ncol = 9)) ; colnames(results_all_probes) = c("cancer", "gene", "num_patients", "mean_beta_low", 
-			"mean_beta_high", "median_beta_low", "median_beta_high", "wilcoxon_pval", "probe")
+		results_all_probes = as.data.frame(matrix(ncol = 12)) ; colnames(results_all_probes) = c("cancer", "gene", "num_patients", "numHighexpMethmatch", "numLowexpMethmatch", 
+			"wilcoxon_pval", "risk_type", "num_risk_pats", "num_risk_pats_wmatchingMeth", 
+    	"risk_group_correlation", "nonrisk_group_correlation", "probe")
+	
 	for(k in 1:z){
 	new = subset(df, df$probe == unique(df$probe)[k])
 	new$geneExp = as.numeric(new$geneExp)
 	new$beta = as.numeric(new$beta)
 
+	#everything else the same as if it was just one probe
+	#get wilcoxon p-value stored between low and high exp patients - get avg beta value for each group 
 		wilcoxon_pval = wilcox.test(beta ~ median, data =new)$p.value  
-		mean_low = mean(new$beta[new$median=="Low"])
-		median_low = median(new$beta[new$median=="Low"])
-		mean_high = mean(new$beta[new$median=="High"])
-		median_high = median(new$beta[new$median=="High"])
-		probe = unique(new$probe)
-		p =  ggdensity(new, x = "beta", color = "median", fill="median", alpha=0.25, xlab="DNA Methylation",
+		#label probe as methylated or not methylated for each patient 
+		new$mut_status = ""
+    		get_mut_stat = function(beta){
+       		meth = beta > 0.5
+       		unmeth = beta < (0.5)
+       		if(meth){
+      		  return("Methylated")
+      			 }        
+      		 if(unmeth){
+      		  return("Unmethylated")
+      		 } 
+      		 if((!(meth)) & (!(unmeth))){
+        		return("oneMeth")
+       		}
+    	}
+   		new$mut_status = as.character(llply(new$beta, get_mut_stat))
+
+   		#get how many people have low/high expression and methylated/unmethylated
+   		new$median = as.character(new$median)
+     	new$exp_meth_match = ""
+    	get_meth_exp = function(row){
+    	  exp = row[[34]]
+    	  meth = row[[42]]
+    	  if(((exp == "High") & (meth == "Unmethylated"))){
+    	    return("HighExp_NoMeth")
+    	  }
+    	    if(((exp == "Low") & (meth == "Methylated"))){
+    	    return("LowExp_Meth")
+    	  }
+    	    else{
+       	   return("DontMatch")
+       	 }
+    		}
+    	new$exp_meth_match = as.character(apply(new, 1, get_meth_exp))
+
+    	#get if risk matches exp 
+    	if(new$risk[1] == "high_expression"){
+    	  med_risk = "High"
+    	  meth_risk = "HighExp_NoMeth"
+   		 }
+
+   		 if(new$risk[1] == "low_expression"){
+    	  med_risk = "Low"
+    	  meth_risk = "LowExp_Meth"
+   		 }
+
+   		 r = rcorr(new$beta[new$median == med_risk], new$geneExp[new$median == med_risk], type="spearman")$r[2]
+   		 rr = r #correlation in high risk group
+
+   		 rp = rcorr(new$beta[!(new$median == meth_risk)], new$geneExp[!(new$median == meth_risk)], type="spearman")$r[2]
+   		 rp = rp #correlation in low risk group
+    		if(is.na(rp)){
+    	  		rp = 0
+    			}
+
+
+    length_risk_pats = length(which(df$median == med_risk))
+    risk_pats = df[which(df$median == med_risk),]
+
+    #what is the number of pateints wtih a cna that matches risk? (within risk grou)
+    length_risk_pats_wmeth = length(which(risk_pats$exp_meth_match == meth_risk))
+    probe = df$probe[k]
+	results = c(cancer, unique(df$gene), length(unique(df$patient)), length(which(df$exp_meth_match == "HighExp_NoMeth")), 
+      length(which(df$exp_meth_match == "LowExp_Meth")), wilcoxon_pval, risk, length_risk_pats, length_risk_pats_wmeth, rr, rp, probe)
+    names(results) = c("cancer", "gene", "num_patients", "numHighexpMethmatch", "numLowexpMethmatch", "wilcoxon_pval", "risk_type", "num_risk_pats", "num_risk_pats_wmatchingMeth", 
+    	"risk_group_correlation", "nonrisk_group_correlation", "probe")
+    df$median <- factor(df$median, levels = c("Low", "High"))
+    df$median  # notice the changed order of factor levels
+
+   		p =  ggdensity(df, x = "beta", color = "median", fill="median", alpha=0.25, xlab="DNA Methylation",
 			title = paste(cancer, probe, gene, "Expression vs Methylation", "\npats wHigh Exp=", length(df$median=="High"),
-				"\npats wLow Exp=" , length(new$median=="Low"), "\nwilcoxon p-val =", round(wilcoxon_pval, digits=5)))
-		p = p + geom_vline(xintercept = c(0, 0.5, 1), linetype="dotted", 
+				"\npats wLow Exp=" , length(df$median=="Low"), "\nwilcoxon p-val =", round(wilcoxon_pval, digits=5)))
+   		p = p + geom_vline(xintercept = c(0, 0.5, 1), linetype="dotted", 
                 color = "blue")
 		print(p)
 
 
-	xplot = ggboxplot(new, main= paste(name, new$canc[1], "Methylation vs Exp", "n=", length(unique(new$patient))),
-		x = "median", y = "beta", legend.title = "Expression Tag", font.x = c(15, "plain", "black"),
-          font.y = c(15, "plain", "black"),
-          font.tickslab = c(15, "plain", "black"), 
-                   fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(), xlab="Expression", ylab="Beta Value")+rotate()
-	xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5) 
-	print(xplot)
-
-
-    results = c(cancer, gene, length(unique(new$patient)), mean_low, mean_high, median_low, median_high, wilcoxon_pval, probe)
-    names(results) = c("cancer", "gene", "num_patients", "mean_beta_low", "mean_beta_high", "median_beta_low", "median_beta_high", "wilcoxon_pval", "probe")
     results_all_probes = rbind(results_all_probes, results)
 
 
@@ -359,18 +433,79 @@ get_data = function(lnc){
 	results = results_all_probes
 	}
 
+	#only one probe present 
 	if(z==1){
 
 		#get wilcoxon p-value stored between low and high exp patients - get avg beta value for each group 
 		wilcoxon_pval = wilcox.test(beta ~ median, data =df)$p.value  
-		mean_low = mean(df$beta[df$median=="Low"])
-		median_low = median(df$beta[df$median=="Low"])
-		mean_high = mean(df$beta[df$median=="High"])
-		median_high = median(df$beta[df$median=="High"])
-		probe = unique(df$probe)
+		#label probe as methylated or not methylated for each patient 
+		df$mut_status = ""
+    		get_mut_stat = function(beta){
+       		meth = beta > 0.5
+       		unmeth = beta < (0.5)
+       		if(meth){
+      		  return("Methylated")
+      			 }        
+      		 if(unmeth){
+      		  return("Unmethylated")
+      		 } 
+      		 if((!(meth)) & (!(unmeth))){
+        		return("oneMeth")
+       		}
+    	}
+   		df$mut_status = as.character(llply(df$beta, get_mut_stat))
 
-    results = c(cancer, gene, length(unique(df$patient)), mean_low, mean_high, median_low, median_high, wilcoxon_pval, probe)
-    names(results) = c("cancer", "gene", "num_patients", "mean_beta_low", "mean_beta_high", "median_beta_low", "median_beta_high", "wilcoxon_pval", "probe")
+   		#get how many people have low/high expression and methylated/unmethylated
+   		df$median = as.character(df$median)
+     	df$exp_meth_match = ""
+    	get_meth_exp = function(row){
+    	  exp = row[[34]]
+    	  meth = row[[42]]
+    	  if(((exp == "High") & (meth == "Unmethylated"))){
+    	    return("HighExp_NoMeth")
+    	  }
+    	    if(((exp == "Low") & (meth == "Methylated"))){
+    	    return("LowExp_Meth")
+    	  }
+    	    else{
+       	   return("DontMatch")
+       	 }
+    		}
+    	df$exp_meth_match = as.character(apply(df, 1, get_meth_exp))
+
+    	#get if risk matches exp 
+    	if(df$risk[1] == "high_expression"){
+    	  med_risk = "High"
+    	  meth_risk = "HighExp_NoMeth"
+   		 }
+
+   		 if(df$risk[1] == "low_expression"){
+    	  med_risk = "Low"
+    	  meth_risk = "LowExp_Meth"
+   		 }
+
+   		 r = rcorr(df$beta[df$median == med_risk], df$geneExp[df$median == med_risk], type="spearman")$r[2]
+   		 rr = r #correlation in high risk group
+
+   		 rp = rcorr(df$beta[!(df$median == meth_risk)], df$geneExp[!(df$median == meth_risk)], type="spearman")$r[2]
+   		 rp = rp #correlation in low risk group
+    		if(is.na(rp)){
+    	  		rp = 0
+    			}
+
+
+    length_risk_pats = length(which(df$median == med_risk))
+    risk_pats = df[which(df$median == med_risk),]
+
+    #what is the number of pateints wtih a cna that matches risk? (within risk grou)
+    length_risk_pats_wmeth = length(which(risk_pats$exp_meth_match == meth_risk))
+    probe = df$probe[1]
+	results = c(cancer, unique(df$gene), length(unique(df$patient)), length(which(df$exp_meth_match == "HighExp_NoMeth")), 
+      length(which(df$exp_meth_match == "LowExp_Meth")), wilcoxon_pval, risk, length_risk_pats, length_risk_pats_wmeth, rr, rp, probe)
+    names(results) = c("cancer", "gene", "num_patients", "numHighexpMethmatch", "numLowexpMethmatch", "wilcoxon_pval", "risk_type", "num_risk_pats", "num_risk_pats_wmatchingMeth", 
+    	"risk_group_correlation", "nonrisk_group_correlation", "probe")
+    df$median <- factor(df$median, levels = c("Low", "High"))
+    df$median  # notice the changed order of factor levels
 
    		p =  ggdensity(df, x = "beta", color = "median", fill="median", alpha=0.25, xlab="DNA Methylation",
 			title = paste(cancer, probe, gene, "Expression vs Methylation", "\npats wHigh Exp=", length(df$median=="High"),
@@ -378,24 +513,14 @@ get_data = function(lnc){
    		p = p + geom_vline(xintercept = c(0, 0.5, 1), linetype="dotted", 
                 color = "blue")
 		print(p)
-
-		xplot = ggboxplot(df, main= paste(name, new$canc[1], "Methylation vs Exp", "n=", length(unique(new$patient))),
-		x = "median", y = "beta", legend.title = "Expression Tag", font.x = c(15, "plain", "black"),
-          font.y = c(15, "plain", "black"),
-          font.tickslab = c(15, "plain", "black"), 
-                   fill = "median", palette = "jco", order=(c("Low", "High")), ggtheme = theme_light(), xlab="Expression", ylab="Beta Value")+rotate()
-			xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5) 
-			print(xplot)
-
-
-
-    print(lnc)
+  		print(lnc)
 	}
 	}
 
-	if(!(both)){
-		results = as.data.frame(matrix(ncol = 9)) ; colnames(results) = c("cancer", "gene", "num_patients", "mean_beta_low", 
-			"mean_beta_high", "median_beta_low", "median_beta_high", "wilcoxon_pval", "probe")
+	if(!((both & (length(unique(df$patient)) >=10)))){
+		results = as.data.frame(matrix(ncol = 12)) ; colnames(results) = c("cancer", "gene", "num_patients", "numHighexpMethmatch", "numLowexpMethmatch", 
+			"wilcoxon_pval", "risk_type", "num_risk_pats", "num_risk_pats_wmatchingMeth", 
+    	"risk_group_correlation", "nonrisk_group_correlation", "probe")
 	}
 
     return(results)
@@ -404,9 +529,9 @@ get_data = function(lnc){
 }
 }
 
-pdf("candidate_lncRNAs_methylation_versus_Expression_May15_only_NOFDR_candidates.pdf")
+pdf("candidate_lncRNAs_methylation_versus_Expression_May30_only_NOFDR_candidates.pdf")
 cands = filter(cands, AnalysisType == "noFDR")
-genes = as.list(unique(cands$gene[which(cands$gene %in% probes$ensg)])) #110/190 have methylation probes overlapping them 
+genes = as.list(unique(as.character(cands$gene[which(cands$gene %in% probes$ensg)]))) #88/166 have methylation probes overlapping them 
 lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
 dev.off()
 
