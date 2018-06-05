@@ -78,7 +78,6 @@ get_canc_data = function(cancer){
 
 canc_datas = llply(cancers, get_canc_data)
 
-#get median value for each lncRNA
 colnames(ucsc)[6] = "gene"
 ucsc = ucsc[,c(6, 2, 4,5)]
 colnames(ucsc) = c("gene", "chr", "start", "end")
@@ -199,19 +198,81 @@ dev.off()
 
 #for each cancer types, get number of lncRNAs "differentailly expressed"
 
+###---------------------------------------------------------------------------------------------------------------------------
+###----------------------------diff-Expression-Function-----------------------------------------------------------------------
+###---------------------------------------------------------------------------------------------------------------------------
+
 get_diff_exp = function(dtt){
 	library(stringr)
 	z1 = which(str_detect(colnames(dtt), "ENSG"))	
 	lncs = as.list(colnames(dtt)[z1]) #5781 
+	dtt[,z1] = log1p(dtt[,z1])
+
 	#for each lncRNA calculate mean difference in expression
 	#plot expression
 	pdf(file=paste(dtt$Cancer[1], "diff_expressed_lncRNAs.pdf", sep="_"))
+
+	#use limma to get differenitally expressed lncRNA between tumour and normals per cancer type
+	design <- model.matrix(~ 0 + factor(dtt$type))
+	colnames(design) <- c("Cancer", "Normal")
+
+	expression <- t(dtt[,z1])
+	fit <- lmFit(expression, design)
+	cont.matrix <- makeContrasts(CancervsNormal=Cancer-Normal, levels=design)
+	fit2 <- contrasts.fit(fit, cont.matrix)
+	fit2 <- eBayes(fit2)
+	ps <- fit2$p.value
+	ps <- p.adjust(ps, method="fdr")
+	numGenes <- length(which(ps <= 0.05))
+
+
+	genes=rownames(expression)
+    t <- topTable(fit2,coef=1,adjust.method="fdr",n=numGenes,p.value=0.05,genelist=genes)
+
+	if(dim(t)[1] > 10){
+
+    #rank list of genes before making heatmap
+    t <- as.data.table(t)
+    #first by adj p values then by decreasing FC
+    #t <- t[order(adj.P.Val)]
+    t <- t[order(-abs(as.numeric(logFC)))]
+    t = filter(t, abs(logFC) >=2)
+
+    if(dim(t)[1] >= 5){
+
+    	top <- c(paste(dtt$Cancer[1]), t$ID)
+
+    	if(dim(t)[1] >500){
+    		tt = t[1:500,]
+			}
+
+		if(dim(t)[1] <=500){
+			tt = t
+		}
+
+    	#generate heatmap 
+        heat <- expression[which(rownames(expression) %in% tt$ID),]
+    	tags <- dtt$type
+		color.map <- function(tags) { if (tags=="normal") "#FF0000" else "#0000FF" }
+    	patientcolors <- unlist(lapply(tags, color.map))
+
+		# cluster on correlation
+
+		hc <- hclust(as.dist(1 - cor(t(heat))), method="ward.D2")
+		# draw a heatmap
+		my_palette <- colorRampPalette(c("blue", "white", "orange"))(n = 100)
+		heatmap.2(as.matrix(heat), col=my_palette, ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6, Rowv=as.dendrogram(hc), trace="none", scale="row")
+
+
+    	}#dim(t)[1] >=5
+	}#dim(t)[1]>10	
+
+	colnames(t)[1] = "lnc"
 
 	each_lnc = function(lnc, dtt){
 		#subset data to lncRNA
 		z = which(colnames(dtt) %in% c(lnc, "type"))
 		justlnc= dtt[,z]
-		justlnc[,1] = log1p(justlnc[,1])
 		colnames(justlnc)[1] ="lncRNA"
 		w = wilcox.test(justlnc$lncRNA[justlnc$type=="cancer"], justlnc$lncRNA[justlnc$type=="normal"])$p.value
 		median_diff = median(justlnc$lncRNA[justlnc$type=="cancer"]) / median(justlnc$lncRNA[justlnc$type=="normal"])
@@ -242,6 +303,9 @@ get_diff_exp = function(dtt){
 	lncs_summary1$fdr = p.adjust(as.numeric(lncs_summary1$Wilcoxon_p), method="fdr")
 	lncs_summary1 = as.data.table(lncs_summary1)
 	lncs_summary1 = lncs_summary1[order(fdr)]
+	lncs_summary1 = merge(lncs_summary1, t, by="lnc")
+
+
 	return(lncs_summary1)
 }
 

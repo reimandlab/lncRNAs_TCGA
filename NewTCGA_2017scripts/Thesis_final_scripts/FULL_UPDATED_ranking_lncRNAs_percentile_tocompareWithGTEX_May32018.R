@@ -73,6 +73,7 @@ fantom <- fantom[-z,]
 
 #Combined into one dataframe because need to get ranks 
 all <- merge(rna, pcg, by = c("patient", "Cancer"))
+rownames(all) = all$patient
 all = all[,1:25170]
 
 #genes <- fread("all_genes_used_inRankingAnalysisPCAWG_Mar26.txt", sep=";")

@@ -151,35 +151,22 @@ dev.off()
 #compare results to results from TCGA
 gtex_results = new_results
 gtex_results$diff = ""
-gtex_results$diff[gtex_results$median_difference > 0] = "Upregulated"
-gtex_results$diff[gtex_results$median_difference < 0] = "Downregulated"
+gtex_results$diff[gtex_results$median_difference > 0] = "Upregulated_Cancer"
+gtex_results$diff[gtex_results$median_difference < 0] = "Downregulated_Cancer"
 gtex_results$diff[gtex_results$diff == ""] = "NotDiff"
 
-tcga_results = readRDS("cancer_normals_lncRNA_diff_expression_analysis_May28.rds")
+tcga_results = readRDS("cancer_normals_lncRNA_diff_expression_analysis_June5.rds")
+tcga_results$reg[tcga_results$logFC >0] = "Upregulated_Cancer"
+tcga_results$reg[tcga_results$logFC <0] = "Downregulated_Cancer"
+
 #keep only fdr significant 
 tcga_results = as.data.table(tcga_results)
-tcga_results$fdr = as.numeric(tcga_results$fdr)
-tcga_results = as.data.table(filter(tcga_results, fdr <=0.05))
-tcga_results = tcga_results[order(mean_diff)]
-z = which(tcga_results$median_diff == "Inf")
-tcga_results = tcga_results[-z,]
-z = which(tcga_results$mean_diff == "Inf")
-tcga_results = tcga_results[-z,]
-tcga_results$fdr = as.numeric(tcga_results$fdr)
-tcga_results$mean_diff = as.numeric(tcga_results$mean_diff)
-tcga_results$mean_diff = log2(tcga_results$mean_diff)
-z = which(tcga_results$mean_diff == "-Inf")
-tcga_results = tcga_results[-z,]
-
-tcga_results$diff = ""
-tcga_results$diff[tcga_results$mean_diff > log2(1.5)] = "Upregulated"
-tcga_results$diff[tcga_results$mean_diff <= log2(2/3)] = "Downregulated"
-tcga_results$diff[tcga_results$diff == ""] = "NotDiff"
-tcga_results = filter(tcga_results, diff %in% c("Upregulated", "Downregulated"))
 
 z = which(tcga_results$Cancer %in% gtex_results$canc)
 tcga_results = tcga_results[z,]
 
+z = which(gtex_results$canc %in% tcga_results$Cancer)
+gtex_results = gtex_results[z,]
 
 #look at individual cancer type from both files and see overlap 
 #how many up in gtex also up in tcga 
@@ -188,13 +175,13 @@ tcga_results = tcga_results[z,]
 cancers = as.list(unique(tcga_results$Cancer))
 
 check_overlap = function(canc){
-	lncs_tcga_pos = tcga_results$lnc[which((tcga_results$Cancer == canc) & (tcga_results$diff == "Upregulated"))]
-	lncs_gtex_pos = gtex_results$gene[which((gtex_results$canc == canc) & (gtex_results$diff == "Upregulated"))]
+	lncs_tcga_pos = tcga_results$lnc[which((tcga_results$Cancer == canc) & (tcga_results$reg == "Upregulated_Cancer"))]
+	lncs_gtex_pos = gtex_results$gene[which((gtex_results$canc == canc) & (gtex_results$diff == "Upregulated_Cancer"))]
 	overlap_pos = lncs_tcga_pos[which(lncs_tcga_pos %in% lncs_gtex_pos)]
 
 
-	lncs_tcga_neg = tcga_results$lnc[which((tcga_results$Cancer == canc) & (tcga_results$diff == "Downregulated"))]
-	lncs_gtex_neg = gtex_results$gene[which((gtex_results$canc == canc) & (gtex_results$diff == "Downregulated"))]
+	lncs_tcga_neg = tcga_results$lnc[which((tcga_results$Cancer == canc) & (tcga_results$reg == "Downregulated_Cancer"))]
+	lncs_gtex_neg = gtex_results$gene[which((gtex_results$canc == canc) & (gtex_results$diff == "Downregulated_Cancer"))]
 	overlap_neg = lncs_tcga_neg[which(lncs_tcga_neg %in% lncs_gtex_neg)]
 
 
