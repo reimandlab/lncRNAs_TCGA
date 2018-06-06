@@ -100,7 +100,7 @@ tissues <- unique(allCands$cancer)
 #tissues <- tissues[c(7,9,12,13)]
 
 ####TEST
-tissues = tissues[1:4]
+#tissues = tissues[1:4]
 ####TEST
 
 
@@ -148,32 +148,31 @@ get_lnc_canc = function(dat){
 
 		#which one is high risk --> need surivval data
 		dat_keep$patient = rownames(dat_keep)
-		surv = rna[,c("patient", "OS", "OS.time")]
-		dat_keep = merge(dat_keep, surv, by="patient")
-		dat_keep$OS <- as.numeric(dat_keep$OS)
-  		dat_keep$OS.time <- as.numeric(dat_keep$OS.time)
+		
   		dat_keep$median[dat_keep$median ==0] = "Low"
   		dat_keep$median[dat_keep$median==1] = "High"
 
   		#cox ph
-  		lnc_model = coxph(Surv(OS.time, OS)  ~ median, data = dat_keep)
-  		HR = summary(lnc_model)$coefficients[2]
+  		z = which((allCands$gene == lnc) & (allCands$cancer == canc))
+
+  		HR = as.numeric(allCands$HR[z])
+  		
   		if(HR <1){
-  			risk = "High"
-  			dat_keep$risk = ""
-  			dat_keep$risk[dat_keep$median=="High"] ="yes"
-  			dat_keep$risk[dat_keep$median=="Low"] ="no"
-  		}
-  		if(HR >1){
   			risk = "Low"
   			dat_keep$risk = ""
   			dat_keep$risk[dat_keep$median=="High"] ="no"
   			dat_keep$risk[dat_keep$median=="Low"] ="yes"
   		}
+  		if(HR >1){
+  			risk = "High"
+  			dat_keep$risk = ""
+  			dat_keep$risk[dat_keep$median=="High"] ="yes"
+  			dat_keep$risk[dat_keep$median=="Low"] ="no"
+  		}
 
-  		dat_keep$lnc = colnames(dat_keep)[2]
+  		dat_keep$lnc = colnames(dat_keep)[1]
   		dat_keep$canc = canc
-  		colnames(dat_keep)[2] = "lncRNA"
+  		colnames(dat_keep)[1] = "lncRNA"
 
   	return(dat_keep)	
 	}#end function evaluate_each_lnc
@@ -207,15 +206,15 @@ get_pcg_enrichment = function(dat){
 			z = which(colnames(newdat) %in% p)
 			lncpcg = newdat[,c(z, 1:2, 19353:ncol(newdat))]
 			colnames(lncpcg)[1] = "pcgExp"
-			fit <- lm(pcgExp ~ median, data=lncpcg)
+			fit <- lm(pcgExp ~ risk, data=lncpcg)
 			#get p-value and generate boxplot with wilcoxon p-value 
 			fit_pval = summary(fit)$coefficients[2,4]
 			#which group is it higher in? 
 			mean_diff = mean(lncpcg$pcgExp[lncpcg$risk == "yes"])/mean(lncpcg$pcgExp[lncpcg$risk == "no"])
 			#if higher than 1 --> more expressed in risk group, less than 1 --> more expressed in low risk group
-			g = ggboxplot(lncpcg, x = "risk", y="pcgExp", color="median", title=paste(lncpcg$lnc[1], p, lncpcg$canc[1]))
-			g = g + stat_compare_means()
-			print(g)
+			#g = ggboxplot(lncpcg, x = "risk", y="pcgExp", color="median", title=paste(lncpcg$lnc[1], p, lncpcg$canc[1]))
+			#g = g + stat_compare_means()
+			#print(g)
 			row = c(lncpcg$lnc[1], p, lncpcg$canc[1], mean_diff, fit_pval)
 			return(row)
 			#names(row) = colnames(lnc_pcg_results)
@@ -237,20 +236,20 @@ get_pcg_enrichment = function(dat){
 
 }
 
-all_canc_lnc_data = all_canc_lnc_data[1:2]
-#pdf("lnc_rna_candidates_cancers_PCG_targets_predicted.pdf")
+#all_canc_lnc_data = all_canc_lnc_data[1:2] ###TEST CASE -------------------------------------------------------------
 all_canc_lnc_data = llply(all_canc_lnc_data, get_pcg_enrichment, .progress="text")
-#dev.off()
 
 
 all_canc_lnc_data1 = as.data.frame(do.call("rbind", all_canc_lnc_data))
 z = which(all_canc_lnc_data1$lnc %in% cands_dups)
+
+if(!(length(z))==0){
 all_canc_lnc_data1$lnc[z] = paste(all_canc_lnc_data1$lnc[z], all_canc_lnc_data1$canc[z], sep="_")
+}
 
 #divide into high risk and low risk lncRNAs
-high_risk = subset(all_canc_lnc_data1, mean_diff >=1)
-low_risk = subset(all_canc_lnc_data1, mean_diff <1)
-
+high_risk = subset(all_canc_lnc_data1, mean_diff >=1.5) #should set higher mean difference threshold?
+low_risk = subset(all_canc_lnc_data1, mean_diff <=0.75) #should set higher mean difference threshold? 
 
 library(reshape2)
 
@@ -264,8 +263,8 @@ low_risk_matrix = acast(low_risk, pcg ~ lnc, function(x) {sort(as.character(x))[
 
 #columns are lncRNAs and rows are PCGs
 
-#saveRDS(high_risk_matrix, file="high_risk_matrix_lncRNA_candidates_May16.rds")
-#saveRDS(low_risk_matrix, file="low_risk_matrix_lncRNA_candidates_May16.rds")
+saveRDS(high_risk_matrix, file="high_risk_matrix_lncRNA_candidates_June6.rds")
+saveRDS(low_risk_matrix, file="low_risk_matrix_lncRNA_candidates_June6.rds")
 
 
 
