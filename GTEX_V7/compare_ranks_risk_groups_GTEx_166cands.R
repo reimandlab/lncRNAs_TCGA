@@ -20,13 +20,45 @@ cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 ###Data
 gtex = readRDS("allGTEX_lncRNAs_scored_May23.rds")
 tcga = readRDS("TCGA_all_lncRNAs_cancers_scored_byindexMay23.rds")
+tcga_canc = unique(tcga$tis)
+
+gtex$tis = str_sub(gtex$tis, 1, 4)
+gtex_canc = unique(gtex$tis)
+
+tis_match = as.data.frame(matrix(ncol=2)) ; 
+colnames(tis_match) = c("cancer", "tis")
+
+for(i in 1:length(gtex_canc)){
+	 z = (which(str_detect(tcga_canc, gtex_canc[[i]])))
+	 if(!(length(z)==0)){
+	 	if(length(z)==1){
+		 	canc = tcga_canc[z]
+		 	tis = gtex_canc[i]
+		 	row = c(canc, tis)
+		 	names(row) = names(tis_match)
+		 	tis_match = rbind(tis_match, row)
+		 	}
+	 	if(length(z)>1){
+	 		for(k in 1:length(z)){
+	 			canc = tcga_canc[z][k]
+			 	tis = gtex_canc[i]
+			 	row = c(canc, tis)
+			 	names(row) = names(tis_match)
+			 	tis_match = rbind(tis_match, row)
+		 	}
+	 	}
+	 }
+
+}
+
+tis_match = tis_match[-1,]
+
 
 #expression data 
 rna = readRDS("TCGA_rna_expression_Data_forgtex_analysis.rds")
 
 #tcga gtex comparison 
 ranked_comp = readRDS("TCGA_GTEX_lncRNAs_ranked_wDifferences_May25.rds")
-
 
 #########compare ranks-------------------------------------------------------------------
 
@@ -106,25 +138,41 @@ compare_exp_boxplots = function(lnc){
 	canc_exp$risk_type = risk_exp
 	canc_exp$exp_type = "Tumour"
 
+	#subset tcga to just lncrna
+	tcga_lnc = subset(tcga, gene == lnc)
+
 	#get ranks for patients and compare to ranks of lncRNA in GTEx 
-	
+	canc_exp = merge(tcga_lnc, canc_exp, by=c("patient"))	
 
+	#get gtex ranks for same tissue
+	tis = tis_match$tis[tis_match$cancer %in% canc_exp$Cancer]
 
+	canc_exp = canc_exp[,c(1:6, 9:11)]
+
+	z = which(gtex$tis == tis)
+	norm_exp = gtex[z,]
+	norm_exp = subset(norm_exp, gene == lnc)
+
+	norm_exp = norm_exp[,c(4, 1, 2, 3, 6, 5)]
+	norm_exp$tag = "norm"
+	norm_exp$risk_type = "norm"
+	norm_exp$exp_type = "norm"
+	norm_exp = as.data.frame(norm_exp)
 
 	#all expression data needed for boxplot
 	all_exp = rbind(norm_exp, canc_exp)
-	all_exp[,1] = log1p(all_exp[,1])
+	#all_exp[,1] = log1p(all_exp[,1])
 
-	colnames(all_exp)[1] = "lncRNA"
+	colnames(all_exp)[4] = "lncRNA_score"
 
 	#boxplot
-	ggboxplot(all_exp, ylab="log1p(FPKM)", x="tag", y="lncRNA", palette = mypal[c(3,2,1)], add = "jitter", fill = "tag", order=c("norm", "Low", "High"), 
+	ggboxplot(all_exp, ylab="lncRNA Score", x="tag", y="lncRNA_score", palette = mypal[c(3,2,1)], add = "jitter", fill = "tag", order=c("norm", "Low", "High"), 
 		title= paste(lnc, canc, "risk=", risk_exp))+ 
 		stat_compare_means(label = "p.signif", 
-                     ref.group = "norm")  
+                     ref.group = "norm") + theme_light()  
 
 }
 
 pdf("lncRNA_expression_tumours_GTEX_matched_normals_cancds_June5.pdf", width=10)
-llply(lncs, compare_exp_boxplots)
+llply(lncs, compare_exp_boxplots, .progress="text")
 dev.off()
