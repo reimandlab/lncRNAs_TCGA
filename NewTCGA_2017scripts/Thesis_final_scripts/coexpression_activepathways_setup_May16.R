@@ -247,6 +247,9 @@ if(!(length(z))==0){
 all_canc_lnc_data1$lnc[z] = paste(all_canc_lnc_data1$lnc[z], all_canc_lnc_data1$canc[z], sep="_")
 }
 
+saveRDS(all_canc_lnc_data1, file="all_results_for_each_cancer_from_coexpression_analysis_june7th_allCands.rds")
+
+
 #divide into high risk and low risk lncRNAs
 high_risk = subset(all_canc_lnc_data1, mean_diff >=1.5) #should set higher mean difference threshold?
 low_risk = subset(all_canc_lnc_data1, mean_diff <=0.75) #should set higher mean difference threshold? 
@@ -268,15 +271,72 @@ saveRDS(low_risk_matrix, file="low_risk_matrix_lncRNA_candidates_June6.rds")
 
 
 
+#--------------------------------CANCER SPECIFIC------------------------------------------------------------------------
 
 
+#Seperate all_canc_lnc_data1 by cancer type so that can look at PCGs
+#enriched in high and low risk groups by cancer type 
+#most cancer types have multiple candidates 
+
+out <- split(all_canc_lnc_data1 , forcats::fct_inorder(factor(all_canc_lnc_data1$canc)))
+
+convert_high_risk_matrix = function(dtt){
+
+	high_risk = subset(dtt, mean_diff >=1.5) #should set higher mean difference threshold?
+	#remove means that are NaN or Inf
+	z = which(high_risk$mean_diff ==NaN)
+	if(!(length(z)==0)){
+	high_risk = high_risk[-z,]}
+
+	z = which(high_risk$mean_diff ==Inf)
+	if(!(length(z)==0)){
+	high_risk = high_risk[-z,]}
+
+	library(reshape2)
+
+	#pcgs enriched in high risk lncRNAs 
+	high_risk_matrix = acast(high_risk, pcg ~ lnc, function(x) {sort(as.character(x))[1]},
+    	  value.var = 'pvalue', fill = 'na')
+
+	return(high_risk_matrix)
+	
+	}
+
+order_cancers = unique(all_canc_lnc_data1$canc)
+
+high_risk_pcgs_by_cancer = llply(out, convert_high_risk_matrix, .progress="text")
+
+#by cancer type --> PCGs with higher expression in risk group 
+saveRDS(high_risk_pcgs_by_cancer, file= "high_risk_matrix_lncRNAs_by_cancer_type_June7th.rds")
 
 
+convert_low_risk_matrix = function(dtt){
 
+	low_risk = subset(dtt, mean_diff <= 0.75) #should set higher mean difference threshold?
+	#remove means that are NaN or Inf
+	z = which(low_risk$mean_diff ==NaN)
+	if(!(length(z)==0)){
+	low_risk = low_risk[-z,]}
 
+	z = which(low_risk$mean_diff ==Inf)
+	if(!(length(z)==0)){
+	low_risk = low_risk[-z,]}
 
+	library(reshape2)
 
+	#pcgs enriched in high risk lncRNAs 
+	low_risk_matrix = acast(low_risk, pcg ~ lnc, function(x) {sort(as.character(x))[1]},
+    	  value.var = 'pvalue', fill = 'na')
 
+	return(low_risk_matrix)
+}
+
+low_risk_pcgs_by_cancer = llply(out, convert_low_risk_matrix, .progress="text")
+
+#by cancer type --> PCGs with higher expression in lower risk group 
+saveRDS(low_risk_pcgs_by_cancer, file= "low_risk_matrix_lncRNAs_by_cancer_type_June7th.rds")
+
+saveRDS(order_cancers, file="order_cancers_risk_PCGs_matrices_June7th.rds")
 
 
 
