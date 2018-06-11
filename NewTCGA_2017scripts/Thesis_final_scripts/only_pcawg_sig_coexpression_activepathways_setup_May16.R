@@ -57,7 +57,7 @@ allCands$pval = as.numeric(allCands$pval)
 
 #subset to those that validated in PCAWG
 allCands = as.data.table(allCands)
-allCands = filter(allCands, pval <= 0.05)
+allCands = filter(allCands, pval <= 0.15)
 allCands$Combo = NULL
 #check if their HR matches HR in TCGA
 allCands$Cancer = NULL
@@ -100,13 +100,10 @@ colnames(matches) = c("lnc", "match", "cancer")
 allCands = as.data.table(allCands)
 allCands = filter(allCands, gene %in% matches$lnc, cancer %in% matches$cancer) #######----only PCAWG singificant 
 
-#23 unique cancer types 
+#6 unique cancer types 
 
 #which cancer types are the non-unique lncRNAs from?
-allCands$Combo = NULL
 allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "CAT_geneName")]
-allCands = allCands[!duplicated(allCands), ]
-cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 
 #UCSC gene info
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
@@ -144,12 +141,6 @@ all[,z] <- log1p(all[,z])
 
 #2. Get lncRNA - median within each tissue type
 tissues <- unique(allCands$cancer)
-#tissues <- tissues[c(7,9,12,13)]
-
-####TEST
-#tissues = tissues[1:4]
-####TEST
-
 
 #3. Want ranking seperatley for high lncRNA expression group versus low lncRNA expression group
 
@@ -274,7 +265,7 @@ get_pcg_enrichment = function(dat){
 		colnames(pcgs_results1) = c("lnc", "pcg", "canc", "mean_diff", "pvalue")
 		return(pcgs_results1)
 
-	} #end get_pcgs_high function
+	}  #end get_pcgs_high function
 	
 	results_lncs = llply(lncs, get_pcgs_high, .progress="text")
 	results_lncs1 = as.data.frame(do.call("rbind", results_lncs))
@@ -288,18 +279,14 @@ all_canc_lnc_data = llply(all_canc_lnc_data, get_pcg_enrichment, .progress="text
 
 
 all_canc_lnc_data1 = as.data.frame(do.call("rbind", all_canc_lnc_data))
-z = which(all_canc_lnc_data1$lnc %in% cands_dups)
 
-if(!(length(z))==0){
-all_canc_lnc_data1$lnc[z] = paste(all_canc_lnc_data1$lnc[z], all_canc_lnc_data1$canc[z], sep="_")
-}
 
-saveRDS(all_canc_lnc_data1, file="all_results_for_each_cancer_from_coexpression_analysis_june7th_allCands.rds")
+saveRDS(all_canc_lnc_data1, file="7lncRNAs_pcawg_val_coexpression_analysis_june11th_allCands.rds")
 
 
 #divide into high risk and low risk lncRNAs
-high_risk = subset(all_canc_lnc_data1, mean_diff >=1.5) #should set higher mean difference threshold?
-low_risk = subset(all_canc_lnc_data1, mean_diff <=0.75) #should set higher mean difference threshold? 
+high_risk = subset(all_canc_lnc_data1, mean_diff >=1.2) #should set higher mean difference threshold?
+low_risk = subset(all_canc_lnc_data1, mean_diff <=0.8) #should set higher mean difference threshold? 
 
 library(reshape2)
 
@@ -313,8 +300,8 @@ low_risk_matrix = acast(low_risk, pcg ~ lnc, function(x) {sort(as.character(x))[
 
 #columns are lncRNAs and rows are PCGs
 
-saveRDS(high_risk_matrix, file="high_risk_matrix_lncRNA_candidates_June6.rds")
-saveRDS(low_risk_matrix, file="low_risk_matrix_lncRNA_candidates_June6.rds")
+saveRDS(high_risk_matrix, file="high_risk_matrix_lncRNA_candidates_June11_only7cands.rds")
+saveRDS(low_risk_matrix, file="low_risk_matrix_lncRNA_candidates_June11_only7cands.rds")
 
 
 
