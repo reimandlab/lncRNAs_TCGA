@@ -9,33 +9,52 @@ library(grid)
 #Data---------------------------------------------------
 
 #[1] FMREs, 41 in total
-load("dfr_encode_results_signf.rsav")
-head(dfr_encode_results_signf)
-fmres = dfr_encode_results_signf
+#load("dfr_encode_results_signf.rsav")
+#head(dfr_encode_results_signf)
+#fmres = dfr_encode_results_signf
 
 # 84 unique patients have the FMRE "ENCODEmerge::chr17:57914548-57924685::NA::NA" 
 
 #[2] coding drivers - need to filter for cancer_type==“PANCANCER” and 
 #element_type==“gc19_pc.cds”, 47 in total
-load("all_results_signf.rsav")
-head(all_results_signf)
-all_results_signf = as.data.table(all_results_signf)
-all_results_signf = filter(all_results_signf, cancer_type == "PANCANCER")
-all_results_signf = filter(all_results_signf, element_type == "gc19_pc.cds")
-coding_drivers = all_results_signf
+
+#old file:
+#load("all_results_signf.rsav")
+#head(all_results_signf)
+#all_results_signf = as.data.table(all_results_signf)
+#all_results_signf = filter(all_results_signf, cancer_type == "PANCANCER")
+#all_results_signf = filter(all_results_signf, element_type == "gc19_pc.cds")
+#coding_drivers = all_results_signf
+
+#cds mutations new june 12 
+coding_drivers = fread("cds_drivers.txt")
 
 #[3] mutations in all CRMs, subset of these are FMREs
-load("encode_merge_oct2016_mutations__PANCANCER_in_elements.rsav")
-head(mutations_in_elements)
-mutations_in_crms = mutations_in_elements
+
+#old file:
+
+#load("encode_merge_oct2016_mutations__PANCANCER_in_elements.rsav")
+#head(mutations_in_elements)
+#mutations_in_crms = mutations_in_elements
+
+#new file June 12: 
+
+load("encode_merge__patient_element_snv_list.rsav")
+mutations_in_crms = (patient_element_snv_list)
+
+#crm mutations new june 12 
+#fmre mutations 
+fmres = fread("fmre_drivers.txt")
 
 #[4] mutations in all CDS, subset of these are CDS drivers
-load("gc19_pc.cds_oct2016_mutations__PANCANCER_in_elements.rsav")
-cds_mutations = mutations_in_elements
+load("gc19_pc.cds__patient_element_snv_list.rsav")
+cds_mutations = patient_element_snv_list
 
 #[5] all patients in cohort
 load("patient2cancertype.rsav")
 head(patient2cancer_type) #1844 all together 
+
+patient_table = fread("patient_table.txt")
 
 #[6] Clinical file 
 clin <- fread("pcawg_specimen_histology_August2016_v6.tsv", data.table=F)
@@ -44,18 +63,19 @@ conversion <- fread("pcawgConversion.tsv", data.table=F)
 #Analysis---------------------------------------------------
 
 #1. Which patients have FMRE mutations  
-z = which(mutations_in_crms$reg_id %in% fmres$id)
-mutations_in_crms = mutations_in_crms[z,]
-unique(mutations_in_crms$mut_patient)
+z = which(names(mutations_in_crms) %in% fmres$id)
+mutations_in_crms = mutations_in_crms[z]
+
 
 #2. Which patients have coding mutations 
-z = which(cds_mutations$reg_id %in% coding_drivers$id)
-mutations_in_cds = cds_mutations[z,]
+z = which(names(cds_mutations) %in% coding_drivers$id)
+mutations_in_cds = cds_mutations[z]
+
 
 #Compare ratios------------------------------------------------
 
-unique_cds = unique(mutations_in_cds$reg_id) #47
-unique_fmre = unique(mutations_in_crms$reg_id) #41
+unique_cds = unique(names(mutations_in_cds)) #46
+unique_fmre = unique(names(mutations_in_crms)) #29
 
 results_pairs = as.data.frame(matrix(ncol=6)) ; colnames(results_pairs) = c("CDS_mut", "FMRE_mut", "fishers_pval", "fishers_OR", "num_overlap", "canc_overlapping_pats")
 
@@ -65,14 +85,14 @@ for(i in 1:length(unique_cds)){
 		pair = c(unique_cds[i], unique_fmre[y])
 		#get patients that have either of these mutations or both 
 		#FMRE
-		z1 = which(mutations_in_crms$reg_id %in% pair)
-		pats_crms = as.data.frame(mutations_in_crms$mut_patient[z1])
+		z1 = which(names(mutations_in_crms) %in% pair)
+		pats_crms = as.data.frame(mutations_in_crms[z1])
 		pats_crms = as.data.frame(pats_crms[!duplicated(pats_crms), ])
 		pats_crms$mut = "FMRE"
 		colnames(pats_crms)[1] = "patient"
 		#CDS
-		z2 = which(mutations_in_cds$reg_id %in% pair)
-		pats_cds = as.data.frame(mutations_in_cds$mut_patient[z2])
+		z2 = which(names(mutations_in_cds) %in% pair)
+		pats_cds = as.data.frame(mutations_in_cds[z2])
 		pats_cds = as.data.frame(pats_cds[!duplicated(pats_cds), ])
 		pats_cds$mut = "CDS"
 		colnames(pats_cds)[1] = "patient"
@@ -89,9 +109,10 @@ for(i in 1:length(unique_cds)){
 		both = dim(both)[1]
 		#overlap
 		num_overlap = both
+
 		#test only if have at least 1 patient in common 
 		if(!(length(both_pats)==0)){
-			canc_both_pats = paste(unique(mutations_in_cds$mut_cc[which(mutations_in_cds$mut_patient %in% both_pats)]), collapse="_")
+			canc_both_pats = paste(unique(patient_table$V2[patient_table$V1 %in% both_pats]), collapse="_")
 
 			#fmre only
 			fmre = unique(as.character(patients_wmuts$patient[patients_wmuts$mut == "FMRE"]))
@@ -125,26 +146,29 @@ results_pairs$fishers_pval = as.numeric(results_pairs$fishers_pval)
 results_pairs$fdr = p.adjust(results_pairs$fishers_pval, method="fdr")
 results_pairs = as.data.table(results_pairs)
 results_pairs = results_pairs[order(fishers_pval)]
-write.table(results_pairs, file= "1026_fmre_cds_fishers_analysis_May9th_KI.txt", sep="\t", quote=F, row.names=F)
 
-colnames(mutations_in_crms)[12] = "reg_id"
-colnames(mutations_in_cds)[12] = "reg_id"
+#colnames(mutations_in_crms)[12] = "reg_id"
+#colnames(mutations_in_cds)[12] = "reg_id"
 results_pairs$num_overlap = as.numeric(results_pairs$num_overlap)
 results_pairs = results_pairs[order(-num_overlap)]
+results_pairs = as.data.table(results_pairs)
+results_pairs = results_pairs[order(fishers_pval)]
+write.table(results_pairs, file= "686_fmre_cds_pairs_fishers_analysis_June12th_KI.txt", sep="\t", quote=F, row.names=F)
 
-pdf("FMRE_CDS_pairs_fishers_analysis_results_May9th.pdf", width=9, height=10)
+
+pdf("FMRE_CDS_pairs_fishers_analysis_results_June12th.pdf", width=9, height=10)
 for(i in 1:nrow(results_pairs)){
 		pair = c(results_pairs$CDS_mut[i], results_pairs$FMRE_mut[i])
 		#get patients that have either of these mutations or both 
 		#FMRE
-		z1 = which(mutations_in_crms$reg_id %in% pair)
-		pats_crms = as.data.frame(mutations_in_crms$mut_patient[z1])
+		z1 = which(names(mutations_in_crms) %in% pair)
+		pats_crms = as.data.frame(mutations_in_crms[z1])
 		pats_crms = as.data.frame(pats_crms[!duplicated(pats_crms), ])
 		pats_crms$mut = "FMRE"
 		colnames(pats_crms)[1] = "patient"
 		#CDS
-		z2 = which(mutations_in_cds$reg_id %in% pair)
-		pats_cds = as.data.frame(mutations_in_cds$mut_patient[z2])
+		z2 = which(names(mutations_in_cds) %in% pair)
+		pats_cds = as.data.frame(mutations_in_cds[z2])
 		pats_cds = as.data.frame(pats_cds[!duplicated(pats_cds), ])
 		pats_cds$mut = "CDS"
 		colnames(pats_cds)[1] = "patient"
@@ -179,8 +203,8 @@ for(i in 1:nrow(results_pairs)){
 			CDS_yes = length(unique(cds))
 			
 			#none 
-			none = length(which(!(panc %in% unique(patients_wmuts$patient))))
-			
+			none = length(which(!(names(patient2cancer_type) %in% unique(patients_wmuts$patient))))
+	
 			#contigency table 
 			cont_table = matrix(c(both, CDS_yes,FMRE_yes , none), nrow=2, byrow=T)
 			colnames(cont_table) = c("FMRE_yes", "FMRE_no")
@@ -188,10 +212,11 @@ for(i in 1:nrow(results_pairs)){
 			#pdf("FMRE_CDS_Lungadeno_cancer_pairs_fishers_analysis_results_May10th.pdf", width=10)
 			f = fisher.test(cont_table, alt = "greater")
 			#summary how many patienst per cancer for the overlapping patietns 
-			z = which(mutations_in_cds$mut_patient %in% both_pats)
-			pp = mutations_in_cds[z,6:7]
-			pp = pp[!duplicated(pp), ]
-			pp = as.data.table(table(pp$mut_cc))
+			#z = which(mutations_in_cds$mut_patient %in% both_pats)
+			#pp = mutations_in_cds[z,6:7]
+			#pp = pp[!duplicated(pp), ]
+			pp = patient_table$V2[patient_table$V1 %in% both_pats]
+			pp = as.data.table(table(pp))
 			pp = pp[order(N)]
 			colnames(pp) = c("Cancer", "Freq")
 			pp = tableGrob(pp)
@@ -236,6 +261,75 @@ for(i in 1:nrow(results_pairs)){
 #for all pairs (CDS_driver_X, FMRE_driver_Y). 
 
 write.table(results_pairs, file= "1026_fmre_cds_fishers_analysis_May10th_KI_wcancers_coordinates.txt", sep="\t", quote=F, row.names=F)
+
+
+####Generate heatmap###----------------------------------------------------------------------------------------------------------------
+
+#can you please create a heat map (geom tile) where
+#> - genes are Y axis and FMREs are X axis
+#> - ordered by their significance in driver analysis (yep)
+#> - color is a gradient between darkcyan (weak) and orange (strong)
+#> - color is -log10 FDR; FDR>0.1 is set as NA
+#> - number of shared patients printed on tile
+
+library(plyr)
+library(dplyr)
+
+#keep just gene name for CDS
+clean_gene = function(gene){
+	#gene = results_pairs$CDS_mut[1]
+	r =  unlist(strsplit(gene, "::"))[3]
+	return(r)
+}
+
+results_pairs$CDS_mut = llply(results_pairs$CDS_mut, clean_gene)
+
+clean_fmre = function(fmre){
+	#fmre = results_pairs$FMRE_mut[1]
+	r =  unlist(strsplit(fmre, "::"))[2]
+	return(r)
+}
+
+results_pairs$FMRE_mut = llply(results_pairs$FMRE_mut, clean_fmre)
+results_pairs$FMRE_mut = as.character(results_pairs$FMRE_mut)
+
+#1. order by significance in driver analysis 
+#using fdr_element column for this 
+
+fmres$id = llply(fmres$id, clean_fmre)
+fmres = as.data.table(fmres)
+fmres = fmres[order(fdr_element)]
+
+results_pairs = results_pairs[match(fmres$id, results_pairs$FMRE_mut),]
+
+#2. color is pvalue (fisher's pvalue) FDR -> -log10 FDR 
+#FDR > 0.1 is NA 
+
+results_pairs$fdr_plotting = -log10(results_pairs$fdr)
+results_pairs$fdr_plotting[results_pairs$fdr >0.1] = NA
+
+#now just need to plot heatmap 
+results_pairs$CDS_mut = as.character(results_pairs$CDS_mut)
+results_pairs = as.data.frame(results_pairs)
+write.table(results_pairs, file= "1026_fmre_cds_fishers_analysis_May10th_KI_wcancers_coordinates.txt", sep="\t", quote=F, row.names=F)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
