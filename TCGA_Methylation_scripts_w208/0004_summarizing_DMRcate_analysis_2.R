@@ -60,7 +60,21 @@ library(DMRcate)
 #all Methylation files - already processed (NAs and 0 probes removed)
 #file converted into matrix 
 
-all_results = list.files("files_generated_by_DMR_analysis_June8/", pattern="DMRs_June8.rds")
+all_results = list.files("files_generated_by_DMR_analysis_June8/", pattern="DMRs_June8.rds") #only cancer type that should be 
+#missing is OV
+
+
+#keep track of candidates
+#Data---
+cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+#save only the ones that came from the noFDR appraoch 
+cands = filter(cands, AnalysisType == "noFDR", data=="TCGA") #173 unique lncRNA-cancer combos, 166 unique lncRNAs, 23 unique cancer types 
+
+#which cancer types are the non-unique lncRNAs from?
+cands$Combo = NULL
+cands = cands[,c("gene", "coef", "HR", "pval", "cancer", "CAT_geneName")]
+cands = cands[!duplicated(cands), ]
+cands_dups = unique(cands$gene[which(duplicated(cands$gene))])
 
 #1. read each file and summarize number of DMRs per lncRNA 
 
@@ -129,7 +143,6 @@ dev.off()
 
 lnc_coords = fread("lncrna_coords_bed.bed")
 
-
 read_dmr_results = function(filee){
 	results = readRDS(paste("files_generated_by_DMR_analysis_June8/", filee, sep=""))
 	numlncs = length(results)
@@ -147,6 +160,13 @@ read_dmr_results = function(filee){
 			lncrna_cord = lnc_coords[z,]
 			lncrna_cord$V6 = "*"
 
+			#look at only lncRNA promoter 
+			lnc_prom_start = lncrna_cord$V2-2000
+			lnc_prom_end = lncrna_cord$V2+2000
+
+			lncrna_cord$V2 = lnc_prom_start
+			lncrna_cord$V3 = lnc_prom_end
+
 			#make granges object for lncRNA coord
 			gr <- GRanges(
 		     seqnames = Rle(lncrna_cord$V1, seq(1, length(lncrna_cord$V1))),
@@ -161,23 +181,38 @@ read_dmr_results = function(filee){
 			dmrs = makeGRangesFromDataFrame(lnc)
 
 			#intersect with DMR coordinates
-			overlap = intersect(gr, dmrs)
-			print(dim(as.data.frame(overlap))[1])
-		
-		}
+			overlap = as.data.frame(intersect(gr, dmrs))
+			if(!(dim(overlap)[1]) == 0){
+			#print(dim(as.data.frame(overlap))[1])
+			overlap$lnc = lncrna
+			overlap$canc = lnc$canc[1]
+			overlap$num_DMRs_per_lncRNA = num_dmr
+			return(overlap)
+			}
 
+			if((dim(overlap)[1]) == 0){
+			overlap = c("no", "no", "no", "no", "no", lncrna, lnc$canc[1], num_dmr)
+			names(overlap) = c("seqnames", "start", "end", "width", "strand", "lnc", "canc", "num_DMRs_per_lncRNA")
+			return(overlap)
+			}
+
+		}
 		}
 	}
 
 	canc_results = llply(results, read_each_lnc_dmr)
+	canc_results = Filter(Negate(is.null), canc_results)
+	if(!(length(canc_results))==0){
+	canc_results = do.call(rbind.data.frame, canc_results)
+	colnames(canc_results) = c("seqnames", "start", "end", "width", "strand", "lnc", "canc", "num_DMRs_per_lncRNA")
 	return(canc_results)
+	}
 }
 
 
 lncrna_dmr_overlap = llply(all_results, read_dmr_results)
-
-
-
+lncrna_dmr_overlap = do.call(rbind.data.frame, lncrna_dmr_overlap)
+colnames(lncrna_dmr_overlap) = c("seqnames", "start", "end", "width", "strand", "lnc", "canc", "num_DMRs_per_lncRNA")
 
 
 

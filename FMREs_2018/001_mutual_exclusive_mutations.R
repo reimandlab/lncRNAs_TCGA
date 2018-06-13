@@ -343,6 +343,8 @@ order= as.character(fmres$id)
 
 #relevel order 
 results_pairs$FMRE_mut <- factor(results_pairs$FMRE_mut, levels = order)
+order = as.character(coding_drivers$id)
+results_pairs$CDS_mut <- factor(results_pairs$CDS_mut, levels = order)
 
 pdf("686_pairs_heatmap-log10fdr.pdf", width=9)
 
@@ -356,7 +358,6 @@ ggpar(g,
  xtickslab.rt = 45)
 
 dev.off()
-
 
 pdf("686_pairs_heatmap_normal_fdr.pdf", width=9)
 
@@ -411,12 +412,12 @@ pdf("686_pairs_heatmap-log10fdr_removed_unsig.pdf", width=9)
 
 g = ggplot(results_pairs_rm, aes(FMRE_mut, CDS_mut)) +
   geom_tile(aes(fill = fdr_plotting)) +
-  geom_text(aes(label = round(num_overlap, 1)), size=1.6) +
-    scale_fill_gradient(low = "darkcyan", high = "orange", na.value = 'white') +
+  geom_text(aes(label = round(num_overlap, 1)), size=3) +
+    scale_fill_gradient(low = "darkcyan", high = "orange", na.value = 'transparent') +
     xlab("FMRE") + ylab("CDS gene") + theme_bw()
 ggpar(g,
- font.tickslab = c(7,"plain", "black"),
- xtickslab.rt = 45)
+ font.tickslab = c(8,"plain", "black"),
+ xtickslab.rt = 45, legend.title="Fisher's FDR")
 
 dev.off()
 
@@ -425,12 +426,12 @@ pdf("686_pairs_heatmap_normal_fdr_removed_unsig.pdf", width=9)
 
 g = ggplot(results_pairs_rm, aes(FMRE_mut, CDS_mut)) +
   geom_tile(aes(fill = fdr)) +
-  geom_text(aes(label = round(num_overlap, 1)), size=1.6) +
-    scale_fill_gradient(low = "darkcyan", high = "orange", na.value = 'white') +
+  geom_text(aes(label = round(num_overlap, 1)), size=2.5) +
+    scale_fill_gradient(low = "darkcyan", high = "orange", na.value = 'transparent') +
     xlab("FMRE") + ylab("CDS gene") + theme_bw()
 ggpar(g,
  font.tickslab = c(7,"plain", "black"),
- xtickslab.rt = 45)
+ xtickslab.rt = 45, legend.title="Fisher's FDR")
 
 dev.off()
 

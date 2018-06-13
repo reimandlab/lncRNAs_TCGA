@@ -7,7 +7,6 @@ library(dplyr)
 library(gridExtra)
 library(grid)
 
-
 pcg_rna = readRDS(file="all_rna_may8th.rds")
 #subset to TP53 
 z = which(colnames(pcg_rna) %in% c("ENSG00000141510", "patient", "canc"))
