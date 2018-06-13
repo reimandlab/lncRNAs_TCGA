@@ -155,7 +155,6 @@ results_pairs = as.data.table(results_pairs)
 results_pairs = results_pairs[order(fishers_pval)]
 write.table(results_pairs, file= "686_fmre_cds_pairs_fishers_analysis_June12th_KI.txt", sep="\t", quote=F, row.names=F)
 
-
 pdf("FMRE_CDS_pairs_fishers_analysis_results_June12th.pdf", width=9, height=10)
 for(i in 1:nrow(results_pairs)){
 		pair = c(results_pairs$CDS_mut[i], results_pairs$FMRE_mut[i])
@@ -272,6 +271,8 @@ write.table(results_pairs, file= "1026_fmre_cds_fishers_analysis_May10th_KI_wcan
 #> - color is -log10 FDR; FDR>0.1 is set as NA
 #> - number of shared patients printed on tile
 
+results_pairs = fread("686_fmre_cds_pairs_fishers_analysis_June12th_KI.txt")
+
 library(plyr)
 library(dplyr)
 
@@ -282,7 +283,7 @@ clean_gene = function(gene){
 	return(r)
 }
 
-results_pairs$CDS_mut = llply(results_pairs$CDS_mut, clean_gene)
+results_pairs$CDS_mut = unlist(llply(results_pairs$CDS_mut, clean_gene))
 
 clean_fmre = function(fmre){
 	#fmre = results_pairs$FMRE_mut[1]
@@ -290,8 +291,8 @@ clean_fmre = function(fmre){
 	return(r)
 }
 
-results_pairs$FMRE_mut = llply(results_pairs$FMRE_mut, clean_fmre)
-results_pairs$FMRE_mut = as.character(results_pairs$FMRE_mut)
+results_pairs$FMRE_mut = unlist(llply(results_pairs$FMRE_mut, clean_fmre))
+#results_pairs$FMRE_mut = as.character(results_pairs$FMRE_mut)
 
 #1. order by significance in driver analysis 
 #using fdr_element column for this 
@@ -300,7 +301,21 @@ fmres$id = llply(fmres$id, clean_fmre)
 fmres = as.data.table(fmres)
 fmres = fmres[order(fdr_element)]
 
-results_pairs = results_pairs[match(fmres$id, results_pairs$FMRE_mut),]
+order= as.character(fmres$id)
+
+#relevel order 
+results_pairs$FMRE_mut <- factor(results_pairs$FMRE_mut, levels = order)
+
+#relevel pcg order
+coding_drivers$id = llply(coding_drivers$id, clean_gene)
+coding_drivers = as.data.table(coding_drivers)
+coding_drivers = coding_drivers[order(-fdr_element)]
+order = as.character(coding_drivers$id)
+
+#relevel order
+results_pairs$CDS_mut <- factor(results_pairs$CDS_mut, levels = order)
+
+#results_pairs = results_pairs[match(fmres$id, results_pairs$FMRE_mut),]
 
 #2. color is pvalue (fisher's pvalue) FDR -> -log10 FDR 
 #FDR > 0.1 is NA 
@@ -311,32 +326,111 @@ results_pairs$fdr_plotting[results_pairs$fdr >0.1] = NA
 #now just need to plot heatmap 
 results_pairs$CDS_mut = as.character(results_pairs$CDS_mut)
 results_pairs = as.data.frame(results_pairs)
-write.table(results_pairs, file= "1026_fmre_cds_fishers_analysis_May10th_KI_wcancers_coordinates.txt", sep="\t", quote=F, row.names=F)
+
+#shorten fmre name
+clean_fmre = function(fmre){
+	#fmre = results_pairs$FMRE_mut[1]
+	r =  unlist(strsplit(fmre, "-"))[1]
+	return(r)
+}
+results_pairs$FMRE_mut = unlist(llply(as.character(results_pairs$FMRE_mut), clean_fmre))
+
+fmres$id = llply(fmres$id, clean_fmre)
+fmres = as.data.table(fmres)
+fmres = fmres[order(fdr_element)]
+
+order= as.character(fmres$id)
+
+#relevel order 
+results_pairs$FMRE_mut <- factor(results_pairs$FMRE_mut, levels = order)
+
+pdf("686_pairs_heatmap-log10fdr.pdf", width=9)
+
+g = ggplot(results_pairs, aes(FMRE_mut, CDS_mut)) +
+  geom_tile(aes(fill = fdr_plotting)) +
+  geom_text(aes(label = round(num_overlap, 1)), size=1.6) +
+    scale_fill_gradient(low = "darkcyan", high = "orange", na.value = 'white') +
+    xlab("FMRE") + ylab("CDS gene") + theme_bw()
+ggpar(g,
+ font.tickslab = c(7,"plain", "black"),
+ xtickslab.rt = 45)
+
+dev.off()
 
 
+pdf("686_pairs_heatmap_normal_fdr.pdf", width=9)
+
+g = ggplot(results_pairs, aes(FMRE_mut, CDS_mut)) +
+  geom_tile(aes(fill = fdr)) +
+  geom_text(aes(label = round(num_overlap, 1)), size=1.6) +
+    scale_fill_gradient(low = "darkcyan", high = "orange", na.value = 'white') +
+    xlab("FMRE") + ylab("CDS gene") + theme_bw()
+ggpar(g,
+ font.tickslab = c(7,"plain", "black"),
+ xtickslab.rt = 45)
+
+dev.off()
+
+#remove FMREs adn genes wtih no sig cells
+results_pairs$fdr_tag = ""
+results_pairs$fdr_tag[is.na(results_pairs$fdr_plotting)] = "no"
+
+#num unique CDS #46
+unique_cds = length(unique(results_pairs$CDS_mut))
+
+check = as.data.table(table(results_pairs$FMRE_mut, results_pairs$fdr_tag))
+check = filter(check, V2 =="no")
+colnames(check) = c("fmre", "no", "numNAs")
+
+#check how many pcg prtners each fmre has to compare
+check_pcgs = as.data.table(table(results_pairs$FMRE_mut))
+colnames(check_pcgs) = c("fmre", "num_pcgs")
+check_pcgs = merge(check_pcgs, check, by="fmre")
+check_pcgs$match = ""
+check_pcgs$match[check_pcgs$num_pcgs == check_pcgs$numNAs] = "remove"
+remove = check_pcgs$fmre[check_pcgs$match == "remove"]
+
+results_pairs_rm = results_pairs[-which(results_pairs$FMRE_mut %in% remove),]
+
+#do the same thing but with PCGs
+check = as.data.table(table(results_pairs$CDS_mut, results_pairs$fdr_tag))
+check = filter(check, V2 =="no")
+colnames(check) = c("cds", "no", "numNAs")
+
+#check how many pcg prtners each fmre has to compare
+check_pcgs = as.data.table(table(results_pairs$CDS_mut))
+colnames(check_pcgs) = c("cds", "num_fmres")
+check_pcgs = merge(check_pcgs, check, by="cds")
+check_pcgs$match = ""
+check_pcgs$match[check_pcgs$num_fmres == check_pcgs$numNAs] = "remove"
+remove = check_pcgs$cds[check_pcgs$match == "remove"]
+
+results_pairs_rm = results_pairs_rm[-which(results_pairs_rm$CDS_mut %in% remove),]
+
+pdf("686_pairs_heatmap-log10fdr_removed_unsig.pdf", width=9)
+
+g = ggplot(results_pairs_rm, aes(FMRE_mut, CDS_mut)) +
+  geom_tile(aes(fill = fdr_plotting)) +
+  geom_text(aes(label = round(num_overlap, 1)), size=1.6) +
+    scale_fill_gradient(low = "darkcyan", high = "orange", na.value = 'white') +
+    xlab("FMRE") + ylab("CDS gene") + theme_bw()
+ggpar(g,
+ font.tickslab = c(7,"plain", "black"),
+ xtickslab.rt = 45)
+
+dev.off()
 
 
+pdf("686_pairs_heatmap_normal_fdr_removed_unsig.pdf", width=9)
 
+g = ggplot(results_pairs_rm, aes(FMRE_mut, CDS_mut)) +
+  geom_tile(aes(fill = fdr)) +
+  geom_text(aes(label = round(num_overlap, 1)), size=1.6) +
+    scale_fill_gradient(low = "darkcyan", high = "orange", na.value = 'white') +
+    xlab("FMRE") + ylab("CDS gene") + theme_bw()
+ggpar(g,
+ font.tickslab = c(7,"plain", "black"),
+ xtickslab.rt = 45)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+dev.off()
 
