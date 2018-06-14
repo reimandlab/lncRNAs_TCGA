@@ -124,10 +124,28 @@ all_cancers_dmrs = as.data.table(all_cancers_dmrs)
 all_cancers_dmrs = merge(all_cancers_dmrs, fantom, by="lncRNA")
 all_cancers_dmrs = all_cancers_dmrs[order(num_sig_DMRs)]
 
+color = grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert = T)]
+mypal = sample(color, 32)
+
+
+pdf("summary_dmrs_overlapping_per_cancer_type.pdf", width=6, height=8)
+
+g = ggplot(all_cancers_dmrs, aes(cancer, CAT_geneName)) +
+  geom_tile(aes(fill = num_sig_DMRs)) +
+  geom_text(aes(label = num_sig_DMRs), size=1.6) +
+    scale_fill_gradient(low = "beige", high = "orange", na.value = 'transparent') +
+    xlab("Cancer") + ylab("lncRNA") + theme_bw() + ggtitle("Summary of DMRs per lncRNA-cancer type")
+ggpar(g,
+ font.tickslab = c(4, "plain", "black"), 
+ xtickslab.rt = 45, legend.title="# of DMRs in \ntotal/lncRNA")
+
+dev.off()
+
+
 
 #plot barplot to summarize 
 pdf("DMR_analysis_summary_dmrs_per_cancertype.pdf", width=12, height=6)
-g = ggbarplot(all_cancers_dmrs, x= "CAT_geneName", y="num_sig_DMRs", fill="cancer", 
+g = ggbarplot(all_cancers_dmrs, x= "CAT_geneName", y="num_sig_DMRs", fill="cancer", palette = mypal, 
 	label = TRUE, label.pos = "in", lab.size=1.5) + theme_light() + ggtitle("Num DMRs per lncRNA") + xlab("lncRNA") + ylab("num FDR < 0.05 DMRs")
 ggpar(g,
  font.tickslab = c(7,"plain", "black"),
@@ -214,11 +232,52 @@ lncrna_dmr_overlap = llply(all_results, read_dmr_results)
 lncrna_dmr_overlap = do.call(rbind.data.frame, lncrna_dmr_overlap)
 colnames(lncrna_dmr_overlap) = c("seqnames", "start", "end", "width", "strand", "lnc", "canc", "num_DMRs_per_lncRNA")
 
+#look at only lncRNAs overlapping DMR? 
 
+z = which(lncrna_dmr_overlap$strand == "no")
+lncrna_dmr_overlap = lncrna_dmr_overlap[-z,]
 
+z = which(is.na(lncrna_dmr_overlap$strand))
+lncrna_dmr_overlap = lncrna_dmr_overlap[-z,]
 
+lncrna_dmr_overlap$seqnames = as.character(lncrna_dmr_overlap$seqnames)
+lncrna_dmr_overlap$strand = as.character(lncrna_dmr_overlap$strand)
 
+#summarize number of DMRs/lncRNAs 
+colnames(fantom)[1] = "lnc"
+lncrna_dmr_overlap = merge(lncrna_dmr_overlap, fantom, by="lnc")
 
+lncrna_dmr_overlap$start = NULL
+lncrna_dmr_overlap$end = NULL
+lncrna_dmr_overlap$width = NULL
+
+lncrna_dmr_overlap = lncrna_dmr_overlap[!duplicated(lncrna_dmr_overlap), ]
+
+summary_lncs = as.data.table(table(lncrna_dmr_overlap$CAT_geneName))
+summary_lncs = summary_lncs[order(-N)]
+
+colnames(summary_lncs)[1] = "CAT_geneName"
+
+lncrna_dmr_overlap = merge(lncrna_dmr_overlap, summary_lncs, by = "CAT_geneName")
+
+#x - cancer
+#y - lncRNA
+
+#inside - num of DMRs between high risk and low risk lncRNA 
+#color - how many DMRs overlap lncRNA 
+
+pdf("summary_dmrs_overlapping_lncRNAs.pdf", width=5, height=5)
+
+g = ggplot(lncrna_dmr_overlap, aes(canc, CAT_geneName)) +
+  geom_tile(aes(fill = N)) +
+  geom_text(aes(label = num_DMRs_per_lncRNA), size=3) +
+    scale_fill_gradient(low = "beige", high = "orange", na.value = 'transparent') +
+    xlab("Cancer") + ylab("lncRNA") + theme_bw() + ggtitle("Summary of lncRNAs overlapped by at \nleast 1 DMR")
+ggpar(g,
+ font.tickslab = c(8, "plain", "black"), 
+ xtickslab.rt = 45, legend.title="# of DMRs/lncRNA")
+
+dev.off()
 
 
 
