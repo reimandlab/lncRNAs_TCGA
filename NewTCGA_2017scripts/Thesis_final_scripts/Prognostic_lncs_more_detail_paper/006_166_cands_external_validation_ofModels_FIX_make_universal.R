@@ -25,7 +25,14 @@ cands = filter(cands, AnalysisType == "noFDR")
 cands$Cancer = NULL
 all_cands = cands
 
-#-------------------------------------------------------------------
+
+#--------This script ------------------------------------------------
+
+#build models using all of TCGA for each lncRNA candidate
+#conduct bootstrapping on PCAWG sample 
+#and evluate perforamnce of TCGA candidate model 
+
+#--------------------------------------------------------------------
 
 #write function that adds tag to whole data group 
 #and does survival analysis on whole group

@@ -25,7 +25,23 @@ cands = filter(cands, AnalysisType == "noFDR")
 cands$Cancer = NULL
 all_cands = cands
 
-#-------------------------------------------------------------------
+
+#--------This script ------------------------------------------------
+
+#include additional clinical variables from more detailed
+#files for each cancer type 
+#fit multivariate models using those variables for each candidate
+#foresplots?
+#correlation plots?
+
+#--------------------------------------------------------------------
+#Clinical files
+#--------------------------------------------------------------------
+
+clin_files = list.files("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/gdc_clinical_data_june2018")
+
+
+
 
 #write function that adds tag to whole data group 
 #and does survival analysis on whole group

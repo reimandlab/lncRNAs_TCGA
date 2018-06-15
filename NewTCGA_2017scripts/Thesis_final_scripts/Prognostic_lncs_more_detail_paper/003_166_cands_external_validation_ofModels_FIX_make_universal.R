@@ -25,7 +25,15 @@ cands = filter(cands, AnalysisType == "noFDR")
 cands$Cancer = NULL
 all_cands = cands
 
-#-------------------------------------------------------------------
+
+#--------This script ------------------------------------------------
+
+#just make KM plots for TCGA 
+#whatever data is available for PCAWG
+#make them KM plots as well 
+#just get list of genes that are significant in both data sets
+
+#--------------------------------------------------------------------
 
 #write function that adds tag to whole data group 
 #and does survival analysis on whole group
@@ -175,27 +183,33 @@ dev.off()
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
 tcga_results1$pval = as.numeric(tcga_results1$pval)
-tcga_results1 = filter(tcga_results1, pval <=0.05)
+tcga_results1$fdr_pval = p.adjust(tcga_results1$pval, method="fdr")
+
+#tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
 
 #-------------------------------------------------------------------
 #------PCAWG DATA---------------------------------------------------
 #-------------------------------------------------------------------
 
 pcawg_data = readRDS("lncRNA_clinical_data_PCAWG_May2.rds")
-pcawg_data$canc[pcawg_data$histo == "Adenocarcinoma, endometrioid"] = "Uterine Corpus Endometrial Carcinoma"
-pcawg_data$canc[pcawg_data$histo == "Adenocarcinoma, clear cell type"] = "Kidney renal clear cell carcinoma"
-pcawg_data$canc[pcawg_data$histo == "Pancreatic ductal carcinoma"] = "Pancreatic adenocarcinoma"
-pcawg_data$canc[pcawg_data$histo == "Hepatocellular carcinoma"] = "Liver hepatocellular carcinoma"
-pcawg_data$canc[pcawg_data$histo == "Squamous cell carcinoma"] = "Lung squamous cell carcinoma"
-pcawg_data$canc[pcawg_data$histo == "Adenocarcinoma, invasive"] = "Lung adenocarcinoma"
-pcawg_data$canc[pcawg_data$histo == "Serous cystadenocarcinoma"] = "Ovarian serous cystadenocarcinoma"
-pcawg_data$canc[pcawg_data$histo == "Infiltrating duct carcinoma"] = "Breast invasive carcinoma"
+pcawg_data$combo = paste(pcawg_data$canc, pcawg_data$histo)
+
+pcawg_data$canc[pcawg_data$combo == "Uterus Adenocarcinoma, endometrioid"] = "Uterine Corpus Endometrial Carcinoma" 
+pcawg_data$canc[pcawg_data$combo == "Kidney Adenocarcinoma, clear cell type"] = "Kidney renal clear cell carcinoma"
+pcawg_data$canc[pcawg_data$combo == "Breast Infiltrating duct carcinoma"] = "Breast invasive carcinoma"
+pcawg_data$canc[pcawg_data$combo == "Ovary Serous cystadenocarcinoma"] = "Ovarian serous cystadenocarcinoma"
+pcawg_data$canc[pcawg_data$combo == "Pancreas Pancreatic ductal carcinoma"] = "Pancreatic adenocarcinoma" 
+pcawg_data$canc[pcawg_data$combo == "Liver Hepatocellular carcinoma"] = "Liver hepatocellular carcinoma"
+pcawg_data$canc[pcawg_data$combo == "Kidney Adenocarcinoma, papillary type"] = "Kidney renal papillary cell carcinoma"
+pcawg_data$canc[pcawg_data$combo == "Lung Squamous cell carcinoma"] = "Lung squamous cell carcinoma"
+pcawg_data$canc[pcawg_data$combo == "Lung Adenocarcinoma, invasive"] = "Lung adenocarcinoma"
+
 
 cancers_tests = as.list(unique(tcga_results1$cancer[which(tcga_results1$cancer %in% pcawg_data$canc)]))
 
 get_matched_data = function(cancer){
     dtt = subset(pcawg_data, canc == cancer)
-    z = which(colnames(dtt) %in% c(as.character(all_cands$Name[all_cands$Cancer == dtt$canc[1]]), "canc", 
+    z = which(colnames(dtt) %in% c(as.character(all_cands$gene[all_cands$cancer == dtt$canc[1]]), "canc", 
     "histo", "time", "status", "sex"))
     dtt = dtt[,z]
     return(dtt)
@@ -332,10 +346,14 @@ dev.off()
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 pcawg_results1 = ldply(pcawg_results, data.frame)
+pcawg_results1$pval = as.numeric(pcawg_results1$pval)
+pcawg_results1$fdr_pval = p.adjust(pcawg_results1$pval, method="fdr")
 
 #combine results from TCGA and PCAWG
 tcga_results1$data = "TCGA"
 pcawg_results1$data = "PCAWG"
+
+#all-results
 all_results = as.data.table(rbind(tcga_results1, pcawg_results1))
 all_results = all_results[order(gene, cancer)]
 
@@ -351,28 +369,57 @@ extract3 <- function(row){
 }
 lnc_info[,1] <- apply(lnc_info[,1:2], 1, extract3) #5049 lncRNAs 
 
-#how many conserved 
-#1207 have conserved exons 
-z1 = which(!(lnc_info$exon_RS_score == "__na"))
-
-#924 have conserved TIRs 
-z2 = which(!(lnc_info$TIR_RS_score == "__na"))
-
-conserved = lnc_info[unique(c(z1, z2)),]
 colnames(lnc_info)[1] = "gene"
 
-
 all_results = merge(all_results, lnc_info, by="gene")
-colnames(all_cands)[1] = "gene"
-all_results = merge(all_results, all_cands, by ="gene")
-
 all_results = all_results[order(data, pval)]
+all_results$best_cell_trait_fdr = NULL
+all_results$CAT_browser_link = NULL
+
+saveRDS(all_results, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 
 
-saveRDS(all_results, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+#-----check which actually match---------------------------------------------------------------------------
 
 
+all_results = all_results[!duplicated(all_results), ]
+all_results = filter(all_results, pval <= 0.25)
 
+lncs = as.list(as.character(unique(all_results$gene[all_results$data == "PCAWG"])))
+
+check_match = function(lnc){
+  z = which(all_results$gene == lnc)
+  res = as.data.table(all_results[z,])
+  
+  if(dim(res)[1] > 2){
+  
+  canc = res$cancer[which(duplicated(res$cancer))]
+  res = filter(res, cancer == canc)
+  }
+
+  test = which(as.numeric(res$HR) >= 1)
+  test = length(test)
+  if(test ==2){
+    match = "match"
+  }
+  if(test ==0){
+    match = "match"
+  }
+  if(test ==1){
+    match = "nomatch"
+  }
+  canc = unique(res$canc)
+  return(c(lnc, match, canc))
+}
+
+matches = llply(lncs, check_match)
+matches = do.call(rbind.data.frame, matches)
+matches = as.data.table(matches)
+colnames(matches) = c("lnc", "match", "cancer")
+matches = filter(matches, match == "match")
+
+all_results = as.data.table(all_results)
+all_results = filter(all_results, gene %in% matches$lnc, cancer %in% matches$cancer) #######----only PCAWG singificant 
 
 
 

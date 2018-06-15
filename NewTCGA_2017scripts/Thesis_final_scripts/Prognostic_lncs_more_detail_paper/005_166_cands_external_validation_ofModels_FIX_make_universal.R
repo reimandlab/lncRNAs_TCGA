@@ -25,7 +25,13 @@ cands = filter(cands, AnalysisType == "noFDR")
 cands$Cancer = NULL
 all_cands = cands
 
-#-------------------------------------------------------------------
+
+#--------This script ------------------------------------------------
+
+#run internal cross validation looking at just individual lncRNA
+#candidates -------- no PCAWG necessary here 
+
+#--------------------------------------------------------------------
 
 #write function that adds tag to whole data group 
 #and does survival analysis on whole group
