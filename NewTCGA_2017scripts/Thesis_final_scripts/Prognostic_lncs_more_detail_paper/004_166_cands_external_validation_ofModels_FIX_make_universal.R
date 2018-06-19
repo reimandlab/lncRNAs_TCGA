@@ -19,6 +19,12 @@ library(Rtsne)
 #------FEATURES-----------------------------------------------------
 
 cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+
+#new cands - final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds
+final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds
+
+
+
 #cands = filter(cands, data == "PCAWG", pval <=0.05)
 cands = filter(cands, AnalysisType == "noFDR")
 #colnames(cands)[7] = "canc"

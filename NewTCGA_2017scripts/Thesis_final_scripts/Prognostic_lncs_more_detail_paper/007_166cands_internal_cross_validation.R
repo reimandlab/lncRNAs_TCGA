@@ -13,6 +13,9 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.
 allCands = filter(allCands, AnalysisType == "noFDR", data=="TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
 #23 unique cancer types 
 
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = filter(allCands, data=="TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+
 #which cancer types are the non-unique lncRNAs from?
 allCands$Combo = NULL
 allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "CAT_geneName")]
@@ -36,21 +39,39 @@ extract3 <- function(row){
 fantom[,1] <- apply(fantom[,1:2], 1, extract3)
 #remove duplicate gene names (gene names with multiple ensembl ids)
 z <- which(duplicated(fantom$CAT_geneName))
-rm <- fantom$CAT_geneName[z]
 z <- which(fantom$CAT_geneName %in% rm)
+rm <- fantom$CAT_geneName[z]
 fantom <- fantom[-z,]
 
+#-----------------------------------------------------------------------------------------------------------------------------------
+#1 - get cancer data 
+#-----------------------------------------------------------------------------------------------------------------------------------
 
+z = which(cancers %in% allCands$cancer)
+cancer_data = canc_datas[z] #cancers list and canc_datas list should be the same 
 
+get_canc_data = function(dtt){
+  #get cancer specific candidates 
+  z = which(colnames(dtt) %in% c(as.character(allCands$gene[allCands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
+    "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
+    "new_tumor_event_type", "Cancer"))
+  dtt = dtt[,z]
+  return(dtt)
+}
 
-#lasso_cv = function(dat){
-for(p in 1:5){
-	dat = canc_datas[[p]]
+filtered_data = llply(cancer_data, get_canc_data)
+
+#-----------------------------------------------------------------------------------------------------------------------------------
+#2 - set up for cross validation 
+#-----------------------------------------------------------------------------------------------------------------------------------
+
+set_up_cv = function(dtt){
+	dat = dtt
 	genes_results = list()
 	cinds_clin = c()
 	cinds_justlncs = c()
 	cinds_combined = c()
-	set.seed(101) 
+	#set.seed(101) 
 
 	stage = as.data.table(table(dat$clinical_stage))
 	rm = stage$V1[which(stage$N <10)]
@@ -64,32 +85,64 @@ for(p in 1:5){
 	if(!(length(z)==0)){
 	dat = dat[-z,]}
 
-	for(j in 1:100){
+	return(dat)
+}
 
-		smp_size <- floor(0.7 * nrow(dat))
-		train_ind <- sample(seq_len(nrow(dat)), size = smp_size)
-		train <- dat[train_ind, ]
-		test <- dat[-train_ind, ]
+setup_data = llply(filtered_data, set_up_cv)
+
+#-----------------------------------------------------------------------------------------------------------------------------------
+#2 - run cross validation looking at one lncRNA at a time? 
+#-----------------------------------------------------------------------------------------------------------------------------------
+
+run_cv = function(dtt){
+	
+	set.seed(101) 
+
+	all_runs_results = as.data.frame(matrix(ncol=5))
+	colnames(all_runs_results) = c("lncRNA", "Cancer", "C-index", "type", "round")
+
+	for(j in 1:100){
+		
+		print(j)
+		smp_size <- floor(0.7 * nrow(dtt))
+		train_ind <- sample(seq_len(nrow(dtt)), size = smp_size)
+		train <- dtt[train_ind, ]
+		test <- dtt[-train_ind, ]
+
+		#train set ------------------------------
 
 		train$OS.time = as.numeric(train$OS.time)
 		z = which(is.na(train$OS.time))
 		if(!(length(z)==0)){
 		train = train[-z,]} 
+		rownames(train) = train$patient
+		train$patient = NULL
+
+		#test set -------------------------------
 
 		test$OS.time = as.numeric(test$OS.time)
 		z = which(is.na(test$OS.time))
 		if(!(length(z)==0)){
 		test = test[-z,]} 
+		rownames(test) = test$patient
+		test$patient = NULL
 
-		###---------------------------------------------------------------
-		###Extract significant predictors in training data 	
-		###---------------------------------------------------------------
-
+		#------------------------------------------
 		#use training medians to split the test set 
-		medians = apply(train[,2:(ncol(train)-34)], 2, median)
+		#------------------------------------------
+		z = which(str_detect(colnames(train), "ENSG"))
+		
+		if(length(z)==1){
+			medians = median(train[,z])
+			names(medians) = colnames(train)[z]
+		}
+
+		if(length(z) > 1){
+		medians = apply(train[,z], 2, median)
+		}
+
 		for(k in 1:length(medians)){
 		    med = medians[k]
-		    k = k +1
 		    if(med ==0){
 		    #if median = 0 then anyone greater than zero is 1 
 		    l1 = which(train[,k] > 0)
@@ -104,281 +157,229 @@ for(p in 1:5){
 		    train[l1,k] = 1
 		    train[l2, k] = 0
 		    }
-		}  
+		} #end for k in 1:length(medians) 
 
 		#survival script
 		source("survival_script_march14_already_labelled_highlow.R")
-		sums = apply(train[,2:(ncol(train)-34)], 2, sum) #134 with 0 expression in ALL patients 
-		zeroes = names(sums[which(sums <10)]) #if less than 50, then unbalanced 
-		z <- which(colnames(train) %in% zeroes)
-		if(!(length(z)==0)){
-		  train = train[,-z]
-		}
+		z = which(str_detect(colnames(train), "ENSG"))
+		genes = colnames(train)[z]
 
-		#genes = as.list(colnames(train)[2:(ncol(train)-34)])
-		genes = colnames(train)[2:(ncol(train)-34)]
-
-		#genes = genes[1:100]
-		tests_survivaltwo = llply(genes, surv_test, .progress="text")
-		print("p1")
-		tests_survivalthree = rbindlist(tests_survivaltwo)
-		#tests_survivalthree = ldply(tests_survivaltwo, rbind)
-		print("p2")
-		tests_survival3 = tests_survivalthree
-		if(!(dim(tests_survival3)[1] ==0)){
-		tests_survival3$pval = as.numeric(tests_survival3$pval)
-		tests_survival3$fdr = p.adjust(tests_survival3$pval, method="fdr")
-		tests_survival3 = subset(tests_survival3, pval <=0.05)
-		if(!(dim(tests_survival3)[1])==0){
-		length(unique(tests_survival3$gene))
-		sortme <- function(dt, sort.field) dt[order(-abs(dt[[sort.field]]))]
-		tests_survival3$HR = as.numeric(tests_survival3$HR)
-		tests_survival3 = as.data.table(tests_survival3)
-		sort.field = "HR"
-		tests_survival3 = sortme(tests_survival3, sort.field)
-
-		print("pass")
-
-		tests_survival3 = as.data.table(tests_survival3)
-		tests_survival3$coefficient = as.numeric(unlist(tests_survival3$coefficient))
-		tests_survival3 = tests_survival3[order(-abs(coefficient))]
-
-		z = table(train$OS)[2]
-		tests_survival3 = as.data.frame(tests_survival3)
-		if(z < dim(tests_survival3)[1]){
-		tests_survival3 = tests_survival3[1:z, ]
-		}
-
-		print("pass2")
-
-		z <- which(colnames(train) %in% tests_survival3$gene)
-		train = train[,c(z, 1, (ncol(train)-33):ncol(train))]
-
-		if(!(dim(tests_survival3)[1] <2)){
-			#-----------------------------------
-			#TRAINING using just lncRNAs 
-			#-----------------------------------
-			gene_data = as.data.frame(train[,1:(ncol(train)-35)])
-			genes = as.list(colnames(gene_data))
-			x <- model.matrix( ~., gene_data)
-			train$OS = as.numeric(train$OS)
-			y <- Surv(train$OS.time, train$OS)
-			cvfit = cv.glmnet(x, y, family = "cox", alpha =0.5) #uses cross validation to select
-			#the best lamda and then use lambda to see which features remain in model 
-			cvfit$lambda.min #left vertical line
-			cvfit$lambda.1se #right vertical line 
-			#active covariates and their coefficients 
-			coef.min = coef(cvfit, s = "lambda.min") 
-			active.min = which(coef.min != 0)
-			index.min = coef.min[active.min]
-			genes_keep = rownames(coef.min)[active.min]
-			print(genes_keep)
-			genes_results[j] = list(as.list(genes_keep))
-			trainlncs = train[,c(which(colnames(train) %in% c(genes_keep,"OS", "OS.time")))]
-			justlncs = coxph(Surv(OS.time, OS)  ~ ., data = trainlncs)
-			justlncs_cox_model = justlncs
-			
-			print("pass3")
-
-			#-----------------------------------
-			#TESTING using just lncRNAs 
-			#-----------------------------------
-			z = which(names(medians) %in% colnames(trainlncs))
-			if(!(length(z)==0)){
-			medians = medians[z]
-			testlncs = test[,c(1,which(colnames(test) %in% colnames(trainlncs)))]
-			rownames(testlncs) = testlncs$patient
-			testlncs$patient = NULL
-			#Add high/low tags to each gene 
-			for(k in 1:(ncol(testlncs)-2)){
-			    med = medians[which(names(medians) == colnames(testlncs)[k])]
+		#Add high/low tags to each gene 
+			z = which(str_detect(colnames(test), "ENSG"))
+			for(k in 1:length(z)){
+			    med = medians[which(names(medians) == colnames(test)[k])]
 			    if(med ==0){
 			    #if median = 0 then anyone greater than zero is 1 
-			    for(m in 1:nrow(testlncs)){
-			    genexp <- testlncs[m,k]
+			    for(m in 1:nrow(test)){
+			    genexp <- test[m,k]
 			    if(genexp > 0){
-			      testlncs[m,k] <- 1
+			      test[m,k] <- 1
 			      }
 			    if(genexp == 0 ){
-			      testlncs[m,k] <- 0
+			      test[m,k] <- 0
 			      }
 			    } 
 			    }
 			    if(!(med ==0)){
-			    for(m in 1:nrow(testlncs)){
-			    genexp <- testlncs[m,k]
+			    for(m in 1:nrow(test)){
+			    genexp <- test[m,k]
 			    if(genexp >= med){
-			      testlncs[m,k] <- 1
+			      test[m,k] <- 1
 			      }
 			    if(genexp < med){
-			      testlncs[m,k] <- 0
+			      test[m,k] <- 0
 			      }
 			    } 
 			    }
 			} #end loop assigning high/low to test set 
-			
-			print("pass4")
 
-			colss = colnames(testlncs)
-			colsskeep = which(str_detect(colss, "ENSG"))
-			testlncs$OS = as.numeric(testlncs$OS)    
-			pred_validation = predict(justlncs_cox_model, newdata = testlncs)
+
+		#--------------------------------------------------------------------------------------
+		#TRAINING using just lncRNAs 
+		#--------------------------------------------------------------------------------------
+
+		#train and test model on each lncRNA candidate  
+		train_test_lnc = function(lnc){
+			#TRAIN 
+			trainlncs = train[,c(which(colnames(train) %in% c(lnc,"OS", "OS.time")))]
+			print(lnc)
+			colnames(trainlncs)[1] = "lncRNA"
+			trainlncs$OS = as.numeric(trainlncs$OS)
+			trainlncs$OS.time = as.numeric(trainlncs$OS.time)
+			#model trained on 70% of the data for just one lncRNA 
+			justlncs = coxph(Surv(OS.time, OS)  ~ lncRNA, data = trainlncs)
+	
+			#TEST
+			testlncs = test[,c(which(colnames(test) %in% c(lnc,"OS", "OS.time")))]
+			colnames(testlncs)[1] = "lncRNA"
+			testlncs$OS = as.numeric(testlncs$OS)   
+			testlncs$OS.time = as.numeric(testlncs$OS.time)
+			pred_validation = predict(justlncs, newdata = testlncs)
 			# Determine concordance
 			cindex_validation = concordance.index(pred_validation, surv.time = testlncs$OS.time,
 			                                       surv.event=testlncs$OS, method = "noether")
 
 			cindex_validation = cindex_validation$c.index
-			cinds_justlncs = c(cinds_justlncs, cindex_validation)
+			row = c(lnc, train$Cancer[1],cindex_validation)
+			return(row)
+		} #end train_test_lnc function 
 
-			#-------------end lncRNAs as predictors-------------------------------------------
-			#-----------------------------------
-			#TRAINING using just clinical variables  
-			#-----------------------------------
-			clin_train = as.data.frame(train[,(ncol(train)-34):ncol(train)])
-			rownames(clin_train) = clin_train$patient
-			clin_train = clin_train[,c(4:6, 10)]
-			clin_train$age_at_initial_pathologic_diagnosis = as.numeric(clin_train$age_at_initial_pathologic_diagnosis)
-			test_clin = as.data.frame(test[,c(1,(ncol(test)-34):ncol(test))])
-			rownames(test_clin) = test_clin$patient
-			test_clin = test_clin[,which(colnames(test_clin) %in% colnames(clin_train))]
+		lnc_cindices = llply(genes, train_test_lnc, .progress="text")
+		lnc_cindices = do.call(rbind.data.frame, lnc_cindices)
+		lnc_cindices$type = "lncRNAonly"
+		colnames(lnc_cindices) = c("lncRNA", "Cancer", "C-index", "type")
 
-			#remove columns with less than 2 contrasts 
-			check_contrasts = function(col){
-				check = dim(table(col))
+		#--------------------------------------------------------------------------------------
+		#TRAINING using just clinical variables 
+		#--------------------------------------------------------------------------------------
+		#train set clinical 
+		z = which(str_detect(colnames(train), "ENSG"))
+		clin_train = train[,-z]
+		clin_train = clin_train[,which(colnames(clin_train) %in% c("age_at_initial_pathologic_diagnosis", "gender", "race", "clinical_stage", 
+			"histological_grade", "OS", "OS.time"))]
+		clin_train$age_at_initial_pathologic_diagnosis = as.numeric(clin_train$age_at_initial_pathologic_diagnosis)
+		#test set clinical 
+		test_clin = test[,which(colnames(test) %in% colnames(clin_train))]
+		test_clin$age_at_initial_pathologic_diagnosis = as.numeric(test_clin$age_at_initial_pathologic_diagnosis)
+
+		#remove columns with less than 2 contrasts 
+		check_contrasts = function(col){
+			check = dim(table(col))
 				if(check >1){
 					return("keep")
 				}
 			}
-			keep_train = unlist(apply(clin_train, 2, check_contrasts))
-			keep_test = unlist(apply(test_clin, 2, check_contrasts))
+		
+		keep_train = unlist(apply(clin_train, 2, check_contrasts))
+		keep_test = unlist(apply(test_clin, 2, check_contrasts))
 	
-			keep = keep_test[which(keep_train %in% keep_test)]
-			z = which(colnames(clin_train) %in% names(keep))
-			clin_train = clin_train[,z]
+		keep = keep_train[which(keep_train %in% keep_test)]
+		
+		z = which(names(keep) %in% "OS.time")
+		if(length(z)==0){
+			keep = c(keep, "OS.time")
+			names(keep)[length(keep)] = "OS.time"
+		}
+
+		z = which(colnames(clin_train) %in% names(keep))
+		clin_train = clin_train[,z]
+		z = which(colnames(test_clin) %in% names(keep))
+		test_clin = test_clin[,z]
 
 			#make sure the levels are the same 
-			for(l in 1:ncol(clin_train)){
+			for(l in 1:(ncol(clin_train)-2)){
 				if(!(colnames(clin_train)[l] == "age_at_initial_pathologic_diagnosis")){
 					clin_train[,l] = as.factor(clin_train[,l])
 				}
 			}
 
-			test_clin = test_clin[,which(colnames(test_clin) %in% colnames(clin_train))]
-			for(l in 1:ncol(test_clin)){
-				if(!(colnames(clin_train)[l] == "age_at_initial_pathologic_diagnosis")){
+			for(l in 1:(ncol(test_clin)-2)){
+				if(!(colnames(test_clin)[l] == "age_at_initial_pathologic_diagnosis")){
 					test_clin[,l] <- factor(test_clin[,l], levels=levels(clin_train[,which(colnames(clin_train) %in% colnames(clin_train)[l])]))
 				}
 			}
 
-			trainclin = train[,c(which(colnames(train) %in% c(colnames(clin_train),"OS", "OS.time")))]
-			trainclin$age_at_initial_pathologic_diagnosis = as.numeric(trainclin$age_at_initial_pathologic_diagnosis)
-			 #make sure there aren't any columns with just one value
-      		rm = which(sapply(trainclin, function(x) { length(unique(x)) }) == 1)
+			#make sure there aren't any columns with just one value
+      		rm = which(sapply(clin_train, function(x) { length(unique(x)) }) == 1)
       		if(!(length(rm))==0){
-        		trainclin = trainclin[,-rm]
+        		clin_train = clin_train[,-rm]
      		}
-			
-			justclin = coxph(Surv(OS.time, OS)  ~ ., data = trainclin)
-			test_surv = test[,c(which(colnames(test) %in% c("patient", "OS", "OS.time")))]
+			clin_train$OS = as.numeric(clin_train$OS)
+			clin_train$OS.time = as.numeric(clin_train$OS.time)
+
+			justclin = coxph(Surv(OS.time, OS)  ~ ., data = clin_train)
+			#test 
+			test_clin$OS = as.numeric(test_clin$OS)
+			test_clin$OS.time = as.numeric(test_clin$OS.time)
+			test_clin$age_at_initial_pathologic_diagnosis = as.numeric(test_clin$age_at_initial_pathologic_diagnosis)
+			pred_validation = predict(justclin, newdata = test_clin)
+			# Determine concordance
+			cindex_validation = concordance.index(pred_validation, surv.time = test_clin$OS.time,
+			                                       surv.event=test_clin$OS, method = "noether", na.rm=TRUE)
+			cindex_validation = cindex_validation$c.index
+			#which clinical variables were used
+			variables_used = colnames(test_clin)[1:(ncol(test_clin)-2)]
+			variables_used = paste(variables_used, collapse="--")
+			clinical_cindices = c(variables_used, train$Cancer[1], cindex_validation, "ClinicalVariables")
+			names(clinical_cindices) = c("clinVars", "Cancer", "C-index", "type")
+
+			clin_train$patient = rownames(clin_train)
 			test_clin$patient = rownames(test_clin)
-			testclin = merge(test_clin, test_surv, by="patient")
-			#testclin = test[,which(colnames(test) %in% colnames(trainclin))]
-			testclin$OS = as.numeric(testclin$OS)
-			testclin$OS.time = as.numeric(testclin$OS.time)
-			testclin$age_at_initial_pathologic_diagnosis = as.numeric(testclin$age_at_initial_pathologic_diagnosis)
-			pred_validation = predict(justclin, newdata = testclin)
+
+		#--------------------------------------------------------------------------------------
+		#TRAINING using lncRNAs and clinical variables 
+		#--------------------------------------------------------------------------------------
+
+		variables = colnames(clin_train)
+		train$patient = rownames(train)
+		test$patient = rownames(test)
+
+     	#train and test model on each lncRNA candidate  
+		train_test_lnc_plus_clin = function(lnc){
+			#TRAIN 
+			trainlncs = train[,c(which(colnames(train) %in% c(lnc, "patient")))]
+			trainlncs = merge(trainlncs, clin_train, by = "patient")
+			print(lnc)
+			print(colnames(trainlncs))
+			rownames(trainlncs) = trainlncs$patient
+			trainlncs$patient = NULL
+			colnames(trainlncs)[1] = "lncRNA"
+			trainlncs$OS = as.numeric(trainlncs$OS)
+			trainlncs$OS.time = as.numeric(trainlncs$OS.time)
+			trainlncs$age_at_initial_pathologic_diagnosis = as.numeric(trainlncs$age_at_initial_pathologic_diagnosis)
+			#model trained on 70% of the data for one lncRNA + clinical data 
+			lnc_clin = coxph(Surv(OS.time, OS)  ~., data = trainlncs)
+	
+			#TEST
+			testlncs = test[,c(which(colnames(test) %in% c(lnc, "patient")))]
+			testlncs = merge(testlncs, test_clin, by = "patient")
+			rownames(testlncs) = testlncs$patient
+			testlncs$patient = NULL
+			colnames(testlncs)[1] = "lncRNA"
+			testlncs$OS = as.numeric(testlncs$OS)   
+			testlncs$OS.time = as.numeric(testlncs$OS.time)
+			testlncs$age_at_initial_pathologic_diagnosis = as.numeric(testlncs$age_at_initial_pathologic_diagnosis)
+
+			pred_validation = predict(lnc_clin, newdata = testlncs)
+			z = which(is.na(pred_validation))
+			if(!length(z)==0){
+			pred_validation = pred_validation[-z]}
+			pats = names(pred_validation)
+			testlncs = testlncs[which(rownames(testlncs) %in% pats),]
+
 			# Determine concordance
 			cindex_validation = concordance.index(pred_validation, surv.time = testlncs$OS.time,
-			                                       surv.event=testlncs$OS, method = "noether", na.rm=TRUE)
+			                                       surv.event=testlncs$OS, method = "noether")
+
 			cindex_validation = cindex_validation$c.index
-			cinds_clin = c(cinds_clin, cindex_validation)
+			row = c(lnc, train$Cancer[1],cindex_validation)
+			return(row)
+		} #end train_test_lnc function 
 
-			#-------------end clinical variables as predictors------------------------------------
-			#-----------------------------------
-			#TRAINING using lncRNAs and clinical variables  
-			#-----------------------------------
+		lnc_clin_cindices = llply(genes, train_test_lnc_plus_clin, .progress="text")
+		lnc_clin_cindices = do.call(rbind.data.frame, lnc_clin_cindices)
+		lnc_clin_cindices$type = "lncRNA&clin"
+		colnames(lnc_clin_cindices) = c("lncRNA", "Cancer", "C-index", "type")
 
-			variables = unique(c(colnames(trainclin), colnames(trainlncs)))
-     		trainboth = train[,which(colnames(train) %in% variables)]
-      		trainboth$age_at_initial_pathologic_diagnosis = as.numeric(trainboth$age_at_initial_pathologic_diagnosis)
+		print(lnc_clin_cindices)
+		print(clinical_cindices)
+		print(lnc_cindices)
 
-	       #check if have any nas 
-	       trainboth$OS.time = as.numeric(trainboth$OS.time)
-   		   trainboth$OS = as.numeric(trainboth$OS)
+		all_round = (rbind(lnc_clin_cindices, clinical_cindices, lnc_cindices))
+		all_round$round = j 
+		all_runs_results = rbind(all_runs_results, all_round)
 
-           remove = c()
+	}#end loop j in 1:100
 
-           perc5 = 0.05*dim(trainboth)[1]
+	all_runs_results = all_runs_results[-1,]
+	return(all_runs_results)
 
-          for(b in 1:ncol(trainboth)){
-          if(!(colnames(trainboth)[b] %in% c("age_at_initial_pathologic_diagnosis", "OS", "OS.time"))){
-          dg = as.data.table(table(trainboth[,b]))
-          print(dg)
-          z = which(dg$N <perc5)
-          if(!(length(z)==0)){
-          var = dg$V1[z]
-          namevar = colnames(trainboth)[b]
-          remove = c(remove, namevar)
-       		 }
-        	}
-      		}
-
-      if(!(length(remove)==0)){
-      trainboth = trainboth[,-(which(colnames(trainboth) %in% remove))]
-      }
-      print("pass10")
+}#end function run_cv
 
 
-      both = try(coxph(Surv(OS.time, OS)  ~ ., data = trainboth), TRUE)
-      if(!(inherits(both,"try-error"))){
-      #testboth = test[,which(colnames(test) %in% colnames(trainboth))]
-      testlncs$patient = rownames(testlncs)
-      testboth = merge(testlncs, testclin, by=c("patient", "OS", "OS.time"))
-      testboth$OS = as.numeric(testboth$OS)
-      testboth$OS.time = as.numeric(testboth$OS.time)
-      testboth$age_at_initial_pathologic_diagnosis = as.numeric(testboth$age_at_initial_pathologic_diagnosis)
-      pred_validation = predict(both, newdata = testboth)
-      # Determine concordance
-      cindex_validation = concordance.index(pred_validation, surv.time = testboth$OS.time,
-                                            surv.event=testboth$OS, method = "noether", na.rm=TRUE)
-      cindex_validation = cindex_validation$c.index
-      cinds_combined = c(cinds_combined, cindex_validation)
-     }
-		}
-		}
-		}#dim(pvalues)[1] >2
-	}
+all_cancers_results = llply(setup_data, run_cv, .progress="text")
 
-	}#end 1:1000 loop
-
-	if(!(length(cinds_combined)==0)){
-
-	cinds_combined = as.data.frame(cinds_combined)
-	cinds_combined$canc = dat$Cancer[1]
-	colnames(cinds_combined)[1] = "cindex"
-	cinds_combined$type = "cinds_combined"
-
-	cinds_clin = as.data.frame(cinds_clin)
-	cinds_clin$canc = dat$Cancer[1]
-	colnames(cinds_clin)[1] = "cindex"
-	cinds_clin$type = "cinds_clin"
-	
-	cinds_justlncs = as.data.frame(cinds_justlncs)
-	cinds_justlncs$canc = dat$Cancer[1]
-	colnames(cinds_justlncs)[1] = "cindex"
-	cinds_justlncs$type = "cinds_justlncs"
-	
-	all_cinds = rbind(cinds_combined, cinds_clin, cinds_justlncs)
-	filename_cinds = paste(dat$Cancer[1], "cindices_1000CV_1000_no_fdr_ELASTICNET.rds", sep="_")
-	saveRDS(all_cinds, file=filename_cinds)
-
-	filename = paste(dat$Cancer[1], "lncRNAs_selected_1000CV_1000_no_fdr_ELASTICNET.rds", sep="_")
-	saveRDS(genes_results, file=filename)
-	}
-}
-
-#canc_datas_survival_results = llply(canc_datas, lasso_cv)
-
+saveRDS(all_cancers_results, file="lncRNAs_100_internal_CVs_individual_cands_june19.rds")
 
 
 
