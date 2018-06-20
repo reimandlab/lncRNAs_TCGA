@@ -50,6 +50,8 @@ fantom <- fantom[-z,]
 results = readRDS(file="lncRNAs_100_internal_CVs_individual_cands_june19.rds")
 results = do.call(rbind.data.frame, results)
 
+pdf("166_unique_lncRNAs_cindices.pdf", width=9, height=9)
+
 for(i in 1:length(unique(results$Cancer))){
 	canc_data = subset(results, results$Cancer %in% unique(results$Cancer)[i])
 
@@ -60,14 +62,17 @@ for(i in 1:length(unique(results$Cancer))){
 	canc_data$cindex = as.numeric(canc_data$cindex)
 	canc_data =  as.data.table(canc_data)
 	canc_data = filter(canc_data, type %in% c("ClinicalVariables", "lncRNAonly"))
-	g = ggboxplot(canc_data, x="lncRNA", y="cindex", color="type") + stat_compare_means() + 
+
+	z = which(str_detect(canc_data$lncRNA, "ENSG"))
+	canc_data$lncRNA[-z] = "Clinical"
+
+	g = ggboxplot(canc_data, x="lncRNA", y="cindex", color="type") + stat_compare_means(label = "p.signif", method = "wilcox.test", ref.group = "Clinical") + 
 	xlab("Predictor")+
-	theme_bw() + 
+	theme_bw() + ylim(c(0,1)) +
 	geom_hline(yintercept=0.5, linetype="dashed", color = "red")
-	ggpar(g, font.tickslab = c(8,"plain", "black"),
- 		xtickslab.rt = 45)
+	print(ggpar(g, font.tickslab = c(8,"plain", "black"),
+ 		xtickslab.rt = 45) + ggtitle(canc_data$Cancer[1]))
 	
-	dev.off()
-
-
 }
+
+dev.off()
