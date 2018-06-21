@@ -3,6 +3,7 @@
 source("universal_LASSO_survival_script.R")
 
 set.seed(911)
+library(forcats)
 
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ")
 
@@ -50,7 +51,7 @@ fantom <- fantom[-z,]
 results = readRDS(file="lncRNAs_100_internal_CVs_individual_cands_june19.rds")
 results = do.call(rbind.data.frame, results)
 
-pdf("166_unique_lncRNAs_cindices.pdf", width=9, height=9)
+pdf("166_unique_lncRNAs_cindices.pdf", width=10, height=6)
 
 for(i in 1:length(unique(results$Cancer))){
 	canc_data = subset(results, results$Cancer %in% unique(results$Cancer)[i])
@@ -66,13 +67,61 @@ for(i in 1:length(unique(results$Cancer))){
 	z = which(str_detect(canc_data$lncRNA, "ENSG"))
 	canc_data$lncRNA[-z] = "Clinical"
 
-	g = ggboxplot(canc_data, x="lncRNA", y="cindex", color="type") + stat_compare_means(label = "p.signif", method = "wilcox.test", ref.group = "Clinical") + 
-	xlab("Predictor")+
-	theme_bw() + ylim(c(0,1)) +
-	geom_hline(yintercept=0.5, linetype="dashed", color = "red")
+	z = which(is.na(canc_data$cindex))
+	if(!(length(z)==0)){
+	canc_data = canc_data[-z,]}
+
+	#change ENSG to gene names 
+	for(k in 1:length(unique(canc_data$lncRNA))){
+		z = which(fantom$CAT_geneID %in% as.character(unique(canc_data$lncRNA)[k]))
+		if(!(length(z)==0)){
+			newlnc = fantom$CAT_geneName[z]
+			z = which(canc_data$lncRNA == unique(canc_data$lncRNA)[k])
+			canc_data$lncRNA[z] = newlnc
+		}
+	}
+
+	#keep clinical on the leftmost side and order the lncRNA from lowest to highest median c-index
+	z = which(str_detect(canc_data$lncRNA, "Clinical"))
+	meds = as.data.table(aggregate(canc_data$cindex[-z], by=list(canc_data$lncRNA[-z]), FUN=median))
+	colnames(meds) = c("lncRNA", "Median")
+	meds = meds[order(Median)]
+	order = c("Clinical", meds$lncRNA)
+	canc_data$lncRNA <- factor(canc_data$lncRNA, levels =order)
+
+	#add labels = median increase in c-index 
+	clinc_median = median(canc_data$cindex[canc_data$lncRNA %in%"Clinical"])
+	#lncRNAs meds
+	meds$diff = round((meds$Median - clinc_median), digits=2)
+	row = c("Clinical", clinc_median, round(clinc_median, digits=2))
+	names(row) = c("lncRNA", "Median", "diff")
+	row = t(as.data.frame(row))
+	#meds = as.data.frame(meds)
+	meds = rbind(row, meds)
+	meds$Median = as.numeric(meds$Median)
+
+	canc_data = merge(canc_data, meds, by="lncRNA")
+	#meds = unique(canc_data$diff)
+
+	g = ggboxplot(canc_data, x="lncRNA", y="cindex", color="black", fill="type", palette=c("lavenderblush", "aliceblue")) + stat_compare_means(label = "p.signif", method = "wilcox.test", ref.group = "Clinical") + 
+	geom_label(data=meds, aes(x=lncRNA ,y = Median, label=diff), col='tomato', size=2)+
+	xlab("Predictor")+ theme_bw() + ylim(c(0,1)) + 
+	geom_hline(yintercept=0.5, linetype="dashed", color = "red") + 
+	scale_y_continuous(breaks = round(seq(min(c(0,1)), max(c(0, 1)), by = 0.1),1))
+	
 	print(ggpar(g, font.tickslab = c(8,"plain", "black"),
  		xtickslab.rt = 45) + ggtitle(canc_data$Cancer[1]))
 	
 }
 
 dev.off()
+
+
+
+
+
+
+
+
+
+
