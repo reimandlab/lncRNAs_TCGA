@@ -101,8 +101,9 @@ allCands$biological_match[z] = "PredictedOG"
 
 z = which((allCands$HR <1) & (allCands$reg == "Downregulated_Cancer"))
 allCands$biological_match[z] = "PredictedTS"
+saveRDS(allCands, file="lncRNA_cands_with_GTEx_results_June22.rds")
 
-lncs = as.list(as.character(allCands$lnc))
+lncs = as.list(as.character(unique(allCands$lnc)))
 
 compare_exp_boxplots = function(lnc){
 

@@ -15,13 +15,16 @@ library(viridis)
 library(patchwork)
 library(caret)  
 library(Rtsne)
+library(EnvStats)
 
 #------FEATURES-----------------------------------------------------
 
 cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
 
 #new cands - final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds
-final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds
+
+#---new cands file 
+#final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds
 
 #cands = filter(cands, data == "PCAWG", pval <=0.05)
 cands = filter(cands, AnalysisType == "noFDR")
@@ -165,7 +168,9 @@ get_clin_lnc_cors = function(dtt){
     if(hr <1){new_dat$risk = "LowExp"}
     
     #each clinical variable
+    canc_col_results = as.data.frame(matrix(ncol=6)) ; colnames(canc_col_results)=c("canc", "lnc", "colname", "cor", "pval", "test")
     for(i in 1:ncol(new_dat)){
+      print(i)    
       col = colnames(new_dat)[i]
       print(col)
       if(!(col %in% c("patient", "patient_id", "bcr_patient_uuid", "tissue_source_site", 
@@ -174,13 +179,23 @@ get_clin_lnc_cors = function(dtt){
 
         new_dat_plot = new_dat[,c("patient", col, lnc, "lncRNA_tag", "risk")]
         test = as.numeric(new_dat_plot[,2])  
-          
+        
+        if(str_detect(col, "year")){
+          test[1] = 5
+        }
+
         if(!(is.na(test[1]))){
           new_dat_plot[,2] = as.numeric(new_dat_plot[,2])
           colnames(new_dat_plot)[2] = "Clinical"
           new_dat_plot[,3] = log1p(new_dat_plot[,3])
           colnames(new_dat_plot)[3] = "lncRNA_exp"
 
+          #get correlation results and save results into file
+          cor = rcorr(new_dat_plot$lncRNA_exp, new_dat_plot$Clinical, "spearman")$r[2]
+          pval_cor = rcorr(new_dat_plot$lncRNA_exp, new_dat_plot$Clinical, "spearman")$P[2]
+          row = c(canc, lnc, col, cor, pval_cor, "spearman")
+          names(row) = colnames(canc_col_results)
+          canc_col_results = rbind(canc_col_results, row)
           #scatter plot 
           sp <- ggscatter(new_dat_plot, x = "Clinical", y = "lncRNA_exp",
           add = "reg.line",  # Add regressin line
@@ -197,10 +212,29 @@ get_clin_lnc_cors = function(dtt){
         #boxplot
         colnames(new_dat_plot)[2] = "Clinical"
         new_dat_plot[,3] = log1p(new_dat_plot[,3])
+        med = median(new_dat_plot[,3])
         colnames(new_dat_plot)[3] = "lncRNA_exp"
         #palette
         colourCount = length(unique(new_dat_plot$Clinical))
         getPalette = colorRampPalette(brewer.pal(9, "Set1"))
+
+        check = dim(table(new_dat_plot$Clinical))
+        if(check >1){
+
+        m1 = lm(new_dat_plot$lncRNA_exp ~1)
+        m2 = lm(new_dat_plot$lncRNA_exp ~ new_dat_plot$Clinical)
+        anova = anova(m2, m1)
+        anova = anova[2,6]
+
+        row = c(canc, lnc, col, "nocor", anova, "Ftest")
+        names(row) = colnames(canc_col_results)
+        canc_col_results = rbind(canc_col_results, row)
+
+        new_dat_plot$lncRNA_exp = as.numeric(new_dat_plot$lncRNA_exp)
+        z = which(new_dat_plot$Clinical %in% c("[Unknown]", "[Not Available]"))
+        if(!(length(z)==0)){
+          new_dat_plot = new_dat_plot[-z,]
+        }
 
         p <- ggboxplot(new_dat_plot, x = "Clinical", y = "lncRNA_exp",
           color = "Clinical",
@@ -213,24 +247,59 @@ get_clin_lnc_cors = function(dtt){
           font.tickslab = c(10,"plain", "black"),
           xtickslab.rt = 45, legend="none")
         print(p)
+          
+          } #check >1 
         }
       }
-    }
+    } #for i in 1:ncol(new_dat)
+    canc_col_results = canc_col_results[-1,]
+    return(canc_col_results)
 
   } #end get_cor
+
   pdf(paste(canc, "clinical_plots.pdf", sep="_"), width=10)
   all_canc_lncs_results = llply(lncs, get_cor)
+  all_canc_lncs_results = do.call(rbind.data.frame, all_canc_lncs_results)
   dev.off()
+  return(all_canc_lncs_results)
 
 } #end get_clin_lnc_cors
 
 
 clin_data_lncs_cors = llply(clin_data_lncs, get_clin_lnc_cors)
 
+#--------FDR & Summarize Results-------------------------------------
 
+fdr_sum = function(dtt){
 
+  #first add fdr for p-values
+  dtt$fdr = p.adjust(dtt$pval, method="fdr")
+  dtt = as.data.table(dtt)
+  dtt = filter(dtt, fdr < 0.05)
 
+  #remove OS.time, OS, lncRNA tag... 
+  z = which(dtt$colname %in% c("OS", "OS.time", "lncRNA_tag", "vital_status"))
+  if(!(length(z)==0)){
+    dtt = dtt[-z,]
+  }
 
+ #remove if it's just the same lncRNA correalted with itself 
+ z = which(dtt$lnc == dtt$colname)
+ if(!(length(z)==0)){
+ dtt = dtt[-z,]}
+ dtt = as.data.table(dtt)
+ dtt = dtt[order(fdr)]
+ print(unique(dtt$colname))
+ return(dtt)
+
+}#end fdr_sum
+
+clean_up = llply(clin_data_lncs_cors, fdr_sum)
+clean_up = ldply(clean_up, data.table)
+clean_up = as.data.table(clean_up)
+clean_up = clean_up[order(fdr)]
+
+saveRDS(clean_up, file="correlation_results_clinical_lncRNA_exp_June22.rds")
 
 
 

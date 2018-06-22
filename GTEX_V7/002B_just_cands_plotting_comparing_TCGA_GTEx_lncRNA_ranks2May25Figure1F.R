@@ -77,6 +77,7 @@ new_results = new_results[-1,]
 #panel of violin plots for each cancer-tissue show distribution of significantly differnt ranked 
 
 new_results$median_difference = as.numeric(new_results$median_difference)
+all_results_pre_filtering = new_results
 new_results = subset(new_results, fdrtag == "FDRsig")
 
 #try only median rank difference 25%
@@ -101,7 +102,31 @@ ggpar(g,
 dev.off()
 
 ###how many lncRNAs in each cancer expressed more in cancers compared to normal 
-new_results = filter(new_results, abs(median_difference) >= 0.25 )
+new_results = filter(new_results, abs(median_difference) >= 0.15 )
+
+#how many of these are candidate lncRNAs? 
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+#save only the ones that came from the noFDR appraoch 
+allCands = filter(allCands, AnalysisType == "noFDR", data=="TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
+#23 unique cancer types 
+
+#which cancer types are the non-unique lncRNAs from?
+allCands$Combo = NULL
+allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "CAT_geneName")]
+allCands = allCands[!duplicated(allCands), ]
+cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
+
+
+#how many candidates were actually evaluated?
+z = which((all_results_pre_filtering$gene %in% allCands$gene) & (all_results_pre_filtering$canc %in% allCands$cancer))
+genes = unique(all_results_pre_filtering$gene[z])
+
+#how many candidates are significantly different with median change >= 0.15?
+z = which((new_results$gene %in% allCands$gene) & (new_results$canc %in% allCands$cancer))
+genes = unique(new_results$gene[z])
+new_results = new_results[z,]
+
+#how many up/down in cancers
 
 all_cancers = as.data.table(table(new_results$canc))
 all_cancers = all_cancers[order(N)]

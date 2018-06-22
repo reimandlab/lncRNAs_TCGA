@@ -48,6 +48,8 @@ res$type = as.factor(res$type)
 order = c("cinds_justlncs", "cinds_clin", "cinds_combined")
 res$type = factor(res$type, levels = order)
 
+saveRDS(res, file="noFDR_all_cindices_june22.rds")
+
 
 mypal = wes_palette("FantasticFox")
 
