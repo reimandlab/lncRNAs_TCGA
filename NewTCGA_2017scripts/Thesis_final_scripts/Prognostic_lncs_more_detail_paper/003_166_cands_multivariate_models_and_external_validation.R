@@ -32,6 +32,7 @@ all_cands = cands
 #whatever data is available for PCAWG
 #make them KM plots as well 
 #just get list of genes that are significant in both data sets
+#also check Cox PH assumptions within each data-set
 
 #--------------------------------------------------------------------
 
@@ -88,7 +89,8 @@ add_tags = function(dtt){
 filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
 
 get_survival_models = function(dtt){
-  results_cox1 <- as.data.frame(matrix(ncol=7)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer")
+  results_cox1 <- as.data.frame(matrix(ncol=8)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
+    "lnc_test_ph")
 
   dat = dtt
   dat$Cancer = NULL
@@ -117,7 +119,10 @@ get_survival_models = function(dtt){
   newdat = dat[,c(gene,k)]
   
   lncs = coxph(Surv(OS.time, OS)  ~ ., data = newdat)
-  row <- c(colnames(newdat)[1], summary(lncs)$coefficients[1,c(1,2,5)],  summary(lncs)$conf.int[1,c(3,4)], dtt$Cancer[1])
+  test.ph <- cox.zph(lncs)
+  lnc_test_ph = test.ph$table[1,3]
+  
+  row <- c(colnames(newdat)[1], summary(lncs)$coefficients[1,c(1,2,5)],  summary(lncs)$conf.int[1,c(3,4)], dtt$Cancer[1], lnc_test_ph)
     
   names(row) <- names(results_cox1) 
   results_cox1 = rbind(results_cox1, row)
