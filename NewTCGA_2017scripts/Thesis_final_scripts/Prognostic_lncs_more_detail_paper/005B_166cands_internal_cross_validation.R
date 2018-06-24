@@ -53,6 +53,12 @@ results = do.call(rbind.data.frame, results)
 
 pdf("166_unique_lncRNAs_cindices.pdf", width=10, height=6)
 
+results_lncs = as.data.frame(matrix(ncol=2))
+colnames(results_lncs) = c("Cancer", "NumHigherthan5percent")
+
+all_meds = as.data.frame(matrix(ncol=4))
+colnames(all_meds) = c("lncRNA", "Median", "diff", "Cancer")
+
 for(i in 1:length(unique(results$Cancer))){
 	canc_data = subset(results, results$Cancer %in% unique(results$Cancer)[i])
 
@@ -72,14 +78,14 @@ for(i in 1:length(unique(results$Cancer))){
 	canc_data = canc_data[-z,]}
 
 	#change ENSG to gene names 
-	for(k in 1:length(unique(canc_data$lncRNA))){
-		z = which(fantom$CAT_geneID %in% as.character(unique(canc_data$lncRNA)[k]))
-		if(!(length(z)==0)){
-			newlnc = fantom$CAT_geneName[z]
-			z = which(canc_data$lncRNA == unique(canc_data$lncRNA)[k])
-			canc_data$lncRNA[z] = newlnc
-		}
-	}
+	#for(k in 1:length(unique(canc_data$lncRNA))){
+	#	z = which(fantom$CAT_geneID %in% as.character(unique(canc_data$lncRNA)[k]))
+	#	if(!(length(z)==0)){
+	#		newlnc = fantom$CAT_geneName[z]
+	#		z = which(canc_data$lncRNA == unique(canc_data$lncRNA)[k])
+	#		canc_data$lncRNA[z] = newlnc
+	#	}
+	#}
 
 	#keep clinical on the leftmost side and order the lncRNA from lowest to highest median c-index
 	z = which(str_detect(canc_data$lncRNA, "Clinical"))
@@ -92,7 +98,7 @@ for(i in 1:length(unique(results$Cancer))){
 	#add labels = median increase in c-index 
 	clinc_median = median(canc_data$cindex[canc_data$lncRNA %in%"Clinical"])
 	#lncRNAs meds
-	meds$diff = round((meds$Median - clinc_median), digits=2)
+	meds$diff = round(((meds$Median/clinc_median)-1)*100, digits=2)
 	row = c("Clinical", clinc_median, round(clinc_median, digits=2))
 	names(row) = c("lncRNA", "Median", "diff")
 	row = t(as.data.frame(row))
@@ -102,7 +108,6 @@ for(i in 1:length(unique(results$Cancer))){
 
 	canc_data = merge(canc_data, meds, by="lncRNA")
 	#meds = unique(canc_data$diff)
-
 	g = ggboxplot(canc_data, x="lncRNA", y="cindex", color="black", fill="type", palette=c("lavenderblush", "aliceblue")) + stat_compare_means(label = "p.signif", method = "wilcox.test", ref.group = "Clinical") + 
 	geom_label(data=meds, aes(x=lncRNA ,y = Median, label=diff), col='tomato', size=2)+
 	xlab("Predictor")+ theme_bw() + ylim(c(0,1)) + 
@@ -112,15 +117,46 @@ for(i in 1:length(unique(results$Cancer))){
 	print(ggpar(g, font.tickslab = c(8,"plain", "black"),
  		xtickslab.rt = 45) + ggtitle(canc_data$Cancer[1]))
 	
+	#SUMMARIZE how many lncRNAs better than clinical 
+	#how many lncRNAs with percent increase of c-index greater than 5%?
+	canc_data = as.data.table(canc_data)
+	canc_data$diff = as.numeric(canc_data$diff) 
+	higher = filter(canc_data, diff >= 5)
+
+	meds = filter(meds, !(lncRNA %in% "Clinical"))
+	meds$Cancer = canc_data$Cancer[1]
+	all_meds = rbind(all_meds, meds)
+
+	#num 5% higher 
+	row = c(canc_data$Cancer[1], length(unique(higher$lncRNA)))
+	names(row) = colnames(results_lncs)
+	results_lncs = rbind(results_lncs, row)
 }
 
 dev.off()
 
+#summary
+results_lncs = results_lncs[-1,]
+results_lncs = as.data.table(results_lncs)
+results_lncs = filter(results_lncs, NumHigherthan5percent > 0 )
+results_lncs = as.data.table(results_lncs)
+results_lncs$NumHigherthan5percent = as.numeric(results_lncs$NumHigherthan5percent)
+results_lncs = results_lncs[order(NumHigherthan5percent)]
 
+#how many of the lncRNAs with greater c-index also remain significant when fitting multivariate models
+multi = readRDS("TCGA_results_multivariate_results_June22.rds")
+multi = as.data.table(multi)
+multi = filter(multi, fdr_pval <0.05)
 
+head(all_meds)
+all_meds = all_meds[-1,]
+all_meds = as.data.table(all_meds)
+all_meds$diff = as.numeric(all_meds$diff)
+all_meds = filter(all_meds, diff >=5)
 
-
-
+#how many of these significant in multivaraite models
+all_meds = as.data.table(all_meds)
+all_meds = filter(all_meds, lncRNA %in% multi$gene)
 
 
 
