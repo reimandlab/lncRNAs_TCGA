@@ -130,7 +130,6 @@ saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_June21.rds")
 #y-axis it each lncRNAs expression 
 #x-axis is continous if variable is continous such as age...
 
-
 get_clin_lnc_cors = function(dtt){
   canc = dtt$Cancer[1]
   
@@ -231,7 +230,7 @@ get_clin_lnc_cors = function(dtt){
         canc_col_results = rbind(canc_col_results, row)
 
         new_dat_plot$lncRNA_exp = as.numeric(new_dat_plot$lncRNA_exp)
-        z = which(new_dat_plot$Clinical %in% c("[Unknown]", "[Not Available]"))
+        z = which(new_dat_plot$Clinical %in% c("[Unknown]", "[Not Available]", "[Not Evaluated]"))
         if(!(length(z)==0)){
           new_dat_plot = new_dat_plot[-z,]
         }

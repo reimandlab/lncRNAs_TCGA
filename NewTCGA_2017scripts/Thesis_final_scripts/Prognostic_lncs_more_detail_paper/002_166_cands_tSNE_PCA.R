@@ -28,6 +28,61 @@ cands$Cancer = NULL
 all_cands = cands
 
 #-------------------------------------------------------------------
+#-----------------PCA using just all expressed lncRNA --------------
+#-------------------------------------------------------------------
+
+dim(rna)
+rownames(rna) = rna$patient
+z1 = which(str_detect(colnames(rna), "ENSG"))
+z2 = which(colnames(rna) %in% "type")
+rna = rna[,c(z1, z2)]
+
+#1. remove those not expressed at all
+z1 = which(str_detect(colnames(rna), "ENSG"))
+sums = apply(rna[,z1], 2, sum)
+z = which(sums ==0)
+if(!(length(z)==0)){
+rm = names(sums)[z]}
+
+#2. remove those with MAD < 0? 
+#1. remove those not expressed at all
+z1 = which(str_detect(colnames(rna), "ENSG"))
+sums = apply(rna[,z1], 2, mad)
+z = which(sums <= 0)
+rna = rna[,-z]
+
+#2. cluster cancer types, ie -> each dot should be cancer type 
+library("FactoMineR")
+z1 = which(str_detect(colnames(rna), "ENSG"))
+logged_rna = rna
+logged_rna[,z1] = log1p(logged_rna[,z1])
+
+#logged - DONE! 
+#pdf("logged_nonMAD0lncRNAs_cands_PCA_plots_June25.pdf", width=12)
+#autoplot(prcomp(logged_rna[,z1]), data = logged_rna, colour = 'type')
+#dev.off()
+
+#not logged & scaled 
+pdf("scaled_nonMAD0lncRNAs_cands_PCA_plots_June25.pdf", width=12)
+z1 = which(str_detect(colnames(rna), "ENSG"))
+autoplot(prcomp(rna[,z1], scale. = TRUE), data = rna, colour = 'type')
+dev.off()
+
+
+
+
+
+#res.pca <- PCA(rna[,z1], graph = FALSE)
+#fviz_pca_ind(res.pca,
+#             geom.ind = "point", # show points only (nbut not "text")
+#             col.ind = rna$type, # color by groups
+             #palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             #addEllipses = TRUE, # Concentration ellipses
+#             legend.title = "Groups"
+#             ) + scale_shape_manual(values=seq(0,32)) + theme_bw()
+#dev.off()
+
+#-------------------------------------------------------------------
 #-----------------PCA using just 166 lncRNA candidates--------------
 #-------------------------------------------------------------------
 
@@ -52,7 +107,6 @@ rna$Cancer = NULL
 rna.pca <- PCA(rna[,-ncol(rna)], graph = FALSE)
 
 pdf("166_cands_PCA_plots_June15.pdf", width=12)
-
 
 fviz_pca_ind(rna.pca,
              geom.ind = "point", # show points only (nbut not "text")

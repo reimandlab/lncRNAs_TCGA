@@ -15,6 +15,16 @@ require(caTools)
 #the ones chosen by LASSO at the end 
 ###---------------------------------------------------------------
 
+#------FEATURES-----------------------------------------------------
+
+cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+#cands = filter(cands, data == "PCAWG", pval <=0.05)
+cands = filter(cands, AnalysisType == "noFDR")
+#colnames(cands)[7] = "canc"
+cands$Cancer = NULL
+all_cands = cands
+
+
 #check if this person is in my analysis: TCGA-61-2095
 library(glmnet)
 library(survcomp)
@@ -68,6 +78,7 @@ get_medians = function(dtt){
 		newdat = dtt[,which(colnames(dtt) %in% lnc)]
 		
 		madd = mad(newdat)
+		med = round(median(newdat), digits=3)
 		#l = (length(which(newdat >=80)))/nrow(dtt)
 		if(madd > 0){
 			stat = "detectable"
@@ -75,7 +86,8 @@ get_medians = function(dtt){
 		if(madd <= 0){
 			stat = "NOTdetectable"
 		}
-		return(stat)
+		nonzero = round(length(which(newdat > 0))/length(newdat), digits=3)
+		return(paste(stat, med, nonzero, sep="_"))
 	}
 
 	summary_dat = as.data.frame(matrix(ncol = 3, nrow=length(lncs))) ; colnames(summary_dat) = c("cancer", "lncRNA", "status")
@@ -95,6 +107,38 @@ get_medians = function(dtt){
 
 meds_cancers = llply(canc_datas, get_medians, .progress="text")
 meds_cancers1 = ldply(meds_cancers, data.frame)
+
+#-------------------------------------------------------------------
+###check that candidates all have MAD > 0 within their cancer types? 
+#-------------------------------------------------------------------
+all_cands = cands
+all_cands = all_cands[,c(1:13)]
+all_cands = all_cands[!duplicated(all_cands), ]
+all_cands = as.data.table(all_cands)
+all_cands = filter(all_cands, data=="TCGA")
+all_cands = all_cands[!duplicated(all_cands), ]
+all_cands$gene = as.character(all_cands$gene)
+
+check_cands_mad = function(row){
+	lnc = row[[1]]
+	canc = row[[7]]
+	z = which((meds_cancers1$lncRNA == lnc) & (meds_cancers1$cancer == canc))
+	stat = meds_cancers1$status[z]
+	return(as.list(c(lnc, canc, stat)))
+}
+
+det_stat_cand = (apply(all_cands, 1, check_cands_mad))
+det_stat_cand = do.call(rbind.data.frame, det_stat_cand)
+colnames(det_stat_cand) = c("lncRNA", "Cancer", "Status")
+pcawg_cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+pcawg_cands = pcawg_cands[pcawg_cands$data=="PCAWG",]
+pcawg_cands = pcawg_cands[pcawg_cands$pval <= 0.05]
+det_stat_cand[which(det_stat_cand$lncRNA %in% pcawg_cands$gene),] #using MAD of 0, only 1 lncRNA detected 
+
+#how many of 175 combos have percent of people with non-zero expression greater than 5
+det_stat_cand[which(det_stat_cand$lncRNA %in% all_cands$gene),]
+
+
 
 #justcancerand num patients
 pats = meds_cancers1[,c(1, 4)]

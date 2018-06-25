@@ -89,8 +89,8 @@ add_tags = function(dtt){
 filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
 
 get_survival_models = function(dtt){
-  results_cox1 <- as.data.frame(matrix(ncol=8)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
-    "lnc_test_ph")
+  results_cox1 <- as.data.frame(matrix(ncol=9)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
+    "lnc_test_ph", 'global_test_ph')
 
   dat = dtt
   dat$Cancer = NULL
@@ -121,8 +121,9 @@ get_survival_models = function(dtt){
   lncs = coxph(Surv(OS.time, OS)  ~ ., data = newdat)
   test.ph <- cox.zph(lncs)
   lnc_test_ph = test.ph$table[1,3]
-  
-  row <- c(colnames(newdat)[1], summary(lncs)$coefficients[1,c(1,2,5)],  summary(lncs)$conf.int[1,c(3,4)], dtt$Cancer[1], lnc_test_ph)
+  global = test.ph$table[nrow(test.ph$table),3]
+
+  row <- c(colnames(newdat)[1], summary(lncs)$coefficients[1,c(1,2,5)],  summary(lncs)$conf.int[1,c(3,4)], dtt$Cancer[1], lnc_test_ph, global)
     
   names(row) <- names(results_cox1) 
   results_cox1 = rbind(results_cox1, row)
@@ -153,7 +154,7 @@ get_survival_models = function(dtt){
           break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
           palette = mypal[c(4,1)],
-          ggtheme = theme_minimal(), # customize plot and risk table with a theme.
+          ggtheme = theme_bw(), # customize plot and risk table with a theme.
           risk.table.y.text.col = T, # colour risk table text annotations.
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
@@ -170,13 +171,20 @@ get_survival_models = function(dtt){
    p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
           color = "gene",
          palette = mypal[c(4,1)], title = paste(gene, "Expression", dtt$Cancer[1] , sep=" "), 
-          add = "jitter", ylab = "FPKM",  ggtheme = theme_minimal())
+          add = "jitter", ylab = "FPKM",  ggtheme = theme_bw())
         # Change method
   p = p + stat_compare_means(method = "wilcox.test")
   print(p)
+
+  #print(ggcoxzph(test.ph))
+
 }
 
 results_cox1 = results_cox1[-1,]
+#fdr on p-values 
+results_cox1$pval = as.numeric(results_cox1$pval)
+results_cox1$fdr_pval = p.adjust(results_cox1$pval, method="fdr")
+
 return(results_cox1)
 
 }
@@ -187,10 +195,20 @@ dev.off()
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
-tcga_results1$pval = as.numeric(tcga_results1$pval)
-tcga_results1$fdr_pval = p.adjust(tcga_results1$pval, method="fdr")
+tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
+tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
+tcga_results1$fdr_pval = as.numeric(tcga_results1$fdr_pval)
+tcga_results1 = as.data.table(tcga_results1)
+tcga_results1 = tcga_results1[order(fdr_pval)]
 
 saveRDS(tcga_results1, file="TCGA_results_multivariate_results_June22.rds")
+
+#check which models violate the PH assumption
+#to those models add age * survival time interaction 
+which(tcga_results1$global_test_ph <= 0.05)
+
+
+
 
 #tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
 
