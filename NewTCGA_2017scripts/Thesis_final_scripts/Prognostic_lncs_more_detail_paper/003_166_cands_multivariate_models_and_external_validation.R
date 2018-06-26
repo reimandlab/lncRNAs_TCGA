@@ -168,6 +168,7 @@ get_survival_models = function(dtt){
    newdat$patient = rownames(newdat)
    exp_data = merge(exp_data, newdat, by="patient")
    colnames(exp_data)[2] = "geneexp"
+   exp_data$geneexp = log1p(exp_data$geneexp)
    p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
           color = "gene",
          palette = mypal[c(4,1)], title = paste(gene, "Expression", dtt$Cancer[1] , sep=" "), 
@@ -338,7 +339,7 @@ get_survival_models = function(dtt){
           break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
           palette = mypal[c(4,1)],
-          ggtheme = theme_minimal(), # customize plot and risk table with a theme.
+          ggtheme = theme_bw(), # customize plot and risk table with a theme.
           risk.table.y.text.col = T, # colour risk table text annotations.
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
@@ -352,10 +353,11 @@ get_survival_models = function(dtt){
       newdat$patient = rownames(newdat)
       exp_data = merge(exp_data, newdat, by="patient")
       colnames(exp_data)[2] = "geneexp"
+      exp_data$geneexp = log1p(exp_data$geneexp)
       p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
           color = "gene",
          palette = mypal[c(4,1)], title = paste(gene, "Expression", dtt$canc[1] , sep=" "), 
-          add = "jitter", ylab = "FPKM",  ggtheme = theme_minimal())
+          add = "jitter", ylab = "FPKM",  ggtheme = theme_bw())
         # Change method
        p = p + stat_compare_means(method = "wilcox.test")
        print(p)
@@ -379,6 +381,8 @@ tcga_results1$data = "TCGA"
 pcawg_results1$data = "PCAWG"
 
 #all-results
+tcga_results1$lnc_test_ph =NULL
+tcga_results1$global_test_ph = NULL
 all_results = as.data.table(rbind(tcga_results1, pcawg_results1))
 all_results = all_results[order(gene, cancer)]
 
@@ -406,9 +410,9 @@ saveRDS(all_results, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNe
 
 #-----check which actually match---------------------------------------------------------------------------
 
-
+all_results = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 all_results = all_results[!duplicated(all_results), ]
-all_results = filter(all_results, pval <= 0.25)
+all_results = filter(all_results, pval <= 0.05)
 
 lncs = as.list(as.character(unique(all_results$gene[all_results$data == "PCAWG"])))
 
@@ -442,16 +446,28 @@ matches = do.call(rbind.data.frame, matches)
 matches = as.data.table(matches)
 colnames(matches) = c("lnc", "match", "cancer")
 matches = filter(matches, match == "match")
+colnames(matches)[1] = "gene"
+matches = merge(matches, all_results, by=c("gene", "cancer"))
 
-all_results = as.data.table(all_results)
-all_results = filter(all_results, gene %in% matches$lnc, cancer %in% matches$cancer) #######----only PCAWG singificant 
+ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
+#z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
+#ucsc <- ucsc[z,]
+z <- which(duplicated(ucsc[,6]))
+ucsc <- ucsc[-z,]
+colnames(ucsc)[6] = "gene"
+ matches = merge(matches, ucsc, by=c("gene"))
 
+#remove weird KIRC one 
+z = which(matches$gene == "ENSG00000250360")
+matches = matches[-z,]
 
-
-
-
-
-
+write.table(matches, file="6_unique_lncNRAs_validate_PCAWG.txt", quote=F, row.names=F)
+matches = as.data.frame(matches)
+matches = matches[,1:13]
+pdf("6_unique_lncNRAs_validate_PCAWG.pdf", width=24)
+p<-tableGrob(matches)
+grid.arrange(p)
+dev.off()
 
 
 

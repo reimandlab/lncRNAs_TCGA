@@ -161,12 +161,54 @@ get_canc_data = function(dtt){
 
 filtered_data = llply(cancer_data, get_canc_data)
 
+add_tags = function(dtt){
+
+  #log1p 
+  z = which(str_detect(colnames(dtt), "ENSG"))
+  if(length(z)>1){
+  medians = apply(dtt[,z], 2, median)}
+  if(length(z)==1){
+    medians = median(dtt[,z])
+  }
+
+  rownames(dtt) = dtt$patient
+  dtt$patient = NULL
+
+  #add high low tag
+  for(k in 1:length(medians)){
+    med = medians[k]
+    if(med ==0){
+    #if median = 0 then anyone greater than zero is 1 
+    l1 = which(dtt[,k] > 0)
+    l2 = which(dtt[,k] ==0)
+    dtt[l1,k] = 1
+    dtt[l2, k] = 0
+    }
+
+    if(!(med ==0)){
+    l1 = which(dtt[,k] >= med)
+    l2 = which(dtt[,k] < med)
+    dtt[l1,k] = 1
+    dtt[l2, k] = 0
+    }
+  }  
+  dat = dtt
+
+  num_genes = which(str_detect(colnames(dat), "ENSG"))
+  return(dat)
+}
+
+filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
+tcga_data_all = filtered_data_tagged
+
+
 #-----------------------------------------------------------------------------------------------------------------------------------
 #2 - set up for cross validation 
 #-----------------------------------------------------------------------------------------------------------------------------------
 
 set_up_cv = function(dtt){
-	dat = dtt
+	print(dtt$Cancer[1])
+  dat = dtt
 	genes_results = list()
 	cinds_clin = c()
 	cinds_justlncs = c()
@@ -188,7 +230,7 @@ set_up_cv = function(dtt){
 	return(dat)
 }
 
-setup_data = llply(filtered_data, set_up_cv)
+setup_data = llply(tcga_data_all, set_up_cv)
 tcga_data_setup = setup_data
 
 #order of pcawg cancers --> cancers_tests

@@ -301,7 +301,7 @@ clean_up = clean_up[order(fdr)]
 saveRDS(clean_up, file="correlation_results_clinical_lncRNA_exp_June22.rds")
 
 
-
+write.table(clean_up, file="correlation_results_clinical_lncRNA_exp_June25.txt", row.names=F, quote=F)
 
 
 
