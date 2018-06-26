@@ -231,7 +231,6 @@ saveRDS(lnc_rna_top5, "6028_pcawg_lncRNAs_RNASeq_data.rds")
 saveRDS(pcg_rna_top5, "20166_pcawg_PCGs_RNASeq_data.rds")
 
 
-
 #---add clinical data
 
 lnc_rna <- readRDS("6028_pcawg_lncRNAs_RNASeq_data.rds")
@@ -269,6 +268,8 @@ lnc_rna$histo = ""
 lnc_rna$status = ""
 lnc_rna$time = ""
 lnc_rna$sex = ""
+lnc_rna$donor_age_at_diagnosis = ""
+
 
 #lncs
 for(i in 1:nrow(lnc_rna)){
@@ -278,6 +279,7 @@ for(i in 1:nrow(lnc_rna)){
   lnc_rna$histo[i] <- clin$histology_tier4[z]
   lnc_rna$status[i] <- clin$donor_vital_status[z]
   lnc_rna$sex[i] <- clin$donor_sex[z]
+  lnc_rna$donor_age_at_diagnosis[i] = clin$donor_age_at_diagnosis[z]
   t <- clin$donor_survival_time[z]
   if(is.na(t)){
         t <- clin$donor_interval_of_last_followup[z]
@@ -291,6 +293,8 @@ pcg_rna$histo = ""
 pcg_rna$status = ""
 pcg_rna$time = ""
 pcg_rna$sex = ""
+pcg_rna$donor_age_at_diagnosis = ""
+
 
 #lncs
 for(i in 1:nrow(pcg_rna)){
@@ -300,6 +304,7 @@ for(i in 1:nrow(pcg_rna)){
   pcg_rna$histo[i] <- clin$histology_tier4[z]
   pcg_rna$status[i] <- clin$donor_vital_status[z]
   pcg_rna$sex[i] <- clin$donor_sex[z]
+  pcg_rna$donor_age_at_diagnosis[i] = clin$donor_age_at_diagnosis[z]
   t <- clin$donor_survival_time[z]
   if(is.na(t)){
         t <- clin$donor_interval_of_last_followup[z]

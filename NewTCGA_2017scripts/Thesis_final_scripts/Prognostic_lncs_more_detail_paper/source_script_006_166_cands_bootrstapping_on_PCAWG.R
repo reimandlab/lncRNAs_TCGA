@@ -26,6 +26,9 @@ cands$Cancer = NULL
 all_cands = cands
 
 all_cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+#PCAWG sig 
+all_cands = as.data.table(all_cands)
+pcawg_cands = filter(all_cands, data =="PCAWG", pval <= 0.05)
 
 
 #--------This script ------------------------------------------------
@@ -56,8 +59,14 @@ cancers_tests = as.list(unique(cands$cancer[which(cands$cancer %in% pcawg_data$c
 
 get_matched_data = function(cancer){
     dtt = subset(pcawg_data, canc == cancer)
+    #record how many candidates there are in cancer vs how many we have data for
+    have = length(which(colnames(dtt) %in% c(as.character(all_cands$gene[all_cands$cancer == dtt$canc[1]]))))
+    #suppose to have
+    suppose = length(unique(as.character(all_cands$gene[all_cands$cancer == dtt$canc[1]])))
+    print(paste("have =", have, "suppose =", suppose))
+
     z = which(colnames(dtt) %in% c(as.character(all_cands$gene[all_cands$cancer == dtt$canc[1]]), "canc", 
-    "histo", "time", "status", "sex"))
+    "histo", "time", "status", "sex", "donor_age_at_diagnosis"))
     dtt = dtt[,z]
     return(dtt)
 }
@@ -94,7 +103,8 @@ add_tags = function(dtt){
   dat = dtt
   #dat$canc = NULL
   dat$histo = NULL
-  dat$sex = NULL
+  #dat$sex = NULL
+  dat$donor_age_at_diagnosis = as.numeric(dat$donor_age_at_diagnosis)
   dat$status[dat$status=="alive"] =0
   dat$status[dat$status=="deceased"] =1
 
