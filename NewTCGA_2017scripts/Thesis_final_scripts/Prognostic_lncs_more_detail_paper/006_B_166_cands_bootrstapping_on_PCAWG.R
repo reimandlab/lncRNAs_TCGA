@@ -14,7 +14,7 @@ source("source_script_006_166_cands_bootrstapping_on_PCAWG.R")
 library(boot)
 
 #testing
-#dtt = tcga_data_setup[[2]]
+#dtt = tcga_data_setup[[3]]
 
 run_cv = function(dtt){
 	
@@ -52,13 +52,17 @@ run_cv = function(dtt){
 		test = test[-z,]} 
 
 		#make sure all lncRNAs are present 
-		
-
+		z = which(str_detect(colnames(test), "ENSG"))
+		genes = colnames(test)[z]
+		#keep all clinical columns
+		z1 = which(!(str_detect(colnames(train), "ENSG")))
+		z2 = which(colnames(train) %in% genes)
+		train = train[,c(z2,z1)]
 
 		set.seed(103) 
 
 		#set-up indices for boostrapping
-		samp_size <- round(0.7 * (nrow(test)))
+		samp_size <- 1 * (nrow(test))
 		iter <- 100
 
 		# here are 15 blocks of 5 numbers, which will index rows of your matrix x
@@ -152,27 +156,27 @@ run_cv = function(dtt){
 		test_clin = test_set[,which(colnames(test_set) %in% colnames(clin_train))]
 		test_clin$age_at_initial_pathologic_diagnosis = as.numeric(test_clin$age_at_initial_pathologic_diagnosis)
 		keep_test = unlist(apply(test_clin, 2, check_contrasts))
-		z = which(colnames(test_clin) %in% names(keep_test))
+		z = which(colnames(test_clin) %in% c(names(keep_test), "OS"))
 		test_clin = test_clin[,z]
 
-			clin_train = clin_train[,which(colnames(clin_train) %in% colnames(test_clin))]
-			if(length(which(colnames(clin_train) %in% "gender"))==1){
-			clin_train$gender[clin_train$gender == "MALE"] = "male"
-			clin_train$gender[clin_train$gender == "FEMALE"] = "female"
+			clin_train_round = clin_train[,which(colnames(clin_train) %in% colnames(test_clin))]
+			if(length(which(colnames(clin_train_round) %in% "gender"))==1){
+			clin_train_round$gender[clin_train_round$gender == "MALE"] = "male"
+			clin_train_round$gender[clin_train_round$gender == "FEMALE"] = "female"
 			order = c("female", "male")
-			clin_train$gender <- factor(clin_train$gender, levels = order)
+			clin_train_round$gender <- factor(clin_train_round$gender, levels = order)
 			test_clin$gender <- factor(test_clin$gender, levels = order)
 			}
 
 			#make sure there aren't any columns with just one value
-      		rm = which(sapply(clin_train, function(x) { length(unique(x)) }) == 1)
+      		rm = which(sapply(clin_train_round, function(x) { length(unique(x)) }) == 1)
       		if(!(length(rm))==0){
-        		clin_train = clin_train[,-rm]
+        		clin_train_round = clin_train_round[,-rm]
      		}
-			clin_train$OS = as.numeric(clin_train$OS)
-			clin_train$OS.time = as.numeric(clin_train$OS.time)
+			clin_train_round$OS = as.numeric(clin_train_round$OS)
+			clin_train_round$OS.time = as.numeric(clin_train_round$OS.time)
 
-			justclin = coxph(Surv(OS.time, OS)  ~ ., data = clin_train)
+			justclin = coxph(Surv(OS.time, OS)  ~ ., data = clin_train_round)
 			#test_set 
 			test_clin$OS = as.numeric(test_clin$OS)
 			test_clin$OS.time = as.numeric(test_clin$OS.time)
@@ -193,17 +197,17 @@ run_cv = function(dtt){
 		#TRAINING using lncRNAs and clinical variables 
 		#--------------------------------------------------------------------------------------
 
-		variables = colnames(clin_train)
+		variables = colnames(clin_train_round)
 		train$patient = rownames(train)
 		test_set$patient = rownames(test_set)
-		clin_train$patient = rownames(clin_train)
+		clin_train_round$patient = rownames(clin_train_round)
 		test_clin$patient = rownames(test_clin)
 
      	#train and test model on each lncRNA candidate  
 		train_test_lnc_plus_clin = function(lnc){
 			#TRAIN 
 			trainlncs = train[,c(which(colnames(train) %in% c(lnc, "patient")))]
-			trainlncs = merge(trainlncs, clin_train, by = "patient")
+			trainlncs = merge(trainlncs, clin_train_round, by = "patient")
 			print(lnc)
 			print(colnames(trainlncs))
 			rownames(trainlncs) = trainlncs$patient

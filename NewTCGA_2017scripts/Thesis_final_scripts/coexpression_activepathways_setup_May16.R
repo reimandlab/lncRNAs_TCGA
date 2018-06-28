@@ -65,48 +65,10 @@ allCands$freq = NULL
 
 allCands = allCands[!duplicated(allCands), ]
 
-lncs = as.list(as.character(unique(allCands$gene[allCands$data == "PCAWG"])))
+#lncs = as.list(as.character(unique(allCands$gene[allCands$data == "PCAWG"])))
 
-check_match = function(lnc){
-	z = which(allCands$gene == lnc)
-	res = as.data.table(allCands[z,])
-	
-	if(dim(res)[1] > 2){
-	
-	canc = res$cancer[which(duplicated(res$cancer))]
-	res = filter(res, cancer == canc)
-	}
-
-	test = which(as.numeric(res$HR) >= 1)
-	test = length(test)
-	if(test ==2){
-		match = "match"
-	}
-	if(test ==0){
-		match = "match"
-	}
-	if(test ==1){
-		match = "nomatch"
-	}
-	canc = unique(res$canc)
-	return(c(lnc, match, canc))
-}
-
-matches = llply(lncs, check_match)
-matches = as.data.table(as.data.frame(do.call("rbind", matches)))
-matches = filter(matches, V2 == "match")
-colnames(matches) = c("lnc", "match", "cancer")
-
-allCands = as.data.table(allCands)
-allCands = filter(allCands, gene %in% matches$lnc, cancer %in% matches$cancer) #######----only PCAWG singificant 
-
-#23 unique cancer types 
-
-#which cancer types are the non-unique lncRNAs from?
-allCands$Combo = NULL
-allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "CAT_geneName")]
-allCands = allCands[!duplicated(allCands), ]
-cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = filter(allCands, data=="TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 
 #UCSC gene info
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
@@ -207,14 +169,14 @@ get_lnc_canc = function(dat){
   		if(HR <1){
   			risk = "Low"
   			dat_keep$risk = ""
-  			dat_keep$risk[dat_keep$median=="High"] ="no"
-  			dat_keep$risk[dat_keep$median=="Low"] ="yes"
+  			dat_keep$risk[dat_keep$median=="High"] ="noRISK"
+  			dat_keep$risk[dat_keep$median=="Low"] ="RISK"
   		}
   		if(HR >1){
   			risk = "High"
   			dat_keep$risk = ""
-  			dat_keep$risk[dat_keep$median=="High"] ="yes"
-  			dat_keep$risk[dat_keep$median=="Low"] ="no"
+  			dat_keep$risk[dat_keep$median=="High"] ="RISK"
+  			dat_keep$risk[dat_keep$median=="Low"] ="noRISK"
   		}
 
   		dat_keep$lnc = colnames(dat_keep)[1]
@@ -253,12 +215,15 @@ get_pcg_enrichment = function(dat){
 			z = which(colnames(newdat) %in% p)
 			lncpcg = newdat[,c(z, 1:2, 19353:ncol(newdat))]
 			colnames(lncpcg)[1] = "pcgExp"
+			order = c("RISK", "noRISK")
+			lncpcg$risk <- factor(lncpcg$risk, levels = order)
+			
 			fit <- lm(pcgExp ~ risk, data=lncpcg)
 			#get p-value and generate boxplot with wilcoxon p-value 
 			fit_pval = summary(fit)$coefficients[2,4]
 			#which group is it higher in? 
-			mean_diff = mean(lncpcg$pcgExp[lncpcg$risk == "yes"])/mean(lncpcg$pcgExp[lncpcg$risk == "no"])
-			#if higher than 1 --> more expressed in risk group, less than 1 --> more expressed in low risk group
+			mean_diff = mean(lncpcg$pcgExp[lncpcg$risk == "RISK"]) - mean(lncpcg$pcgExp[lncpcg$risk == "noRISK"])
+			#if higher than 0 --> more expressed in risk group, less than 0 --> more expressed in low risk group
 			#g = ggboxplot(lncpcg, x = "risk", y="pcgExp", color="median", title=paste(lncpcg$lnc[1], p, lncpcg$canc[1]))
 			#g = g + stat_compare_means()
 			#print(g)
@@ -286,7 +251,6 @@ get_pcg_enrichment = function(dat){
 #all_canc_lnc_data = all_canc_lnc_data[1:2] ###TEST CASE -------------------------------------------------------------
 all_canc_lnc_data = llply(all_canc_lnc_data, get_pcg_enrichment, .progress="text")
 
-
 all_canc_lnc_data1 = as.data.frame(do.call("rbind", all_canc_lnc_data))
 z = which(all_canc_lnc_data1$lnc %in% cands_dups)
 
@@ -294,8 +258,10 @@ if(!(length(z))==0){
 all_canc_lnc_data1$lnc[z] = paste(all_canc_lnc_data1$lnc[z], all_canc_lnc_data1$canc[z], sep="_")
 }
 
-saveRDS(all_canc_lnc_data1, file="all_results_for_each_cancer_from_coexpression_analysis_june7th_allCands.rds")
+saveRDS(all_canc_lnc_data1, file="all_results_for_each_cancer_from_coexpression_analysis_june27th_allCands.rds")
 
+#For each cancer type, for each lncRNA ... 
+#Summarize #of PCGs upregulated in risk group and #of PCGs upregulated in non-risk group 
 
 #divide into high risk and low risk lncRNAs
 high_risk = subset(all_canc_lnc_data1, mean_diff >=1.5) #should set higher mean difference threshold?

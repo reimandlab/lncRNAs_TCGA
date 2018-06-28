@@ -62,25 +62,41 @@ logged_rna[,z1] = log1p(logged_rna[,z1])
 #autoplot(prcomp(logged_rna[,z1]), data = logged_rna, colour = 'type')
 #dev.off()
 
+
+#NOT RUN ---------------------------------------------------------------
 #not logged & scaled 
-pdf("scaled_nonMAD0lncRNAs_cands_PCA_plots_June25.pdf", width=12)
-z1 = which(str_detect(colnames(rna), "ENSG"))
-autoplot(prcomp(rna[,z1], scale. = TRUE), data = rna, colour = 'type')
-dev.off()
-
-
-
-
-
-#res.pca <- PCA(rna[,z1], graph = FALSE)
-#fviz_pca_ind(res.pca,
-#             geom.ind = "point", # show points only (nbut not "text")
-#             col.ind = rna$type, # color by groups
-             #palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-             #addEllipses = TRUE, # Concentration ellipses
-#             legend.title = "Groups"
-#             ) + scale_shape_manual(values=seq(0,32)) + theme_bw()
+#pdf("scaled_nonMAD0lncRNAs_cands_PCA_plots_June25.pdf", width=12)
+#z1 = which(str_detect(colnames(rna), "ENSG"))
+#autoplot(prcomp(rna[,z1], scale. = TRUE), data = rna, colour = 'type')
 #dev.off()
+#PCA--------------------------------------------------------------------
+#NOT RUN END------------------------------------------------------------
+
+
+#-------------------------------------------------------------------
+#-----------------PCA using mean/lncRNA/cancer to get --------------
+#-----------------		32 points in the end          --------------
+#-------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #-------------------------------------------------------------------
 #-----------------PCA using just 166 lncRNA candidates--------------
