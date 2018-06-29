@@ -147,6 +147,9 @@ dev.off()
 filtered_data_tagged = do.call(rbind.data.frame, filtered_data_tagged)
 saveRDS(filtered_data_tagged, file="007_166_cands_checking_risk_to_nonrisk_ratios_data_june28.rds")
 
+
+filtered_data_tagged = readRDS("007_166_cands_checking_risk_to_nonrisk_ratios_data_june28.rds")
+
 colnames(filtered_data_tagged) = c("lncRNA", "Cancer", "HR", "pval", "ratio", "lowci", "highci")
 filtered_data_tagged$HR = as.numeric(filtered_data_tagged$HR)
 filtered_data_tagged$pval = as.numeric(filtered_data_tagged$pval)
