@@ -71,15 +71,24 @@ det_lncs = readRDS("all_TCGA_cancers_lncRNAs_detectable_May18.rds")
 det_lncs =filter(det_lncs, status =="detectable")
 
 canc_survival_genes = function(dato){
-	#genes = as.list(colnames(dato)[2:(ncol(dato)-34)])
-	#looking only at the detectable lncRNAs within respective cancer type 
-	genes = unique(det_lncs$lncRNA[which(det_lncs$cancer %in% dato$Cancer[1])])	
+	#look at all lncRNAs that are expressed in at least some patients 
+  z = which(str_detect(colnames(dato), "ENSG"))
+  sums = apply(dato[,z], 2, sum)
+  rm = names(sums[which(sums == 0)])
+  z = which(colnames(dato) %in% rm)
+  dato = dato[,-z]
 
-	#genes = genes[1:100]
+  print(dato$type[1])
+
+  z = which(str_detect(colnames(dato), "ENSG"))
+  genes = unique(colnames(dato)[z])	
+
+  #TEST------------------------------------------------------------------------------------------
+  #genes = genes[1:100]
 	canc_data_genes_analyze = dato 
 	
 	get_survival = function(gene){
-	print(gene)
+	  print(gene)
   	results_cox <- as.data.frame(matrix(ncol=6)) ; colnames(results_cox) <- c("gene", "coef", "HR", "pval", "low95", "upper95")
   	z = which(colnames(canc_data_genes_analyze) == gene)
   	dat = canc_data_genes_analyze[,c(1,z,(ncol(canc_data_genes_analyze)-33):ncol(canc_data_genes_analyze))]
@@ -89,9 +98,9 @@ canc_survival_genes = function(dato){
   	z = which(is.na(dat$OS.time))
   	if(!(length(z) ==0)){
   	dat = dat[-z,]}
-	med_gene = median(as.numeric(dat[,2]))  	
-	dat$med = ""
-	if(med_gene ==0){
+	  med_gene = median(as.numeric(dat[,2]))  	
+	  dat$med = ""
+	  if(med_gene ==0){
         #if median = 0 then anyone greater than zero is 1 
         l1 = which(dat[,2] > 0)
         l2 = which(dat[,2] ==0)
@@ -106,11 +115,12 @@ canc_survival_genes = function(dato){
         dat$med[l2] = 0
     }
 
-	res.cox <- coxph(Surv(OS.time, OS) ~ med, data = dat)
+    if(dim(table(dat$med)) ==2){
+	  res.cox <- coxph(Surv(OS.time, OS) ~ med, data = dat)
   	row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)],  summary(res.cox)$conf.int[1,c(3,4)])
   	names(row) <- names(results_cox)
   	return(row)
-  	}
+  	}}
 
 	genes_survival = llply(genes, get_survival, .progress="text")
 	genes_survival_res = ldply(genes_survival, rbind)
@@ -127,10 +137,10 @@ all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text"
 all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
 
 
-saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_for_plotting_HAzard_Ratios_Pvalues_May18.rds")
+saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_for_plotting_HAzard_Ratios_Pvalues_June28.rds")
 
 
-all_cancers_genes_surv_comb = readRDS("lncRNAs_for_plotting_HAzard_Ratios_Pvalues_May18.rds")
+all_cancers_genes_surv_comb = readRDS("lncRNAs_for_plotting_HAzard_Ratios_Pvalues_June28.rds")
 
 
 ###---------------------------------------------------------------
@@ -182,7 +192,7 @@ all_cancers_genes_surv_comb$fdrsig <- factor(all_cancers_genes_surv_comb$fdrsig,
 
 #Variation 1 of survival overview plot
 
-pdf("HR_vs_pval_survival_all_cancers_scatter_plot_May19.pdf", width=12, height=9)
+pdf("HR_vs_pval_survival_all_cancers_scatter_plot_June28.pdf", width=12, height=9)
 g = ggscatter(all_cancers_genes_surv_comb, x = "canc", y = "HR", color="fdrsig", palett=c("gray34", mypal[1], "lightskyblue3"), size = 0.85) + 
 geom_hline(yintercept=1, linetype="dashed", color = "red")
 ggpar(g,

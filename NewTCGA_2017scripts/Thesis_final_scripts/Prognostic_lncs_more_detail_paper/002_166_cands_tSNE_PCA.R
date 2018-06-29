@@ -20,12 +20,11 @@ library("FactoMineR")
 
 #------FEATURES-----------------------------------------------------
 
-cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
-#cands = filter(cands, data == "PCAWG", pval <=0.05)
-cands = filter(cands, AnalysisType == "noFDR")
-#colnames(cands)[7] = "canc"
-cands$Cancer = NULL
-all_cands = cands
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = filter(allCands, data=="TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+
+canc_conv = rna[,which(colnames(rna) %in% c("Cancer", "type"))]
+canc_conv = canc_conv[!duplicated(canc_conv), ]
 
 #-------------------------------------------------------------------
 #-----------------PCA using just all expressed lncRNA --------------
@@ -47,9 +46,9 @@ rm = names(sums)[z]}
 #2. remove those with MAD < 0? 
 #1. remove those not expressed at all
 z1 = which(str_detect(colnames(rna), "ENSG"))
-sums = apply(rna[,z1], 2, mad)
-z = which(sums <= 0)
-rna = rna[,-z]
+#sums = apply(rna[,z1], 2, mad)
+#z = which(sums <= 0)
+#rna = rna[,-z]
 
 #2. cluster cancer types, ie -> each dot should be cancer type 
 library("FactoMineR")
@@ -78,23 +77,113 @@ logged_rna[,z1] = log1p(logged_rna[,z1])
 #-----------------		32 points in the end          --------------
 #-------------------------------------------------------------------
 
+#1. get median for each gene within each cancer - Logged version
+
+z = which(str_detect(colnames(logged_rna), "ENSG"))
+means_rna = aggregate(logged_rna[, z], list(logged_rna$type), mean)
+colnames(means_rna)[1] = "Cancer"
+z = which(str_detect(colnames(means_rna), "ENSG"))
+rownames(means_rna) = means_rna$Cancer
+
+color = grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert = T)]
+z1 = which(str_detect(color, c("yellow")))
+z2 = which(str_detect(color, c("snow")))
+z3 = which(str_detect(color, c("lemon")))
+z4 = which(str_detect(color, c("light")))
+z5 = which(str_detect(color, c("pale")))
+z6 = which(str_detect(color, c("white")))
+z7 = which(str_detect(color, c("sandy")))
+z8 = which(str_detect(color, c("blush")))
+z9 = which(str_detect(color, c("corn")))
+z10 = which(str_detect(color, c("darksea")))
+z11 = which(str_detect(color, c("darkolive")))
+z12 = which(str_detect(color, c("gainsboro")))
+z13 = which(str_detect(color, c("lavender")))
+z15 = which(str_detect(color, c("seashell")))
+z16 = which(str_detect(color, c("honeydew")))
+
+color = color[-c(z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, z11, z12, z13, z15, z16)]
+
+mypal = sample(color, 32)
+z = which(mypal == "ivory2")
+mypal[z] = "black"
+
+#saveRDS(mypal, file="palette_32_cancer_types.rds")
+
+mypal = readRDS("palette_32_cancer_types.rds")
+
+pdf("cancer_loggef_means_PCA_plots_June29.pdf", width=6, height=6)
+g = autoplot(prcomp(means_rna[,z], scale. = TRUE), data = means_rna, label=TRUE, colour = 'Cancer', label.size = 3, label.repel=TRUE) +
+theme_minimal() + scale_fill_manual(values = mypal) + 
+scale_color_manual(values =mypal) + ggtitle("PCA using cancer mean log1p(lncRNA expression)")
+ggpar(g, legend="none")
+dev.off()
+
+#2. get median for each gene within each cancer - Non-Logged version
+
+z = which(str_detect(colnames(rna), "ENSG"))
+means_rna = aggregate(rna[, z], list(rna$type), mean)
+colnames(means_rna)[1] = "Cancer"
+z = which(str_detect(colnames(means_rna), "ENSG"))
+rownames(means_rna) = means_rna$Cancer
+
+pdf("cancer_NOTloggef_means_PCA_plots_June29.pdf", width=6, height=6)
+g = autoplot(prcomp(means_rna[,z]), data = means_rna, label=TRUE, colour = 'Cancer', label.size = 3, label.repel=TRUE) +
+theme_minimal() + scale_fill_manual(values = mypal) + 
+scale_color_manual(values =mypal) + ggtitle("PCA using cancer mean lncRNA expression")
+ggpar(g, legend="none")
+dev.off()
 
 
+#-------------------------------------------------------------------
+#-----------------PCA using median/lncRNA/cancer to get ------------
+#-----------------		32 points in the end          --------------
+#-------------------------------------------------------------------
+
+z = which(str_detect(colnames(logged_rna), "ENSG"))
+means_rna = aggregate(logged_rna[, z], list(logged_rna$type), median)
+colnames(means_rna)[1] = "Cancer"
+z = which(str_detect(colnames(means_rna), "ENSG"))
+rownames(means_rna) = means_rna$Cancer
+
+#remove columns with zero variance
+vars = apply(means_rna[,z], 2, var)
+rm = names(vars)[which(vars ==0)]
+means_rna = means_rna[,-(which(colnames(means_rna) %in% rm))]
+z = which(str_detect(colnames(means_rna), "ENSG"))
+
+pdf("cancer_loggef_median_PCA_plots_June29.pdf", width=6, height=6)
+g = autoplot(prcomp(means_rna[,z]), data = means_rna, label=TRUE, colour = 'Cancer', label.size = 3, label.repel=TRUE) +
+theme_minimal() + scale_fill_manual(values = mypal) + 
+scale_color_manual(values =mypal) + ggtitle("PCA using cancer median log1p(lncRNA expression)")
+ggpar(g, legend="none")
+dev.off()
 
 
+#-------------------------------------------------------------------
+#-----------------PCA using MAD/lncRNA/cancer to get ---------------
+#-----------------		32 points in the end          --------------
+#-------------------------------------------------------------------
 
 
+z = which(str_detect(colnames(logged_rna), "ENSG"))
+means_rna = aggregate(logged_rna[, z], list(logged_rna$type), mad)
+colnames(means_rna)[1] = "Cancer"
+z = which(str_detect(colnames(means_rna), "ENSG"))
+rownames(means_rna) = means_rna$Cancer
 
+#remove columns with zero variance
+vars = apply(means_rna[,z], 2, var)
+rm = names(vars)[which(vars ==0)]
+means_rna = means_rna[,-(which(colnames(means_rna) %in% rm))]
+z = which(str_detect(colnames(means_rna), "ENSG"))
 
-
-
-
-
-
-
-
-
-
+pdf("cancer_loggef_mad_PCA_plots_June29.pdf", width=6, height=6)
+g = autoplot(prcomp(means_rna[,z]), data = means_rna, label=TRUE, colour = 'Cancer', label.size = 3, label.repel=TRUE) +
+theme_minimal() + scale_fill_manual(values = mypal) + 
+scale_color_manual(values =mypal) + ggtitle("PCA using cancer mad log1p(lncRNA expression)")
+ggpar(g, legend="none")
+dev.off()
 
 
 
@@ -103,35 +192,35 @@ logged_rna[,z1] = log1p(logged_rna[,z1])
 #-------------------------------------------------------------------
 
 #subset to cancers,  n = 23
-z = which(rna$Cancer %in% cands$cancer)
+colnames(canc_conv)[2] = "cancer"
+allCands = merge(allCands, canc_conv, by="cancer")
+
+z = which(logged_rna$type %in% allCands$type)
 
 #subset to lncRNAs, keep cancer type 
-rna = rna[z,]
+cands_logged_rna = logged_rna[z,]
 
-z1 = which(colnames(rna) %in% cands$gene)
-z2 = which(colnames(rna) %in% c("Cancer", "patient", "type"))
+z1 = which(colnames(cands_logged_rna) %in% allCands$gene)
+z2 = which(colnames(cands_logged_rna) %in% c("type", "patient", "type"))
 
-rna = rna[,c(z1, z2)]
-rownames(rna) = rna$patient
-rna$patient = NULL
-rna$Cancer = NULL
+cands_logged_rna = cands_logged_rna[,c(z1, z2)]
+rownames(cands_logged_rna) = rna$patient
 
-#log transform 
-#rna[,1:(ncol(rna)-1)] = log1p(rna[,1:(ncol(rna)-1)]) 
+z = which(str_detect(colnames(cands_logged_rna), "ENSG"))
+means_rna = aggregate(cands_logged_rna[, z], list(cands_logged_rna$type), mean)
+colnames(means_rna)[1] = "Cancer"
+z = which(str_detect(colnames(means_rna), "ENSG"))
+rownames(means_rna) = means_rna$Cancer
 
-#calculate PCA
-rna.pca <- PCA(rna[,-ncol(rna)], graph = FALSE)
-
-pdf("166_cands_PCA_plots_June15.pdf", width=12)
-
-fviz_pca_ind(rna.pca,
-             geom.ind = "point", # show points only (nbut not "text")
-             col.ind = rna$type, # color by groups
-             #palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-             addEllipses = TRUE, # Concentration ellipses
-             legend.title = "Groups"
-             ) + scale_shape_manual(values=seq(0,23)) + theme_bw()
-
-
+pdf("cancer_loggef_mean_just_166_cands_PCA_plots_June29.pdf", width=6, height=6)
+g = autoplot(prcomp(means_rna[,z]), data = means_rna, label=TRUE, colour = 'Cancer', label.size = 3, label.repel=TRUE) +
+theme_minimal() + scale_fill_manual(values = mypal) + 
+scale_color_manual(values =mypal) + ggtitle("PCA using 166 cands cancer \nmean log1p(lncRNA expression)")
+ggpar(g, legend="none")
 dev.off()
+
+
+
+
+
 
