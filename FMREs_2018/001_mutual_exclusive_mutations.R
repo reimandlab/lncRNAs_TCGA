@@ -27,7 +27,7 @@ library(grid)
 #coding_drivers = all_results_signf
 
 #cds mutations new june 12 
-coding_drivers = fread("cds_drivers.txt")
+coding_drivers = fread("july2_cds_drivers.txt")
 
 #[3] mutations in all CRMs, subset of these are FMREs
 
@@ -39,15 +39,15 @@ coding_drivers = fread("cds_drivers.txt")
 
 #new file June 12: 
 
-load("encode_merge__patient_element_snv_list.rsav")
+load("july2_encode_merge__patient_element_snv_list.rsav")
 mutations_in_crms = (patient_element_snv_list)
 
 #crm mutations new june 12 
 #fmre mutations 
-fmres = fread("fmre_drivers.txt")
+fmres = fread("july2_fmre_drivers.txt")
 
 #[4] mutations in all CDS, subset of these are CDS drivers
-load("gc19_pc.cds__patient_element_snv_list.rsav")
+load("july2_gc19_pc.cds__patient_element_snv_list.rsav")
 cds_mutations = patient_element_snv_list
 
 #[5] all patients in cohort
@@ -74,8 +74,8 @@ mutations_in_cds = cds_mutations[z]
 
 #Compare ratios------------------------------------------------
 
-unique_cds = unique(names(mutations_in_cds)) #46
-unique_fmre = unique(names(mutations_in_crms)) #29
+unique_cds = unique(names(mutations_in_cds)) #48
+unique_fmre = unique(names(mutations_in_crms)) #30
 
 results_pairs = as.data.frame(matrix(ncol=6)) ; colnames(results_pairs) = c("CDS_mut", "FMRE_mut", "fishers_pval", "fishers_OR", "num_overlap", "canc_overlapping_pats")
 
@@ -125,7 +125,7 @@ for(i in 1:length(unique_cds)){
 			CDS_yes = length(unique(cds))
 			
 			#none 
-			none = length(which(!(names(patient2cancer_type) %in% unique(patients_wmuts$patient))))
+			none = length(which(!(patient_table$V1 %in% unique(patients_wmuts$patient))))
 			
 			#contigency table 
 			cont_table = matrix(c(both, CDS_yes,FMRE_yes , none), nrow=2, byrow=T)
@@ -153,9 +153,12 @@ results_pairs$num_overlap = as.numeric(results_pairs$num_overlap)
 results_pairs = results_pairs[order(-num_overlap)]
 results_pairs = as.data.table(results_pairs)
 results_pairs = results_pairs[order(fishers_pval)]
-write.table(results_pairs, file= "686_fmre_cds_pairs_fishers_analysis_June12th_KI.txt", sep="\t", quote=F, row.names=F)
+write.table(results_pairs, file= "732_fmre_cds_pairs_fishers_analysis_July2nd_KI.txt", sep="\t", quote=F, row.names=F)
+fdr_sig = filter(results_pairs, fdr <= 0.05)
+write.table(fdr_sig, file= "8_fdr_sig_fmre_cds_pairs_fishers_analysis_July2nd_KI.txt", sep="\t", quote=F, row.names=F)
 
-pdf("FMRE_CDS_pairs_fishers_analysis_results_June12th.pdf", width=9, height=10)
+
+pdf("FMRE_CDS_pairs_fishers_analysis_results_July3rd.pdf", width=9, height=10)
 for(i in 1:nrow(results_pairs)){
 		pair = c(results_pairs$CDS_mut[i], results_pairs$FMRE_mut[i])
 		#get patients that have either of these mutations or both 
@@ -202,7 +205,7 @@ for(i in 1:nrow(results_pairs)){
 			CDS_yes = length(unique(cds))
 			
 			#none 
-			none = length(which(!(names(patient2cancer_type) %in% unique(patients_wmuts$patient))))
+			none = length(which(!(patient_table$V1 %in% unique(patients_wmuts$patient))))
 	
 			#contigency table 
 			cont_table = matrix(c(both, CDS_yes,FMRE_yes , none), nrow=2, byrow=T)
@@ -271,7 +274,7 @@ write.table(results_pairs, file= "1026_fmre_cds_fishers_analysis_May10th_KI_wcan
 #> - color is -log10 FDR; FDR>0.1 is set as NA
 #> - number of shared patients printed on tile
 
-results_pairs = fread("686_fmre_cds_pairs_fishers_analysis_June12th_KI.txt")
+results_pairs = fread("732_fmre_cds_pairs_fishers_analysis_July2nd_KI.txt")
 
 library(plyr)
 library(dplyr)
@@ -346,7 +349,20 @@ results_pairs$FMRE_mut <- factor(results_pairs$FMRE_mut, levels = order)
 order = as.character(coding_drivers$id)
 results_pairs$CDS_mut <- factor(results_pairs$CDS_mut, levels = order)
 
-pdf("686_pairs_heatmap-log10fdr.pdf", width=9)
+#shorten fmre name
+clean_fmre = function(fmre){
+	#fmre = results_pairs$FMRE_mut[1]
+	r =  unlist(strsplit(fmre, "chr"))[2]
+	return(r)
+}
+results_pairs$FMRE_mut = unlist(llply(as.character(results_pairs$FMRE_mut), clean_fmre))
+fmres$id = llply(fmres$id, clean_fmre)
+fmres = as.data.table(fmres)
+fmres = fmres[order(fdr_element)]
+order= as.character(fmres$id)
+results_pairs$FMRE_mut <- factor(results_pairs$FMRE_mut, levels = order)
+
+pdf("732_pairs_heatmap-log10fdr.pdf", width=9)
 
 g = ggplot(results_pairs, aes(FMRE_mut, CDS_mut)) +
   geom_tile(aes(fill = fdr_plotting)) +
@@ -359,7 +375,7 @@ ggpar(g,
 
 dev.off()
 
-pdf("686_pairs_heatmap_normal_fdr.pdf", width=9)
+pdf("732_pairs_heatmap_normal_fdr.pdf", width=9)
 
 g = ggplot(results_pairs, aes(FMRE_mut, CDS_mut)) +
   geom_tile(aes(fill = fdr)) +
@@ -408,7 +424,7 @@ remove = check_pcgs$cds[check_pcgs$match == "remove"]
 
 results_pairs_rm = results_pairs_rm[-which(results_pairs_rm$CDS_mut %in% remove),]
 
-pdf("686_pairs_heatmap-log10fdr_removed_unsig.pdf", width=9)
+pdf("732_pairs_heatmap-log10fdr_removed_unsig.pdf", width=9)
 
 g = ggplot(results_pairs_rm, aes(FMRE_mut, CDS_mut)) +
   geom_tile(aes(fill = fdr_plotting)) +
@@ -422,7 +438,7 @@ ggpar(g,
 dev.off()
 
 
-pdf("686_pairs_heatmap_normal_fdr_removed_unsig.pdf", width=9)
+pdf("732_pairs_heatmap_normal_fdr_removed_unsig.pdf", width=9)
 
 g = ggplot(results_pairs_rm, aes(FMRE_mut, CDS_mut)) +
   geom_tile(aes(fill = fdr)) +
