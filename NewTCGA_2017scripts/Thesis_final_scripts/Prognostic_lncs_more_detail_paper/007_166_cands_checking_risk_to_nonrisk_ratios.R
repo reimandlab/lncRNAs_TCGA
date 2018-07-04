@@ -148,6 +148,8 @@ filtered_data_tagged = do.call(rbind.data.frame, filtered_data_tagged)
 saveRDS(filtered_data_tagged, file="007_166_cands_checking_risk_to_nonrisk_ratios_data_june28.rds")
 
 
+#START----------------------------------------------------------------------------------------------
+
 filtered_data_tagged = readRDS("007_166_cands_checking_risk_to_nonrisk_ratios_data_june28.rds")
 
 colnames(filtered_data_tagged) = c("lncRNA", "Cancer", "HR", "pval", "ratio", "lowci", "highci")
@@ -263,7 +265,7 @@ g  = ggplot(plotting_data, aes(x=lncRNA, y=HR, col=sig)) +
   geom_point(size=0.65, aes(shape=hr_type), color="black") + 
   theme_classic() + 
   geom_hline(yintercept=0, linetype="dashed", color = "red") + coord_flip() +
-  theme(axis.title.y=element_blank())
+  theme(axis.title.y=element_blank()) + theme_minimal()
 
 g = ggpar(g, font.ytickslab = c(3, "plain", "black"), legend = "none") 
 main_plot = g
@@ -273,7 +275,9 @@ main_plot = g
 
 #color = grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert = T)]
 #mypal = sample(color, 23)
-saveRDS(mypal, file="palette_23_cancer_types.rds")
+#saveRDS(mypal, file="palette_23_cancer_types.rds")
+
+mypal = readRDS("palette_23_cancer_types.rds")
 
 cancers_conv = rna[,which(colnames(rna) %in% c("type", "Cancer"))]
 cancers_conv = cancers_conv[!duplicated(cancers_conv), ]
@@ -297,21 +301,22 @@ cancers = ggpar(cancers, legend = "none") + theme(axis.title.x=element_blank(),
 #x-axis lncRNA, y-axis is the ratio (remember it's log2(#pats in risk group/#pats in non-risk group))
 plotting_data$ratio = as.numeric(plotting_data$ratio)
 #plotting_data$lncRNA = as.character(plotting_data$lncRNA)
+plotting_data$ratio = log2(plotting_data$ratio)
 
 ratios = ggplot(plotting_data, aes(x=lncRNA, y=ratio, col=pval)) +
   geom_path(size = 0.2) + 
   geom_point(size=0.8) + 
   scale_color_gradient(low="darkcyan", high="red") +
   theme_classic() + xlab("log2(#risk/#non-risk") +
-  geom_hline(yintercept=1, linetype="dashed", color = "azure4") + coord_flip() 
+  geom_hline(yintercept=0, linetype="dashed", color = "azure4") + coord_flip() + theme_minimal()
 
 ratios = ggpar(ratios, legend = "right") + theme(axis.title.y=element_blank(),
         axis.text.y=element_blank(),
-        axis.ticks.y=element_blank()) 
+        axis.ticks.y=element_blank())
 
-pdf("test.pdf", height=15)
-ratios
-dev.off()
+#pdf("test.pdf", height=15)
+#ratios
+#dev.off()
 
 ##---------Combine cancers + HRs ----------------------------------------------------
 
@@ -348,8 +353,7 @@ ggscatter(just_hrs, x = "HR", y = "ratio", alpha=0.5,
    cor.coeff.args = list(method = "pearson", label.x = 3, label.sep = "\n")
    ) + 
 geom_hline(yintercept=1, linetype="dashed", color = "azure4") +
-geom_vline(xintercept=0, linetype="dashed", color = "azure4") 
-
+geom_vline(xintercept=0, linetype="dashed", color = "azure4")
 dev.off()
 
 
