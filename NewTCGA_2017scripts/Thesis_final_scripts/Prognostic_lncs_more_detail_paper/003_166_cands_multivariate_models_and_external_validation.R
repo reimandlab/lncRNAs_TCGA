@@ -89,8 +89,8 @@ add_tags = function(dtt){
 filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
 
 get_survival_models = function(dtt){
-  results_cox1 <- as.data.frame(matrix(ncol=9)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
-    "lnc_test_ph", 'global_test_ph')
+  results_cox1 <- as.data.frame(matrix(ncol=11)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
+    "lnc_test_ph", 'global_test_ph', "num_risk", "perc_risk")
 
   dat = dtt
   dat$Cancer = NULL
@@ -123,8 +123,20 @@ get_survival_models = function(dtt){
   lnc_test_ph = test.ph$table[1,3]
   global = test.ph$table[nrow(test.ph$table),3]
 
-  row <- c(colnames(newdat)[1], summary(lncs)$coefficients[1,c(1,2,5)],  summary(lncs)$conf.int[1,c(3,4)], dtt$Cancer[1], lnc_test_ph, global)
-    
+  hr = summary(lncs)$coefficients[1,c(1,2,5)][2]
+  if(hr >1){
+    risk_num = length(which(newdat[,1] == 1))
+    perc = risk_num/nrow(newdat)
+  }
+
+  if(hr < 1){
+    risk_num = length(which(newdat[,1] == 0))
+    perc = risk_num/nrow(newdat)
+  }
+
+  row <- c(colnames(newdat)[1], summary(lncs)$coefficients[1,c(1,2,5)],  summary(lncs)$conf.int[1,c(3,4)], dtt$Cancer[1], 
+    lnc_test_ph, global, risk_num, perc)
+
   names(row) <- names(results_cox1) 
   results_cox1 = rbind(results_cox1, row)
   gene = colnames(newdat)[1]
@@ -159,7 +171,7 @@ get_survival_models = function(dtt){
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          print(s)
+          #print(s)
 
    #generate boxplot 
    z = which(cancers == dtt$Cancer[1])
@@ -175,7 +187,7 @@ get_survival_models = function(dtt){
           add = "jitter", ylab = "FPKM",  ggtheme = theme_bw())
         # Change method
   p = p + stat_compare_means(method = "wilcox.test")
-  print(p)
+  #print(p)
 
   #print(ggcoxzph(test.ph))
 
@@ -190,9 +202,9 @@ return(results_cox1)
 
 }
 
-pdf("TCGA_candidates_survival_plots_final_cands_May3rd.pdf")
+#pdf("TCGA_candidates_survival_plots_final_cands_May3rd.pdf")
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
-dev.off()
+#dev.off()
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
@@ -207,6 +219,23 @@ saveRDS(tcga_results1, file="TCGA_results_multivariate_results_June22.rds")
 #check which models violate the PH assumption
 #to those models add age * survival time interaction 
 which(tcga_results1$global_test_ph <= 0.05)
+tcga_results1$num_risk = as.numeric(tcga_results1$num_risk)
+tcga_results1[tcga_results1$num_risk <20,]
+
+#plot distribution, cut number of risk patients 
+tcga_results1$groupy = cut(tcga_results1$num_risk, breaks =c(1, 20, 40, 60, 80, 100, 200, 300, 
+  400, 500, 600, 700, 800, 900, 1000))
+
+#SUMMARIZE
+# Change line color and fill color
+riskplot = gghistogram(tcga_results1, x = "groupy", y = "..count..", stat="count", 
+   fill = "white", color="black",  palette = c("#00AFBB", "#E7B800")) + xlab("Number of Risk patients")+
+ylab("Frequency")
+pdf("Dist_num_risk_patients_per_lncRNA.pdf", width=10)
+riskplot
+dev.off()
+
+
 
 
 

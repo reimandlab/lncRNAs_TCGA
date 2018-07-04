@@ -308,7 +308,9 @@ ratios = ggplot(plotting_data, aes(x=lncRNA, y=ratio, col=pval)) +
   geom_point(size=0.8) + 
   scale_color_gradient(low="darkcyan", high="red") +
   theme_classic() + xlab("log2(#risk/#non-risk") +
-  geom_hline(yintercept=0, linetype="dashed", color = "azure4") + coord_flip() + theme_minimal()
+  geom_hline(yintercept=0, linetype="dashed", color = "azure4") + coord_flip() + theme_minimal() +
+  geom_hline(yintercept=log2(0.05), linetype="dashed", color = "azure4")+
+  geom_hline(yintercept=log2(5), linetype="dashed", color = "azure4")
 
 ratios = ggpar(ratios, legend = "right") + theme(axis.title.y=element_blank(),
         axis.text.y=element_blank(),

@@ -16,15 +16,23 @@ z = which(tp53_muts$Variant_Classification == "Silent")
 tp53_muts = tp53_muts[-z,]
 
 #for now just start with misense mutations
-z = which(tp53_muts$Variant_Classification == "Missense_Mutation")
-tp53_muts = tp53_muts[z,] #2927 mutations
+#z = which(tp53_muts$Variant_Classification == "Missense_Mutation")
+#tp53_muts = tp53_muts[z,] #2927 mutations
 
 #change patient barcodes
 change_col = function(pat){
 	p1 = unlist(strsplit(pat, "-"))[1]
 	p2 = unlist(strsplit(pat, "-"))[2]
 	p3 = unlist(strsplit(pat, "-"))[3]
-	newpat = paste(p1, p2, p3, sep="-")
+	p4 = unlist(strsplit(pat, "-"))[4]
+	check = str_detect(p4, "01")
+	if(check){
+		#only keep if p4 is primary tmour
+		newpat = paste(p1, p2, p3, sep="-")
+		}
+	if(!(check)){
+		newpat = "remove"
+	}	
 	return(newpat)
 }
 
@@ -32,6 +40,9 @@ library(plyr)
 library(dplyr)
 tp53_muts$Tumor_Sample_Barcode = llply(tp53_muts$Tumor_Sample_Barcode, change_col)
 tp53_muts$Tumor_Sample_Barcode = unlist(tp53_muts$Tumor_Sample_Barcode)
+
+z = which(tp53_muts$Tumor_Sample_Barcode ==  "remove")
+tp53_muts = tp53_muts[-z,]
 
 #remove SNP ids
 z = which(tp53_muts$dbSNP_RS == ".")
