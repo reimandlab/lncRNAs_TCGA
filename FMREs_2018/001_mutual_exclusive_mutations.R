@@ -71,6 +71,21 @@ mutations_in_crms = mutations_in_crms[z]
 z = which(names(cds_mutations) %in% coding_drivers$id)
 mutations_in_cds = cds_mutations[z]
 
+#tp53 muts 
+tp53_muts = readRDS("tp53_pcawg_muts.rds")
+
+#patients with zkscan FMRE --> 6:27870028
+z = which(names(mutations_in_crms) == "ENCODEmerge::chr6:27870028-27871319::NA::NA")
+fmre_pats = mutations_in_crms[[z]]
+
+#which TP53 mutations do these patients have?
+z = which(tp53_muts$Donor_ID %in% fmre_pats)
+tp53_fmre_muts = tp53_muts[z,]
+pats = unique(tp53_fmre_muts$Donor_ID)
+pats[13]
+#[1] "DO28763" <--- supposingly has TP53 mutation but not in CDS file 
+tp53_fmre_muts[which(tp53_fmre_muts$Donor_ID == pats[13])]
+
 
 #Compare ratios------------------------------------------------
 

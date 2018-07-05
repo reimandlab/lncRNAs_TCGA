@@ -235,9 +235,13 @@ pdf("Dist_num_risk_patients_per_lncRNA.pdf", width=10)
 riskplot
 dev.off()
 
-
-
-
+tcga_results1$perc_risk = as.numeric(tcga_results1$perc_risk)
+riskplot = gghistogram(tcga_results1, x = "perc_risk", 
+   fill = "white", color="black",  palette = c("#00AFBB", "#E7B800")) + xlab("Percentage of Risk patients")+
+ylab("Frequency")
+pdf("Dist_perc_risk_patients_per_lncRNA.pdf", width=10)
+riskplot
+dev.off()
 
 
 #tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
@@ -245,6 +249,9 @@ dev.off()
 #-------------------------------------------------------------------
 #------PCAWG DATA---------------------------------------------------
 #-------------------------------------------------------------------
+
+tcga_results1 = readRDS("TCGA_results_multivariate_results_June22.rds")
+
 
 pcawg_data = readRDS("lncRNA_clinical_data_PCAWG_May2.rds")
 pcawg_data$combo = paste(pcawg_data$canc, pcawg_data$histo)
@@ -305,7 +312,8 @@ add_tags = function(dtt){
 filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
 
 get_survival_models = function(dtt){
-  results_cox1 <- as.data.frame(matrix(ncol=7)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer")
+  results_cox1 <- as.data.frame(matrix(ncol=11)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
+    "lnc_test_ph", 'global_test_ph', "num_risk", "perc_risk")
 
   dat = dtt
   dat$canc = NULL
@@ -335,9 +343,25 @@ get_survival_models = function(dtt){
   k = which(!(str_detect(colnames(dat), "ENSG")))
 
   newdat = dat[,c(gene,k)]
-  
+
   lncs = coxph(Surv(time, status)  ~ ., data = newdat)
-  row <- c(colnames(newdat)[1], summary(lncs)$coefficients[1,c(1,2,5)],  summary(lncs)$conf.int[1,c(3,4)], dtt$canc[1])
+  test.ph <- cox.zph(lncs)
+  lnc_test_ph = test.ph$table[1,3]
+  global = test.ph$table[nrow(test.ph$table),3]
+
+  hr = summary(lncs)$coefficients[1,c(1,2,5)][2]
+  if(hr >1){
+    risk_num = length(which(newdat[,1] == 1))
+    perc = risk_num/nrow(newdat)
+  }
+
+  if(hr < 1){
+    risk_num = length(which(newdat[,1] == 0))
+    perc = risk_num/nrow(newdat)
+  }
+
+  row <- c(colnames(newdat)[1], summary(lncs)$coefficients[1,c(1,2,5)],  summary(lncs)$conf.int[1,c(3,4)], dtt$canc[1], 
+    lnc_test_ph, global, risk_num, perc)
     
   names(row) <- names(results_cox1) 
   results_cox1 = rbind(results_cox1, row)
@@ -410,8 +434,8 @@ tcga_results1$data = "TCGA"
 pcawg_results1$data = "PCAWG"
 
 #all-results
-tcga_results1$lnc_test_ph =NULL
-tcga_results1$global_test_ph = NULL
+#tcga_results1$lnc_test_ph =NULL
+#tcga_results1$global_test_ph = NULL
 all_results = as.data.table(rbind(tcga_results1, pcawg_results1))
 all_results = all_results[order(gene, cancer)]
 
@@ -439,8 +463,9 @@ saveRDS(all_results, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNe
 
 #-----check which actually match---------------------------------------------------------------------------
 
-all_results = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-all_results = all_results[!duplicated(all_results), ]
+all_results_orig = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+
+all_results = all_results_orig[!duplicated(all_results_orig), ]
 all_results = filter(all_results, pval <= 0.05)
 
 lncs = as.list(as.character(unique(all_results$gene[all_results$data == "PCAWG"])))
@@ -477,6 +502,7 @@ colnames(matches) = c("lnc", "match", "cancer")
 matches = filter(matches, match == "match")
 colnames(matches)[1] = "gene"
 matches = merge(matches, all_results, by=c("gene", "cancer"))
+matches$combo = paste(matches$gene, matches$cancer, sep="_")
 
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 #z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
@@ -484,7 +510,7 @@ ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 z <- which(duplicated(ucsc[,6]))
 ucsc <- ucsc[-z,]
 colnames(ucsc)[6] = "gene"
- matches = merge(matches, ucsc, by=c("gene"))
+matches = merge(matches, ucsc, by=c("gene"))
 
 #remove weird KIRC one 
 z = which(matches$gene == "ENSG00000250360")
@@ -497,6 +523,45 @@ pdf("6_unique_lncNRAs_validate_PCAWG.pdf", width=24)
 p<-tableGrob(matches)
 grid.arrange(p)
 dev.off()
+matches$combo = paste(matches$gene, matches$cancer, sep="_")
+
+#Clean up and save as spreadsheet
+all_results_orig$combo = paste(all_results_orig$gene, all_results_orig$cancer, sep="_")
+z = which(all_results_orig$combo %in% matches$combo)
+all_results_orig$top_pcawg_val = ""
+all_results_orig$top_pcawg_val[z] = "YES"
+all_results_orig$combo = NULL
+all_results_orig$best_eQTL_mRNA_fdr = NULL
+
+all_results_orig$coef = as.numeric(all_results_orig$coef)
+all_results_orig$coef = round(all_results_orig$coef, digits=4)
+
+all_results_orig$HR = as.numeric(all_results_orig$HR)
+all_results_orig$HR = round(all_results_orig$HR, digits=4)
+
+all_results_orig$pval = as.numeric(all_results_orig$pval)
+all_results_orig$pval = round(all_results_orig$pval, digits=6)
+
+all_results_orig$low95 = as.numeric(all_results_orig$low95)
+all_results_orig$low95 = round(all_results_orig$low95, digits=4)
+
+all_results_orig$upper95 = as.numeric(all_results_orig$upper95)
+all_results_orig$upper95 = round(all_results_orig$upper95, digits=4)
+
+all_results_orig$lnc_test_ph = as.numeric(all_results_orig$lnc_test_ph)
+all_results_orig$lnc_test_ph = round(all_results_orig$lnc_test_ph, digits=4)
+
+all_results_orig$global_test_ph = as.numeric(all_results_orig$global_test_ph)
+all_results_orig$global_test_ph = round(all_results_orig$global_test_ph, digits=4)
+
+all_results_orig$perc_risk = as.numeric(all_results_orig$perc_risk)
+all_results_orig$perc_risk = round(all_results_orig$perc_risk, digits=4)
+
+all_results_orig$fdr_pval = as.numeric(all_results_orig$fdr_pval)
+all_results_orig$fdr_pval = round(all_results_orig$fdr_pval, digits=4)
+
+write.csv(all_results_orig, file="175_lncRNA_cancers_combos_23_cancer_types_july5.csv", quote=F, row.names=F)
+
 
 
 
