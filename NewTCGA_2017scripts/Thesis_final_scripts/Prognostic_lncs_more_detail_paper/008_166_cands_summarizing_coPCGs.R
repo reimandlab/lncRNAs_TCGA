@@ -74,6 +74,9 @@ cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 
 coexp = readRDS("all_results_for_each_cancer_from_coexpression_analysis_june27th_allCands.rds")
 
+#can run FDR on all PCGs for all Cancer types 
+#175 * 20,0000 = enormous FDR test 
+
 #1. Get FDR by cancer type 
 cancers = as.list(unique(coexp$canc))
 canc_fdr = function(cancer){
@@ -86,7 +89,7 @@ canc_fdr = function(cancer){
 
 library(dplyr)
 library(plyr)
-canc_dats = llply(cancers, canc_fdr)
+canc_dats = llply(cancers, canc_fdr) 
 canc_dats = ldply(canc_dats, data.frame)
 
 #2. Summarize per lncRNA/cancer, how many PCGs upregulated in risk group
