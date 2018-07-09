@@ -359,6 +359,9 @@ geom_vline(xintercept=0, linetype="dashed", color = "azure4")
 dev.off()
 
 
+##---------Summarize how many lncRNAs are stable split favourable vs unfavourable------
+
+
 
 
 
