@@ -30,6 +30,15 @@ canc_conv = canc_conv[!duplicated(canc_conv), ]
 #-----------------PCA using just all expressed lncRNA --------------
 #-------------------------------------------------------------------
 
+#remove cancer types with less than 50 patients 
+pats_num = as.data.table(table(rna$Cancer))
+pats_num = filter(pats_num, N <50)
+canc_rm = pats_num$V1
+
+#remove those ones
+cancers = unlist(cancers[which(!(cancers %in% canc_rm))])
+rna = subset(rna, Cancer %in% cancers)
+
 dim(rna)
 rownames(rna) = rna$patient
 z1 = which(str_detect(colnames(rna), "ENSG"))
@@ -112,7 +121,7 @@ mypal[z] = "black"
 
 mypal = readRDS("palette_32_cancer_types.rds")
 
-pdf("cancer_loggef_means_PCA_plots_June29.pdf", width=6, height=6)
+pdf("cancer_logged_means_PCA_plots_july9.pdf", width=6, height=6)
 g = autoplot(prcomp(means_rna[,z], scale. = TRUE), data = means_rna, label=TRUE, colour = 'Cancer', label.size = 3, label.repel=TRUE) +
 theme_minimal() + scale_fill_manual(values = mypal) + 
 scale_color_manual(values =mypal) + ggtitle("PCA using cancer mean log1p(lncRNA expression)")
@@ -127,7 +136,7 @@ colnames(means_rna)[1] = "Cancer"
 z = which(str_detect(colnames(means_rna), "ENSG"))
 rownames(means_rna) = means_rna$Cancer
 
-pdf("cancer_NOTloggef_means_PCA_plots_June29.pdf", width=6, height=6)
+pdf("cancer_NOTloggd_means_PCA_plots_july9.pdf", width=6, height=6)
 g = autoplot(prcomp(means_rna[,z]), data = means_rna, label=TRUE, colour = 'Cancer', label.size = 3, label.repel=TRUE) +
 theme_minimal() + scale_fill_manual(values = mypal) + 
 scale_color_manual(values =mypal) + ggtitle("PCA using cancer mean lncRNA expression")

@@ -27,7 +27,6 @@ cands = filter(cands, AnalysisType == "noFDR")
 cands$Cancer = NULL
 all_cands = cands
 
-
 #--------This script ------------------------------------------------
 
 #just make KM plots for TCGA 

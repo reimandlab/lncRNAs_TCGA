@@ -25,6 +25,7 @@ library(survcomp)
 library(caret)
 library(stringr)
 library(factoextra)
+library(patchwork)
 
 rna = as.data.frame(rna)
 dim(rna)
@@ -57,6 +58,14 @@ rna = rna[-z,]
 #2. list of cancers to apply function to 
 cancers = as.list(unique(rna$Cancer))
 
+#remove cancer types with less than 50 patients 
+pats_num = as.data.table(table(rna$Cancer))
+pats_num = filter(pats_num, N <50)
+canc_rm = pats_num$V1
+
+#remove those ones
+cancers = cancers[which(!(cancers %in% canc_rm))]
+
 #3. function that splits data into cancers 
 get_canc = function(canc){
 	canc_data = rna[which(rna$Cancer == canc),]
@@ -66,9 +75,8 @@ get_canc = function(canc){
 canc_datas = llply(cancers, get_canc)
 
 #4. function that calculates survival for each gene 
-
-det_lncs = readRDS("all_TCGA_cancers_lncRNAs_detectable_May18.rds")
-det_lncs =filter(det_lncs, status =="detectable")
+#det_lncs = readRDS("all_TCGA_cancers_lncRNAs_detectable_May18.rds")
+#det_lncs =filter(det_lncs, status =="detectable")
 
 canc_survival_genes = function(dato){
 	#look at all lncRNAs that are expressed in at least some patients 
@@ -89,7 +97,7 @@ canc_survival_genes = function(dato){
 	
 	get_survival = function(gene){
 	  print(gene)
-  	results_cox <- as.data.frame(matrix(ncol=6)) ; colnames(results_cox) <- c("gene", "coef", "HR", "pval", "low95", "upper95")
+  	results_cox <- as.data.frame(matrix(ncol=8)) ; colnames(results_cox) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "risk_size", "num_patients")
   	z = which(colnames(canc_data_genes_analyze) == gene)
   	dat = canc_data_genes_analyze[,c(1,z,(ncol(canc_data_genes_analyze)-33):ncol(canc_data_genes_analyze))]
   	dat$OS.time = as.numeric(dat$OS.time)
@@ -115,17 +123,29 @@ canc_survival_genes = function(dato){
         dat$med[l2] = 0
     }
 
-    if(dim(table(dat$med)) ==2){
-	  res.cox <- coxph(Surv(OS.time, OS) ~ med, data = dat)
-  	row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)],  summary(res.cox)$conf.int[1,c(3,4)])
-  	names(row) <- names(results_cox)
-  	return(row)
-  	}}
+    check1 = table(dat$med)[1] >= 10
+    check2 = table(dat$med)[2] >= 10
+    if(check1 & check2){
+      if(dim(table(dat$med)) ==2){
+  	  res.cox <- coxph(Surv(OS.time, OS) ~ med, data = dat)
+    	hr = summary(res.cox)$coefficients[1,c(2)]
+      num_pat = nrow(dat)
+      if(hr > 1){
+        risk = length(which(dat$med ==1))
+      }
+      if(hr <1){
+        risk = length(which(dat$med ==0))
+      }
+
+      row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)],  summary(res.cox)$conf.int[1,c(3,4)], risk, num_pat)
+     	names(row) <- names(results_cox)
+    	return(row)
+  	}}} #end get_survival function
 
 	genes_survival = llply(genes, get_survival, .progress="text")
 	genes_survival_res = ldply(genes_survival, rbind)
 	#fdr
-	colnames(genes_survival_res) = c("gene", "coef", "HR", "pval", "low95", "upper95")
+	colnames(genes_survival_res) = c("gene", "coef", "HR", "pval", "low95", "upper95", "risk_size", "num_patients")
 	genes_survival_res$fdr = p.adjust(as.numeric(genes_survival_res$pval), method="fdr")
 	genes_survival_res$canc = dato$Cancer[1]
 	genes_survival_res = as.data.table(genes_survival_res)
@@ -133,17 +153,21 @@ canc_survival_genes = function(dato){
 	return(genes_survival_res)
 }
 
-all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text")
-all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
+#all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text")
+#all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
+
+#saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_for_plotting_HAzard_Ratios_Pvalues_July9.rds")
 
 
-saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_for_plotting_HAzard_Ratios_Pvalues_June28.rds")
+##############RUN-----------------------------------------------------------------------------------
 
+all_cancers_genes_surv_comb = readRDS("lncRNAs_for_plotting_HAzard_Ratios_Pvalues_July9.rds")
+canc_conv = rna[,which(colnames(rna) %in% c("Cancer", "type"))]
+canc_conv = canc_conv[!duplicated(canc_conv), ]
+colnames(canc_conv)[2] = "canc"
+all_cancers_genes_surv_comb = merge(all_cancers_genes_surv_comb, canc_conv, by="canc")
 
-all_cancers_genes_surv_comb = readRDS("lncRNAs_for_plotting_HAzard_Ratios_Pvalues_June28.rds")
-
-
-###---------------------------------------------------------------
+###-------------------------------------------------------------------------------------------------
 
 #plot scatter plot - HR versus p-value draw line for FDR = 0.05
 all_cancers_genes_surv_comb$pval = -log10(as.numeric(all_cancers_genes_surv_comb$pval))
@@ -188,12 +212,13 @@ all_cancers_genes_surv_comb$canc  # notice the changed order of factor levels
 
 order_cols = c("NotSignificant", "Significant", "FDRsig")
 all_cancers_genes_surv_comb$fdrsig <- factor(all_cancers_genes_surv_comb$fdrsig, levels = order_cols)
-
+all_cancers_genes_surv_comb$risk[all_cancers_genes_surv_comb$HR > 1] = "Unfavourable"
+all_cancers_genes_surv_comb$risk[all_cancers_genes_surv_comb$HR < 1] = "Favourable"
 
 #Variation 1 of survival overview plot
 
-pdf("HR_vs_pval_survival_all_cancers_scatter_plot_June28.pdf", width=12, height=9)
-g = ggscatter(all_cancers_genes_surv_comb, x = "canc", y = "HR", color="fdrsig", palett=c("gray34", mypal[1], "lightskyblue3"), size = 0.85) + 
+pdf("HR_vs_pval_survival_all_cancers_scatter_plot_July9.pdf", width=12, height=9)
+g = ggscatter(all_cancers_genes_surv_comb, x = "type", y = "HR", color="fdrsig", palett=c("gray34", mypal[1], "lightskyblue3"), size = 0.85) + 
 geom_hline(yintercept=1, linetype="dashed", color = "red")
 ggpar(g,
  font.xtickslab = c(8,"plain", "black"),
@@ -204,36 +229,133 @@ dev.off()
 #Variation 2 of survival overview plot
 
 head(all_cancers_genes_surv_comb)
-
 all_cancers_genes_surv_comb$HR = log2(all_cancers_genes_surv_comb$HR)
 
 # Change violin plot colors by groups
-pdf("HR_vs_pval_survival_all_cancers_scatter_plot_May23.pdf", width=10, height=8)
-
-g = ggplot(all_cancers_genes_surv_comb, aes(canc, HR)) +
+pdf("HR_vs_pval_survival_all_cancers_scatter_plot_july9.pdf", width=10, height=8)
+g = ggplot(all_cancers_genes_surv_comb, aes(type, HR)) +
   geom_violin() + 
   geom_jitter(height = 0.005, width = 0.005, aes(colour = factor(fdrsig)), size=0.15, alpha=0.5) +
   scale_colour_manual(name="colour", values=c("pink", "purple", "orange"))+ geom_hline(yintercept=log2(1), linetype="dashed", color = "red")
-
-
 ggpar(g,
  font.xtickslab = c(8,"plain", "black"), ylab="log2(HR)",
  xtickslab.rt = 90)
+dev.off()
 
+#summarize number favourable and unfabourable lcnRNAs by fdr significance per cancer type
+
+#get order of cancer types by total number of lncRNAs 
+order = as.data.table(table(all_cancers_genes_surv_comb$type, all_cancers_genes_surv_comb$fdrsig))
+order = as.data.table(filter(order, N >0))
+order = as.data.table(filter(order, V2 %in% c("Significant", "FDRsig")))
+order = order[order(V2, -N)]
+order = unique(order$V1)
+
+summ = as.data.table(table(all_cancers_genes_surv_comb$type, all_cancers_genes_surv_comb$fdrsig,
+  all_cancers_genes_surv_comb$risk))
+colnames(summ) = c("Cancer", "Sig", "Risk", "N")
+summ = as.data.table(filter(summ, N > 0))
+
+#barplot----summary
+#only include significant ones
+#how many significant favourable vs unfavourable 
+summ = as.data.table(filter(summ, Sig %in% c("Significant", "FDRsig")))
+
+#just sig
+summ = filter(summ, N > 0)
+summ$Cancer = factor(summ$Cancer, levels = order)
+
+#pdf("Univariate_summary_28_Cancers_july9.pdf", width=10)
+part1 <- ggplot(data=summ, aes(x=Cancer, y=N, fill=Risk)) +
+geom_bar(stat="identity")+
+  theme_bw() + coord_flip() +
+  scale_fill_manual(values=c('darkcyan','orange')) + ggtitle("Number of Univariate Significant lncRNAs, CoxPH p-val < 0.05")
+
+part1 = ggpar(part1, legend="none",
+ font.xtickslab = c(8,"plain", "black"), ylab="Number of lncRNAs")
+#dev.off()
+
+#just fdrsig
+summ = as.data.table(filter(summ, Sig == "FDRsig"))
+summ = filter(summ, N > 0)
+
+#pdf("Univariate_summary_28_Cancers_july9_justfdr.pdf", width=10)
+part2 <- ggplot(data=summ, aes(x=Cancer, y=N, fill=Risk)) +
+geom_bar(stat="identity")+
+  theme_bw() + coord_flip() +
+  scale_fill_manual(values=c('darkcyan','orange'))
+
+part2 = ggpar(part2, legend="bottom",
+ font.xtickslab = c(8,"plain", "black"), ylab="Number of lncRNAs") + ggtitle("Number of Univariate Significant lncRNAs, CoxPH FDR < 0.05")
+#dev.off()
+
+#Figure 2A plot 
+pdf("figure2_A_july10.pdf", width=7, height=7)
+part1 + part2 + plot_layout(ncol = 1, heights = c(3, 2))
 dev.off()
 
 
+aggregate(summ[, 4], list(summ$Risk), sum)
 
-####summarize how many significant lncRNAs per cancer type
 
+### Get corrplot of survival candidates within each cancer type for significant lncRNAs ---------------------------------------------------
+head(all_cancers_genes_surv_comb)
 all_cancers_genes_surv_comb = as.data.table(all_cancers_genes_surv_comb)
 
-sig = as.data.table(filter(all_cancers_genes_surv_comb, fdrsig %in% c("FDRsig", "Significant")))
-sig_counts = as.data.table(table(sig$gene, sig$canc))
-sig_counts = as.data.table(filter(sig_counts, N >0))
-sig_counts = sig_counts[order(N)]
-sig_counts = as.data.table(table(sig_counts$V1))
-sig_counts = sig_counts[order(N)]
+cancers = (unique(all_cancers_genes_surv_comb$canc))
+
+#function apply to each cancer type and plot corrplot for significant lncRNAs (sig & fdrsig)
+
+library(corrplot)
+library(Hmisc)
+
+# ++++++++++++++++++++++++++++
+# flattenCorrMatrix
+# ++++++++++++++++++++++++++++
+# cormat : matrix of the correlation coefficients
+# pmat : matrix of the correlation p-values
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+    )
+}
+
+
+get_corplot = function(cancer){
+
+  #get sig genes
+  canc_genes = as.data.table(filter(all_cancers_genes_surv_comb, canc == cancer))
+  canc_genes = as.data.table(filter(canc_genes, fdrsig %in% c("Significant", "FDRsig")))
+
+  if(!(dim(canc_genes)[1] == 0)){
+    genes = unique(canc_genes$gene)
+    canc_exp = subset(rna, Cancer == cancer)
+    rownames(canc_exp) = canc_exp$patient
+    canc_exp = canc_exp[,which(colnames(canc_exp) %in% c(genes))]
+    res2 <- rcorr(as.matrix(canc_exp))
+
+    # Insignificant correlations are leaved blank
+    col<- colorRampPalette(c("blue", "white", "red"))(20)
+    corrplot(res2$r, order="hclust", col=col, 
+      p.mat = res2$P, sig.level = 0.01, insig = "blank", tl.cex=1, method="color", 
+      cl.pos = "n", tl.pos = "n")
+
+
+  }
+
+}
+
+
+
+
+
+
+
+
 
 
 

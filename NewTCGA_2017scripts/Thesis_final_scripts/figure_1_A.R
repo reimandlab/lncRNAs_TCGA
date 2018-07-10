@@ -40,6 +40,13 @@ ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 z <- which(duplicated(ucsc[,6]))
 ucsc <- ucsc[-z,]
 
+
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = filter(allCands, data=="TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+
+cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
+cands = allCands
+
 #add location to lncRNAs 
 
 #how many lncRNAs  --> 5,785
@@ -52,6 +59,15 @@ rna = rna[,c(z1,z2)]
 
 #need to get median expression for each gene for each cancer type 
 cancers = unique(rna$Cancer)
+
+#remove cancer types 
+#with less than 50 patients
+pats_num = as.data.table(table(rna$Cancer))
+pats_num = filter(pats_num, N <50)
+canc_rm = pats_num$V1
+
+#remove those ones
+cancers = cancers[which(!(cancers %in% canc_rm))]
 
 get_canc_data = function(cancer){
 	canc_data = subset(rna, Cancer == cancer)
@@ -137,8 +153,6 @@ det_stat_cand[which(det_stat_cand$lncRNA %in% pcawg_cands$gene),] #using MAD of 
 
 #how many of 175 combos have percent of people with non-zero expression greater than 5
 det_stat_cand[which(det_stat_cand$lncRNA %in% all_cands$gene),]
-
-
 
 #justcancerand num patients
 pats = meds_cancers1[,c(1, 4)]
