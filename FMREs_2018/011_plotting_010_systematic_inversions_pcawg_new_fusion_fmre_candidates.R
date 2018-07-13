@@ -160,6 +160,42 @@ plotting_dat$expression[plotting_dat$fc >0] = "Upregulated"
 plotting_dat$expression[plotting_dat$fc <0] = "Downregulated"
 plotting_dat$expression = factor(plotting_dat$expression, levels = c("Upregulated", "Downregulated"))
 
+#Add patient pseudonames
+plotting_dat$patient_pseudo = paste("donor", LETTERS[seq(from = 1, to = 9)], sep="")
+z = which(duplicated(plotting_dat$patient))
+plotting_dat$patient_pseudo[z] = plotting_dat$patient_pseudo[which(plotting_dat$patient == plotting_dat$patient[z])]
+
+#patient covariate
+pats = ggplot(plotting_dat, aes(name, 0.2)) +
+    geom_tile(fill="snow") + geom_text(aes(label = patient_pseudo), size=3) +
+    theme_void() 
+
+pats = ggpar(pats, legend = "none") + theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + 
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())
+
+#####3 USE--------------------
+
+barplot = ggbarplot(plotting_dat, x="translocation", y="fc", lab.size = 6, label = labels, lab.vjust=-0.1, fill="expression") +
+ 	xlab("Translocation") + ylab("log2(Fold Change)") + theme_bw() +
+ 	scale_fill_manual(values=c("#E69F00", "#56B4E9"))
+ 
+barplot = ggpar(barplot,
+ font.tickslab = c(7,"plain", "black"), legend.title = "Expression", font.legend = c(8, "plain", "black"), 
+ xtickslab.rt = 45) + 
+scale_y_continuous(breaks = round(seq(-3, 11, by = 1),1))
+
+pdf("summary_barplot_translocation_exp_fc_version_3_.pdf", width=7, height=7)
+barplot + cancers + pats + plot_layout(ncol = 1, heights = c(10, 1, 1))
+dev.off()
+
+
+
+######2 Don't USE
+
 barplot = ggbarplot(plotting_dat, x="name", y="fc", lab.size = 6, color="fmre", label = labels, lab.vjust=-0.1, fill="fc") +
 scale_fill_gradient2(low='darkcyan', mid='snow3', high= "orange", space='Lab')+
  xlab("Translocation target") + ylab("Fold Change") + theme_bw() +
@@ -174,22 +210,7 @@ barplot + cancers + plot_layout(ncol = 1, heights = c(10, 1))
 dev.off()
 
 
-#####3
-barplot = ggbarplot(plotting_dat, x="translocation", y="fc", lab.size = 6, label = labels, lab.vjust=-0.1, fill="expression") +
- 	xlab("Translocation") + ylab("log2(Fold Change)") + theme_bw() +
- 	scale_fill_manual(values=c("#E69F00", "#56B4E9"))
- 
-barplot = ggpar(barplot,
- font.tickslab = c(7,"plain", "black"), legend.title = "Expression", font.legend = c(8, "plain", "black"), 
- xtickslab.rt = 45)
-
-pdf("summary_barplot_translocation_exp_fc_version_3_.pdf", width=7, height=7)
-barplot + cancers + plot_layout(ncol = 1, heights = c(10, 1))
-dev.off()
-
-
-
-####4
+####4 Don't USE
 
 plotting_dat$labels = paste(plotting_dat$fmre, plotting_dat$newpval, sep=" ")
 labels = plotting_dat$labels

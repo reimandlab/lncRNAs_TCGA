@@ -26,6 +26,7 @@ library(caret)
 library(stringr)
 library(factoextra)
 library(patchwork)
+library(tidyr)
 
 rna = as.data.frame(rna)
 dim(rna)
@@ -309,6 +310,43 @@ cancers = (unique(all_cancers_genes_surv_comb$canc))
 library(corrplot)
 library(Hmisc)
 
+
+get_corplot = function(cancer){
+  print(cancer)
+
+  #get sig genes
+  canc_genes = as.data.table(filter(all_cancers_genes_surv_comb, canc == cancer))
+  canc_genes = as.data.table(filter(canc_genes, fdrsig %in% c("Significant", "FDRsig")))
+
+  if((dim(canc_genes)[1] >=2)){
+
+    if(dim(canc_genes)[1] >=50){
+      canc_genes = canc_genes[order(-fdr)]
+      canc_genes = canc_genes[1:50,]
+    }
+
+    genes = unique(canc_genes$gene)
+    canc_exp = subset(rna, Cancer == cancer)
+    rownames(canc_exp) = canc_exp$patient
+    canc_exp = canc_exp[,which(colnames(canc_exp) %in% c(genes))]
+    res2 <- rcorr(as.matrix(canc_exp), type="spearman")
+
+    # Insignificant correlations are leaved blank
+    col<- colorRampPalette(c("blue", "white", "red"))(20)
+    c = corrplot(res2$r, order="hclust", col=col, addrect = 3, 
+      p.mat = res2$P, sig.level = 0.05, insig = "blank", tl.cex=1, method="color", mar=c(0,0,1,0),bg="snow2",
+      tl.pos = "n", title=paste(cancer, "top 50 lncRNA correlations"))
+    print(c)
+  }
+}
+
+pdf("correlation_plots.pdf")
+llply(cancers, get_corplot, .progress = "text")
+dev.off()
+
+#saveRDS(rna, file="lncRNA_expression_for_remote_plotting_july10.rds")
+#saveRDS(pcg, file="pcg_expression_for_remote_plotting_july10.rds")
+
 # ++++++++++++++++++++++++++++
 # flattenCorrMatrix
 # ++++++++++++++++++++++++++++
@@ -324,30 +362,241 @@ flattenCorrMatrix <- function(cormat, pmat) {
     )
 }
 
-
 get_corplot = function(cancer){
+  print(cancer)
 
   #get sig genes
   canc_genes = as.data.table(filter(all_cancers_genes_surv_comb, canc == cancer))
   canc_genes = as.data.table(filter(canc_genes, fdrsig %in% c("Significant", "FDRsig")))
 
-  if(!(dim(canc_genes)[1] == 0)){
+  if((dim(canc_genes)[1] >=2)){
+
+    if(dim(canc_genes)[1] >=50){
+      canc_genes = canc_genes[order(-fdr)]
+      canc_genes = canc_genes[1:50,]
+    }
+
     genes = unique(canc_genes$gene)
     canc_exp = subset(rna, Cancer == cancer)
     rownames(canc_exp) = canc_exp$patient
     canc_exp = canc_exp[,which(colnames(canc_exp) %in% c(genes))]
-    res2 <- rcorr(as.matrix(canc_exp))
+    
+    res2 = rcorr(as.matrix(canc_exp), type="spearman")
+    res2 = flattenCorrMatrix(res2$r, res2$P)
+    res2$fdr = p.adjust(res2$p, method="fdr")
+    res2 = as.data.table(res2)
+    res2 = res2[order(fdr)]
+    res2 = as.data.table(filter(res2, fdr <= 0.05))
+  
+    #check if lncRNA-lncRNA correlations match HRs 
+    check_dir = function(lnc1, lnc2){
+      hr_lnc1 = canc_genes$HR[canc_genes$gene == lnc1]
+      hr_lnc2 = canc_genes$HR[canc_genes$gene == lnc2]
 
-    # Insignificant correlations are leaved blank
-    col<- colorRampPalette(c("blue", "white", "red"))(20)
-    corrplot(res2$r, order="hclust", col=col, 
-      p.mat = res2$P, sig.level = 0.01, insig = "blank", tl.cex=1, method="color", 
-      cl.pos = "n", tl.pos = "n")
+      check1 = ((hr_lnc1 > 0) & (hr_lnc2 > 0)) 
+      check2 = ((hr_lnc1 < 0) & (hr_lnc2 < 0)) 
+      
+      if(check1){match = "U"
+      }else if(check2){
+        match = "F"
+      }else{match = "D"}
 
+      return(match)
+    }
+
+    res2$match = mapply(check_dir, res2$row, res2$column)
+
+    #ordered by strongest correlations to weakest correlations
+    res2 = res2[order(match, cor)]
+    res2$row = factor(res2$row, levels = unique(res2$row))
+    res2$column = factor(res2$column, levels = unique(res2$column))
+
+    g = ggplot(res2, aes(row, column)) +
+        geom_tile(aes(fill = cor)) +
+        geom_text(aes(label = match), size=2) +
+        scale_fill_gradient2(low = "blue", high = "red", mid="white", midpoint = 0, na.value = 'transparent') +
+        xlab("lncRNA1") + ylab("lncRNA2") + theme_bw() + coord_fixed() + 
+        ggtitle(paste(cancer, "top 50 lncRNA correlations"))       
+
+    g = ggpar(g,
+        font.tickslab = c(4,"plain", "black"),
+        xtickslab.rt = 45, legend.title="Spearman \nCorrelation")
+
+    print(g)
 
   }
-
 }
+
+pdf("correlation_plots_with_directions.pdf")
+llply(cancers, get_corplot, .progress = "text")
+dev.off()
+
+#Calculate how many lncRNA-lncRNA pairs there are per each cancer type 
+#and how many of each are significntl correalted 
+
+get_summary = function(cancer){
+  print(cancer)
+
+  #get sig genes
+  canc_genes = as.data.table(filter(all_cancers_genes_surv_comb, canc == cancer))
+  canc_genes = as.data.table(filter(canc_genes, fdrsig %in% c("Significant", "FDRsig")))
+
+  if((dim(canc_genes)[1] >=2)){
+
+    genes = unique(canc_genes$gene)
+    canc_exp = subset(rna, Cancer == cancer)
+    rownames(canc_exp) = canc_exp$patient
+    canc_exp = canc_exp[,which(colnames(canc_exp) %in% c(genes))]
+    
+    res2 = rcorr(as.matrix(canc_exp), type="spearman")
+    res2 = flattenCorrMatrix(res2$r, res2$P)
+    res2$fdr = p.adjust(res2$p, method="fdr")
+    res2 = as.data.table(res2)
+    res2 = res2[order(fdr)]
+
+    #total pairs 
+    tot_pairs = nrow(res2)
+    res2 = as.data.table(filter(res2, fdr <= 0.05))
+    sig_pairs = nrow(res2)    
+
+    #%
+    perc = sig_pairs/tot_pairs
+
+    row = c(as.character(cancer), tot_pairs, sig_pairs, perc)
+    return(row)
+  }
+}
+
+canc_results = llply(cancers, get_summary, .progress = "text")
+#remove null
+canc_results = Filter(Negate(is.null), canc_results)
+
+canc_results = do.call(rbind.data.frame, canc_results)
+colnames(canc_results) = c("cancer", "total_pairs", "sig_pairs", "perc")
+
+#Calculate for all significant co-exprseed pairs 
+#how many matching correlated unfavourable/favourable
+#how many unfavourable or not matching
+
+get_pairs_results = function(cancer){
+  print(cancer)
+
+  #get sig genes
+  canc_genes = as.data.table(filter(all_cancers_genes_surv_comb, canc == cancer))
+  canc_genes = as.data.table(filter(canc_genes, fdrsig %in% c("Significant", "FDRsig")))
+
+  if((dim(canc_genes)[1] >=2)){
+
+    genes = unique(canc_genes$gene)
+    canc_exp = subset(rna, Cancer == cancer)
+    rownames(canc_exp) = canc_exp$patient
+    canc_exp = canc_exp[,which(colnames(canc_exp) %in% c(genes))]
+    
+    res2 = rcorr(as.matrix(canc_exp), type="spearman")
+    res2 = flattenCorrMatrix(res2$r, res2$P)
+    res2$fdr = p.adjust(res2$p, method="fdr")
+    res2 = as.data.table(res2)
+    res2 = res2[order(fdr)]
+    tot_pairs = nrow(res2)
+    res2 = as.data.table(filter(res2, fdr <= 0.05))
+    sig_pairs = nrow(res2)  
+    #check if lncRNA-lncRNA correlations match HRs 
+    check_dir = function(lnc1, lnc2){
+      hr_lnc1 = canc_genes$HR[canc_genes$gene == lnc1]
+      hr_lnc2 = canc_genes$HR[canc_genes$gene == lnc2]
+
+      check1 = ((hr_lnc1 > 0) & (hr_lnc2 > 0)) 
+      check2 = ((hr_lnc1 < 0) & (hr_lnc2 < 0)) 
+      
+      if(check1){match = "U"
+      }else if(check2){
+        match = "F"
+      }else{match = "D"}
+
+      return(match)
+    }
+
+    res2$match = mapply(check_dir, res2$row, res2$column)
+
+    #ordered by strongest correlations to weakest correlations
+    res2 = res2[order(match, cor)]
+    res2$cor_sum[res2$cor > 0] = "Pos"
+    res2$cor_sum[res2$cor < 0] = "Neg"
+    #summarize how many of each kind
+    t = table(res2$match, res2$cor_sum)
+    t = as.data.table(tidy(t))
+    t = t[order(Freq)]
+    t$total_sig_pairs = sig_pairs
+    t$total_pairs = tot_pairs
+    t$perc = t$Freq/sig_pairs
+    t$cancer = cancer
+    return(t)
+  }
+}
+
+canc_results_pairs_types = llply(cancers, get_pairs_results, .progress = "text")
+#remove null
+canc_results_pairs_types2 = Filter(Negate(is.null), canc_results_pairs_types)
+canc_results_pairs_types2 = ldply(canc_results_pairs_types2)
+colnames(canc_results_pairs_types2)[1:3] = c("HR_pair", "Exp_pair", "N")
+canc_results_pairs_types2 = as.data.table(canc_results_pairs_types2)
+canc_results_pairs_types2 = as.data.table(canc_results_pairs_types2[order(perc)])
+canc_results_pairs_types2$perc = round(as.numeric(canc_results_pairs_types2$perc), digits=4)
+colnames(canc_conv)[2] = "cancer"
+canc_results_pairs_types2 = merge(canc_results_pairs_types2, canc_conv, by="cancer")
+
+#Summarize figure 2 B - summary of correlated pairs across 
+#cancer types 
+canc_results_pairs_types2$HR_pair = as.character(canc_results_pairs_types2$HR_pair)
+canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$HR_pair == "F"] = "Both \nFavourable"
+canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$HR_pair == "U"] = "Both \nUnfavourable"
+canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$HR_pair == "D"] = "Opposite \nHRs"
+
+#cancer order keep same as first plot
+canc_results_pairs_types2$type <- factor(canc_results_pairs_types2$type, levels = rev(order))
+canc_results_pairs_types2$column_name = paste(canc_results_pairs_types2$HR_pair, canc_results_pairs_types2$Exp_pair)
+
+#find matched correlation - hazard ratios pairs
+canc_results_pairs_types2$match_type = ""
+
+for(i in 1:nrow(canc_results_pairs_types2)){
+  hr_pair = canc_results_pairs_types2$HR_pair[i]
+  co = as.character(canc_results_pairs_types2$Exp_pair[i])
+    
+  if((hr_pair == "Both \nFavourable") & (co == "Pos")){
+    match = "Yes"
+  } else if ((hr_pair == "Both \nUnfavourable") & (co == "Pos")){
+    match = "Yes"
+  } else if ((hr_pair == "Opposite \nHRs") & (co == "Neg")){
+    match = "Yes"
+  } else {match = "No"}
+
+  canc_results_pairs_types2$match_type[i] = match
+}
+
+canc_results_pairs_types2 = as.data.table(filter(canc_results_pairs_types2, match_type == "Yes"))
+
+
+pdf("Figure2B_summary_types_of_correlations_28_cancers_types.pdf", height=5, width=6)
+
+g = ggplot(canc_results_pairs_types2, aes(type, column_name)) +
+  geom_tile(aes(fill = perc), color="grey")  +
+    scale_fill_gradient2(low = "turquoise4", high = "tan1") +
+    xlab("Cancer") + ylab("lncRNA pairs Hazard Ratios") + theme_bw() +
+     labs(fill="% of Significant \nCorrelated Pairs", colour="Type of \ncorrelation")
+ggpar(g,
+ font.tickslab = c(6,"plain", "black"),
+ xtickslab.rt = 45)
+
+dev.off()
+
+
+
+
+
+
+
+
 
 
 

@@ -54,6 +54,12 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June1
 allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
+val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
+val_cands = as.data.table(val_cands)
+val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
+val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+
 #--------This script ------------------------------------------------
 
 #summarize results from co-expression analysis of PCGs
@@ -80,9 +86,14 @@ coexp = readRDS("all_results_for_each_cancer_from_coexpression_analysis_june27th
 #1. Get FDR by cancer type 
 cancers = as.list(unique(coexp$canc))
 canc_fdr = function(cancer){
-	dat = subset(coexp, canc == cancer)
-	dat$fdr = p.adjust(dat$pvalue, method = "fdr")
-	dat = as.data.table(dat)
+  dat = subset(coexp, canc == cancer)
+	dat$pvalue = as.numeric(dat$pvalue)
+  dat$fdr = p.adjust(dat$pvalue, method = "fdr")
+	z = which(is.na(dat$pvalue))
+  if(!length(z)==0){
+    dat = dat[-z,]
+  }
+  dat = as.data.table(dat)
 	dat = dat[order(fdr)]
 	return(dat)
 }
@@ -91,6 +102,21 @@ library(dplyr)
 library(plyr)
 canc_dats = llply(cancers, canc_fdr) 
 canc_dats = ldply(canc_dats, data.frame)
+
+#plot scatter plot, FC versus p-value
+#coexp$fdr = -log10(coexp$fdr)
+canc_dats$mean_diff = as.numeric(canc_dats$mean_diff)
+#z = which(canc_dats$mean_diff == 0)
+#canc_dats = canc_dats[-z,]
+canc_dats = as.data.table(canc_dats)
+#coexp = filter(coexp, pvalue <= 0.05)
+
+#ggscatter(coexp, x = "mean_diff", y = "fdr", size=0.5, 
+#   color="fdr") + geom_hline(yintercept = -log10(0.05)) + geom_vline(xintercept = 0) +
+#    geom_vline(xintercept = (log1p(4))-(log1p(2))) +
+#    geom_vline(xintercept = (log1p(2))-(log1p(4)))
+#dev.off()
+
 
 #2. Summarize per lncRNA/cancer, how many PCGs upregulated in risk group
 #and how many upregulated in non-risk group 
@@ -106,7 +132,6 @@ canc_dats = canc_dats[which(!(canc_dats$risk_type =="")),]
 
 #fold change of two equals to 0.51
 #fold change of 1/2 equals to -0.51
-
 summary = as.data.table(table(canc_dats$lnc, canc_dats$risk_type))
 summary = filter(summary, N >0)
 summary = as.data.table(summary)
@@ -145,6 +170,8 @@ for(y in 1:length(z)){
   summary$name[z[y]] = g
 }
 
+summary = as.data.table(filter(summary, NumPCGs >= 50))
+
 ####Need to re-level cancer types - not in right order!!!! fixed? 
 
 #color = grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert = T)]
@@ -167,13 +194,26 @@ summary$Risk = factor(summary$Risk, levels = riskorder)
 
 ##---------Main plot with barplot risk vs non risk -----------------------
 
+#for plot only keep those lnc-canc combos with at least 10 pcgs 
+z = which(str_detect(summary$lnc, "_"))
+summary = as.data.table(summary)
+summary$combo = ""
+summary$combo[z] = as.character(summary$lnc[z])
+summary$combo[-z] = paste(summary$lnc[-z], summary$canc[-z], sep="_")
+
+#add the candidates that validated
+z = which(summary$combo %in% val_cands$combo)
+summary$val = ""
+summary$val[z] = "*"
+summary$val[-z] = ""
+
 ratios = ggplot(data=summary, aes(x=name, y=NumPCGs, color=Risk)) +
-  geom_bar(stat="identity") +
+  geom_bar(stat="identity") + geom_text(aes(label = summary$val), color="black", size=5) + 
   theme_bw() + 
   coord_flip() +
   theme(axis.title.y=element_blank())
 
-ratios = ggpar(ratios, legend = "right", font.ytickslab=c(2, "plain", "black"))
+ratios = ggpar(ratios, legend = "right", font.ytickslab=c(4, "plain", "black"))
 
 ##---------Covariate heatmap for cancer type-------------------------------------------
 
@@ -213,10 +253,22 @@ nosig = allCands[-c(z1, z2),]
 ##---------What kinds of genes are enriched per lncRNA-----------------------------------
 
 cancer_genes = fread("list_of_cancer_genes_mmc10-2.txt", header=F)
+colnames(cancer_genes)[1] = "name"
+colnames(ucsc)[6] = "V1"
+colnames(ucsc)[8] = "name"
+cancer_genes = merge(cancer_genes, ucsc, by="name")
+
 rbps = fread("list_of_RBPs_mmc2-5.txt", header=F)
+colnames(rbps)[1] = "name"
+rbps = merge(rbps, ucsc, by="name")
+
 TFS = fread("list_of_TFs_mmc2-5.txt", header=F)
+colnames(TFS)[1] = "name"
+TFS = merge(TFS, ucsc, by="name")
+
 TF_targets = fread("TF_targets_mmc5-2.txt", header=F)
 colnames(TF_targets) = c("TF", "target")
+
 protein_at = fread("proteinatlas.tsv")
 sub_loc = fread("protein_atlas_subcellular_location.tsv")
 #keep only reliable
@@ -224,8 +276,9 @@ sub_loc = as.data.table(filter(sub_loc, Reliability == "Approved"))
 patho = fread("protein_atlas_pathology.tsv")
 
 #how many duplicated PCGs
+#pcgs_sum = as.data.table(table(canc_dats$pcg, canc_dats$risk_type, canc_dats$canc))
 pcgs_sum = as.data.table(table(canc_dats$pcg, canc_dats$risk_type))
-pcgs_sum = as.data.table(filter(pcgs_sum, N >1))
+pcgs_sum = as.data.table(filter(pcgs_sum, N >=1))
 pcgs_sum = pcgs_sum[order(N)]
 pcgs_sum$both_risk_groups = ""
 
@@ -235,17 +288,23 @@ both_risks = as.data.table(filter(both_risks, N >1))
 
 pcgs_sum$both_risk_groups = ""
 z = which(pcgs_sum$V1 %in% both_risks$V1)
-#7212/19175 in both risk and nonrisk
+# 6758/19029 pcgs appear in both risk groups 
 pcgs_sum$both_risk_groups[z] = "BOTH_risks"
+z = which(pcgs_sum$both_risk_groups == "BOTH_risks")
+both_risks = unique(pcgs_sum$V1[z])
+#what type of PCGs are they?
+#875/4229 are cancer genes
+#1/4229 RBP
+#172/4229 are Transcription factors 
 
 #plot summary how many cancer types pcg
 #is in high risk group
 
 risk = as.data.table(filter(pcgs_sum, V2 == "Risk"))
-risk$groupy = cut(risk$N, breaks =c(1,5, 10, 15, 20,25, 30))
+risk$groupy = cut(risk$N, breaks =c(0,1,5, 10, 15, 20,25, 30, 35))
 
 nonrisk = as.data.table(filter(pcgs_sum, V2 == "NonRisk"))
-nonrisk$groupy = cut(nonrisk$N, breaks =c(1,5, 10, 15, 20,25, 30))
+nonrisk$groupy = cut(nonrisk$N, breaks =c(0,1,5, 10, 15, 20,25, 30, 35))
 
 #SUMMARIZE
 # Change line color and fill color
@@ -259,54 +318,42 @@ nonriskplot= ggplot(nonrisk, aes(x=groupy))+
 
 both = rbind(risk, nonrisk)
 
-pdf("summary_pcgs_coexpressed_mutliple_cancer_types.pdf")
-ggplot(both, aes(x=groupy, fill=V2)) +
+pdf("summary_pcgs_coexpressed_mutliple_cancer_types.pdf", width=5, height=5)
+g = ggplot(both, aes(x=groupy, fill=V2)) +
   scale_fill_brewer(palette="Dark2") +
   geom_histogram(position="dodge", stat="count", alpha=0.8)+
   theme(legend.position="top") +
   theme_bw() +
-  xlab("Number of Cancers") + ylab("Number of PCGs")
+  xlab("Number of lncRNA candidates") + ylab("Number of PCGs")
+ggpar(g, legend.title="lncRNA group")
 dev.off()
 
 #distribution of PCGs that appeared in both groups
 bothrisks = as.data.table(filter(both, both_risk_groups=="BOTH_risks"))
-pdf("just_pcgs_both_risks_summary_pcgs_coexpressed_mutliple_cancer_types.pdf")
-ggplot(bothrisks, aes(x=groupy, fill=V2)) +
+pdf("just_pcgs_both_risks_summary_pcgs_coexpressed_mutliple_cancer_types.pdf", width=5, height=5)
+g = ggplot(bothrisks, aes(x=groupy, fill=V2)) +
   scale_fill_brewer(palette="Dark2") +
   geom_histogram(position="dodge", stat="count", alpha=0.8)+
   theme(legend.position="top") +
   theme_bw() +
   xlab("Number of Cancers") + ylab("Number of PCGs")
+ggpar(g, legend.title="lncRNA group")
 dev.off()
 
 #4229 appear in both risk and non-risk groups (across all cancers)
 
-##---------pathways enriched by PCGs that appear in at least 2 cancers and in risk group
-#remove those that are in both risk and non-risk ...? 
+#Save files for gprofiler 
+saveRDS(both, file="pcgs_enriched_in_risk_groups_non_lncRNA_risk_groups_pcg_analysis_july13.rds")
 
-risk = as.data.table(filter(risk, both_risk_groups == "", N >=10))
-genes = risk$V1
-combined_paths <- gprofiler(genes, organism = "hsapiens", exclude_iea=TRUE, ordered_query= TRUE, min_set_size=5, max_set_size = 200, min_isect_size=2, correction_method="fdr")
-print(dim(combined_paths)[1])
+#---------BY CANCER TYPE ANALYSIS-----------------------------------------------------------------
 
-if(!(dim(combined_paths)[1]==0)){
-#only keep GO or REACTOME
-reac <- grep("REAC", combined_paths$term.id)
-go <- grep("GO", combined_paths$term.id)
-combined_paths <- combined_paths[c(reac, go), ]
-combined_paths <- combined_paths[,c(9,12, 3, 3, 1, 14)]
-colnames(combined_paths) <- c("GO.ID", "Description", "p.Val", "FDR", "Phenotype", "Genes")
-combined_paths$Phenotype[combined_paths$Phenotype==1] = "1"
-combined_paths$Phenotype[combined_paths$Phenotype==2] = "-1"
-write.table(combined_paths, sep= "\t", file=paste(colnames(d)[6], d$canc[1], "PathwaysUsingtALL_DEgenesFeb16_linearLASSO.txt", sep="_"), quote=F, row.names=F)
-}
+#PCGs enriched in risk and non-risk by cancer type 
+pcgs_sum = as.data.table(table(canc_dats$canc, canc_dats$pcg, canc_dats$risk_type))
+pcgs_sum = as.data.table(filter(pcgs_sum, N >1))
+pcgs_sum = pcgs_sum[order(N)]
 
-##---------pathways enriched by PCGs that appear in at least 2 cancers and in non-risk group
-#remove those that are in both risk and non-risk ...? 
-
-nonrisk = as.data.table(filter(nonrisk, both_risk_groups == "", N >=10))
-genes = nonrisk$V1
-
+#Look at only PCGs that are either only risk or non-risk
+as.data.table(filter(nonrisk, both_risk_groups == ""))
 
 
 

@@ -23,6 +23,7 @@ library(ggrepel)
 library(viridis)
 library(patchwork)
 library(wesanderson)
+library(tidyr)
 
 
 #to compare to get pvalues 
@@ -51,37 +52,119 @@ res$type = factor(res$type, levels = order)
 saveRDS(res, file="noFDR_all_cindices_june22.rds")
 
 
+#for horizontal plot
+#just plot the cancer types that have median just_lncRNA greater than 0.5
+#later can decide if only want to inlucdee those significanly better than clinical variables
+summ = aggregate(res[, 1], list(res$canc, res$type), median)
+summ = as.data.table(summ)
+summ = filter(summ, Group.2 == "cinds_justlncs", cindex >= 0.5)
+
+res = filter(res, canc %in% summ$Group.1)
+canc_conv = rna[,which(colnames(rna) %in% c("Cancer", "type"))]
+canc_conv = canc_conv[!duplicated(canc_conv), ]
+colnames(canc_conv)[2] = "canc"
+res = merge(res, canc_conv, by="canc")
+colnames(res)[3:4] = c("type", "TYPE")
+res = as.data.table(res)
+colnames(summ)[1] = "canc"
+summ = merge(summ, canc_conv, by="canc")
+summ = as.data.table(summ)
+summ = summ[order(cindex)]
+res$canc <- factor(res$canc, levels =summ$canc)
+res$TYPE <- factor(res$TYPE, levels = summ$type)
+
 mypal = wes_palette("FantasticFox")
 
+pdf("cindices_results_elastic_net_100CVs_No_FDR_cancers_July11_nofacet_horizontal_boxplots.pdf", width=11, height=10)
 
-pdf("cindices_results_elastic_net_100CVs_No_FDR_cancers_May24th_nofacet_horizontal_boxplots.pdf", width=11, height=10)
-
-g = ggboxplot(res, "canc", "cindex", orientation = "horizontal", fill="type", color="black", palette=mypal, notch = TRUE)
-
+g = ggboxplot(res, "TYPE", "cindex", orientation = "horizontal", fill="type", color="black", palette=mypal, notch = TRUE)
 g =  g + stat_compare_means(aes(group = type), label = "p.signif") + theme_minimal()
-
 print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red"))
 
 dev.off()
 
+#V2 using ggplot
+
+ggplot(res, aes(TYPE, cindex)) +
+geom_boxplot(aes(fill = type), color="black", outlier.size = 0.01) + theme_bw() + xlab("Cancer") + ylab("C-index") +
+stat_compare_means(aes(group = type), label = "p.signif") + 
+coord_flip() + scale_fill_manual(values=mypal) +
+geom_hline(yintercept=0.5, linetype="dashed", color = "red")
+dev.off()
+
+#for each cancer type do wilcoxon test 
+#keep those cancers in which, lncRNA median is greater than 0.5 (done)
+#and those with higher c-index than clinical or just as good
+
+cancers = unique(res$TYPE)
+check_perform = function(cancer){
+  dat = subset(res, TYPE==cancer)
+  w = wilcox.test(dat$cindex[dat$type=="cinds_justlncs"], dat$cindex[dat$type=="cinds_clin"], alternative="greater")
+  med_lnc = median(dat$cindex[dat$type=="cinds_justlncs"])
+  med_clin =  median(dat$cindex[dat$type=="cinds_clin"])
+  t = tidy(w)
+  t$cancer = cancer
+  t$med_lnc = med_lnc
+  t$med_clin = med_clin
+  imp = ((med_lnc/med_clin)-1) * 100
+  t$imp = imp
+  return(t)
+}
+
+wil = llply(cancers, check_perform)
+wil = ldply(wil)
+wil = as.data.table(wil)
+colnames(wil)[2] = "pval"
+wil = wil[order(pval, -med_lnc)]
+wil_sig = filter(wil, pval <= 0.05)
+wil_sig$imp = round(wil_sig$imp, digits=2)
+wil_sig = as.data.table(wil_sig)
+wil_sig = wil_sig[order(med_lnc)]
+
+#remove those that have no significant difference between 3 groups
+z = which(res$TYPE %in% wil_sig$cancer)
+res = res[z,]
+
+res$type = as.character(res$type)
+res$TYPE = factor(res$TYPE, levels = wil_sig$cancer)
+
+res$type[res$type == "cinds_justlncs"] = "lncRNA \nExpression"
+res$type[res$type == "cinds_clin"] = "Clinical"
+res$type[res$type == "cinds_combined"] = "lncRNA \nExpression & Clinical"
+
+#label = % increase
+labels = wil_sig$imp
+colnames(wil_sig)[5] = "TYPE"
+res = merge(res, wil_sig, by="TYPE")
+
+wil_sig = as.data.table(wil_sig)
+wil_sig = wil_sig[order(med_lnc)]
+res$TYPE = factor(res$TYPE, levels = wil_sig$TYPE)
+z = which(duplicated(res$imp))
+res$imp[z] = ""
+
+
+#-----------final plot figure 2D-------------------------------------------------------------------------------------- 
+
+pdf("cindices_results_elastic_net_100CVs_No_FDR_cancers_July11_nofacet_horizontal_boxplots.pdf", width=7, height=7)
+g = ggplot(res, aes(TYPE, cindex)) + 
+geom_boxplot(aes(fill = type), color="black", outlier.size = 0.01) + theme_bw() + xlab("Cancer") + ylab("C-index") +
+stat_compare_means(aes(group = type), label = "p.signif") + 
+coord_flip() + scale_fill_manual(values=mypal) +
+geom_hline(yintercept=0.5, linetype="dashed", color = "red")
+ggpar(g, legend.title= "Predictor \nVariables") +
+ theme(text = element_text(size=10),
+        axis.text.x = element_text(hjust=1, size=10))
+dev.off()
+
+#----------------------------------------------------------------------------------------------------------------------
 
 
 
-
-
-
-
-
-
-
-
-
-
-pdf("cindices_results_elastic_net_100CVs_No_FDR_cancers_May2nd_nofacet.pdf", width=5, height=5)
+#pdf("cindices_results_elastic_net_100CVs_No_FDR_cancers_May2nd_nofacet.pdf", width=5, height=5)
 
   for(i in 1:length(unique(res$canc))){
-    
-    newres = subset(res, canc %in% unique(res$canc)[i])
+      newres = subset(res, canc %in% unique(res$canc)[i])
 
     g = ggboxplot(newres, x="type", y="cindex", color="type", order=c("cinds_clin", "cinds_justlncs", "cinds_combined"), title=newres$canc[1]) + 
     coord_cartesian(ylim = c(0, 1))
@@ -97,13 +180,13 @@ pdf("cindices_results_elastic_net_100CVs_No_FDR_cancers_May2nd_nofacet.pdf", wid
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank())+
     theme(strip.text.x = element_text(size = 6.5, colour = "black")))
-
     
     }
-    dev.off()
+dev.off()
 
-
-###reading genes results 
+#----------------------------------------------------------------------------------------------------------------------
+### Reading in files with genes that were selected via feature selection
+#----------------------------------------------------------------------------------------------------------------------
 
 files = list.files(pattern = "lncRNAs_selected_1000CV_1000_no_fdr_ELASTICNET.rds")
 
@@ -232,6 +315,30 @@ dev.off()
 
 saveRDS(genes_keep, file="genes_keep_100CV_No_FDR_May2nd2018.rds")
 
+colnames(t) = c("TYPE", "Nun_lncRNAs")
+cancers_conv = rna[,which(colnames(rna) %in% c("type", "Cancer"))]
+cancers_conv = cancers_conv[!duplicated(cancers_conv), ]
+colnames(cancers_conv)[2] = "TYPE"
+summary = merge(t, cancers_conv, by="TYPE")
+summary = summary[order(Nun_lncRNAs)]
+
+pdf("barplot_summary_lncs_selected_100CVs_elastic_net_july13.pdf", width=8, height=5)
+overg = ggbarplot(summary, x = "type", y = "Nun_lncRNAs",
+          fill = "grey",               # change fill color by cyl
+          palette = "mypal2", 
+          color = "white",            # Set bar border colors to white
+          sort.val = "asc",          # Sort the value in dscending order
+          sort.by.groups = FALSE,     # Don't sort inside each group
+          ggtheme = theme_bw(), 
+          xlab = "Cancers",
+          legend = "none",  
+          x.text.angle = 45 , 
+          ylab = "# of lncRNAs selected more than 50%",  label = TRUE, label.pos = "out")           # Rotate vertically x axis texts
+
+#overg = overg +  theme(text = element_text(size=10),
+#        axis.text.x = element_text(angle=55, hjust=1, size=8))
+overg
+dev.off()
 
 
 

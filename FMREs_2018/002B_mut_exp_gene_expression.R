@@ -6,7 +6,8 @@ library(dplyr)
 library(gridExtra)
 library(grid)
 library(Hmisc)
-
+library(patchwork)
+library(EnvStats)
 
 #Data---------------------------------------------------
 
@@ -81,7 +82,6 @@ results_pairs$FMRE_mut = unlist(llply(results_pairs$FMRE_mut, clean_fmre))
 
 #1. order by significance in driver analysis 
 #using fdr_element column for this 
-
 fmres$id = llply(fmres$id, clean_fmre)
 fmres = as.data.table(fmres)
 fmres = fmres[order(fdr_element)]
@@ -144,101 +144,7 @@ pcg_rna = merge(pcg_rna, patient_table, by = "patient")
 #for each cancer type look at correlation between the two genes 
 cancers = as.list(unique(pcg_rna$cancer))
 
-get_cor = function(canc){
-	print(canc)
-	canc_data = subset(pcg_rna, cancer == canc)
-	colnames(canc_data)[c(2:3)] = c("TP53", "ZKSCAN3")
-	canc_data[,2:3] = log1p(canc_data[,2:3])
-
-	if(dim(canc_data)[1] >=4){
-
-	#calculate correlation via linear model 
-	lm_pval = summary(lm(canc_data$TP53 ~ canc_data$ZKSCAN3))$coefficients[2,4]
-	lm_estimate = summary(lm(canc_data$TP53 ~ canc_data$ZKSCAN3))$coefficients[2,1]
-	
-	#calculate correlation via spearman cor 
-	spearman_rho = rcorr(canc_data$TP53 , canc_data$ZKSCAN3, type=c("spearman"))$r[2]
-	spearman_pval = rcorr(canc_data$TP53 , canc_data$ZKSCAN3, type=c("spearman"))$P[2]
-
-	#plot 
-	# Scatter plot with correlation coefficient
-	#:::::::::::::::::::::::::::::::::::::::::::::::::
-	#sp <- ggscatter(canc_data, x = "ZKSCAN3", y = "TP53",
-   	#	add = "reg.line",  # Add regressin line
-   	#	add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
-   	#	conf.int = TRUE # Add confidence interval
-   	#)
-		# Add correlation coefficient
-	#print(sp + stat_cor(method = "spearman") + theme_bw() + ggtitle(paste(canc, "TP53 ~ ZKSCAN3")))
-		#FPKM is log1p transformed 
-
-	row = c(canc, lm_estimate, lm_pval, spearman_rho, spearman_pval)
-	names(row) = c("cancer", "lm_estiamte", "lm_pval", "spearman_rho", "spearman_pval")
-	return(row)
-}
-}
-
-results = llply(cancers, get_cor, .progress="text")
-
-results = Filter(Negate(is.null), results)
-#combine into one dataframe
-results = do.call(rbind.data.frame, results)
-
-colnames(results) = c("cancer", "lm_estiamte", "lm_pval", "spearman_rho", "spearman_pval")
-results$sig_cor = ""
-results$sig_cor[as.numeric(as.character(results$spearman_pval)) <= 0.05] = "sig"
-results$sig_cor[as.numeric(as.character(results$spearman_pval)) > 0.05] = "NOTsig"
-
-results$cor_type = ""
-results$cor_type[as.numeric(as.character(results$spearman_rho)) > 0] = "pos"
-results$cor_type[as.numeric(as.character(results$spearman_rho)) < 0] = "neg"
-results$fdr = p.adjust(as.numeric(as.character(results$spearman_pval)), method="fdr")
-results = as.data.table(results)
-results = results[order(fdr)]
-
-cancers = (unique(results$cancer))
-
-#order by FDR then re-plot 
-get_cor_plot = function(canc){
-	
-	fdr = results$fdr[which(results$cancer == canc)]
-	print(canc)
-	canc_data = subset(pcg_rna, cancer == canc)
-	colnames(canc_data)[c(2:3)] = c("TP53", "ZKSCAN3")
-	canc_data[,2:3] = log1p(canc_data[,2:3])
-
-	if(dim(canc_data)[1] >=4){
-	#plot 
-	# Scatter plot with correlation coefficient
-	#:::::::::::::::::::::::::::::::::::::::::::::::::
-	sp <- ggscatter(canc_data, x = "ZKSCAN3", y = "TP53",
-   		add = "reg.line",  # Add regressin line
-   	    add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
-   		conf.int = TRUE # Add confidence interval
-   	)
-		# Add correlation coefficient
-	sp + stat_cor(method = "spearman") + theme_bw() + ggtitle(paste(canc, "TP53 ~ ZKSCAN3", "fdr=", round(fdr, digits=4)))
-		#FPKM is log1p transformed 
-}
-}
-
-
-pdf("pcawg_cancers_tp53_zkscan3_correlations_june13.pdf")
-llply(cancers, get_cor_plot, .progress="text")
-dev.off()
-
-
-table(results$sig_cor, results$cor_type)
-        
-#         neg pos
-#  NOTsig   4  10
-#  sig      1   5
-
-#sig cancers = Bladder-TCC, CNS-Oligo , ColoRect-AdenoCA , Head-SCC, Lung-SCC, Ovary-AdenoCA 
-
 #- chr6:278 is associated with ZKSCAN3. there should be three ovarian samples with PCAWG RNAdata and mutation in chr6:278. Is TP53 lower in these samples? 
-
-ovary = subset(pcg_rna, cancer == "Ovary-AdenoCA")
 
 #which patients have FMRE mut 
 clean_fmre = function(fmre){
@@ -254,35 +160,13 @@ clean_fmre = function(fmre){
 	r =  unlist(strsplit(fmre, "-"))[1]
 	return(r)
 }
-names(mutations_in_crms) = unlist(llply(as.character(names(mutations_in_crms)), clean_fmre))
 
+names(mutations_in_crms) = unlist(llply(as.character(names(mutations_in_crms)), clean_fmre))
 z = which(names(mutations_in_crms) == "chr6:27870028")
 
-mut = mutations_in_crms[[z]]
-
-z = which(ovary$patient %in% mut)
-
-ovary$fmre = ""
-ovary$fmre[z] = "FMRE"
-ovary$fmre[-z] = "noFMRE"
-ovary[,2] = log1p(ovary[,2])
-
-pdf("TP53_exp_FMRE_vs_no_OVARY_PCAWG.pdf")
-p <- ggboxplot(ovary, x = "fmre", y = "ENSG00000141510",
-         color = "fmre", 
-         palette = "jco", title = paste("Ovarian cancer - TP53 exp ~ FMRE", table(ovary$fmre)[1], "muts", table(ovary$fmre)[2], "nomuts", sep=" "), 
-          add = "jitter")
-# Change method
-p + stat_compare_means(method = "wilcox.test") + theme_bw()
-
-dev.off()
-
-
-#- Of the ovarian Tp53 mutated samples, are there differences on zkscan3 expression relative to samples with WT tp53?
-
-ovary = subset(pcg_rna, cancer == "Ovary-AdenoCA")
-
-#which OV patients have TP53 mutation? 
+#------patients with ZKSCAN3 FMRE mutation -------------------------------------------------
+mut_fmre = mutations_in_crms[[z]] 
+#-------------------------------------------------------------------------------------------
 
 #keep just gene name for CDS
 clean_gene = function(gene){
@@ -292,29 +176,109 @@ clean_gene = function(gene){
 }
 
 names(cds_mutations) = unlist(llply(names(cds_mutations), clean_gene))
-
 z = which(names(cds_mutations) == "TP53")
+#------patients with ZKSCAN3 FMRE mutation -------------------------------------------------
+mut_cds = cds_mutations[[z]]
+#-------------------------------------------------------------------------------------------
 
-mut = cds_mutations[[z]]
+check_zkscan_exp = function(canc){
 
-z = which(ovary$patient %in% mut)
+	canc_exp = subset(pcg_rna, cancer == canc)
+	z = which(canc_exp$patient %in% mut_fmre)
+	if(!(length(z)==0)){
+	canc_exp$fmre = ""
+	canc_exp$fmre[z] = "FMRE"
+	canc_exp$fmre[-z] = "noFMRE"
+	
+	z = which(canc_exp$patient %in% mut_cds)
+	if(!(length(z)==0)){
+	canc_exp$cds = ""
+	canc_exp$cds[z] = "CDS_mut"
+	canc_exp$cds[-z] = "noCDS_mut"
 
-ovary$tp53_mut = ""
-ovary$tp53_mut[z] = "TP53_mut"
-ovary$tp53_mut[-z] = "TP53_no_mut"
-ovary[,2] = log1p(ovary[,2])
-ovary[,3] = log1p(ovary[,3])
+	z = which(colnames(canc_exp) == "ENSG00000141510")
+	colnames(canc_exp)[z] = "TP53"
+	z = which(colnames(canc_exp) == "ENSG00000189298")
+	colnames(canc_exp)[z] = "ZKSCAN3"
 
-pdf("TP53_exp_FMRE_vs_no_OVARY_PCAWG.pdf")
-p <- ggboxplot(ovary, x = "tp53_mut", y = "ENSG00000189298",
-         color = "tp53_mut", 
-         palette = "jco", title = paste("Ovarian cancer - ZKSCAN3 exp ~ TP53 mutation", table(ovary$tp53_mut)[1], "muts", table(ovary$tp53_mut)[2], "nomuts", sep=" "), 
-          add = "jitter")
-# Change method
-p + stat_compare_means(method = "wilcox.test") + theme_bw()
+	canc_exp$both = ""
+	z = which((canc_exp$cds == "CDS_mut") & (canc_exp$fmre == "FMRE")) 
+	if(!(length(z)==0)){
+		canc_exp$both[z] = "both"
+		canc_exp$both[-z] = "other"
+	}
 
+	canc_exp$none = ""
+	z = which((canc_exp$cds == "noCDS_mut") & (canc_exp$fmre == "noFMRE")) 
+	if(!(length(z)==0)){
+		canc_exp$none[z] = "neither"
+		canc_exp$none[-z] = "other"
+	}
+	
+	canc_exp$mut_code = ""
+	for(i in 1:nrow(canc_exp)){
+		cds = canc_exp$cds[i]
+		f = canc_exp$fmre[i]
+		both = (cds == "CDS_mut") & (f=="FMRE")
+		if(both){
+			stat = "Both"
+		}
+		f_only = (cds == "noCDS_mut") & (f=="FMRE")
+		if(f_only){
+			stat = "FMRE"
+		}
+		cds_only = (cds == "CDS_mut") & (f=="noFMRE")
+		if(cds_only){
+			stat = "CDS"
+		}
+		none = (cds == "noCDS_mut") & (f=="noFMRE")
+		if(none){
+			stat = "None"
+		}
+		canc_exp$mut_code[i] = stat
+	}
+
+
+	canc_exp[,2:3] = log2(canc_exp[,2:3])
+	ord = aggregate(canc_exp[, 3], list(canc_exp$mut_code), median)
+	ord = as.data.table(ord)
+	ord = ord[order(x)]
+
+	#plot 1, y = ZKSCAN3 exp
+	
+	#-----------------------
+	#A, x = TP53 mut yes/no
+	#-----------------------
+	a1 <- ggboxplot(canc_exp, x = "mut_code", y = "ZKSCAN3",
+         color = "mut_code", order = ord$Group.1, 
+         palette = "jco", title = paste(canc, "ZKSCAN3 exp ~ mut"),  
+          add = "jitter") + stat_n_text() + ylab("log2 expression")
+	# Change method
+	a1 = a1 + stat_compare_means(method = "anova") + theme_bw()
+	print(a1)
+	
+	#plot 2, y = TP53 exp
+
+	#-----------------------
+	#A, x = TP53 mut yes/no
+	#-----------------------
+	ord = aggregate(canc_exp[, 2], list(canc_exp$mut_code), median)
+	ord = as.data.table(ord)
+	ord = ord[order(x)]
+	a1 <- ggboxplot(canc_exp, x = "mut_code", y = "TP53",
+         color = "mut_code", order = ord$Group.1, 
+         palette = "jco", title = paste(canc, "TP53 exp ~ mut"), 
+          add = "jitter") + stat_n_text() + ylab("log2 expression")
+	# Change method
+	a2 = a1 + stat_compare_means(method = "anova") + theme_bw()
+	print(a2)
+}
+}
+}
+
+pdf("CDS_FMRE_comutation_summary_all_cancers.pdf")
+llply(cancers, check_zkscan_exp, .progress="text")
 dev.off()
-
 
 
 
