@@ -134,8 +134,8 @@ results_pairs$FMRE_mut <- factor(results_pairs$FMRE_mut, levels = order)
 #RNA data 
 pcg_rna = readRDS(file="all_rna_may8th.rds")
 
-#subset to TP53 and ZKSCAN3
-z = which(colnames(pcg_rna) %in% c("ENSG00000141510", "ENSG00000189298", "patient", "canc"))
+#subset to IDH1 and TERT
+z = which(colnames(pcg_rna) %in% c("ENSG00000138413", "ENSG00000164362", "patient", "canc"))
 pcg_rna = pcg_rna[,z]
 
 colnames(patient_table) = c("patient", "cancer")
@@ -162,7 +162,7 @@ clean_fmre = function(fmre){
 }
 
 names(mutations_in_crms) = unlist(llply(as.character(names(mutations_in_crms)), clean_fmre))
-z = which(names(mutations_in_crms) == "chr6:27870028")
+z = which(names(mutations_in_crms) == "chr5:1294859")
 
 #------patients with ZKSCAN3 FMRE mutation -------------------------------------------------
 mut_fmre = mutations_in_crms[[z]] 
@@ -176,7 +176,7 @@ clean_gene = function(gene){
 }
 
 names(cds_mutations) = unlist(llply(names(cds_mutations), clean_gene))
-z = which(names(cds_mutations) == "TP53")
+z = which(names(cds_mutations) == "IDH1")
 #------patients with ZKSCAN3 FMRE mutation -------------------------------------------------
 mut_cds = cds_mutations[[z]]
 #-------------------------------------------------------------------------------------------
@@ -196,10 +196,10 @@ check_zkscan_exp = function(canc){
 	canc_exp$cds[z] = "CDS_mut"
 	canc_exp$cds[-z] = "noCDS_mut"
 
-	z = which(colnames(canc_exp) == "ENSG00000141510")
-	colnames(canc_exp)[z] = "TP53"
-	z = which(colnames(canc_exp) == "ENSG00000189298")
-	colnames(canc_exp)[z] = "ZKSCAN3"
+	z = which(colnames(canc_exp) == "ENSG00000138413")
+	colnames(canc_exp)[z] = "IDH1"
+	z = which(colnames(canc_exp) == "ENSG00000164362")
+	colnames(canc_exp)[z] = "TERT"
 
 	canc_exp$both = ""
 	z = which((canc_exp$cds == "CDS_mut") & (canc_exp$fmre == "FMRE")) 
@@ -244,30 +244,30 @@ check_zkscan_exp = function(canc){
 	ord = as.data.table(ord)
 	ord = ord[order(x)]
 
-	#plot 1, y = ZKSCAN3 exp
+	#plot 1, y = TERT exp
 	
 	#-----------------------
-	#A, x = TP53 mut yes/no
+	#A, x = IDH1 mut yes/no
 	#-----------------------
-	a1 <- ggboxplot(canc_exp, x = "mut_code", y = "ZKSCAN3",
+	a1 <- ggboxplot(canc_exp, x = "mut_code", y = "TERT",
          color = "mut_code", order = ord$Group.1, 
-         palette = "jco", title = paste(canc, "ZKSCAN3 exp ~ mut"),  
+         palette = "jco", title = paste(canc, "TERT exp ~ mut"),  
           add = "jitter") + stat_n_text() + ylab("log2 expression")
 	# Change method
 	a1 = a1 + stat_compare_means(method = "anova") + theme_bw()
 	print(a1)
 	
-	#plot 2, y = TP53 exp
+	#plot 2, y = IDH1 exp
 
 	#-----------------------
-	#A, x = TP53 mut yes/no
+	#A, x = TERT mut yes/no
 	#-----------------------
 	ord = aggregate(canc_exp[, 2], list(canc_exp$mut_code), median)
 	ord = as.data.table(ord)
 	ord = ord[order(x)]
-	a1 <- ggboxplot(canc_exp, x = "mut_code", y = "TP53",
+	a1 <- ggboxplot(canc_exp, x = "mut_code", y = "IDH1",
          color = "mut_code", order = ord$Group.1, 
-         palette = "jco", title = paste(canc, "TP53 exp ~ mut"), 
+         palette = "jco", title = paste(canc, "IDH1 exp ~ mut"), 
           add = "jitter") + stat_n_text() + ylab("log2 expression")
 	# Change method
 	a2 = a1 + stat_compare_means(method = "anova") + theme_bw()
