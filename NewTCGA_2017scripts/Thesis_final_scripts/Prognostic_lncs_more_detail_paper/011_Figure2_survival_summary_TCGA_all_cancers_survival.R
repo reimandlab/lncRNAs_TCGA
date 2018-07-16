@@ -5,6 +5,70 @@
 source("source_code_Cox_MonteCarlo_CV_April12.R")
 require(caTools)
 
+library(survAUC)
+#source("source_code_Cox_MonteCarlo_CV_Mar13.R")
+require(caTools)
+#check if this person is in my analysis: TCGA-61-2095
+library(glmnet)
+library(survcomp)
+library(caret)
+library(stringr)
+library(EnvStats)
+library(patchwork)
+
+source("universal_LASSO_survival_script.R")
+
+library(ggpubr)
+library(ggrepel)
+library(viridis)
+library(patchwork)
+library(caret)  
+library(Rtsne)
+library(data.table)
+
+#------DATA---------------------------------------------------------
+#UCSC gene info
+ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
+#z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
+#ucsc <- ucsc[z,]
+z <- which(duplicated(ucsc[,8]))
+ucsc <- ucsc[-z,]
+
+#fantom 
+fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
+extract3 <- function(row){
+  gene <- as.character(row[[1]])
+  ens <- gsub("\\..*","",gene)
+  return(ens)
+}
+fantom[,1] <- apply(fantom[,1:2], 1, extract3)
+#remove duplicate gene names (gene names with multiple ensembl ids)
+z <- which(duplicated(fantom$CAT_geneName))
+rm <- fantom$CAT_geneName[z]
+z <- which(fantom$CAT_geneName %in% rm)
+fantom <- fantom[-z,]
+
+#save RNA and PCG files locally
+#saveRDS(rna, file="rna_lncRNAs_expression_data_june29.rds")
+#saveRDS(pcg, file="rna_pcg_expression_data_june29.rds")
+
+rna = readRDS("rna_lncRNAs_expression_data_june29.rds")
+pcg = readRDS("rna_pcg_expression_data_june29.rds")
+
+#------FEATURES-----------------------------------------------------
+
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
+cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
+
+val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
+val_cands = as.data.table(val_cands)
+val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
+val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+
+
 #start with only lncRNA_intergenic
 #lincs = subset(fantom, CAT_geneClass == "lncRNA_intergenic")
 #z = which(colnames(rna) %in% lincs$gene)
@@ -198,7 +262,7 @@ all_cancers_genes_surv_comb$fdrsig[all_cancers_genes_surv_comb$fdr >= lineval] =
 #facet by cancer type 
 
 #order by most significant to least significant 
-order = as.data.table(filter(as.data.table(table(all_cancers_genes_surv_comb$canc, all_cancers_genes_surv_comb$fdrsig)), V2 %in% c("FDRsig", "Significant")))
+order = as.data.table(dplyr::filter(as.data.table(table(all_cancers_genes_surv_comb$canc, all_cancers_genes_surv_comb$fdrsig)), V2 %in% c("FDRsig", "Significant")))
 order = order[order(-V2,N)]
 
 z = order[order(order$V1, -order$N),]
@@ -247,23 +311,23 @@ dev.off()
 
 #get order of cancer types by total number of lncRNAs 
 order = as.data.table(table(all_cancers_genes_surv_comb$type, all_cancers_genes_surv_comb$fdrsig))
-order = as.data.table(filter(order, N >0))
-order = as.data.table(filter(order, V2 %in% c("Significant", "FDRsig")))
+order = as.data.table(dplyr::filter(order, N >0))
+order = as.data.table(dplyr::filter(order, V2 %in% c("Significant", "FDRsig")))
 order = order[order(V2, -N)]
 order = unique(order$V1)
 
 summ = as.data.table(table(all_cancers_genes_surv_comb$type, all_cancers_genes_surv_comb$fdrsig,
   all_cancers_genes_surv_comb$risk))
 colnames(summ) = c("Cancer", "Sig", "Risk", "N")
-summ = as.data.table(filter(summ, N > 0))
+summ = as.data.table(dplyr::filter(summ, N > 0))
 
 #barplot----summary
 #only include significant ones
 #how many significant favourable vs unfavourable 
-summ = as.data.table(filter(summ, Sig %in% c("Significant", "FDRsig")))
+summ = as.data.table(dplyr::filter(summ, Sig %in% c("Significant", "FDRsig")))
 
 #just sig
-summ = filter(summ, N > 0)
+summ = dplyr::filter(summ, N > 0)
 summ$Cancer = factor(summ$Cancer, levels = order)
 
 #pdf("Univariate_summary_28_Cancers_july9.pdf", width=10)
@@ -277,8 +341,8 @@ part1 = ggpar(part1, legend="none",
 #dev.off()
 
 #just fdrsig
-summ = as.data.table(filter(summ, Sig == "FDRsig"))
-summ = filter(summ, N > 0)
+summ = as.data.table(dplyr::filter(summ, Sig == "FDRsig"))
+summ = dplyr::filter(summ, N > 0)
 
 #pdf("Univariate_summary_28_Cancers_july9_justfdr.pdf", width=10)
 part2 <- ggplot(data=summ, aes(x=Cancer, y=N, fill=Risk)) +
@@ -315,8 +379,8 @@ get_corplot = function(cancer){
   print(cancer)
 
   #get sig genes
-  canc_genes = as.data.table(filter(all_cancers_genes_surv_comb, canc == cancer))
-  canc_genes = as.data.table(filter(canc_genes, fdrsig %in% c("Significant", "FDRsig")))
+  canc_genes = as.data.table(dplyr::filter(all_cancers_genes_surv_comb, canc == cancer))
+  canc_genes = as.data.table(dplyr::filter(canc_genes, fdrsig %in% c("Significant", "FDRsig")))
 
   if((dim(canc_genes)[1] >=2)){
 
@@ -366,8 +430,8 @@ get_corplot = function(cancer){
   print(cancer)
 
   #get sig genes
-  canc_genes = as.data.table(filter(all_cancers_genes_surv_comb, canc == cancer))
-  canc_genes = as.data.table(filter(canc_genes, fdrsig %in% c("Significant", "FDRsig")))
+  canc_genes = as.data.table(dplyr::filter(all_cancers_genes_surv_comb, canc == cancer))
+  canc_genes = as.data.table(dplyr::filter(canc_genes, fdrsig %in% c("Significant", "FDRsig")))
 
   if((dim(canc_genes)[1] >=2)){
 
@@ -386,7 +450,7 @@ get_corplot = function(cancer){
     res2$fdr = p.adjust(res2$p, method="fdr")
     res2 = as.data.table(res2)
     res2 = res2[order(fdr)]
-    res2 = as.data.table(filter(res2, fdr <= 0.05))
+    res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05))
   
     #check if lncRNA-lncRNA correlations match HRs 
     check_dir = function(lnc1, lnc2){
@@ -438,8 +502,8 @@ get_summary = function(cancer){
   print(cancer)
 
   #get sig genes
-  canc_genes = as.data.table(filter(all_cancers_genes_surv_comb, canc == cancer))
-  canc_genes = as.data.table(filter(canc_genes, fdrsig %in% c("Significant", "FDRsig")))
+  canc_genes = as.data.table(dplyr::filter(all_cancers_genes_surv_comb, canc == cancer))
+  canc_genes = as.data.table(dplyr::filter(canc_genes, fdrsig %in% c("Significant", "FDRsig")))
 
   if((dim(canc_genes)[1] >=2)){
 
@@ -456,7 +520,7 @@ get_summary = function(cancer){
 
     #total pairs 
     tot_pairs = nrow(res2)
-    res2 = as.data.table(filter(res2, fdr <= 0.05))
+    res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05))
     sig_pairs = nrow(res2)    
 
     #%
@@ -482,8 +546,8 @@ get_pairs_results = function(cancer){
   print(cancer)
 
   #get sig genes
-  canc_genes = as.data.table(filter(all_cancers_genes_surv_comb, canc == cancer))
-  canc_genes = as.data.table(filter(canc_genes, fdrsig %in% c("Significant", "FDRsig")))
+  canc_genes = as.data.table(dplyr::filter(all_cancers_genes_surv_comb, canc == cancer))
+  canc_genes = as.data.table(dplyr::filter(canc_genes, fdrsig %in% c("Significant", "FDRsig")))
 
   if((dim(canc_genes)[1] >=2)){
 
@@ -498,7 +562,7 @@ get_pairs_results = function(cancer){
     res2 = as.data.table(res2)
     res2 = res2[order(fdr)]
     tot_pairs = nrow(res2)
-    res2 = as.data.table(filter(res2, fdr <= 0.05))
+    res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05))
     sig_pairs = nrow(res2)  
     #check if lncRNA-lncRNA correlations match HRs 
     check_dir = function(lnc1, lnc2){
@@ -535,6 +599,10 @@ get_pairs_results = function(cancer){
 }
 
 canc_results_pairs_types = llply(cancers, get_pairs_results, .progress = "text")
+
+#save 
+saveRDS(canc_results_pairs_types, file="correlation_lnc_lnc_results_july14.rds")
+
 #remove null
 canc_results_pairs_types2 = Filter(Negate(is.null), canc_results_pairs_types)
 canc_results_pairs_types2 = ldply(canc_results_pairs_types2)
@@ -574,8 +642,9 @@ for(i in 1:nrow(canc_results_pairs_types2)){
   canc_results_pairs_types2$match_type[i] = match
 }
 
-canc_results_pairs_types2 = as.data.table(filter(canc_results_pairs_types2, match_type == "Yes"))
+saveRDS(canc_results_pairs_types2, file="correlation_lnc_lnc_results_july14.rds")
 
+#canc_results_pairs_types2 = as.data.table(dplyr::filter(canc_results_pairs_types2, match_type == "Yes"))
 
 pdf("Figure2B_summary_types_of_correlations_28_cancers_types.pdf", height=5, width=6)
 
