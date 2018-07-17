@@ -18,6 +18,10 @@ library(patchwork)
 library(caret)  
 library(Rtsne)
 library(data.table)
+require(foreign)
+require(nnet)
+require(ggplot2)
+require(reshape2)
 
 #------DATA---------------------------------------------------------
 #UCSC gene info
@@ -115,9 +119,7 @@ filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
 
 #-------Combine all data into one dataframe-------------------------------
 
-
 all_canc_data = ldply(filtered_data_tagged)
-
 
 #-------Set up Cross-Validation------------------------------------------
 
@@ -140,6 +142,39 @@ run_cv = function(dtt){
     z1 = which(str_detect(colnames(train), "ENSG"))
     z2 = which(colnames(train) %in% "type")
     train = train[,c(z1,z2)]
+    train$type = as.factor(train$type)
+
+    # Fitting
+    z = which(str_detect(colnames(train), "ENSG"))
+    x = train[,z]
+    x = model.matrix(~., data=x)
+
+    # Parallel
+    require(doMC)
+    registerDoMC(cores=10)
+
+    fit = cv.glmnet(x,y,family="multinomial", alpha = 0.5, nfolds=5, parallel=TRUE)
+    fit$lambda.min #left vertical line
+    fit$lambda.1se #right vertical line 
+    #active covariates and their coefficients 
+    coef.min = coef(fit, s = "lambda.min") 
+    
+    active.min = which(coef.min != 0)
+    
+    index.min = coef.min[active.min]
+    genes_keep = rownames(coef.min)[active.min]
+    print(genes_keep)
+    genes_results[j] = list(as.list(genes_keep))
+    trainlncs = train[,c(which(colnames(train) %in% c(genes_keep,"OS", "OS.time")))]
+    justlncs = coxph(Surv(OS.time, OS)  ~ ., data = trainlncs)
+    justlncs_cox_model = justlncs
+
+
+    z = which(str_detect(colnames(test), "ENSG"))
+    newx = test[,z]
+    newx = model.matrix(~., data=newx)
+
+    predict(fit, newx = newx, s = "lambda.min", type = "class")  
 
 }
 }

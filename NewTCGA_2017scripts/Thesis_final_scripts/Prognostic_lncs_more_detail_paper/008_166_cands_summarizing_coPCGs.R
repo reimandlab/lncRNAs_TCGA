@@ -194,7 +194,7 @@ summary$Risk = factor(summary$Risk, levels = riskorder)
 
 ##---------Main plot with barplot risk vs non risk -----------------------
 
-#for plot only keep those lnc-canc combos with at least 10 pcgs 
+#for plot only keep those lnc-canc combos with at least 50 pcgs 
 z = which(str_detect(summary$lnc, "_"))
 summary = as.data.table(summary)
 summary$combo = ""
@@ -275,6 +275,8 @@ sub_loc = fread("protein_atlas_subcellular_location.tsv")
 sub_loc = as.data.table(filter(sub_loc, Reliability == "Approved"))
 patho = fread("protein_atlas_pathology.tsv")
 
+census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
+
 #how many duplicated PCGs
 #pcgs_sum = as.data.table(table(canc_dats$pcg, canc_dats$risk_type, canc_dats$canc))
 pcgs_sum = as.data.table(table(canc_dats$pcg, canc_dats$risk_type))
@@ -349,11 +351,93 @@ saveRDS(both, file="pcgs_enriched_in_risk_groups_non_lncRNA_risk_groups_pcg_anal
 
 #PCGs enriched in risk and non-risk by cancer type 
 pcgs_sum = as.data.table(table(canc_dats$canc, canc_dats$pcg, canc_dats$risk_type))
-pcgs_sum = as.data.table(filter(pcgs_sum, N >1))
+pcgs_sum = as.data.table(filter(pcgs_sum, N >=1))
 pcgs_sum = pcgs_sum[order(N)]
+colnames(pcgs_sum) = c("cancer", "pcg", "group", "NumTimes")
 
-#Look at only PCGs that are either only risk or non-risk
-as.data.table(filter(nonrisk, both_risk_groups == ""))
+#summarize how many PCGs appear in all lncRNA risk groups 
+#how many cands are there per each cancer type?
+lncs_canc = as.data.table(table(allCands$cancer))
+colnames(lncs_canc) = c("cancer", "Num_lncs_cands")
+
+pcgs_sum = merge(pcgs_sum, lncs_canc, by="cancer")
+pcgs_sum = pcgs_sum[order(NumTimes)]
+
+#add gene names
+colnames(ucsc)[6] = "pcg"
+pcgs_sum = merge(pcgs_sum, ucsc, by="pcg")
+pcgs_sum = pcgs_sum[order(NumTimes)]
+colnames(cancers_conv)[2] = "cancer"
+pcgs_sum = merge(pcgs_sum, cancers_conv, by="cancer")
+pcgs_sum = pcgs_sum[order(NumTimes)]
+pcgs_sum$frac_cands = pcgs_sum$NumTimes/pcgs_sum$Num_lncs_cands
+
+#plot just the ones that appear in all pcgs risks groups 
+#and nonrisk groups
+pcgs_sum = filter(pcgs_sum, NumTimes == Num_lncs_cands)
+pcgs_sum = as.data.table(pcgs_sum)
+
+ggplot(pcgs_sum, aes(x=type, y=NumTimes, shape=group)) + geom_point(size=1.5) +
+theme_bw()+
+geom_label_repel(data=filter(res_tog, NumPCGs >=1500), aes(label=name, fill=type, color = perc_risk_label), size=2)+
+scale_fill_brewer(palette="Paired") +
+scale_color_manual(values=c("black", "Blue"))
+
+dev.off()
+
+
+##---------HRs versus # of PCGS-------------------------------------------------------------------
+res_tog = merge(allCands, summary, by= "combo")
+res_tog$HR = as.numeric(res_tog$HR)
+res_tog$HR = log2(res_tog$HR)
+mypal = readRDS(file="palette_32_cancer_types.rds")
+
+# Basic scatter plot
+pdf("summary_coexpressed_risk_non_risk_wHR_1000.pdf")
+ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
+geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
+geom_vline(xintercept = 1000, linetype="dashed", color = "red") +
+theme_bw()+
+geom_label_repel(data=filter(res_tog, NumPCGs >=1000), aes(label=name, fill=type), color = 'black',size=2)+
+scale_fill_brewer(palette="Paired")
+dev.off()
+
+pdf("summary_coexpressed_risk_non_risk_wHR_1500.pdf")
+ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
+geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
+geom_vline(xintercept = 1500, linetype="dashed", color = "red") +
+theme_bw()+
+geom_label_repel(data=filter(res_tog, NumPCGs >=1500), aes(label=name, fill=type), color = 'black',size=2)+
+scale_fill_brewer(palette="Paired")
+dev.off()
+
+#add layer about risk, are they all "binary" lncs or "balanced" lncs?
+
+res_tog$perc_risk = as.numeric(res_tog$perc_risk)
+res_tog$perc_risk_label = ""
+res_tog$perc_risk_label[which(res_tog$perc_risk < 0.49)] = "SmallRisk"
+res_tog$perc_risk_label[which(res_tog$perc_risk > 0.51)] = "HighRisk"
+res_tog$perc_risk_label[which(res_tog$perc_risk_label == "")] = "BalRisk"
+
+pdf("summary_coexpressed_risk_non_risk_wHR_1500_wcolor.pdf")
+ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
+geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
+geom_vline(xintercept = 1500, linetype="dashed", color = "red") +
+theme_bw()+
+geom_label_repel(data=filter(res_tog, NumPCGs >=1500), aes(label=name, fill=type, color = perc_risk_label), size=2)+
+scale_fill_brewer(palette="Paired") +
+scale_color_manual(values=c("black", "Blue"))
+
+dev.off()
+
+res_tog$HR = as.numeric(res_tog$HR)
+res_tog$lnc_stat = ""
+res_tog$lnc_stat[which(res_tog$HR < 0)] = "Favourable"
+res_tog$lnc_stat[which(res_tog$HR > 0)] = "Unfavourable"
+
+saveRDS(res_tog, file="summary_pcg_analysis_wHRs_july17.rds")
+
+
 
 
 
