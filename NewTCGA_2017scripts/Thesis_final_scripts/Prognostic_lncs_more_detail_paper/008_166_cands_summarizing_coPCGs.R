@@ -170,7 +170,7 @@ for(y in 1:length(z)){
   summary$name[z[y]] = g
 }
 
-summary = as.data.table(filter(summary, NumPCGs >= 50))
+summary = as.data.table(filter(summary, NumPCGs >= 10))
 
 ####Need to re-level cancer types - not in right order!!!! fixed? 
 
@@ -243,6 +243,20 @@ dev.off()
 z1 = which(allCands$gene %in% summary$lnc)
 z2 = which(allCands$combo %in% summary$lnc)
 nosig = allCands[-c(z1, z2),]
+
+#subset canc_dats to only include lncRNA-cancer-PCGs as in summary
+canc_dats$combo = ""
+z = which(str_detect(canc_dats$lnc, "_"))
+canc_dats$combo[z] = canc_dats$lnc[z]
+canc_dats$combo[-z] = paste(canc_dats$lnc[-z], canc_dats$canc[-z], sep="_")
+
+z = which(canc_dats$combo %in% summary$combo)
+canc_dats = canc_dats[z,]
+
+####-------SAVE PROCESSED CO-EXPRESSION RESULTS-----------------------------------------
+
+saveRDS(canc_dats, file="coexpression_results_processed_july18.rds")
+
 
 #this one is only one that didnt have any
 #ENSG00000240889 0.933567971848771 2.54356838690527 0.0008554614

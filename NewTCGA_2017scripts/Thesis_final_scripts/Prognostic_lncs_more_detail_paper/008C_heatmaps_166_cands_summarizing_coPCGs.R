@@ -60,6 +60,10 @@ val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos,
 val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
 val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 
+#Combined into one dataframe because need to get ranks 
+all <- merge(rna, pcg, by = c("patient", "Cancer"))
+all = all[,1:25170]
+
 #--------This script ------------------------------------------------
 
 #summarize results from co-expression analysis of PCGs
@@ -78,81 +82,198 @@ cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 #RESULTS-------------------------------------------------------------
 #--------------------------------------------------------------------
 
-coexp = readRDS("all_results_for_each_cancer_from_coexpression_analysis_june27th_allCands.rds")
-
-#can run FDR on all PCGs for all Cancer types 
-#175 * 20,0000 = enormous FDR test 
-
-#1. Get FDR by cancer type 
-cancers = as.list(unique(coexp$canc))
-canc_fdr = function(cancer){
-  dat = subset(coexp, canc == cancer)
-	dat$pvalue = as.numeric(dat$pvalue)
-  dat$fdr = p.adjust(dat$pvalue, method = "fdr")
-	z = which(is.na(dat$pvalue))
-  if(!length(z)==0){
-    dat = dat[-z,]
-  }
-  dat = as.data.table(dat)
-	dat = dat[order(fdr)]
-	return(dat)
-}
-
-library(dplyr)
-library(plyr)
-canc_dats = llply(cancers, canc_fdr) 
-canc_dats = ldply(canc_dats, data.frame)
-
-#plot scatter plot, FC versus p-value
-#coexp$fdr = -log10(coexp$fdr)
-canc_dats$mean_diff = as.numeric(canc_dats$mean_diff)
-#z = which(canc_dats$mean_diff == 0)
-#canc_dats = canc_dats[-z,]
-canc_dats = as.data.table(canc_dats)
-#coexp = filter(coexp, pvalue <= 0.05)
-
-#ggscatter(coexp, x = "mean_diff", y = "fdr", size=0.5, 
-#   color="fdr") + geom_hline(yintercept = -log10(0.05)) + geom_vline(xintercept = 0) +
-#    geom_vline(xintercept = (log1p(4))-(log1p(2))) +
-#    geom_vline(xintercept = (log1p(2))-(log1p(4)))
-#dev.off()
-
-
-#2. Summarize per lncRNA/cancer, how many PCGs upregulated in risk group
-#and how many upregulated in non-risk group 
-#(>0 --> more expressed in risk group, <0, more expressed in low risk group)
-
-#keep sig fdr, add risk/non-risk tag
-canc_dats = as.data.table(canc_dats)
-canc_dats = as.data.table(filter(canc_dats, fdr <=0.01))
-canc_dats$risk_type = ""
-canc_dats$risk_type[canc_dats$mean_diff < (log1p(2)-log1p(4))] = "NonRisk"
-canc_dats$risk_type[canc_dats$mean_diff >= (log1p(4)-log1p(2))] = "Risk"
-canc_dats = canc_dats[which(!(canc_dats$risk_type =="")),]
-canc_dats$combo = paste(canc_dats$lnc, canc_dats$canc, sep="_")
+coexp = readRDS("coexpression_results_processed_july18.rds")
 
 #PCG lncRNA results
-pcg_lnc = readRDS("summary_pcg_analysis_wHRs_july17.rds")
+pcg_lnc = readRDS("summary_pcg_analysis_wHRs_july17.rds") #all these have at least 1, 50-pcg signature 
 pcg_lnc = pcg_lnc[order(-NumPCGs)]
-pcg_lnc = as.data.table(filter(pcg_lnc, NumPCGs >=500))
+pcg_lnc$HR = as.numeric(pcg_lnc$HR)
+pcg_lnc$lnc_stat = ""
+pcg_lnc$lnc_stat[which(pcg_lnc$HR < 0)] = "Favourable"
+pcg_lnc$lnc_stat[which(pcg_lnc$HR > 0)] = "Unfavourable"
 
 #-------------------ANALYSIS--------------------------------------------
 #Generate heatmap using those PCGs sig up/down regulated in lncRNA 
 #risk or non-risk groups
 
-combos = unique(pcg_lnc$combo)
+#For each cancer type get all required data 
+#PCG and lncRNA expression
 
-gen_heatmap = function(lnc_canc_combo){
-  #get which pcgs enriched in group
-  z = which(canc_dats$combo %in% lnc_canc_combo)
-  #cancer type
-  #subset gene expression to those pcgs
-  #label patients by either high/low lncRNA expression 
+combos = unique(pcg_lnc$combo)
+cancs = sapply(combos, function(x){unlist(strsplit(x, "_"))[2]})
+cancs = unique(cancs)
+
+##1-----------------all expression--------------------------------------
+
+get_tissue_specific <- function(combo){
+  canc = unlist(strsplit(combo, "_"))[2]
+  lnc = unlist(strsplit(combo, "_"))[1]
+  tis = all[all$Cancer==canc,]
+  tis$combo = combo
+  print(combo)
+  return(tis)
+}
+tissues_data <- llply(combos, get_tissue_specific, .progress="text")
+
+##2-----------------label patients by risk------------------------------
+
+get_lnc_canc = function(dat){
+  cancer = dat$Cancer[1]
+  combo = dat$combo[1]
+  lnc = unlist(strsplit(combo, "_"))[1]
+
+  pcgs = colnames(pcg)[2:19351]
+  #keep only pcgs that are selected to be in lncRNA signature 
+  z = which(coexp$combo == combo)
+  lnc_pcgs = unique(coexp$pcg[z])
+
+  dat_keep = dat[,which(colnames(dat) %in% c("patient", lnc, lnc_pcgs))]
+  rownames(dat_keep) = dat_keep$patient
+  dat_keep$patient = NULL
+  #figure out which patients are high risk and which patients low risk
+  dat_keep$median <- ""
+  median2 <- quantile(as.numeric(dat_keep[,1]), 0.5)
+
+       if(median2 ==0){
+        #if median = 0 then anyone greater than zero is 1 
+        l1 = which(dat_keep[,1] > 0)
+        l2 = which(dat_keep[,1] ==0)
+        dat_keep$median[l1] = 1
+        dat_keep$median[l2] = 0
+        }
+
+      if(!(median2 ==0)){
+        l1 = which(dat_keep[,1] >= median2)
+        l2 = which(dat_keep[,1] < median2)
+        dat_keep$median[l1] = 1
+        dat_keep$median[l2] = 0
+    }
+
+    #which one is high risk --> need surivval data
+    dat_keep$patient = rownames(dat_keep)
+    
+      dat_keep$median[dat_keep$median ==0] = "Low"
+      dat_keep$median[dat_keep$median==1] = "High"
+
+      #cox ph
+      z = which((allCands$gene == lnc) & (allCands$cancer == cancer))
+
+      HR = as.numeric(allCands$HR[z])
+      
+      if(HR <1){
+        risk = "Low"
+        dat_keep$risk = ""
+        dat_keep$risk[dat_keep$median=="High"] ="noRISK"
+        dat_keep$risk[dat_keep$median=="Low"] ="RISK"
+      }
+      if(HR >1){
+        risk = "High"
+        dat_keep$risk = ""
+        dat_keep$risk[dat_keep$median=="High"] ="RISK"
+        dat_keep$risk[dat_keep$median=="Low"] ="noRISK"
+      }
+
+      dat_keep$lnc = colnames(dat_keep)[1]
+      dat_keep$canc = cancer
+      colnames(dat_keep)[1] = "lncRNA"
+
+  return(dat_keep)  
 
 }
 
+#all lncRNAs with status 
+all_canc_lnc_data = llply(tissues_data, get_lnc_canc, .progress="text")
+
+##3-----------------generate heatmaps-----------------------------------
 
 
+gen_heatmap = function(dat){
+  #lnc 
+  lnc = dat$lnc[1]
+  #canc
+  canc = dat$canc[1]
+  lnc_canc_combo = paste(lnc, canc, sep="_")
+  #get which pcgs enriched in group
+  z = which(coexp$combo %in% lnc_canc_combo)
+  #cancer type
+
+  lnc_pcgs = coexp[z,]
+  print(length(unique(lnc_pcgs$pcg))) 
+  print(length(unique(lnc_pcgs$pcg[lnc_pcgs$risk_type == "Risk"])))
+  print(length(unique(lnc_pcgs$pcg[lnc_pcgs$risk_type == "NonRisk"])))
+  print(pcg_lnc$lnc_stat[which(pcg_lnc$combo == lnc_canc_combo)][1])
+
+  #subset gene expression to those pcgs
+  #label patients by either high/low lncRNA expression 
+
+  lnc_pcgs = coexp$pcg[z]
+  z = which(colnames(dat) %in% c(lnc_pcgs, "patient"))
+  #heatmap 
+  heat = dat[,z]
+  rownames(heat) = heat$patient
+  heat$patient = NULL
+
+  heat = log1p(heat)
+
+  if(dim(heat)[2] > 30){
+    #get most variable genes and only include them in heatmap 
+    vars = data.table(genes = colnames(heat), var = apply(heat, 2, var))
+    vars = vars[order(-var)]
+    vars = vars[1:30,]
+    z = which(colnames(heat) %in% vars$genes)
+    heat = heat[,z]
+  }
+
+  tags <- dat$risk
+  color.map <- function(tags) { if (tags=="RISK") "#FF0000" else "#0000FF" }
+  patientcolors <- unlist(lapply(tags, color.map))
+
+  #label whether pcg is fav or unfav 
+  z = which(coexp$combo %in% lnc_canc_combo)
+  lnc_pcgs = coexp[z,]
+
+  # cluster on correlation
+  heat = t(heat)
+
+  pcg_order = as.data.frame(matrix(ncol =2))
+  for(i in 1:nrow(heat)){
+    pcg = rownames(heat)[i]
+    type = lnc_pcgs$risk_type[which(lnc_pcgs$pcg == pcg)]
+    row = c(pcg, type)
+    pcg_order = rbind(pcg_order, row)
+  }
+  pcg_order = pcg_order[-1,]
+  colnames(pcg_order) = c("pcg", "type")
+
+  #change pcg names
+  for(i in 1:nrow(heat)){
+    pcg = rownames(heat)[i]
+    newname = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == pcg)][1]
+    rownames(heat)[i] = newname
+  }
+
+  pcgs <- pcg_order$type
+  color.map <- function(pcgs) { if (pcgs=="Risk") "Purple" else "Yellow" }
+  pcg_cols <- unlist(lapply(pcgs, color.map))
+
+  hc <- hclust(as.dist(1 - cor(t(heat))), method="ward.D2")
+  # draw a heatmap
+  my_palette <- colorRampPalette(c("blue", "white", "orange"))(n = 100)
+  
+  lnc_clean = rna$type[which(rna$Cancer == canc)][1]
+  canc_clean = fantom$CAT_geneName[which(fantom$CAT_geneID == lnc)]
+  risk_lnc = dat$median[which(dat$risk == "RISK")][1]
+
+  title = paste(lnc_clean, canc_clean, "\nRISK = ", risk_lnc, "Expression")
+
+  heatmap.2(as.matrix(heat), col=my_palette, ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6, Rowv=as.dendrogram(hc), 
+    RowSideColors= pcg_cols, trace="none", scale="row", dendrogram="row", labCol="", main = title, key=FALSE)
+
+}
+
+pdf("lncs_wSIG_PCGs_heatmaps_july18_top30_genes.pdf")
+llply(all_canc_lnc_data, gen_heatmap, .progress="text")
+dev.off()
 
 
 
