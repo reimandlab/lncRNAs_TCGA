@@ -14,21 +14,27 @@ library(GenomicRanges)
 #Data---------------------------------------------------
 
 #cds mutations new june 12 
-coding_drivers = fread("cds_drivers.txt")
+coding_drivers = fread("july2_cds_drivers.txt")
 
-#[] mutations in all CRMs, subset of these are FMREs
+#[3] mutations in all CRMs, subset of these are FMREs
+
+#old file:
+
+#load("encode_merge_oct2016_mutations__PANCANCER_in_elements.rsav")
+#head(mutations_in_elements)
+#mutations_in_crms = mutations_in_elements
 
 #new file June 12: 
 
-load("encode_merge__patient_element_snv_list.rsav")
+load("july12_encode_merge__patient_element_snv_list.rsav")
 mutations_in_crms = (patient_element_snv_list)
 
 #crm mutations new june 12 
 #fmre mutations 
-fmres = fread("fmre_drivers.txt")
+fmres = fread("july12_fmre_drivers.txt")
 
 #[4] mutations in all CDS, subset of these are CDS drivers
-load("gc19_pc.cds__patient_element_snv_list.rsav")
+load("july12_gc19_pc.cds__patient_element_snv_list.rsav")
 cds_mutations = patient_element_snv_list
 
 #[5] all patients in cohort
@@ -37,9 +43,30 @@ head(patient2cancer_type) #1844 all together
 
 patient_table = fread("patient_table.txt")
 
+#[] cds_lnc_drivers
+
+#[] july12_gc19_pc.cds__coords.rsav
+load("july12_gc19_pc.cds__coords.rsav")
+coords = element_coords
+coords = as.data.table(coords)
+
+#[] july12_lncrna.ncrna__coords.rsav
+load("july12_lncrna.ncrna__coords.rsav")
+lnc_coords = element_coords
+lnc_coords = as.data.table(lnc_coords)
+
+#[] july12_encode_merge__coords.rsav
+load("july12_encode_merge__coords.rsav")
+element_coords = element_coords
+element_coords = as.data.table(element_coords)
+
+#[] july12_lncrna.ncrna__patient_element_snv_list.rsav
+load("july12_lncrna.ncrna__patient_element_snv_list.rsav")
+lncrna_mutations = patient_element_snv_list
+
 #[6] Clinical file 
 clin <- fread("pcawg_specimen_histology_August2016_v6.tsv", data.table=F)
-conversion<- fread("pcawgConversion.tsv", data.table=F)
+conversion <- fread("pcawgConversion.tsv", data.table=F)
 
 #Analysis---------------------------------------------------
 
@@ -53,7 +80,7 @@ mutations_in_cds = cds_mutations[z]
 
 #RESULTS_from_001_------------------------------------------------
 
-results_pairs = fread("686_fmre_cds_pairs_fishers_analysis_June12th_KI.txt")
+results_pairs = fread("819_fmre_cds_pairs_fishers_analysis_with_lncRNAs_July12nd_KI.txt")
 
 library(plyr)
 library(dplyr)

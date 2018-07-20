@@ -125,7 +125,7 @@ get_tissue_specific <- function(tissue){
 tissues_data <- llply(tissues, get_tissue_specific, .progress="text")
 
 #Function 2
-#for each cancer 
+#for each lnc-cancer, label patient as lncRNA-risk or non-risk 
 
 get_lnc_canc = function(dat){
 	canc = dat$Cancer[1]
@@ -203,6 +203,13 @@ get_pcg_enrichment = function(dat){
 	get_pcgs_high = function(lncrna){
 		newdat = subset(dat, lnc == lncrna)
 		#which PCGs have higher expression in the high risk group
+		z = which(str_detect(colnames(newdat), "ENSG"))
+		meds = apply(newdat[,z], 2, median)
+		z = which(meds <= log1p(5))
+		rm = names(meds)[z]
+		z = which(colnames(newdat) %in% rm)
+		newdat = newdat[,-z]
+
 		pcgs = colnames(newdat)[which(str_detect(colnames(newdat), "ENSG"))]
 		pcgs_exps = newdat[,c(pcgs)]
 		#medians = apply(pcgs_exps, 2, median)
@@ -213,7 +220,7 @@ get_pcg_enrichment = function(dat){
 		get_correlation = function(pcg){
 			p = pcg
 			z = which(colnames(newdat) %in% p)
-			lncpcg = newdat[,c(z, 1:2, 19353:ncol(newdat))]
+			lncpcg = newdat[,c(z, 1, (ncol(newdat)-4):ncol(newdat))]
 			colnames(lncpcg)[1] = "pcgExp"
 			order = c("RISK", "noRISK")
 			lncpcg$risk <- factor(lncpcg$risk, levels = order)
@@ -258,7 +265,7 @@ if(!(length(z))==0){
 all_canc_lnc_data1$lnc[z] = paste(all_canc_lnc_data1$lnc[z], all_canc_lnc_data1$canc[z], sep="_")
 }
 
-saveRDS(all_canc_lnc_data1, file="all_results_for_each_cancer_from_coexpression_analysis_june27th_allCands.rds")
+saveRDS(all_canc_lnc_data1, file="all_results_for_each_cancer_from_coexpression_analysis_july19_allCands.rds")
 
 #For each cancer type, for each lncRNA ... 
 #Summarize #of PCGs upregulated in risk group and #of PCGs upregulated in non-risk group 
@@ -281,76 +288,6 @@ low_risk_matrix = acast(low_risk, pcg ~ lnc, function(x) {sort(as.character(x))[
 
 saveRDS(high_risk_matrix, file="high_risk_matrix_lncRNA_candidates_June6.rds")
 saveRDS(low_risk_matrix, file="low_risk_matrix_lncRNA_candidates_June6.rds")
-
-
-
-#--------------------------------CANCER SPECIFIC------------------------------------------------------------------------
-
-
-#Seperate all_canc_lnc_data1 by cancer type so that can look at PCGs
-#enriched in high and low risk groups by cancer type 
-#most cancer types have multiple candidates 
-
-out <- split(all_canc_lnc_data1 , forcats::fct_inorder(factor(all_canc_lnc_data1$canc)))
-
-convert_high_risk_matrix = function(dtt){
-
-	high_risk = subset(dtt, mean_diff >=1.5) #should set higher mean difference threshold?
-	#remove means that are NaN or Inf
-	z = which(high_risk$mean_diff ==NaN)
-	if(!(length(z)==0)){
-	high_risk = high_risk[-z,]}
-
-	z = which(high_risk$mean_diff ==Inf)
-	if(!(length(z)==0)){
-	high_risk = high_risk[-z,]}
-
-	library(reshape2)
-
-	#pcgs enriched in high risk lncRNAs 
-	high_risk_matrix = acast(high_risk, pcg ~ lnc, function(x) {sort(as.character(x))[1]},
-    	  value.var = 'pvalue', fill = 'na')
-
-	return(high_risk_matrix)
-	
-	}
-
-order_cancers = unique(all_canc_lnc_data1$canc)
-
-high_risk_pcgs_by_cancer = llply(out, convert_high_risk_matrix, .progress="text")
-
-#by cancer type --> PCGs with higher expression in risk group 
-saveRDS(high_risk_pcgs_by_cancer, file= "high_risk_matrix_lncRNAs_by_cancer_type_June7th.rds")
-
-
-convert_low_risk_matrix = function(dtt){
-
-	low_risk = subset(dtt, mean_diff <= 0.75) #should set higher mean difference threshold?
-	#remove means that are NaN or Inf
-	z = which(low_risk$mean_diff ==NaN)
-	if(!(length(z)==0)){
-	low_risk = low_risk[-z,]}
-
-	z = which(low_risk$mean_diff ==Inf)
-	if(!(length(z)==0)){
-	low_risk = low_risk[-z,]}
-
-	library(reshape2)
-
-	#pcgs enriched in high risk lncRNAs 
-	low_risk_matrix = acast(low_risk, pcg ~ lnc, function(x) {sort(as.character(x))[1]},
-    	  value.var = 'pvalue', fill = 'na')
-
-	return(low_risk_matrix)
-}
-
-low_risk_pcgs_by_cancer = llply(out, convert_low_risk_matrix, .progress="text")
-
-#by cancer type --> PCGs with higher expression in lower risk group 
-saveRDS(low_risk_pcgs_by_cancer, file= "low_risk_matrix_lncRNAs_by_cancer_type_June7th.rds")
-
-saveRDS(order_cancers, file="order_cancers_risk_PCGs_matrices_June7th.rds")
-
 
 
 

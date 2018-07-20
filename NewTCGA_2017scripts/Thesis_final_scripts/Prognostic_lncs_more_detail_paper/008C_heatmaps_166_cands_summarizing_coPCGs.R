@@ -217,6 +217,7 @@ gen_heatmap = function(dat){
 
   if(dim(heat)[2] > 30){
     #get most variable genes and only include them in heatmap 
+    #instead of variance order them by absolute fold change!? see if that looks better?
     vars = data.table(genes = colnames(heat), var = apply(heat, 2, var))
     vars = vars[order(-var)]
     vars = vars[1:30,]

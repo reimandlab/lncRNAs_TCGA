@@ -65,10 +65,11 @@ z1 = which(str_detect(colnames(rna), "ENSG"))
 logged_rna = rna
 logged_rna[,z1] = log1p(logged_rna[,z1])
 
+
 #logged - DONE! 
-#pdf("logged_nonMAD0lncRNAs_cands_PCA_plots_June25.pdf", width=12)
-#autoplot(prcomp(logged_rna[,z1]), data = logged_rna, colour = 'type')
-#dev.off()
+pdf("logged_nonMAD0lncRNAs_cands_PCA_plots_June25.pdf", width=12)
+autoplot(prcomp(logged_rna[,z1]), data = logged_rna, colour = 'type')
+dev.off()
 
 
 #NOT RUN ---------------------------------------------------------------

@@ -16,21 +16,20 @@ library(patchwork)
 library(caret)  
 library(Rtsne)
 library(EnvStats)
+library(TCGAbiolinks)
 
 #------FEATURES-----------------------------------------------------
 
-cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
+cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 
-#new cands - final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds
-
-#---new cands file 
-#final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds
-
-#cands = filter(cands, data == "PCAWG", pval <=0.05)
-cands = filter(cands, AnalysisType == "noFDR")
-#colnames(cands)[7] = "canc"
-cands$Cancer = NULL
-all_cands = cands
+val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
+val_cands = as.data.table(val_cands)
+val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
+val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 
 
 #--------This script ------------------------------------------------
@@ -44,9 +43,6 @@ all_cands = cands
 #--------------------------------------------------------------------
 #Clinical files - use TCGAbiolinks
 #--------------------------------------------------------------------
-
-clin_files = list.files("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/gdc_clinical_data_june2018")
-names(clin_files) = c("BRCA", "KIRC", "LGG", "LIHC", "LUAD", "OV", "PAAD")
 
 #write function that adds tag to whole data group 
 #and does survival analysis on whole group
@@ -65,17 +61,24 @@ get_canc_data_for_plot = function(dtt){
 
 filtered_data = llply(cancer_data, get_canc_data_for_plot)
 
+#subtypes available from biolinks
+subtypes_data = toupper(c("acc", "brca", "coad", "gbm", "hnsc", "kich", "kirp", 
+  "kirc", "lgg", "luad", "lusc", "prad", "pancan", "read", "skcm", "stad", "thca", "ucec"))
+
 #--------ADD CLINICAL VARIABLES----------------------------------------
 
 add_clin_vars = function(dtt){
   canc = dtt$Cancer[1]
   canc = rna$type[rna$Cancer == canc][1]
-  z = which(names(clin_files) %in% canc)
-  if(!(length(z)==0)){
 
-    clin = fread(paste("gdc_clinical_data_june2018/", clin_files[z], sep=""), data.table=F)
+  #Check if TCGA has 
+  z = which(subtypes_data %in% canc)
+  if(!(length(z)==0)){
+  clin_subtypes <- TCGAquery_subtype(tumor = canc)
+
+    clin = clin_subtypes
     print(length(colnames(clin)))
-    print(length(unique(clin$bcr_patient_barcode)))
+    print(length(unique(clin$patient)))
     for(i in 1:ncol(clin)){
       print(table(clin[,i]))
     }
@@ -103,17 +106,13 @@ add_clin_vars = function(dtt){
     keep_cols2 = unlist(apply(clin, 2, check_contrasts))
     clin = clin[,which(colnames(clin) %in% names(keep_cols2))]
 
-    z = which(colnames(clin) %in% "bcr_patient_barcode")
-    colnames(clin)[z] = "patient"
     cols = colnames(clin)[which(colnames(clin) %in% colnames(dtt))]
 
     dtt = merge(dtt, clin, by=cols)
     return(dtt)
 
-  }#end length(z)==0
-
 } #end add_clin_vars 
-
+}
 
 
 clin_data_lncs = llply(filtered_data, add_clin_vars)
@@ -121,7 +120,7 @@ clin_data_lncs = llply(filtered_data, add_clin_vars)
 #remove Nulls
 clin_data_lncs = Filter(Negate(is.null), clin_data_lncs)
 #save this file can work on at home 
-saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_June21.rds")
+saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
 
 #--------LOOK AT ASSOCIATIONS BETWEEN EXPRESSION-------------------------------
 
@@ -139,7 +138,9 @@ get_clin_lnc_cors = function(dtt){
   #look at individual lncRNAs 
   get_cor = function(lnc){
     z = which((str_detect(colnames(dtt), "ENSG") & !(colnames(dtt) %in% lnc)))
-    new_dat = dtt[,-z]
+    new_dat = dtt
+    if(length(z) > 0){
+    new_dat = dtt[,-z]}
     #add 0/1 labels 
     new_dat$lncRNA_tag = ""
     med = median(new_dat[,which(colnames(new_dat) %in% lnc)])
@@ -170,6 +171,10 @@ get_clin_lnc_cors = function(dtt){
     for(i in 1:ncol(new_dat)){
       print(i)    
       col = colnames(new_dat)[i]
+      
+      if(!(is.numeric(new_dat[,i]))){
+      new_dat[,i] = as.character(new_dat[,i])}
+      
       print(col)
       if(!(col %in% c("patient", "patient_id", "bcr_patient_uuid", "tissue_source_site", 
         "last_contact_days_to", "days_to_initial_pathologic_diagnosis", "tumor_tissue_site", 
@@ -182,7 +187,8 @@ get_clin_lnc_cors = function(dtt){
           test[1] = 5
         }
 
-        if(!(is.na(test[1]))){
+        if(!(length(which(is.na(test))) == length(test))){
+        #if(!(is.na(test[1]))){
           new_dat_plot[,2] = as.numeric(new_dat_plot[,2])
           colnames(new_dat_plot)[2] = "Clinical"
           new_dat_plot[,3] = log1p(new_dat_plot[,3])
@@ -206,7 +212,8 @@ get_clin_lnc_cors = function(dtt){
 
         }
 
-        if(is.na(test)[1]){
+        #if(is.na(test)[1]){
+        if(length(which(is.na(test))) == length(test)){
         #boxplot
         colnames(new_dat_plot)[2] = "Clinical"
         new_dat_plot[,3] = log1p(new_dat_plot[,3])
@@ -219,9 +226,13 @@ get_clin_lnc_cors = function(dtt){
         check = dim(table(new_dat_plot$Clinical))
         if(check >1){
 
+        #remove any NAs 
+        z = which(is.na(new_dat_plot$Clinical))
+        if(!(length(z)==0)){
+        new_dat_plot = new_dat_plot[-z,]}
         m1 = lm(new_dat_plot$lncRNA_exp ~1)
-        m2 = lm(new_dat_plot$lncRNA_exp ~ new_dat_plot$Clinical)
-        anova = anova(m2, m1)
+        m2 = lm(new_dat_plot$lncRNA_exp ~ 1 + new_dat_plot$Clinical)
+        anova = anova(m1, m2)
         anova = anova[2,6]
 
         row = c(canc, lnc, col, "nocor", anova, "Ftest")
@@ -297,10 +308,10 @@ clean_up = ldply(clean_up, data.table)
 clean_up = as.data.table(clean_up)
 clean_up = clean_up[order(fdr)]
 
-saveRDS(clean_up, file="correlation_results_clinical_lncRNA_exp_June22.rds")
+saveRDS(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolinks.rds")
 
 
-write.table(clean_up, file="correlation_results_clinical_lncRNA_exp_June25.txt", row.names=F, quote=F)
+write.table(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolnks.txt", row.names=F, quote=F)
 
 
 
