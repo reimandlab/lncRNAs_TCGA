@@ -181,6 +181,7 @@ mypal = readRDS(file="palette_23_cancer_types.rds")
 cancers_conv = rna[,which(colnames(rna) %in% c("type", "Cancer"))]
 cancers_conv = cancers_conv[!duplicated(cancers_conv), ]
 colnames(cancers_conv)[2] = "canc"
+saveRDS(cancers_conv, file="cancers_conv_july23.rds")
 summary = merge(summary, cancers_conv, by="canc")
 summary = summary[order(Risk, NumPCGs)]
 lncorder = unique(summary$lnc)

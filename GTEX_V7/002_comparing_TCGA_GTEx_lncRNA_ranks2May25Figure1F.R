@@ -5,11 +5,26 @@
 source("source_file.R")
 library(stringr)
 library(VennDiagram)
-
+library(patchwork)
+library(ggrepel)
 
 ###Data
 gtex = readRDS("allGTEX_lncRNAs_scored_May23.rds")
 tcga = readRDS("TCGA_all_lncRNAs_cancers_scored_byindexMay23.rds")
+
+#fantom 
+fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
+extract3 <- function(row){
+  gene <- as.character(row[[1]])
+  ens <- gsub("\\..*","",gene)
+  return(ens)
+}
+fantom[,1] <- apply(fantom[,1:2], 1, extract3)
+#remove duplicate gene names (gene names with multiple ensembl ids)
+z <- which(duplicated(fantom$CAT_geneName))
+rm <- fantom$CAT_geneName[z]
+z <- which(fantom$CAT_geneName %in% rm)
+fantom <- fantom[-z,]
 
 #summary of lncRNAs detected in each cancer 
 #lncs_det = readRDS("all_TCGA_cancers_lncRNAs_detectable_May18.rds")
@@ -58,6 +73,8 @@ tis_match = tis_match[-1,]
 #2. type of cancers with tissues available -> seperate into dataframes
 cancers = unique(tis_match$cancer)
 
+#####------START PLOT----------------------------------------------------------------------------------------
+
 ###Results
 results = readRDS("results_analysis_May24.rds")
 
@@ -75,39 +92,135 @@ for(i in 1:length(cancers)){
 new_results = new_results[-1,]
 
 #panel of violin plots for each cancer-tissue show distribution of significantly differnt ranked 
-
 new_results$median_difference = as.numeric(new_results$median_difference)
 all_results_pre_filtering = new_results
 new_results = subset(new_results, fdrtag == "FDRsig")
 
 #try only median rank difference 25%
 new_results = as.data.table(new_results)
-saveRDS(new_results, file="TCGA_GTEX_lncRNAs_ranked_wDifferences_May25.rds")
+saveRDS(new_results, file="TCGA_GTEX_lncRNAs_ranked_wDifferences_July23.rds")
 
+#change long name to short name 
+canc_conv = readRDS("cancers_conv_july23.rds")
+new_results = merge(new_results, canc_conv, by="canc")
+
+#remove cancer types with less than 50 patients
+z = which(new_results$type %in% c("KICH", "CHOL", "DLBC", "UCS"))
+new_results = new_results[-z,]
 
 #get mean order
-means = as.data.table(aggregate(new_results[,4], list(new_results$canc), mean))		
-	means = means[order(median_difference)]
-	order= means$Group.1
-pdf("summary_gtex_tcga_med_ranksdifferences_May24.pdf", width=9, height=7)
-g = ggviolin(new_results, x="canc", y="median_difference", ylab="Difference in Median Ranks", order=order, fill="tis", add = "mean_sd") + theme_light() + 
+means = as.data.table(aggregate(new_results[,3], list(new_results$type), mean))		
+means = means[order(fc_mean)]
+order= means$Group.1
+new_results$fold_change_sign = ""
+
+new_results$fold_change_sign[new_results$fc_mean >=1] = "Up in Cancer"
+new_results$fold_change_sign[new_results$fc_mean <= -1] = "Up in Normal \nTissue"
+
+#add gene name 
+get_name = function(gene){
+	name = fantom$CAT_geneName[which(fantom$CAT_geneID == gene)]
+	return(name)
+}
+
+new_results$name = ""
+new_results$name = unlist(llply(new_results$gene, get_name))
+new_results = as.data.frame(new_results)
+
+#Label top 5 genes in each cancer type if there is enough space
+#if not label top 3 
+types = unique(new_results$type)
+get_best_lncs = function(tis){
+	dat = new_results[which(new_results$type == tis),]
+	dat$lnc_tag = ""
+	dat = as.data.table(dat)
+	dat = dat[order(fc_mean)]
+	dat$lnc_tag[1:100] = "MostUpNormal"
+	dat = dat[order(-fc_mean)]
+	dat$lnc_tag[1:100] = "MostUpCancer"
+	return(dat)
+}
+
+datas = llply(types, get_best_lncs)
+datas = ldply(datas)
+new_results = datas
+
+#which ones global or tissue specific
+num_times = as.data.table(table(new_results$name, new_results$lnc_tag))
+num_times = filter(num_times, V2 %in% c("MostUpCancer", "MostUpNormal"), N >0)
+num_times = as.data.table(num_times)
+num_times = num_times[order(N)]
+num_times$spef = ""
+num_times$spef[num_times$N==1] = "Cancer Specific"
+num_times$spef[num_times$N > 1] = ">1 Cancer"
+
+colnames(num_times)[1:3] = c("name", "lnc_tag", "freq")
+new_results_extra_detail = merge(new_results, num_times, by=c("name", "lnc_tag"))
+
+pdf("summary_gtex_tcga_med_ranksdifferences_july23_mean_diff.pdf", width=9, height=7)
+violins = ggviolin(new_results, x="type", y="fc_mean", ylab="Difference in Mean Ranks", order=order, add = "mean_sd") + theme_bw() + 
 geom_jitter(position=position_jitter(width=0.05,height=0),
          alpha=0.3,
-         size=0.5)
+         size=0.5, aes(colour = fold_change_sign)) + 
+         scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+          xlab("Cancer Type")
+#geom_label_repel(data=filter(new_results, lnc_tag == "MostUpNormal"), aes(label=name, fill= spef), size=1.5)+
+#geom_label_repel(data=filter(new_results, lnc_tag == "MostUpCancer"), aes(label=name, fill = spef), size=1.5)
 
-ggpar(g,
+violins = ggpar(violins, legend.title="Difference in \nRanked \nExpression",
  font.tickslab = c(7,"plain", "black"),
- xtickslab.rt = 65) + geom_hline(yintercept=c(-0.25, 0.25), linetype="dashed", color = "red") 
+ xtickslab.rt = 45) + geom_hline(yintercept=c(1, -1), linetype="dashed", color = "red") 
+
+#add gtex tissue covariate
+tis_data = new_results[,c(8,9)]
+tis_data = as.data.table(tis_data)
+tis_data = tis_data[!duplicated(tis_data)]
+tis_data$tis[tis_data$tis == "Adre"] = "Adrenal \nGland"
+tis_data$tis[tis_data$tis == "Brai"] = "Brain"
+tis_data$tis[tis_data$tis == "Brea"] = "Breast"
+tis_data$tis[tis_data$tis == "Esop"] = "Esophagus"
+tis_data$tis[tis_data$tis == "Kidn"] = "Kidney"
+tis_data$tis[tis_data$tis == "Live"] = "Liver"
+tis_data$tis[tis_data$tis == "Ovar"] = "Ovary"
+tis_data$tis[tis_data$tis == "Panc"] = "Pancreas"
+tis_data$tis[tis_data$tis == "Thyr"] = "Thyroid"
+tis_data$tis[tis_data$tis == "Uter"] = "Uterus"
+
+library(viridis)
+library(RColorBrewer)
+library(colorRamps)
+l = length(unique(tis_data$tis)) * 2
+cc2color = structure(names = unique(tis_data$tis),
+         sample(colorRampPalette(brewer.pal(12, "Set1"))(l)[1:l %% 2 == 0]))
+
+mypal = cc2color
+tis_data$type = factor(tis_data$type, levels = order)
+
+tissues = ggplot(tis_data, aes(type, 0.2)) +
+    geom_tile(aes(fill = tis)) + geom_text(aes(label = tis), size=2.5) +
+    theme_classic() + scale_fill_manual(values=mypal)
+
+tissues = ggpar(tissues, legend = "none") + theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + 
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) + xlab("GTEx Tissue")
+
+violins + tissues + plot_layout(ncol = 1, heights = c(10, 1))
 
 dev.off()
 
+
 ###how many lncRNAs in each cancer expressed more in cancers compared to normal 
-new_results = filter(new_results, abs(median_difference) >= 0.15 )
+z1 = which(new_results$fc_mean >=1)
+z2 = which(new_results$fc_mean <= -1)
+new_results = new_results[c(z1,z2),]
 
 #how many of these are candidate lncRNAs? 
-allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 #save only the ones that came from the noFDR appraoch 
-allCands = filter(allCands, AnalysisType == "noFDR", data=="TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands = filter(allCands, data=="TCGA", fdr_pval <=0.05) #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
 #23 unique cancer types 
 
 #which cancer types are the non-unique lncRNAs from?
@@ -116,17 +229,45 @@ allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "CAT_geneName")]
 allCands = allCands[!duplicated(allCands), ]
 cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 
+#how many candidates were actually evaluated? (22)
+new_results = as.data.table(new_results)
+new_results$combo = paste(new_results$gene, new_results$canc, sep="_")
+allCands$combo = paste(allCands$gene, allCands$cancer, sep="_")
 
-#how many candidates were actually evaluated?
-z = which((all_results_pre_filtering$gene %in% allCands$gene) & (all_results_pre_filtering$canc %in% allCands$cancer))
-genes = unique(all_results_pre_filtering$gene[z])
+#How many were evaluated
+all_results_pre_filtering$combo = paste(all_results_pre_filtering$gene, all_results_pre_filtering$canc, sep="_")
+z = which(all_results_pre_filtering$combo %in% allCands$combo)
+genes = unique(all_results_pre_filtering$gene[z]) #were only able to evaluate 22 unique lncRNAs 
+#22 unique lncRNAs-cancers were evaluated across 10 unique cancer types 
 
-#how many candidates are significantly different with median change >= 0.15?
-z = which((new_results$gene %in% allCands$gene) & (new_results$canc %in% allCands$cancer))
-genes = unique(new_results$gene[z])
-just_cands = new_results[z,]
+z = which(new_results$combo %in% allCands$combo)
+#how many candidates are significantly different with fold change >2 --> 13 lncRNAs 
+genes = unique(new_results$gene[z]) #were only able to evaluate 22 unique lncRNAs 
 
-#how many up/down in cancers
+#save all that were evlautaed 
+z = which(all_results_pre_filtering$combo %in% allCands$combo)
+all_results_pre_filtering = all_results_pre_filtering[z,]
+saveRDS(all_results_pre_filtering, file="22_candidates_lncRNAs_evaluated_gtex_analysis.rds")
+z = which(new_results$combo %in% allCands$combo)
+new_results = new_results[z,]
+saveRDS(new_results, file="13_candidates_lncRNAs_significant_gtex_analysis.rds")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

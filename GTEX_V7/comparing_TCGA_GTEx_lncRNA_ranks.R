@@ -69,11 +69,10 @@ get_data = function(cancer){
 all_datas = llply(cancers, get_data, .progress="text")
 
 #3. get median rank for each gene within tumour and gtex 
-allCands <- readRDS("all_candidates_combined_cancers_typesAnalysis_May3rd.rds")
-allCands = filter(allCands, AnalysisType == "noFDR")
+allCands <- readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = filter(allCands, data == "TCGA", fdr_pval <= 0.05)
 
 #plot resepctive candidates wtihin this cancer type 
-
 lncs_gtex = unique(gtex$gene)
 lncs_tcga = unique(tcga$gene)
 lncs_both = lncs_tcga[which(lncs_tcga %in% lncs_gtex)]
