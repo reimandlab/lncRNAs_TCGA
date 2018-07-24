@@ -63,7 +63,7 @@ val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer 
 
 #------PCGs for pathway analysis--------------------------------------
 
-pcgs_risks = readRDS("pcgs_enriched_in_risk_groups_non_lncRNA_risk_groups_pcg_analysis_july13.rds")
+pcgs_risks = readRDS("pcgs_enriched_in_risk_groups_non_lncRNA_risk_groups_pcg_analysis_july24.rds")
 risk = as.data.table(filter(pcgs_risks, V2 == "Risk"))
 nonrisk = as.data.table(filter(pcgs_risks, V2 == "NonRisk"))
 

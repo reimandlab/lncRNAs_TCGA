@@ -78,7 +78,11 @@ cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 #RESULTS-------------------------------------------------------------
 #--------------------------------------------------------------------
 
-coexp = readRDS("all_results_for_each_cancer_from_coexpression_analysis_june27th_allCands.rds")
+coexp = readRDS("new_PCG_enrichment_min_5FPKMmedian_july20.rds")
+z = which(coexp$lnc %in% cands_dups)
+if(!(length(z))==0){
+coexp$lnc[z] = paste(coexp$lnc[z], coexp$canc[z], sep="_")
+}
 
 #can run FDR on all PCGs for all Cancer types 
 #175 * 20,0000 = enormous FDR test 
@@ -141,7 +145,8 @@ colnames(summary) = c("lnc", "Risk", "NumPCGs")
 summary = summary[order(NumPCGs)]
 summary$canc = ""
 for(i in 1:nrow(summary)){
-	canc = unique(canc_dats$canc[which(canc_dats$lnc %in% summary$lnc[i])])
+	print(i)
+  canc = unique(canc_dats$canc[which(canc_dats$lnc %in% summary$lnc[i])])
 	summary$canc[i] = canc
 }
 
@@ -256,8 +261,7 @@ canc_dats = canc_dats[z,]
 
 ####-------SAVE PROCESSED CO-EXPRESSION RESULTS-----------------------------------------
 
-saveRDS(canc_dats, file="coexpression_results_processed_july18.rds")
-
+saveRDS(canc_dats, file="coexpression_results_processed_july24.rds")
 
 #this one is only one that didnt have any
 #ENSG00000240889 0.933567971848771 2.54356838690527 0.0008554614
@@ -318,10 +322,10 @@ both_risks = unique(pcgs_sum$V1[z])
 #is in high risk group
 
 risk = as.data.table(filter(pcgs_sum, V2 == "Risk"))
-risk$groupy = cut(risk$N, breaks =c(0,1,5, 10, 15, 20,25, 30, 35))
+risk$groupy = cut(risk$N, breaks =c(0,1,5, 10, 15, 20,25, 30))
 
 nonrisk = as.data.table(filter(pcgs_sum, V2 == "NonRisk"))
-nonrisk$groupy = cut(nonrisk$N, breaks =c(0,1,5, 10, 15, 20,25, 30, 35))
+nonrisk$groupy = cut(nonrisk$N, breaks =c(0,1,5, 10, 15, 20,25, 30))
 
 #SUMMARIZE
 # Change line color and fill color
@@ -335,7 +339,7 @@ nonriskplot= ggplot(nonrisk, aes(x=groupy))+
 
 both = rbind(risk, nonrisk)
 
-pdf("summary_pcgs_coexpressed_mutliple_cancer_types.pdf", width=5, height=5)
+pdf("summary_pcgs_coexpressed_mutliple_cancer_types_24.pdf", width=5, height=5)
 g = ggplot(both, aes(x=groupy, fill=V2)) +
   scale_fill_brewer(palette="Dark2") +
   geom_histogram(position="dodge", stat="count", alpha=0.8)+
@@ -347,7 +351,7 @@ dev.off()
 
 #distribution of PCGs that appeared in both groups
 bothrisks = as.data.table(filter(both, both_risk_groups=="BOTH_risks"))
-pdf("just_pcgs_both_risks_summary_pcgs_coexpressed_mutliple_cancer_types.pdf", width=5, height=5)
+pdf("just_pcgs_both_risks_summary_pcgs_coexpressed_mutliple_cancer_types_24.pdf", width=5, height=5)
 g = ggplot(bothrisks, aes(x=groupy, fill=V2)) +
   scale_fill_brewer(palette="Dark2") +
   geom_histogram(position="dodge", stat="count", alpha=0.8)+
@@ -360,7 +364,7 @@ dev.off()
 #4229 appear in both risk and non-risk groups (across all cancers)
 
 #Save files for gprofiler 
-saveRDS(both, file="pcgs_enriched_in_risk_groups_non_lncRNA_risk_groups_pcg_analysis_july13.rds")
+saveRDS(both, file="pcgs_enriched_in_risk_groups_non_lncRNA_risk_groups_pcg_analysis_july24.rds")
 
 #---------BY CANCER TYPE ANALYSIS-----------------------------------------------------------------
 
@@ -450,7 +454,7 @@ res_tog$lnc_stat = ""
 res_tog$lnc_stat[which(res_tog$HR < 0)] = "Favourable"
 res_tog$lnc_stat[which(res_tog$HR > 0)] = "Unfavourable"
 
-saveRDS(res_tog, file="summary_pcg_analysis_wHRs_july17.rds")
+saveRDS(res_tog, file="summary_pcg_analysis_wHRs_jul2y24.rds")
 
 
 

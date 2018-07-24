@@ -106,7 +106,7 @@ new_results = merge(new_results, canc_conv, by="canc")
 
 #remove cancer types with less than 50 patients
 z = which(new_results$type %in% c("KICH", "CHOL", "DLBC", "UCS"))
-new_results = new_results[-z,]
+if(!(length(z)==0)){new_results = new_results[-z,]}
 
 #get mean order
 means = as.data.table(aggregate(new_results[,3], list(new_results$type), mean))		

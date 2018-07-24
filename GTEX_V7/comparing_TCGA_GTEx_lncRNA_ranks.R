@@ -9,6 +9,8 @@ library(stringr)
 gtex = readRDS("allGTEX_lncRNAs_scored_May23.rds")
 tcga = readRDS("TCGA_all_lncRNAs_cancers_scored_byindexMay23.rds")
 
+lncs_val = fread("6_unique_lncNRAs_validate_PCAWG.txt")
+
 #summary of lncRNAs detected in each cancer 
 #lncs_det = readRDS("all_TCGA_cancers_lncRNAs_detectable_May18.rds")
 #lncs_det_info = readRDS("summary_detectable_lncs_howmanycancers_typesLNCRNAS.rds")
@@ -54,7 +56,16 @@ for(i in 1:length(gtex_canc)){
 tis_match = tis_match[-1,]
 
 #2. type of cancers with tissues available -> seperate into dataframes
-cancers = unique(tis_match$cancer)
+cancers = as.data.frame(unique(tis_match$cancer))
+colnames(cancers)[1] = "canc"
+canc_conv = readRDS("cancers_conv_july23.rds")
+cancers = merge(cancers, canc_conv, by="canc")
+
+#remove cancer types with less than 50 patients
+z = which(cancers$type %in% c("KICH", "CHOL", "DLBC", "UCS"))
+cancers = cancers[-z,]
+
+cancers = cancers$canc
 
 get_data = function(cancer){
 	z = which(tcga$tis == cancer)
@@ -76,6 +87,9 @@ allCands = filter(allCands, data == "TCGA", fdr_pval <= 0.05)
 lncs_gtex = unique(gtex$gene)
 lncs_tcga = unique(tcga$gene)
 lncs_both = lncs_tcga[which(lncs_tcga %in% lncs_gtex)]
+
+library(plyr)
+library(doParallel)
 
 #4. get fold change and p-value for each gene 
 get_fc = function(dataframee){
@@ -105,17 +119,17 @@ get_fc = function(dataframee){
 	all_genes_results2$fdrtag[all_genes_results2$fdr<=0.05] = "FDRsig"
 	all_genes_results2$fdrtag[all_genes_results2$fdr>0.05] = "NotFDRsig"
 	#subest to only those with 25% difference in corresponding median gene ranks
-	all_genes_results2 = all_genes_results2[which(abs(as.numeric(all_genes_results2$median_difference)) >=0.1),]
+	#all_genes_results2 = all_genes_results2[which(abs(as.numeric(all_genes_results2$median_difference)) >=0.1),]
 	all_genes_results2$pval_wilcoxon = -log10(as.numeric(all_genes_results2$pval_wilcoxon))
-	print(ggdensity(dataframee, x = "score",
-  			 color = "data", palette = c("#00AFBB", "#E7B800"), title=dataframee$tis[1]))
+	#print(ggdensity(dataframee, x = "score",
+  	#		 color = "data", palette = c("#00AFBB", "#E7B800"), title=dataframee$tis[1]))
 
 	return(all_genes_results2)
 }
 
-pdf("volcano_plots_foldchange_of_lncRNA_ranks_TCGA_vs_GTEX_May24.pdf")
+#pdf("volcano_plots_foldchange_of_lncRNA_ranks_TCGA_vs_GTEX_May24.pdf")
 results_analysis = llply(all_datas, get_fc, .progress="text")
-dev.off()
-
+#dev.off()
+saveRDS(results_analysis, file="results_analysis_July24.rds")
 
 

@@ -25,7 +25,6 @@ cands = filter(cands, AnalysisType == "noFDR")
 cands$Cancer = NULL
 all_cands = cands
 
-
 #--------This script ------------------------------------------------
 
 #just make KM plots for TCGA 
@@ -516,7 +515,7 @@ matches = merge(matches, ucsc, by=c("gene"))
 z = which(matches$gene == "ENSG00000250360")
 matches = matches[-z,]
 
-write.table(matches, file="6_unique_lncNRAs_validate_PCAWG.txt", quote=F, row.names=F)
+write.table(matches, file="6_unique_lncNRAs_validate_PCAWG.txt", quote=F, row.names=F, sep=";")
 matches = as.data.frame(matches)
 matches = matches[,1:13]
 pdf("6_unique_lncNRAs_validate_PCAWG.pdf", width=24)
