@@ -59,13 +59,13 @@ tis_match = tis_match[-1,]
 cancers = unique(tis_match$cancer)
 
 ###Results
-results = readRDS("results_analysis_May24.rds")
+results = readRDS("results_analysis_July24.rds")
 
 new_results = as.data.frame(matrix(ncol=8)) ; colnames(new_results) = c("gene", "fc_mean", "pval_wilcoxon", 
 	"median_difference", "fdr", "fdrtag", "canc", "tis")
 
 
-for(i in 1:length(cancers)){
+for(i in 1:length(results)){
 	df = results[[i]]
 	df$canc = cancers[i]
 	df$tis = tis_match$tis[which(tis_match$cancer %in% cancers[i])]

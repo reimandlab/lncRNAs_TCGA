@@ -5,10 +5,12 @@
 source("source_file.R")
 library(stringr)
 library(VennDiagram)
+library(EnvStats)
 
-allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
+#how many of these are candidate lncRNAs? 
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 #save only the ones that came from the noFDR appraoch 
-allCands = filter(allCands, AnalysisType == "noFDR", data=="TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands = filter(allCands, data=="TCGA", fdr_pval <=0.05) #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
 #23 unique cancer types 
 
 #which cancer types are the non-unique lncRNAs from?
@@ -53,16 +55,18 @@ for(i in 1:length(gtex_canc)){
 
 tis_match = tis_match[-1,]
 
-
 #expression data 
 rna = readRDS("TCGA_rna_expression_Data_forgtex_analysis.rds")
 
 #tcga gtex comparison 
-ranked_comp = readRDS("TCGA_GTEX_lncRNAs_ranked_wDifferences_May25.rds")
+ranked_comp = readRDS("TCGA_GTEX_lncRNAs_ranked_wDifferences_July23_noFDR.rds")
 
 #########compare ranks-------------------------------------------------------------------
 
 #which of the candidates are differentially expressed? 
+
+allCands$combo = paste(allCands$gene, allCands$cancer, sep="_")
+ranked_comp$combo = paste(ranked_comp$gene, ranked_comp$canc, sep="_")
 
 results_cands = as.data.frame(matrix(ncol=ncol(ranked_comp)))
 colnames(results_cands) = colnames(ranked_comp)
@@ -70,7 +74,7 @@ colnames(results_cands) = colnames(ranked_comp)
 for(i in 1:nrow(allCands)){
 	lnc = as.character(allCands$gene[i])
 	canc = allCands$cancer[i]
-	z = which((ranked_comp$gene == lnc) & (ranked_comp$canc == canc))
+	z = which(ranked_comp$combo %in% allCands$combo[i])
 	print(z)
 	row = ranked_comp[z,]
 	names(row) = colnames(results_cands)
@@ -92,8 +96,8 @@ allCands = merge(allCands, results_cands, by=c("lnc", "Cancer"))
 #if HR > 1 & significantly upregulated in cancer --> potential OG? 
 #if HR < 1 & significantly downregulated in cacner --> potential TS? 
 
-allCands$reg[allCands$median_difference >0] = "Upregulated_Cancer"
-allCands$reg[allCands$median_difference <0] = "Downregulated_Cancer"
+allCands$reg[allCands$fc_mean >=1] = "Upregulated_Cancer"
+allCands$reg[allCands$fc_mean <=-1] = "Downregulated_Cancer"
 
 allCands$biological_match = ""
 z = which((allCands$HR >1) & (allCands$reg == "Upregulated_Cancer"))
@@ -101,30 +105,31 @@ allCands$biological_match[z] = "PredictedOG"
 
 z = which((allCands$HR <1) & (allCands$reg == "Downregulated_Cancer"))
 allCands$biological_match[z] = "PredictedTS"
-saveRDS(allCands, file="lncRNA_cands_with_GTEx_results_June22.rds")
+saveRDS(allCands, file="lncRNA_cands_with_GTEx_results_July24.rds")
 
-lncs = as.list(as.character(unique(allCands$lnc)))
+lncs = as.list(as.character(unique(allCands$combo.x)))
 
 compare_exp_boxplots = function(lnc){
 
 	#get tumour expression and seperate by high and low expression
-	z = which(allCands$lnc == lnc)
+	z = which(allCands$combo.x == lnc)
 	canc = allCands$Cancer[z]
+	lnc = unlist(strsplit(lnc, "_"))[1]
 	#subset tumour exp
 	canc_exp = subset(rna, Cancer==canc)
 	canc_exp = canc_exp[,which(colnames(canc_exp) %in% c(lnc, "Cancer", "patient"))]
 	#sep by median
 	median2 = median(as.numeric(canc_exp[,2]))
-	canc_exp$tag = ""
+	canc_exp$Group = ""
 	if(median2 == 0){
 		z = which(canc_exp[,2] ==0)
-		canc_exp$tag[z] = "Low"
-		canc_exp$tag[-z] = "High"
+		canc_exp$Group[z] = "Low TCGA \nexpression"
+		canc_exp$Group[-z] = "High TCGA \nexpression"
 	}
 	if(!(median2==0)){
 		z = which(canc_exp[,2] < median2)
-		canc_exp$tag[z] = "Low"
-		canc_exp$tag[-z] = "High"
+		canc_exp$Group[z] = "Low TCGA \nexpression"
+		canc_exp$Group[-z] = "High TCGA \nexpression"
 	}
 
 	#risk 
@@ -155,7 +160,7 @@ compare_exp_boxplots = function(lnc){
 	norm_exp = subset(norm_exp, gene == lnc)
 
 	norm_exp = norm_exp[,c(4, 1, 2, 3, 6, 5)]
-	norm_exp$tag = "norm"
+	norm_exp$Group = "GTEx \nexpression"
 	norm_exp$risk_type = "norm"
 	norm_exp$exp_type = "norm"
 	norm_exp = as.data.frame(norm_exp)
@@ -167,13 +172,14 @@ compare_exp_boxplots = function(lnc){
 	colnames(all_exp)[4] = "lncRNA_score"
 
 	#boxplot
-	ggboxplot(all_exp, ylab="lncRNA Score", x="tag", y="lncRNA_score", palette = mypal[c(3,2,1)], add = "jitter", fill = "tag", order=c("norm", "Low", "High"), 
+	ggboxplot(all_exp, ylab="lncRNA Score", x="Group", y="lncRNA_score", palette = mypal[c(3,2,1)], add = "jitter", fill = "Group", 
+		order=c("GTEx \nexpression", "Low TCGA \nexpression", "High TCGA \nexpression"), 
 		title= paste(lnc, canc, "risk=", risk_exp))+ 
 		stat_compare_means(label = "p.signif", 
-                     ref.group = "norm") + theme_light()  
+                     ref.group = "GTEx \nexpression") + stat_n_text() + theme_classic() + ylim(0, 1) 
 
 }
 
-pdf("lncRNA_expression_tumours_GTEX_matched_normals_cancds_June5.pdf", width=10)
+pdf("lncRNA_expression_tumours_GTEX_matched_normals_cancds_July24.pdf")
 llply(lncs, compare_exp_boxplots, .progress="text")
 dev.off()

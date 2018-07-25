@@ -26,6 +26,14 @@ rm <- fantom$CAT_geneName[z]
 z <- which(fantom$CAT_geneName %in% rm)
 fantom <- fantom[-z,]
 
+#candidates
+val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
+val_cands = as.data.table(val_cands)
+val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
+val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+
+
 #summary of lncRNAs detected in each cancer 
 #lncs_det = readRDS("all_TCGA_cancers_lncRNAs_detectable_May18.rds")
 #lncs_det_info = readRDS("summary_detectable_lncs_howmanycancers_typesLNCRNAS.rds")
@@ -71,18 +79,25 @@ for(i in 1:length(gtex_canc)){
 tis_match = tis_match[-1,]
 
 #2. type of cancers with tissues available -> seperate into dataframes
-cancers = unique(tis_match$cancer)
+cancers = as.data.frame(unique(tis_match$cancer))
+colnames(cancers)[1] = "canc"
+canc_conv = readRDS("cancers_conv_july23.rds")
+cancers = merge(cancers, canc_conv, by="canc")
+
+#remove cancer types with less than 50 patients
+z = which(cancers$type %in% c("KICH", "CHOL", "DLBC", "UCS"))
+cancers = cancers[-z,]
+cancers = cancers$canc
 
 #####------START PLOT----------------------------------------------------------------------------------------
 
 ###Results
-results = readRDS("results_analysis_May24.rds")
+results = readRDS("results_analysis_July24.rds")
 
 new_results = as.data.frame(matrix(ncol=8)) ; colnames(new_results) = c("gene", "fc_mean", "pval_wilcoxon", 
 	"median_difference", "fdr", "fdrtag", "canc", "tis")
 
-
-for(i in 1:length(cancers)){
+for(i in 1:length(results)){
 	df = results[[i]]
 	df$canc = cancers[i]
 	df$tis = tis_match$tis[which(tis_match$cancer %in% cancers[i])]
@@ -93,12 +108,11 @@ new_results = new_results[-1,]
 
 #panel of violin plots for each cancer-tissue show distribution of significantly differnt ranked 
 new_results$median_difference = as.numeric(new_results$median_difference)
+new_results = as.data.table(new_results)
+saveRDS(new_results, file="TCGA_GTEX_lncRNAs_ranked_wDifferences_July23_noFDR.rds")
+
 all_results_pre_filtering = new_results
 new_results = subset(new_results, fdrtag == "FDRsig")
-
-#try only median rank difference 25%
-new_results = as.data.table(new_results)
-saveRDS(new_results, file="TCGA_GTEX_lncRNAs_ranked_wDifferences_July23.rds")
 
 #change long name to short name 
 canc_conv = readRDS("cancers_conv_july23.rds")
@@ -114,6 +128,7 @@ means = means[order(fc_mean)]
 order= means$Group.1
 new_results$fold_change_sign = ""
 
+#label lncRNA whether it is significantly up or downregulated in Cancer 
 new_results$fold_change_sign[new_results$fc_mean >=1] = "Up in Cancer"
 new_results$fold_change_sign[new_results$fc_mean <= -1] = "Up in Normal \nTissue"
 
@@ -146,16 +161,53 @@ datas = ldply(datas)
 new_results = datas
 
 #which ones global or tissue specific
-num_times = as.data.table(table(new_results$name, new_results$lnc_tag))
-num_times = filter(num_times, V2 %in% c("MostUpCancer", "MostUpNormal"), N >0)
+num_times = as.data.table(table(new_results$name, new_results$fold_change_sign))
+num_times = filter(num_times, V2 %in% c("Up in Cancer", "Up in Normal \nTissue"), N >0)
 num_times = as.data.table(num_times)
 num_times = num_times[order(N)]
 num_times$spef = ""
 num_times$spef[num_times$N==1] = "Cancer Specific"
 num_times$spef[num_times$N > 1] = ">1 Cancer"
 
-colnames(num_times)[1:3] = c("name", "lnc_tag", "freq")
-new_results_extra_detail = merge(new_results, num_times, by=c("name", "lnc_tag"))
+#which ones are both up and down regulated 
+sum_dups = as.data.table(table(num_times$V1))
+sum_dups = sum_dups[order(N)]
+sum_dups = as.data.table(filter(sum_dups, N > 1))
+
+z = which(num_times$V1 %in% sum_dups$V1)
+nondups = num_times[-z,]
+
+only_up = as.data.table(filter(nondups, V2 == "Up in Cancer"))
+only_down = as.data.table(filter(nondups, V2 == "Up in Normal \nTissue"))
+
+#remove those that appear in both up and downregulated
+#These are 2,598 lncRNAs that are FDR significant and have a FC of at least 2 
+z = which(num_times$V1 %in% sum_dups$V1)
+num_times = num_times[-z,]
+
+colnames(num_times)[1:3] = c("name", "fold_change_sign", "freq")
+new_results = as.data.table(new_results)
+new_results_extra_detail = merge(new_results, num_times, by=c("name", "fold_change_sign"))
+new_results_extra_detail$fdr = -log10(new_results_extra_detail$fdr)
+num_times$freq = as.factor(num_times$freq)
+num_times$fold_change_sign = factor(num_times$fold_change_sign, levels = c("Up in Normal \nTissue", "Up in Cancer"))
+
+#how many times do the 6 lncRNA candidates appear (that validated)? 
+
+#summarize how many cancer specific vs how many multiple cancer types
+
+#FINAL PLOT 1F
+
+pdf("summary_gtex_tcga_updown_regulated_cancer_speicifc_or_not.pdf")
+#x-axis fold_change, y-axis freq of cancer types it is apparent in, color -fold change sign
+g = ggplot(num_times, aes(x=freq, fill=fold_change_sign)) + geom_histogram(stat="count") + 
+scale_fill_manual(values=c("#56B4E9", "#E69F00", "#999999")) + 
+theme_bw() + xlab("Number of Cancer Types") + ylab("Count") + ggtitle("Summary of Up/Downregulated lncRNAs \nbetween GTEx & TCGA")
+ggpar(g, legend.title = "Difference in \nRank Expression")
+dev.off()
+
+
+#FINAL PLOT 1E
 
 pdf("summary_gtex_tcga_med_ranksdifferences_july23_mean_diff.pdf", width=9, height=7)
 violins = ggviolin(new_results, x="type", y="fc_mean", ylab="Difference in Mean Ranks", order=order, add = "mean_sd") + theme_bw() + 
@@ -241,22 +293,22 @@ genes = unique(all_results_pre_filtering$gene[z]) #were only able to evaluate 22
 #22 unique lncRNAs-cancers were evaluated across 10 unique cancer types 
 
 z = which(new_results$combo %in% allCands$combo)
-#how many candidates are significantly different with fold change >2 --> 13 lncRNAs 
-genes = unique(new_results$gene[z]) #were only able to evaluate 22 unique lncRNAs 
+#how many candidates are significantly different with fold change >2 --> 31 lncRNAs 
+genes = unique(new_results$gene[z]) 
 
 #save all that were evlautaed 
 z = which(all_results_pre_filtering$combo %in% allCands$combo)
 all_results_pre_filtering = all_results_pre_filtering[z,]
-saveRDS(all_results_pre_filtering, file="22_candidates_lncRNAs_evaluated_gtex_analysis.rds")
+saveRDS(all_results_pre_filtering, file="108_candidates_lncRNAs_evaluated_gtex_analysis.rds")
 z = which(new_results$combo %in% allCands$combo)
 new_results = new_results[z,]
-saveRDS(new_results, file="13_candidates_lncRNAs_significant_gtex_analysis.rds")
+saveRDS(new_results, file="31_candidates_lncRNAs_significant_gtex_analysis.rds")
 
 
+print("done sir")
 
 
-
-
+##----------------------------DONE---------------------------------------------------------------------------------
 
 
 
