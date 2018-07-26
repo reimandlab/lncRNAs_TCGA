@@ -84,6 +84,11 @@ if(!(length(z))==0){
 coexp$lnc[z] = paste(coexp$lnc[z], coexp$canc[z], sep="_")
 }
 
+coexp$combo=""
+z = which(str_detect(coexp$lnc, "_"))
+coexp$combo[-z] = paste(coexp$lnc[-z], coexp$canc[-z], sep="_")
+coexp$combo[z] = coexp$lnc[z]
+
 #can run FDR on all PCGs for all Cancer types 
 #175 * 20,0000 = enormous FDR test 
 
@@ -113,13 +118,6 @@ canc_dats$mean_diff = as.numeric(canc_dats$mean_diff)
 #z = which(canc_dats$mean_diff == 0)
 #canc_dats = canc_dats[-z,]
 canc_dats = as.data.table(canc_dats)
-#coexp = filter(coexp, pvalue <= 0.05)
-
-#ggscatter(coexp, x = "mean_diff", y = "fdr", size=0.5, 
-#   color="fdr") + geom_hline(yintercept = -log10(0.05)) + geom_vline(xintercept = 0) +
-#    geom_vline(xintercept = (log1p(4))-(log1p(2))) +
-#    geom_vline(xintercept = (log1p(2))-(log1p(4)))
-#dev.off()
 
 
 #2. Summarize per lncRNA/cancer, how many PCGs upregulated in risk group
@@ -250,11 +248,9 @@ z1 = which(allCands$gene %in% summary$lnc)
 z2 = which(allCands$combo %in% summary$lnc)
 nosig = allCands[-c(z1, z2),]
 
+##--------------------------------------------------------------------------------------
 #subset canc_dats to only include lncRNA-cancer-PCGs as in summary
-canc_dats$combo = ""
-z = which(str_detect(canc_dats$lnc, "_"))
-canc_dats$combo[z] = canc_dats$lnc[z]
-canc_dats$combo[-z] = paste(canc_dats$lnc[-z], canc_dats$canc[-z], sep="_")
+##--------------------------------------------------------------------------------------
 
 z = which(canc_dats$combo %in% summary$combo)
 canc_dats = canc_dats[z,]
@@ -262,12 +258,6 @@ canc_dats = canc_dats[z,]
 ####-------SAVE PROCESSED CO-EXPRESSION RESULTS-----------------------------------------
 
 saveRDS(canc_dats, file="coexpression_results_processed_july24.rds")
-
-#this one is only one that didnt have any
-#ENSG00000240889 0.933567971848771 2.54356838690527 0.0008554614
-#              low95          upper95                  cancer     fdr_pval data
-#1: 1.46929431922299 4.40329759274187 Glioblastoma multiforme
-
 
 ##---------What kinds of genes are enriched per lncRNA-----------------------------------
 

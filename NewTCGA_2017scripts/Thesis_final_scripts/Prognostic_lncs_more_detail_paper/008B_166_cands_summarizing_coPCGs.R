@@ -70,9 +70,9 @@ nonrisk = as.data.table(filter(pcgs_risks, V2 == "NonRisk"))
 ##---------pathways enriched by PCGs that appear in at least 2 cancers and in risk group
 #remove those that are in both risk and non-risk ...? 
 
-risk = as.data.table(filter(risk, both_risk_groups == "", N >=5))
+risk = as.data.table(filter(risk, both_risk_groups == "", N >=2))
 genes = risk$V1
-combined_paths <- gprofiler(genes, organism = "hsapiens", exclude_iea=TRUE, ordered_query= TRUE, min_set_size=5, max_set_size = 300, min_isect_size=10, correction_method="fdr")
+combined_paths <- gprofiler(genes, organism = "hsapiens", exclude_iea=TRUE, ordered_query= TRUE, min_set_size=5, max_set_size = 200, min_isect_size=5, correction_method="fdr")
 print(dim(combined_paths)[1])
 
 if(!(dim(combined_paths)[1]==0)){
@@ -85,10 +85,23 @@ colnames(combined_paths) <- c("GO.ID", "Description", "p.Val", "FDR", "Phenotype
 write.table(combined_paths, sep= "\t", file="pathways_enriched_in_PCGS_enriched_in_lncRNA_risk_groups_july13.txt", quote=F, row.names=F)
 }
 
+#barplot: x-axis pathway, y-axis FDR + rotate plot
+combined_paths$num_genes =  sapply(combined_paths$Genes, function(x){length(unlist(strsplit(x, ",")))})
+combined_paths = as.data.table(combined_paths) 
+#order by first num of genes then FDR
+combined_paths = combined_paths[order(num_genes)]
+combined_paths$Description = factor(combined_paths$Description, levels=combined_paths$Description)
+
+pdf("FINAL_figure6E_risk_pathways.pdf")
+g = ggplot(combined_paths, aes(num_genes, Description, color=FDR)) + xlab("Number of Risk Genes") + ylab("Reactome Pathway") + 
+        geom_point() + scale_colour_gradientn(colours = terrain.colors(10))
+ggpar(g, font.ytickslab = c(6, "plain", "black"))
+dev.off()
+
 #enriched in non-risk
-nonrisk = as.data.table(filter(nonrisk, both_risk_groups == "", N >=5))
+nonrisk = as.data.table(filter(nonrisk, both_risk_groups == "", N >=2))
 genes = nonrisk$V1
-combined_paths <- gprofiler(genes, organism = "hsapiens", exclude_iea=TRUE, ordered_query= TRUE, min_set_size=5, max_set_size = 300, min_isect_size=20, correction_method="fdr")
+combined_paths <- gprofiler(genes, organism = "hsapiens", exclude_iea=TRUE, ordered_query= TRUE, min_set_size=5, max_set_size = 200, min_isect_size=5, correction_method="fdr")
 print(dim(combined_paths)[1])
 if(!(dim(combined_paths)[1]==0)){
 #only keep GO or REACTOME
@@ -100,5 +113,16 @@ colnames(combined_paths) <- c("GO.ID", "Description", "p.Val", "FDR", "Phenotype
 write.table(combined_paths, sep= "\t", file="pathways_enriched_in_PCGS_enriched_in_lncRNA_NONrisk_groups_july13.txt", quote=F, row.names=F)
 }
 
+#barplot: x-axis pathway, y-axis FDR + rotate plot
+combined_paths$num_genes =  sapply(combined_paths$Genes, function(x){length(unlist(strsplit(x, ",")))})
+combined_paths = as.data.table(combined_paths) 
+#order by first num of genes then FDR
+combined_paths = combined_paths[order(num_genes)]
+combined_paths$Description = factor(combined_paths$Description, levels=combined_paths$Description)
 
+pdf("FINAL_figure6E_NONrisk_pathways.pdf", height=3)
+g = ggplot(combined_paths, aes(num_genes, Description, color=FDR)) + xlab("Number of Non-Risk Genes") + ylab("Reactome Pathway") + 
+        geom_point() + scale_colour_gradientn(colours = terrain.colors(10))
+ggpar(g, font.ytickslab = c(6, "plain", "black"))
+dev.off()
 

@@ -308,7 +308,68 @@ saveRDS(new_results, file="31_candidates_lncRNAs_significant_gtex_analysis.rds")
 print("done sir")
 
 
+##---------------------------FIGURE 5A-----------------------------------------------------------------------------
+
+#PLOT what the 111/175 candidates look like 
+
+### --> all_results_pre_filtering <-- 
+
+###Summary of 111 lncRNAs-cancer combo, the fold change between risk group and gtex group 
+#plus p-value as colour, ordered by increase fold change, with tissue type covariate. 
+
+#add HR 
+cands_gtex = merge(all_results_pre_filtering, allCands, by=c("combo", "gene"))
+cands_gtex$HR = as.numeric(cands_gtex$HR)
+cands_gtex$HR = log2(cands_gtex$HR)
+cands_gtex = merge(cands_gtex, canc_conv, by = "canc")
+cands_gtex$fdr = -log10(cands_gtex$fdr)
+
+pdf("final_figure_5A_july26.pdf")
+
+ggplot(cands_gtex, aes(x=fc_mean, y=HR, shape=fdrtag)) + geom_hline(yintercept=0, linetype="dashed", color = "red") + 
+  geom_point() + geom_vline(xintercept=0, linetype="dashed", color = "red") +
+  scale_color_gradient2(low="grey",
+                     high="blue", space ="Lab" ) + xlab("Fold Change") + ylab("log2(HR)") +
+  geom_label_repel(data=filter(cands_gtex, fc_mean >=1, fdr > -log10(0.05), HR > 0), aes(label=CAT_geneName, fill=type), size=2) +
+  geom_label_repel(data=filter(cands_gtex, fc_mean <= -1, fdr > -log10(0.05), HR < 0), aes(label=CAT_geneName, fill=type), size=2) +
+  scale_fill_brewer(palette="Paired")
+dev.off()
+
 ##----------------------------DONE---------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

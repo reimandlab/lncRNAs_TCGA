@@ -64,6 +64,23 @@ val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer 
 all <- merge(rna, pcg, by = c("patient", "Cancer"))
 all = all[,1:25170]
 
+#------FUNCTIONS-----------------------------------------------------
+
+# ++++++++++++++++++++++++++++
+# flattenCorrMatrix
+# ++++++++++++++++++++++++++++
+# cormat : matrix of the correlation coefficients
+# pmat : matrix of the correlation p-values
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+    )
+}
+
 #--------This script ------------------------------------------------
 
 #summarize results from co-expression analysis of PCGs
@@ -82,14 +99,10 @@ cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 #RESULTS-------------------------------------------------------------
 #--------------------------------------------------------------------
 
-coexp = readRDS("new_PCG_enrichment_min_5FPKMmedian_july20.rds")
-z = which(coexp$lnc %in% cands_dups)
-if(!(length(z))==0){
-coexp$lnc[z] = paste(coexp$lnc[z], coexp$canc[z], sep="_")
-}
+coexp = readRDS("coexpression_results_processed_july24.rds")
 
 #PCG lncRNA results
-pcg_lnc = readRDS("summary_pcg_analysis_wHRs_july17.rds") #all these have at least 1, 50-pcg signature 
+pcg_lnc = readRDS("summary_pcg_analysis_wHRs_jul2y24.rds") #all these have at least 1, 50-pcg signature 
 pcg_lnc = pcg_lnc[order(-NumPCGs)]
 pcg_lnc$HR = as.numeric(pcg_lnc$HR)
 pcg_lnc$lnc_stat = ""
@@ -187,97 +200,67 @@ get_lnc_canc = function(dat){
 #all lncRNAs with status 
 all_canc_lnc_data = llply(tissues_data, get_lnc_canc, .progress="text")
 
-##3-----------------generate heatmaps-----------------------------------
+##3-----------------get correlation pairs-----------------------------------
 
+cancer = cancs[1]
+library(tidyverse)
 
-gen_heatmap = function(dat){
-  #lnc 
-  lnc = dat$lnc[1]
-  #canc
-  canc = dat$canc[1]
-  lnc_canc_combo = paste(lnc, canc, sep="_")
-  #get which pcgs enriched in group
-  z = which(coexp$combo %in% lnc_canc_combo)
-  #cancer type
-
-  lnc_pcgs = coexp[z,]
-  print(length(unique(lnc_pcgs$pcg))) 
-  print(length(unique(lnc_pcgs$pcg[lnc_pcgs$risk_type == "Risk"])))
-  print(length(unique(lnc_pcgs$pcg[lnc_pcgs$risk_type == "NonRisk"])))
-  print(pcg_lnc$lnc_stat[which(pcg_lnc$combo == lnc_canc_combo)][1])
-
-  #subset gene expression to those pcgs
-  #label patients by either high/low lncRNA expression 
-
-  lnc_pcgs = coexp$pcg[z]
-  z = which(colnames(dat) %in% c(lnc_pcgs, "patient"))
-  #heatmap 
-  heat = dat[,z]
-  rownames(heat) = heat$patient
-  heat$patient = NULL
-
-  heat = log1p(heat)
-
-  if(dim(heat)[2] > 30){
-    #get most variable genes and only include them in heatmap 
-    #instead of variance order them by absolute fold change!? see if that looks better?
-    vars = data.table(genes = colnames(heat), var = apply(heat, 2, var))
-    vars = vars[order(-var)]
-    vars = vars[1:30,]
-    z = which(colnames(heat) %in% vars$genes)
-    heat = heat[,z]
-  }
-
-  tags <- dat$risk
-  color.map <- function(tags) { if (tags=="RISK") "#FF0000" else "#0000FF" }
-  patientcolors <- unlist(lapply(tags, color.map))
-
-  #label whether pcg is fav or unfav 
-  z = which(coexp$combo %in% lnc_canc_combo)
-  lnc_pcgs = coexp[z,]
-
-  # cluster on correlation
-  heat = t(heat)
-
-  pcg_order = as.data.frame(matrix(ncol =2))
-  for(i in 1:nrow(heat)){
-    pcg = rownames(heat)[i]
-    type = lnc_pcgs$risk_type[which(lnc_pcgs$pcg == pcg)]
-    row = c(pcg, type)
-    pcg_order = rbind(pcg_order, row)
-  }
-  pcg_order = pcg_order[-1,]
-  colnames(pcg_order) = c("pcg", "type")
-
-  #change pcg names
-  for(i in 1:nrow(heat)){
-    pcg = rownames(heat)[i]
-    newname = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == pcg)][1]
-    rownames(heat)[i] = newname
-  }
-
-  pcgs <- pcg_order$type
-  color.map <- function(pcgs) { if (pcgs=="Risk") "Purple" else "Yellow" }
-  pcg_cols <- unlist(lapply(pcgs, color.map))
-
-  hc <- hclust(as.dist(1 - cor(t(heat))), method="ward.D2")
-  # draw a heatmap
-  my_palette <- colorRampPalette(c("blue", "white", "orange"))(n = 100)
+get_summary = function(cancer){
   
-  lnc_clean = rna$type[which(rna$Cancer == canc)][1]
-  canc_clean = fantom$CAT_geneName[which(fantom$CAT_geneID == lnc)]
-  risk_lnc = dat$median[which(dat$risk == "RISK")][1]
+  #collect data from all lncRNAs in cancer type 
+  keep = c()
+  for(i in 1:length(all_canc_lnc_data)){
+    z = all_canc_lnc_data[[i]]$canc[1] == cancer
+    if(z){
+      keep = c(keep, i)
+    }
+  }
 
-  title = paste(lnc_clean, canc_clean, "\nRISK = ", risk_lnc, "Expression")
+  #cancer data
+  canc_dats = all_canc_lnc_data[keep]
+  canc_dats = reshape::merge_all(canc_dats)
 
-  heatmap.2(as.matrix(heat), col=my_palette, ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6, Rowv=as.dendrogram(hc), 
-    RowSideColors= pcg_cols, trace="none", scale="row", dendrogram="row", labCol="", main = title, key=FALSE)
+  print(cancer)
+    pcgs = colnames(canc_dats)[which(str_detect(colnames(canc_dats), "ENSG"))]
+    lncs = unique(canc_dats$lnc)
+    genes = c(pcgs, lncs)
+    canc_exp = subset(all, Cancer == cancer)
+    rownames(canc_exp) = canc_exp$patient
+    canc_exp = canc_exp[,which(colnames(canc_exp) %in% c(genes))]
+    
+    res2 = rcorr(as.matrix(canc_exp), type="spearman")
+    res2 = flattenCorrMatrix(res2$r, res2$P)
+    res2$fdr = p.adjust(res2$p, method="fdr")
+    res2 = as.data.table(res2)
+    res2 = res2[order(fdr)]
+
+    z = which(res2$row %in% lncs)
+    res2$rowgene[z] = "lncRNA"
+    res2$rowgene[-z] = "mRNA"
+    z = which(res2$column %in% lncs)
+    res2$columngene[z] = "lncRNA"
+    res2$columngene[-z] = "mRNA"
+    
+    #total pairs 
+    tot_pairs = nrow(res2)
+    res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05, abs(cor) >= 0.3))
+    sig_pairs = nrow(res2)    
+
+    #%
+    perc = sig_pairs/tot_pairs
+
+    row = c(as.character(cancer), tot_pairs, sig_pairs, perc)
+    return(row)
 
 }
 
-pdf("lncs_wSIG_PCGs_heatmaps_july18_top30_genes.pdf")
-llply(all_canc_lnc_data, gen_heatmap, .progress="text")
-dev.off()
+canc_results = llply(cancs, get_summary, .progress = "text")
+#remove null
+canc_results = Filter(Negate(is.null), canc_results)
+
+canc_results = do.call(rbind.data.frame, canc_results)
+colnames(canc_results) = c("cancer", "total_pairs", "sig_pairs", "perc")
+
 
 
 

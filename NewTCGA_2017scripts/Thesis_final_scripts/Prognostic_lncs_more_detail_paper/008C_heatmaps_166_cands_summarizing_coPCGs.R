@@ -82,14 +82,10 @@ cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 #RESULTS-------------------------------------------------------------
 #--------------------------------------------------------------------
 
-coexp = readRDS("new_PCG_enrichment_min_5FPKMmedian_july20.rds")
-z = which(coexp$lnc %in% cands_dups)
-if(!(length(z))==0){
-coexp$lnc[z] = paste(coexp$lnc[z], coexp$canc[z], sep="_")
-}
+coexp = readRDS("coexpression_results_processed_july24.rds")
 
 #PCG lncRNA results
-pcg_lnc = readRDS("summary_pcg_analysis_wHRs_july17.rds") #all these have at least 1, 50-pcg signature 
+pcg_lnc = readRDS("summary_pcg_analysis_wHRs_jul2y24.rds") #all these have at least 1, 50-pcg signature 
 pcg_lnc = pcg_lnc[order(-NumPCGs)]
 pcg_lnc$HR = as.numeric(pcg_lnc$HR)
 pcg_lnc$lnc_stat = ""
@@ -189,8 +185,11 @@ all_canc_lnc_data = llply(tissues_data, get_lnc_canc, .progress="text")
 
 ##3-----------------generate heatmaps-----------------------------------
 
+library(ComplexHeatmap)
+library(circlize)
 
 gen_heatmap = function(dat){
+  dat$patient = rownames(dat)
   #lnc 
   lnc = dat$lnc[1]
   #canc
@@ -198,8 +197,8 @@ gen_heatmap = function(dat){
   lnc_canc_combo = paste(lnc, canc, sep="_")
   #get which pcgs enriched in group
   z = which(coexp$combo %in% lnc_canc_combo)
+ 
   #cancer type
-
   lnc_pcgs = coexp[z,]
   print(length(unique(lnc_pcgs$pcg))) 
   print(length(unique(lnc_pcgs$pcg[lnc_pcgs$risk_type == "Risk"])))
@@ -218,13 +217,20 @@ gen_heatmap = function(dat){
 
   heat = log1p(heat)
 
-  if(dim(heat)[2] > 30){
+  if(dim(heat)[2] > 50){
     #get most variable genes and only include them in heatmap 
     #instead of variance order them by absolute fold change!? see if that looks better?
-    vars = data.table(genes = colnames(heat), var = apply(heat, 2, var))
-    vars = vars[order(-var)]
-    vars = vars[1:30,]
-    z = which(colnames(heat) %in% vars$genes)
+    #vars = data.table(genes = colnames(heat), var = apply(heat, 2, var))
+    #vars = vars[order(-var)]
+    #vars = vars[1:50,]
+    #z = which(colnames(heat) %in% vars$genes)
+    #heat = heat[,z]
+    z = which(coexp$combo %in% lnc_canc_combo)
+    pcg_keep = as.data.table(coexp[z,])
+    pcg_keep = as.data.table(filter(pcg_keep, fdr <= 0.05))
+    pcg_keep = pcg_keep[order(-abs(mean_diff))]
+    pcgs = pcg_keep[1:100,2]
+    z = which(colnames(heat) %in% pcgs$pcg)
     heat = heat[,z]
   }
 
@@ -237,6 +243,7 @@ gen_heatmap = function(dat){
   lnc_pcgs = coexp[z,]
 
   # cluster on correlation
+  heat = scale(heat)
   heat = t(heat)
 
   pcg_order = as.data.frame(matrix(ncol =2))
@@ -268,16 +275,27 @@ gen_heatmap = function(dat){
   canc_clean = fantom$CAT_geneName[which(fantom$CAT_geneID == lnc)]
   risk_lnc = dat$median[which(dat$risk == "RISK")][1]
 
-  title = paste(lnc_clean, canc_clean, "\nRISK = ", risk_lnc, "Expression")
+  title = paste(lnc_clean, canc_clean, "\nRISK = ", risk_lnc, "Expression")    
+  ha_column = HeatmapAnnotation(df = data.frame(risk = tags),
+    col = list(risk = c("RISK" =  "#FF0000", "noRISK" = "#0000FF")))  
 
-  heatmap.2(as.matrix(heat), col=my_palette, ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6, Rowv=as.dendrogram(hc), 
-    RowSideColors= pcg_cols, trace="none", scale="row", dendrogram="row", labCol="", main = title, key=FALSE)
+  ha_row = rowAnnotation(df = data.frame(PCGtype = pcgs),
+    col = list(PCGtype = c("NonRisk" = "Yellow", "Risk" = "Purple")))
+
+  h1 = Heatmap(heat, col = c("blue", "white", "orange"), clustering_distance_columns = "spearman", column_title=title, 
+    clustering_distance_rows = "spearman", cluster_rows = TRUE, cluster_columns = TRUE, top_annotation = ha_column, show_column_names = FALSE)
+  h1 + ha_row
+
+  #heatmap.2(as.matrix(heat), col=my_palette, ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6, Rowv=as.dendrogram(hc), 
+  #  RowSideColors= pcg_cols, trace="none", scale="row", dendrogram="row", labCol="", main = title, key=FALSE)
 
 }
 
-pdf("lncs_wSIG_PCGs_heatmaps_july18_top30_genes.pdf")
+pdf("lncs_wSIG_PCGs_heatmaps_july18_top30_genes.pdf", width=10, height=10)
 llply(all_canc_lnc_data, gen_heatmap, .progress="text")
 dev.off()
+
+##----DONE SIR----
 
 
 
