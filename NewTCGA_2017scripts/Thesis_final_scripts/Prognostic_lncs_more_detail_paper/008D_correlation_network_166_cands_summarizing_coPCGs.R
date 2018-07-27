@@ -133,6 +133,8 @@ tissues_data <- llply(combos, get_tissue_specific, .progress="text")
 
 ##2-----------------label patients by risk------------------------------
 
+#PART2 start 
+
 get_lnc_canc = function(dat){
   cancer = dat$Cancer[1]
   combo = dat$combo[1]
@@ -202,8 +204,11 @@ all_canc_lnc_data = llply(tissues_data, get_lnc_canc, .progress="text")
 
 ##3-----------------get correlation pairs-----------------------------------
 
-cancer = cancs[1]
+#PART3 start 
+cancer = cancs[9]
 library(tidyverse)
+
+prog_pcgs = readRDS("mRNAs_Survival_Results_prognostic_pcgs_July19.rds")
 
 get_summary = function(cancer){
   
@@ -235,34 +240,97 @@ get_summary = function(cancer){
     res2 = res2[order(fdr)]
 
     z = which(res2$row %in% lncs)
+    res2 = as.data.frame(res2)
+    res2$rowgene = ""
     res2$rowgene[z] = "lncRNA"
     res2$rowgene[-z] = "mRNA"
     z = which(res2$column %in% lncs)
+    res2$columngene = ""
     res2$columngene[z] = "lncRNA"
     res2$columngene[-z] = "mRNA"
     
-    #total pairs 
-    tot_pairs = nrow(res2)
+    res2 = as.data.table(res2)
     res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05, abs(cor) >= 0.3))
-    sig_pairs = nrow(res2)    
 
-    #%
-    perc = sig_pairs/tot_pairs
+    #for now keep all correlations wtih at least 1 lncRNA
+    #lnc_cors = dplyr::filter(res2, rowgene == "lncRNA" | columngene == "lncRNA")
+    lnc_cors = dplyr::filter(res2, row == "ENSG00000230432" | column == "ENSG00000230432")
+    lnc_cors$canc = cancer
+    lnc_cors = as.data.table(lnc_cors)
+    lnc_cors = lnc_cors[order(-(abs(cor)))]
 
-    row = c(as.character(cancer), tot_pairs, sig_pairs, perc)
-    return(row)
+    #make lncRNA specific network 
+    #Next function:
+    #take each correlation table and seperate into
+    #node file and edge file 
+    #label each node as lncRNA/risk_type/
 
+    #for lncRNAs if HR > 1 , risk type = unfavourable
+    #if HR < 1, risk type = favourable 
+    #for pcgs, same thing using the file = mRNAs_Survival_Results_prognostic_pcgs_July19.rds
+    #edges = weigth is positive or negative correlation between the 2 genes 
+
+    #mRNA - 
+    z = which(ucsc$hg19.ensemblSource.source == "protein_coding")
+    pcgs = unique(ucsc[z,6]
+
+    nodes = data.frame(gene = unique(c(lnc_cors$row, lnc_cors$column)))
+    nodes$type = ""
+    z = which(nodes$gene %in% lncs)
+    nodes$type[z] = "lncRNA"
+    nodes$type[-z] = "mRNA"
+
+    z = which(canc_dats$lnc %in% unique(nodes$gene[nodes$type == "lncRNA"]))
+    lnc_dat = canc_dats[z,1855:ncol(canc_dats)]
+
+    hrs = allCands[which(allCands$gene %in% unique(nodes$gene[nodes$type == "lncRNA"]))]
+    hrs = hrs[,c(1,3, 4)]
+
+    #get pcg HRs
+    progs = prog_pcgs[which(prog_pcgs$canc == cancer),]
+    lnc_pcsg = unique(nodes$gene[nodes$type == "mRNA"])
+    z = which(progs$gene %in% lnc_pcsg)
+    progs = progs[z,]
+    hrs_pcgs = progs[,c(1,3,4)]
+
+    all_hrs = rbind(hrs, hrs_pcgs)
+    nodes = merge(nodes, all_hrs, by = "gene")
+    nodes$pval = as.numeric(nodes$pval)
+    nodes$HR = as.numeric(nodes$HR)
+
+    nodes$risk_type[nodes$HR > 1] = "Unfavourable"
+    nodes$risk_type[nodes$HR < 1] = "Favourable"
+    nodes$cancer = cancer
+    colnames(nodes)[1] = "id"
+    #write node file
+    write.table(nodes, file = "node_file_lncRNA_newtwork.txt", sep=";")
+
+    nodes = fread("node_file_lncRNA_newtwork.txt", sep=";")
+    nodes$V1 = NULL
+    colnames(nodes) = c("id", "type", "HR", "pval", "risk", "canc")
+
+    #edge file
+    colnames(lnc_cors)[1:2] = c("from", "to")
+    write.table(lnc_cors, file = "edges_file_lncRNA_newtwork.txt", sep=";")
+
+    lnc_cors = fread("edges_file_lncRNA_newtwork.txt", sep=";")
+    lnc_cors$V1 = NULL
+    colnames(lnc_cors) = c("from", "to", "cor", "pval", "fdr", "from_type", "to_type", "canc")
+    
+    #make network
+    library(igraph)
+    net <- graph_from_data_frame(d=lnc_cors, vertices=nodes, directed=T) 
+    
+
+
+
+    return(lnc_cors)
 }
 
 canc_results = llply(cancs, get_summary, .progress = "text")
+
 #remove null
 canc_results = Filter(Negate(is.null), canc_results)
-
-canc_results = do.call(rbind.data.frame, canc_results)
-colnames(canc_results) = c("cancer", "total_pairs", "sig_pairs", "perc")
-
-
-
 
 
 
