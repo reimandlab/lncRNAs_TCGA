@@ -25,6 +25,9 @@ cands = filter(cands, AnalysisType == "noFDR")
 cands$Cancer = NULL
 all_cands = cands
 
+#cands -- should be this file
+cands = readRDS("genes_keep_100CV_No_FDR_May2nd2018.rds")
+
 #--------This script ------------------------------------------------
 
 #just make KM plots for TCGA 
@@ -38,12 +41,12 @@ all_cands = cands
 #write function that adds tag to whole data group 
 #and does survival analysis on whole group
 
-z = which(cancers %in% all_cands$cancer)
+z = which(cancers %in% cands$Cancer)
 cancer_data = canc_datas[z] #cancers list and canc_datas list should be the same 
 
 get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates 
-  z = which(colnames(dtt) %in% c(as.character(all_cands$gene[all_cands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
+  z = which(colnames(dtt) %in% c(as.character(cands$Geneid[cands$Cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
     "new_tumor_event_type", "Cancer"))
   dtt = dtt[,z]
@@ -170,7 +173,7 @@ get_survival_models = function(dtt){
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          #print(s)
+          print(s)
 
    #generate boxplot 
    z = which(cancers == dtt$Cancer[1])
@@ -186,9 +189,9 @@ get_survival_models = function(dtt){
           add = "jitter", ylab = "FPKM",  ggtheme = theme_bw())
         # Change method
   p = p + stat_compare_means(method = "wilcox.test")
-  #print(p)
+  print(p)
 
-  #print(ggcoxzph(test.ph))
+  print(ggcoxzph(test.ph))
 
 }
 
@@ -201,9 +204,9 @@ return(results_cox1)
 
 }
 
-#pdf("TCGA_candidates_survival_plots_final_cands_May3rd.pdf")
+pdf("TCGA_candidates_survival_plots_final_cands_May3rd.pdf")
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
-#dev.off()
+dev.off()
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
@@ -219,7 +222,7 @@ saveRDS(tcga_results1, file="TCGA_results_multivariate_results_June22.rds")
 #to those models add age * survival time interaction 
 which(tcga_results1$global_test_ph <= 0.05)
 tcga_results1$num_risk = as.numeric(tcga_results1$num_risk)
-tcga_results1[tcga_results1$num_risk <20,]
+tcga_results1[tcga_results1$num_risk <15,]
 
 #plot distribution, cut number of risk patients 
 tcga_results1$groupy = cut(tcga_results1$num_risk, breaks =c(1, 20, 40, 60, 80, 100, 200, 300, 
@@ -265,12 +268,11 @@ pcawg_data$canc[pcawg_data$combo == "Kidney Adenocarcinoma, papillary type"] = "
 pcawg_data$canc[pcawg_data$combo == "Lung Squamous cell carcinoma"] = "Lung squamous cell carcinoma"
 pcawg_data$canc[pcawg_data$combo == "Lung Adenocarcinoma, invasive"] = "Lung adenocarcinoma"
 
-
 cancers_tests = as.list(unique(tcga_results1$cancer[which(tcga_results1$cancer %in% pcawg_data$canc)]))
 
 get_matched_data = function(cancer){
     dtt = subset(pcawg_data, canc == cancer)
-    z = which(colnames(dtt) %in% c(as.character(all_cands$gene[all_cands$cancer == dtt$canc[1]]), "canc", 
+    z = which(colnames(dtt) %in% c(as.character(cands$Geneid[cands$Cancer == dtt$canc[1]]), "canc", 
     "histo", "time", "status", "sex"))
     dtt = dtt[,z]
     return(dtt)
@@ -431,6 +433,8 @@ pcawg_results1$fdr_pval = p.adjust(pcawg_results1$pval, method="fdr")
 #combine results from TCGA and PCAWG
 tcga_results1$data = "TCGA"
 pcawg_results1$data = "PCAWG"
+pcawg_results1$num_risk = as.numeric(pcawg_results1$num_risk)
+pcawg_results1 = filter(pcawg_results1, num_risk >=5)
 
 #all-results
 #tcga_results1$lnc_test_ph =NULL
@@ -511,9 +515,9 @@ ucsc <- ucsc[-z,]
 colnames(ucsc)[6] = "gene"
 matches = merge(matches, ucsc, by=c("gene"))
 
-#remove weird KIRC one 
-z = which(matches$gene == "ENSG00000250360")
-matches = matches[-z,]
+#remove weird KIRC one (already did above by filtering)
+#z = which(matches$gene == "ENSG00000250360")
+#matches = matches[-z,]
 
 write.table(matches, file="6_unique_lncNRAs_validate_PCAWG.txt", quote=F, row.names=F, sep=";")
 matches = as.data.frame(matches)

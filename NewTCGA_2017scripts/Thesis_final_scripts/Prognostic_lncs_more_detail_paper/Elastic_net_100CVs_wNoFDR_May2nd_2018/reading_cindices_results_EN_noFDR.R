@@ -51,10 +51,29 @@ res$type = factor(res$type, levels = order)
 
 saveRDS(res, file="noFDR_all_cindices_june22.rds")
 
+#for each cancer type plot the distribution of cindices 
+plots = res %>% dplyr::group_by(canc, type) %>% do(plots=ggplot(data=.) +
+         aes(x=cindex) + geom_histogram())
+
+#to view plots -----------------------------------------------------------
+#DO NOT RUN
+#plots$plots
+#end 
+
+#but basically distirbution is normal 
+#so can calculate standard error 
 
 #for horizontal plot
 #just plot the cancer types that have median just_lncRNA greater than 0.5
 #later can decide if only want to inlucdee those significanly better than clinical variables
+
+#need to calcualte confidence interval 
+cisum = as.data.table(res %>% dplyr::group_by(canc, type) %>% 
+  dplyr::summarize(n = n(), sd = sd(cindex), mean = mean(cindex), median=median(cindex), low=quantile(cindex, 0.025), high=quantile(cindex, 0.975)))
+cisum = cisum[order(-median, sd)]
+cisum = as.data.table(dplyr::filter(cisum, type == "cinds_justlncs", low >=0.5, high>=0.5))
+as.data.table(dplyr::filter(cisum, type == "cinds_justlncs", median >= 0.5))
+
 summ = aggregate(res[, 1], list(res$canc, res$type), median)
 summ = as.data.table(summ)
 summ = filter(summ, Group.2 == "cinds_justlncs", cindex >= 0.5)
@@ -193,8 +212,11 @@ files = list.files(pattern = "lncRNAs_selected_1000CV_1000_no_fdr_ELASTICNET.rds
 ###change to be universal 
 
 genes_keep = as.data.frame(matrix(ncol = 4)) ; colnames(genes_keep) = c("Geneid", "NumtimesChosen" , "Cancer", "GeneName")
+all_genes = as.data.frame(matrix(ncol = 4)) ; colnames(genes_keep) = c("Geneid", "NumtimesChosen" , "Cancer", "GeneName")
 
-pdf("summary_of_genes_results_elastic_net_100CVs_No_FDR_cancers_May2nd.pdf", width= 7, height=5)
+
+#DO NOT RUN
+#pdf("summary_of_genes_results_elastic_net_100CVs_No_FDR_cancers_May2nd.pdf", width= 7, height=5)
 
 for(i in 1:length(files)){
 
@@ -231,10 +253,12 @@ g = ggdotchart(genes_list, x = "name", y = "N",
 g = g + geom_text_repel(data = subset(genes_list, N > 50), aes(label = name), size=2) 
 
 gg = g + scale_y_continuous(breaks = seq(0, 100, by = 10))
+
+#DO NOT RUN
 	
-print(gg +  theme(text = element_text(size=10),
-        axis.text.x = element_text(angle=90, hjust=1, size=4)) +
-          geom_hline(yintercept = 50, linetype = 2, color = "blue"))
+#print(gg +  theme(text = element_text(size=10),
+#        axis.text.x = element_text(angle=90, hjust=1, size=4)) +
+#          geom_hline(yintercept = 50, linetype = 2, color = "blue"))
 
 #genes_list = dplyr::filter(genes_list, N >=50)
 if(!(dim(genes_list)[1]==0)){
@@ -242,10 +266,13 @@ colnames(genes_list) = colnames(genes_keep)
 genes_keep = rbind(genes_keep, genes_list)
 }
 }
-dev.off()
+
+#dev.off()
 
 genes_keep = genes_keep[-1,]
 genes_keep = as.data.table(genes_keep)
+all_genes = genes_keep
+write.csv(all_genes, file="all_genes_selected_by_elastic_net_final_run_aug7.csv", quote=F, row.names=F)
 genes_keep = filter(genes_keep, NumtimesChosen >=50)
 
 dups = unique(genes_keep$GeneName[which(duplicated(genes_keep$GeneName))])

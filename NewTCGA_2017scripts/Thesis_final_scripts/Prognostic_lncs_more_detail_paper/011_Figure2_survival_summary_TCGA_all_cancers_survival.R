@@ -117,8 +117,8 @@ saveRDS(all_genes, file="all_genes_used_in_TCGA_april17.rds")
 #function that tests each lncRNA's survival 
 
 #1. remove discrepancy 
-z = which(rna$vital_status == "[Discrepancy]")
-rna = rna[-z,]
+#z = which(rna$vital_status == "[Discrepancy]")
+#rna = rna[-z,]
 
 #2. list of cancers to apply function to 
 cancers = as.list(unique(rna$Cancer))
@@ -218,6 +218,8 @@ canc_survival_genes = function(dato){
 	return(genes_survival_res)
 }
 
+#DO NOT RUN 
+
 #all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text")
 #all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
 
@@ -231,6 +233,7 @@ canc_conv = rna[,which(colnames(rna) %in% c("Cancer", "type"))]
 canc_conv = canc_conv[!duplicated(canc_conv), ]
 colnames(canc_conv)[2] = "canc"
 all_cancers_genes_surv_comb = merge(all_cancers_genes_surv_comb, canc_conv, by="canc")
+write.csv(all_cancers_genes_surv_comb, file="ALL_lncRNAs_survival_august8.csv", quote=F, row.names=F)
 
 ###-------------------------------------------------------------------------------------------------
 
