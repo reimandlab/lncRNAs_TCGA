@@ -51,11 +51,13 @@ pcg = readRDS("rna_pcg_expression_data_june29.rds")
 
 #------FEATURES-----------------------------------------------------
 
-allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+#allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_Aug8.rds")
 allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
-val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
+#val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
+val_cands = read.csv("112_lncRNA_cancers_combos_22_cancer_types_aug8.csv")
 val_cands = as.data.table(val_cands)
 val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
@@ -93,13 +95,6 @@ library(dplyr)
 #2. Get coordinates of all PCGs 
 # & make into genomic ranges objects 
 
-#convert to granges 
-pcgs = makeGRangesFromDataFrame(pcgs)
-
-countOverlaps(lncs_cords, pcgs)
-findOverlaps(lncs_cords, pcgs)
-subsetByOverlaps(lncs_cords, pcgs)
-
 lncs = as.list(unique(allCands$gene))
 
 get_cis = function(lnc){
@@ -112,28 +107,32 @@ get_cis = function(lnc){
   "hg19.ensemblSource.source")]
   lncs_cords = as.data.table(lncs_cords)
   colnames(lncs_cords) = c("chr", "start", "end", "strand", "name", "type")
-  
+  lncs_cords$strand = "*"
+
   #convert to granges 
   lncs_cords_gr = makeGRangesFromDataFrame(lncs_cords)
   values(lncs_cords_gr) <- DataFrame(name = lncs_cords$name)
 
-
   #pcsg ---------------------------------------------------------------------
-  z = which(ucsc$hg19.ensemblSource.source == "protein_coding")
+  z = which(ucsc$hg19.ensGene.name2 %in% colnames(pcg))
   pcgs = ucsc[z,]
-  pcgs = pcgs[,c("hg19.ensGene.chrom", "hg19.ensGene.txStart", 
+  pcgs_cords = pcgs[,c("hg19.ensGene.chrom", "hg19.ensGene.txStart", 
   "hg19.ensGene.txEnd", "hg19.ensGene.strand", "hg19.ensemblToGeneName.value",
   "hg19.ensemblSource.source")]
-  pcgs = as.data.table(pcgs)
-  colnames(pcgs) = c("chr", "start", "end", "strand", "name", "type")
-  z = which(str_detect(pcgs$chr, "_"))
-  pcgs = pcgs[-z]
+  pcgs_cords = as.data.table(pcgs_cords)
+  colnames(pcgs_cords) = c("chr", "start", "end", "strand", "name", "type")
+  z = which(str_detect(pcgs_cords$chr, "_"))
+  pcgs_cords = pcgs_cords[-z]
+  pcgs_cords$strand = "*"
 
   #convert to granges 
-  pcgs = makeGRangesFromDataFrame(pcgs)
+  pcgs_cords_gr = makeGRangesFromDataFrame(pcgs_cords)
+  values(pcgs_cords_gr) <- DataFrame(name = pcgs_cords$name)
 
-
-
+  #convert to granges 
+  countOverlaps(lncs_cords_gr, pcgs_cords_gr)
+  findOverlaps(lncs_cords_gr, pcgs_cords_gr)
+  subsetByOverlaps(lncs_cords_gr, pcgs_cords_gr, ignore.strand=T)
 
 
 }
