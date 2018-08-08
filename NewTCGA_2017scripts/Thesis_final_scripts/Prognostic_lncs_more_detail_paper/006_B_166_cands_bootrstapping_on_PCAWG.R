@@ -1,5 +1,9 @@
 source("source_script_006_166_cands_bootrstapping_on_PCAWG.R")
 
+#August 8th --> using just robust lncRNAs 
+#if go back to other list need to change file in source file 
+
+
 #PCAWG datafile --> pcawg_data_all
 #TCGA datafile --> tcga_data_setup
 
@@ -272,7 +276,8 @@ all_cancers_results = llply(setup_data, run_cv, .progress="text")
 #for each cancer type --> summarize number of c-indices that were labelled as NA and
 #number of patients selected in each iteration 
 
-saveRDS(all_cancers_results, file="lncRNAs_100_external_PCAWG_CVs_individual_cands_june19.rds")
+#saveRDS(all_cancers_results, file="lncRNAs_100_external_PCAWG_CVs_individual_cands_june19.rds")
+saveRDS(all_cancers_results, file="lncRNAs_100_external_PCAWG_CVs_individual_cands_aug8.rds")
 
 
 

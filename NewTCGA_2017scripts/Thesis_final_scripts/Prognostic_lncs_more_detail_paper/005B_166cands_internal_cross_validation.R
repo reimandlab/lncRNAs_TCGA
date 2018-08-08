@@ -1,48 +1,21 @@
-#4. perform 1000CV survival LASSO on each cancer 
-
-source("universal_LASSO_survival_script.R")
-
 set.seed(911)
-library(forcats)
 
+#setWD
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ")
+
+#load all libraries and functions 
+source("check_lnc_exp_cancers.R")
 
 #get candidates files
 #Data--------------------------------------------
-allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
-#save only the ones that came from the noFDR appraoch 
-allCands = filter(allCands, AnalysisType == "noFDR", data=="TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
-#23 unique cancer types 
-
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = filter(allCands, data=="TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands = filter(allCands, data=="TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
 
 #which cancer types are the non-unique lncRNAs from?
 allCands$Combo = NULL
 allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "CAT_geneName")]
 allCands = allCands[!duplicated(allCands), ]
 cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
-
-#UCSC gene info
-ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
-#z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
-#ucsc <- ucsc[z,]
-z <- which(duplicated(ucsc[,8]))
-ucsc <- ucsc[-z,]
-
-#fantom 
-fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
-extract3 <- function(row){
-	gene <- as.character(row[[1]])
-	ens <- gsub("\\..*","",gene)
-	return(ens)
-}
-fantom[,1] <- apply(fantom[,1:2], 1, extract3)
-#remove duplicate gene names (gene names with multiple ensembl ids)
-z <- which(duplicated(fantom$CAT_geneName))
-z <- which(fantom$CAT_geneName %in% rm)
-rm <- fantom$CAT_geneName[z]
-fantom <- fantom[-z,]
 
 #------––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 #----------------------------------------Analyze Results---------------------------------------------------------------
@@ -58,6 +31,14 @@ colnames(results_lncs) = c("Cancer", "NumHigherthan5percent")
 
 all_meds = as.data.frame(matrix(ncol=4))
 colnames(all_meds) = c("lncRNA", "Median", "diff", "Cancer")
+
+cisums_results = as.data.frame(matrix(ncol=9))
+colnames(cisums_results) = c("Cancer", "lncRNA", "type", "n", "sd", 
+	"mean", "median", "low", "high")
+
+all_canc_data_robust = as.data.frame(matrix(ncol=7))
+colnames(all_canc_data_robust) = c("lncRNA", "Cancer", "cindex", "type", "round", "Median", "diff")
+
 
 for(i in 1:length(unique(results$Cancer))){
 	canc_data = subset(results, results$Cancer %in% unique(results$Cancer)[i])
@@ -76,6 +57,20 @@ for(i in 1:length(unique(results$Cancer))){
 	z = which(is.na(canc_data$cindex))
 	if(!(length(z)==0)){
 	canc_data = canc_data[-z,]}
+
+	#first get confidence intervals 
+	#need to calcualte confidence interval 
+	cisum = as.data.table(canc_data %>% dplyr::group_by(Cancer, lncRNA, type) %>% 
+	  dplyr::summarize(n = n(), sd = sd(cindex), mean = mean(cindex), median=median(cindex), low=quantile(cindex, 0.025), high=quantile(cindex, 0.975)))
+	cisum = cisum[order(-median, sd)]
+	cisum = as.data.table(dplyr::filter(cisum, type == "lncRNAonly", low >=0.5, high>=0.5))
+	as.data.table(dplyr::filter(cisum, median >= 0.5))
+
+	cisums_results = rbind(cisums_results, cisum)
+
+	#keep only those lncRNAs with CIs not overlapping 0.5 
+	z = which(canc_data$lncRNA %in% c(cisum$lncRNA, "Clinical"))
+	canc_data = canc_data[z,]
 
 	#change ENSG to gene names 
 	#for(k in 1:length(unique(canc_data$lncRNA))){
@@ -108,11 +103,11 @@ for(i in 1:length(unique(results$Cancer))){
 
 	canc_data = merge(canc_data, meds, by="lncRNA")
 	#meds = unique(canc_data$diff)
-	g = ggboxplot(canc_data, x="lncRNA", y="cindex", color="black", fill="type", palette=c("lavenderblush", "aliceblue")) + stat_compare_means(label = "p.signif", method = "wilcox.test", ref.group = "Clinical") + 
+	g = ggboxplot(canc_data, x="lncRNA", y="cindex", color="black", fill="type", palette=c("lightpink3", "lightsteelblue4")) + stat_compare_means(label = "p.signif", method = "wilcox.test", ref.group = "Clinical") + 
 	geom_label(data=meds, aes(x=lncRNA ,y = Median, label=diff), col='tomato', size=2)+
-	xlab("Predictor")+ theme_bw() + ylim(c(0,1)) + 
+	xlab("Predictor")+ theme_classic() + ylim(c(0,1)) + 
 	geom_hline(yintercept=0.5, linetype="dashed", color = "red") + 
-	scale_y_continuous(breaks = round(seq(min(c(0,1)), max(c(0, 1)), by = 0.1),1))
+	ylim(0,1)
 	
 	print(ggpar(g, font.tickslab = c(8,"plain", "black"),
  		xtickslab.rt = 45) + ggtitle(canc_data$Cancer[1]))
@@ -121,6 +116,9 @@ for(i in 1:length(unique(results$Cancer))){
 	#how many lncRNAs with percent increase of c-index greater than 5%?
 	canc_data = as.data.table(canc_data)
 	canc_data$diff = as.numeric(canc_data$diff) 
+	
+	all_canc_data_robust = rbind(all_canc_data_robust, canc_data)
+
 	higher = filter(canc_data, diff >= 5)
 
 	meds = filter(meds, !(lncRNA %in% "Clinical"))
@@ -134,6 +132,19 @@ for(i in 1:length(unique(results$Cancer))){
 }
 
 dev.off()
+
+#final table of robust lncRNAs 
+cisums_results = cisums_results[-1,]
+cisums_results$combo = paste(cisums_results$lncRNA, cisums_results$Cancer, sep="_")
+
+#112 unique combos that are robust 
+#109 unique lncRNAs 
+saveRDS(cisums_results, file="112_combos_robust_internal_validation_survival_lncRNAs_aug8.rds")
+
+#all cindices for all robust lncRNAs
+all_canc_data_robust = all_canc_data_robust[-1,]
+saveRDS(all_canc_data_robust, file="112_cindicies_combos_robust_internal_validation_survival_lncRNAs_aug8.rds")
+
 
 #summary
 results_lncs = results_lncs[-1,]

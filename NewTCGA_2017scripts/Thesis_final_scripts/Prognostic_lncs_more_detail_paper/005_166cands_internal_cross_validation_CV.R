@@ -1,47 +1,21 @@
-#4. perform 1000CV survival LASSO on each cancer 
-
-source("universal_LASSO_survival_script.R")
-
 set.seed(911)
 
+#setWD
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ")
+
+#load all libraries and functions 
+source("check_lnc_exp_cancers.R")
 
 #get candidates files
 #Data--------------------------------------------
-allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
-#save only the ones that came from the noFDR appraoch 
-allCands = filter(allCands, AnalysisType == "noFDR", data=="TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
-#23 unique cancer types 
-
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = filter(allCands, data=="TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands = filter(allCands, data=="TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
 
 #which cancer types are the non-unique lncRNAs from?
 allCands$Combo = NULL
 allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "CAT_geneName")]
 allCands = allCands[!duplicated(allCands), ]
 cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
-
-#UCSC gene info
-ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
-#z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
-#ucsc <- ucsc[z,]
-z <- which(duplicated(ucsc[,8]))
-ucsc <- ucsc[-z,]
-
-#fantom 
-fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
-extract3 <- function(row){
-	gene <- as.character(row[[1]])
-	ens <- gsub("\\..*","",gene)
-	return(ens)
-}
-fantom[,1] <- apply(fantom[,1:2], 1, extract3)
-#remove duplicate gene names (gene names with multiple ensembl ids)
-z <- which(duplicated(fantom$CAT_geneName))
-z <- which(fantom$CAT_geneName %in% rm)
-rm <- fantom$CAT_geneName[z]
-fantom <- fantom[-z,]
 
 #-----------------------------------------------------------------------------------------------------------------------------------
 #1 - get cancer data 
@@ -56,6 +30,16 @@ get_canc_data = function(dtt){
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
     "new_tumor_event_type", "Cancer"))
   dtt = dtt[,z]
+  #check that all cands have exp >100 in at least 15 patients 
+  z = which(str_detect(colnames(dtt), "ENSG"))
+  canc = dtt$Cancer[1]
+  exp_cut = 100
+  for(y in 1:length(z)){
+  	lnc = colnames(dtt)[z[y]]
+  	#check 15 patients yes/no
+  	res = (get_num_pats(lnc, canc, exp_cut))
+  	print(res)
+  }
   return(dtt)
 }
 
@@ -110,7 +94,6 @@ run_cv = function(dtt){
 		test <- dtt[-train_ind, ]
 
 		#train set ------------------------------
-
 		train$OS.time = as.numeric(train$OS.time)
 		z = which(is.na(train$OS.time))
 		if(!(length(z)==0)){
@@ -157,7 +140,7 @@ run_cv = function(dtt){
 		    train[l1,k] = 1
 		    train[l2, k] = 0
 		    }
-		} #end for k in 1:length(medians) 
+			} #end for k in 1:length(medians) 
 
 		#survival script
 		source("survival_script_march14_already_labelled_highlow.R")
@@ -191,7 +174,7 @@ run_cv = function(dtt){
 			      }
 			    } 
 			    }
-			} #end loop assigning high/low to test set 
+				} #end loop assigning high/low to test set 
 
 
 		#--------------------------------------------------------------------------------------
