@@ -25,8 +25,8 @@ library(GenomicRanges)
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 #z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
 #ucsc <- ucsc[z,]
-z <- which(duplicated(ucsc[,8]))
-ucsc <- ucsc[-z,]
+#z <- which(duplicated(ucsc[,8]))
+#ucsc <- ucsc[-z,]
 
 #fantom 
 fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
@@ -89,31 +89,31 @@ cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 library(plyr)
 library(dplyr)
 
+lncs = (unique(allCands$gene))
+
+#GET COORDINATES AND SAVE AS BED FILES THEN USE BEDTOOLS 
+
 #1. Get coordinates of all lncRNA candidates 
 # & make into genomic ranges object 
-
-#2. Get coordinates of all PCGs 
-# & make into genomic ranges objects 
-
-lncs = as.list(unique(allCands$gene))
-
-get_cis = function(lnc){
-
-  #lnc ----------------------------------------------------------------------
-  z = which(ucsc$hg19.ensGene.name2 == lnc)
+  
+  z = which(ucsc$hg19.ensGene.name2 %in% lncs)
   lncs_cords = ucsc[z,]
   lncs_cords = lncs_cords[,c("hg19.ensGene.chrom", "hg19.ensGene.txStart", 
   "hg19.ensGene.txEnd", "hg19.ensGene.strand", "hg19.ensemblToGeneName.value",
   "hg19.ensemblSource.source")]
-  lncs_cords = as.data.table(lncs_cords)
   colnames(lncs_cords) = c("chr", "start", "end", "strand", "name", "type")
-  lncs_cords$strand = "*"
+  #missing lncRNA 
+  u3 = c("chr18", "24267585", "24283602", "-", "U3", "lincRNA")
+  names(u3) = colnames(lncs_cords)
+  lncs_cords = rbind(lncs_cords, u3)
+  lncs_cords = as.data.table(lncs_cords)
+  lncs_cords = lncs_cords[,c("chr", "start", "end", "name", "strand", "type")]
+  write.table(lncs_cords, file="lncs_cords_109_cands_aug8.bed", quote=F, row.names=F, col.names=F, sep="\t")
 
-  #convert to granges 
-  lncs_cords_gr = makeGRangesFromDataFrame(lncs_cords)
-  values(lncs_cords_gr) <- DataFrame(name = lncs_cords$name)
 
-  #pcsg ---------------------------------------------------------------------
+#2. Get coordinates of all PCGs 
+# & make into genomic ranges objects 
+
   z = which(ucsc$hg19.ensGene.name2 %in% colnames(pcg))
   pcgs = ucsc[z,]
   pcgs_cords = pcgs[,c("hg19.ensGene.chrom", "hg19.ensGene.txStart", 
@@ -123,38 +123,47 @@ get_cis = function(lnc){
   colnames(pcgs_cords) = c("chr", "start", "end", "strand", "name", "type")
   z = which(str_detect(pcgs_cords$chr, "_"))
   pcgs_cords = pcgs_cords[-z]
-  pcgs_cords$strand = "*"
-
-  #convert to granges 
-  pcgs_cords_gr = makeGRangesFromDataFrame(pcgs_cords)
-  values(pcgs_cords_gr) <- DataFrame(name = pcgs_cords$name)
-
-  #convert to granges 
-  countOverlaps(lncs_cords_gr, pcgs_cords_gr)
-  findOverlaps(lncs_cords_gr, pcgs_cords_gr)
-  subsetByOverlaps(lncs_cords_gr, pcgs_cords_gr, ignore.strand=T)
+  pcgs_cords = pcgs_cords[,c("chr", "start", "end", "name", "strand", "type")]
+  write.table(pcgs_cords, file="pcgs_cords_allPCGs_aug8.bed", quote=F, row.names=F, col.names=F, sep="\t")
 
 
-}
+##--------------------------------------------------------------------
+###in bedtools 
+##--------------------------------------------------------------------
+
+module load bedtools 
+
+#1. first need to sort lncRNA coordinates 
+sort -k1,1 -k2,2n lncs_cords_109_cands_aug8.bed > lncs_cords_109_cands_aug8.sorted.bed
+sort -k1,1 -k2,2n pcgs_cords_allPCGs_aug8.bed > pcgs_cords_allPCGs_aug8.sorted.bed
+
+#2. merge transcripts into one 
+bedtools merge -i lncs_cords_109_cands_aug8.sorted.bed -c 4 -o collapse -delim "|" > lncs_cords_109_cands_aug8.sorted.merged.bed
+bedtools merge -i pcgs_cords_allPCGs_aug8.sorted.bed -c 4 -o collapse -delim "|" > pcgs_cords_allPCGs_aug8.sorted.merged.bed
+
+#3. get file of lncRNA-cis interactions 
+bedtools window -a lncs_cords_109_cands_aug8.sorted.bed -b pcgs_cords_allPCGs_aug8.sorted.bed -w 5000 > lncs_candidates_pcgs_intersected.bed
+
+#get file of lncRNA-trans interactions 
 
 
+##--------------------------------------------------------------------
+###in R 
+##--------------------------------------------------------------------
 
+cis_ints = read.table("lncs_candidates_pcgs_intersected.bed")
+colnames(cis_ints) = c("lnc_chr", "lnc_start", "lnc_end", "lnc", "lnc_strand", "lnc_type", "pcg_chr", 
+  "pcg_start", "pcg_end", "pcg", "pcg_strand", "protein_type")
+cis_ints$pair = paste(cis_ints$lnc, cis_ints$pcg, sep="_")
+#keep only unique pairs 
+cis_ints = as.data.table(cis_ints)
+z = which(duplicated(cis_ints$pair))
+cis_ints = cis_ints[-z,]
 
+#54/109 lncRNAs have at least 1 nearby PCG
+saveRDS(cis_ints, file="lncRNA_cands_wPCGs_that_are_in_cis_aug8.rds")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#all the lncRNA candidates that are not in the above ^ file are "trans lncRNAs"
 
 
 
