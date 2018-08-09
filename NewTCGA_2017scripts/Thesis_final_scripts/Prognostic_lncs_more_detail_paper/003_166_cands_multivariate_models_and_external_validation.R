@@ -248,15 +248,16 @@ dev.off()
 tcga_results1 = readRDS("TCGA_results_multivariate_results_June22.rds")
 tcga_results1$data = "TCGA"
 tcga_results1$combo = paste(tcga_results1$gene, tcga_results1$cancer, sep="_")
-z = which(tcga_results1$combo %in% robust$combo)
-tcga_results1 = tcga_results1[z,]
+#z = which(tcga_results1$combo %in% robust$combo)
+#tcga_results1 = tcga_results1[z,]
 
 #only the robust ones
-robust = readRDS(file="112_combos_robust_internal_validation_survival_lncRNAs_aug8.rds")
+#robust = readRDS(file="112_combos_robust_internal_validation_survival_lncRNAs_aug8.rds")
+#robust = readRDS("148_combos_robust_5perc_increase_internal_validation_survival_lncRNAs_aug9.rds")
 head(cands)
 cands$combo = paste(cands$Geneid, cands$Cancer, sep="_")
-z = which(cands$combo %in% robust$combo)
-cands = cands[z,]
+#z = which(cands$combo %in% robust$combo)
+#cands = cands[z,]
 
 pcawg_data = readRDS("lncRNA_clinical_data_PCAWG_May2.rds")
 pcawg_data$combo = paste(pcawg_data$canc, pcawg_data$histo)
@@ -466,16 +467,15 @@ all_results$CAT_browser_link = NULL
 
 #this file was created without first filtering to only include the robust lncRNAs
 #so contains results for all 173 lncRNAs 
-#saveRDS(all_results, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+saveRDS(all_results, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 
 #this file was created by FIRST filtering to inlclude ONLY robust lncRNAs
-saveRDS(all_results, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_Aug8.rds")
+#saveRDS(all_results, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_Aug8.rds")
 
 #-----check which actually match---------------------------------------------------------------------------
 
-#all_results_orig = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-
-all_results_orig = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_Aug8.rds")
+all_results_orig = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+#all_results_orig = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_Aug8.rds")
 
 all_results = all_results_orig[!duplicated(all_results_orig), ]
 all_results = filter(all_results, pval <= 0.05)
@@ -528,12 +528,12 @@ matches = merge(matches, ucsc, by=c("gene"))
 #z = which(matches$gene == "ENSG00000250360")
 #matches = matches[-z,]
 
-#write.table(matches, file="6_unique_lncNRAs_validate_PCAWG.txt", quote=F, row.names=F, sep=";")
+write.table(matches, file="6_unique_lncNRAs_validate_PCAWG.txt", quote=F, row.names=F, sep=";")
 
 write.table(matches, file="4_unique_lncNRAs_validate_PCAWG.txt", quote=F, row.names=F, sep=";")
 matches = as.data.frame(matches)
 matches = matches[,1:13]
-pdf("4_unique_lncNRAs_validate_PCAWG.pdf", width=24)
+pdf("6_unique_lncNRAs_validate_PCAWG.pdf", width=24)
 p<-tableGrob(matches)
 grid.arrange(p)
 dev.off()
@@ -574,8 +574,8 @@ all_results_orig$perc_risk = round(all_results_orig$perc_risk, digits=4)
 all_results_orig$fdr_pval = as.numeric(all_results_orig$fdr_pval)
 all_results_orig$fdr_pval = round(all_results_orig$fdr_pval, digits=4)
 
-#write.csv(all_results_orig, file="175_lncRNA_cancers_combos_23_cancer_types_july5.csv", quote=F, row.names=F)
-write.csv(all_results_orig, file="112_lncRNA_cancers_combos_22_cancer_types_aug8.csv", quote=F, row.names=F)
+write.csv(all_results_orig, file="175_lncRNA_cancers_combos_23_cancer_types_july5.csv", quote=F, row.names=F)
+#write.csv(all_results_orig, file="112_lncRNA_cancers_combos_22_cancer_types_aug8.csv", quote=F, row.names=F)
 
 
 

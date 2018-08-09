@@ -79,6 +79,7 @@ cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 #--------------------------------------------------------------------
 
 coexp = readRDS("new_PCG_enrichment_min_5FPKMmedian_july20.rds")
+
 z = which(coexp$lnc %in% cands_dups)
 if(!(length(z))==0){
 coexp$lnc[z] = paste(coexp$lnc[z], coexp$canc[z], sep="_")
@@ -88,6 +89,9 @@ coexp$combo=""
 z = which(str_detect(coexp$lnc, "_"))
 coexp$combo[-z] = paste(coexp$lnc[-z], coexp$canc[-z], sep="_")
 coexp$combo[z] = coexp$lnc[z]
+#there was one extra combination from before that shouldn't be part of this
+z = which(coexp$combo %in% allCands$combo)
+coexp = coexp[z,]
 
 #can run FDR on all PCGs for all Cancer types 
 #175 * 20,0000 = enormous FDR test 
@@ -119,7 +123,6 @@ canc_dats$mean_diff = as.numeric(canc_dats$mean_diff)
 #canc_dats = canc_dats[-z,]
 canc_dats = as.data.table(canc_dats)
 
-
 #2. Summarize per lncRNA/cancer, how many PCGs upregulated in risk group
 #and how many upregulated in non-risk group 
 #(>0 --> more expressed in risk group, <0, more expressed in low risk group)
@@ -128,8 +131,8 @@ canc_dats = as.data.table(canc_dats)
 canc_dats = as.data.table(canc_dats)
 canc_dats = as.data.table(filter(canc_dats, fdr <=0.01))
 canc_dats$risk_type = ""
-canc_dats$risk_type[canc_dats$mean_diff < (log1p(2)-log1p(4))] = "NonRisk"
-canc_dats$risk_type[canc_dats$mean_diff >= (log1p(4)-log1p(2))] = "Risk"
+canc_dats$risk_type[canc_dats$mean_diff < -1] = "NonRisk"
+canc_dats$risk_type[canc_dats$mean_diff > 1] = "Risk"
 canc_dats = canc_dats[which(!(canc_dats$risk_type =="")),]
 
 #fold change of two equals to 0.51
@@ -310,7 +313,6 @@ both_risks = unique(pcgs_sum$V1[z])
 
 #plot summary how many cancer types pcg
 #is in high risk group
-
 risk = as.data.table(filter(pcgs_sum, V2 == "Risk"))
 risk$groupy = cut(risk$N, breaks =c(0,1,5, 10, 15, 20,25, 30))
 
@@ -405,18 +407,18 @@ mypal = readRDS(file="palette_32_cancer_types.rds")
 pdf("summary_coexpressed_risk_non_risk_wHR_1000.pdf")
 ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
 geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
-geom_vline(xintercept = 1000, linetype="dashed", color = "red") +
+geom_vline(xintercept = 100, linetype="dashed", color = "red") +
 theme_bw()+
-geom_label_repel(data=filter(res_tog, NumPCGs >=1000), aes(label=name, fill=type), color = 'black',size=2)+
+geom_label_repel(data=filter(res_tog, NumPCGs >=100), aes(label=name, fill=type), color = 'black',size=2)+
 scale_fill_brewer(palette="Paired")
 dev.off()
 
 pdf("summary_coexpressed_risk_non_risk_wHR_1500.pdf")
 ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
 geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
-geom_vline(xintercept = 1500, linetype="dashed", color = "red") +
+geom_vline(xintercept = 150, linetype="dashed", color = "red") +
 theme_bw()+
-geom_label_repel(data=filter(res_tog, NumPCGs >=1500), aes(label=name, fill=type), color = 'black',size=2)+
+geom_label_repel(data=filter(res_tog, NumPCGs >=150), aes(label=name, fill=type), color = 'black',size=2)+
 scale_fill_brewer(palette="Paired")
 dev.off()
 
@@ -431,9 +433,9 @@ res_tog$perc_risk_label[which(res_tog$perc_risk_label == "")] = "BalRisk"
 pdf("summary_coexpressed_risk_non_risk_wHR_1500_wcolor.pdf")
 ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
 geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
-geom_vline(xintercept = 1500, linetype="dashed", color = "red") +
+geom_vline(xintercept = 150, linetype="dashed", color = "red") +
 theme_bw()+
-geom_label_repel(data=filter(res_tog, NumPCGs >=1500), aes(label=name, fill=type, color = perc_risk_label), size=2)+
+geom_label_repel(data=filter(res_tog, NumPCGs >=150), aes(label=name, fill=type, color = perc_risk_label), size=2)+
 scale_fill_brewer(palette="Paired") +
 scale_color_manual(values=c("black", "Blue"))
 
@@ -446,7 +448,7 @@ res_tog$lnc_stat[which(res_tog$HR > 0)] = "Unfavourable"
 
 saveRDS(res_tog, file="summary_pcg_analysis_wHRs_jul2y24.rds")
 
-
+#144/173 have significant pcg signatures 
 
 
 

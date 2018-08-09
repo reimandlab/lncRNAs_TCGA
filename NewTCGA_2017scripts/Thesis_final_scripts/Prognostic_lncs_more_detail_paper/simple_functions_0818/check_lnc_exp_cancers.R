@@ -54,6 +54,28 @@ pats_num = filter(pats_num, N <50)
 canc_rm = pats_num$V1
 rna = rna[-which(rna$Cancer %in% canc_rm),]
 
+#Combined into one dataframe because need to get ranks 
+all <- merge(rna, pcg, by = c("patient", "Cancer"))
+all = all[,1:25170]
+
+#lncRNA candidates, n = 166, n=173 combos 
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
+
+#Co-expression results of PCGs 
+coexp = readRDS("coexpression_results_processed_july24.rds")
+coexp$combo2 = paste(coexp$lnc, coexp$canc, coexp$pcg, sep="_")
+
+#PCG lncRNA results
+pcg_lnc = readRDS("summary_pcg_analysis_wHRs_jul2y24.rds") #all these have at least 1, 50-pcg signature 
+pcg_lnc = pcg_lnc[order(-NumPCGs)]
+pcg_lnc$HR = as.numeric(pcg_lnc$HR)
+pcg_lnc$lnc_stat = ""
+pcg_lnc$lnc_stat[which(pcg_lnc$HR < 0)] = "Favourable"
+pcg_lnc$lnc_stat[which(pcg_lnc$HR > 0)] = "Unfavourable"
+
+
 #------FUNCTIONS----------------------------------------------------
 
 #######
@@ -121,9 +143,56 @@ get_num_pats = function(lnc, canc, exp_cut){
 	}
 }
 
+#######
+##[4]##-------------------------------------------------------------
+#######
 
+#check expression of PCG how it's different between a lncRNA's risk group
+#input: lncRNA, pcg, cancer 
 
+get_pcg_enrich = function(lnc, pcg, canc){
+	dat = all[,which(colnames(all) %in% c("Cancer", lnc, pcg, "patient"))]
+	dat = dat[which(dat$Cancer == canc),]
+	colnames(dat)[which(colnames(dat)==lnc)] = "lncRNAExp"
+	colnames(dat)[which(colnames(dat)==pcg)] = "pcgExp"
+	
+	#add risk group
+	lnc_hr = as.numeric(allCands$HR[which(allCands$combo == paste(lnc, canc, sep="_"))])
 
+	#get med
+	med = median(dat$lncRNAExp)
+	dat$lnc_median = ""
+       if(med ==0){
+        #if median = 0 then anyone greater than zero is 1 
+        l1 = which(dat$lncRNAExp > 0)
+        l2 = which(dat$lncRNAExp ==0)
+        dat$lnc_median[l1] = 1
+        dat$lnc_median[l2] = 0
+        }
+
+      if(!(med ==0)){
+        l1 = which(dat$lncRNAExp >= med)
+        l2 = which(dat$lncRNAExp < med)
+        dat$lnc_median[l1] = 1
+        dat$lnc_median[l2] = 0
+    }
+
+   if(lnc_hr > 1){
+   	dat$lnc_median[dat$lnc_median == 1] = "risk"
+   	dat$lnc_median[dat$lnc_median == 0] = "less_risk"
+   } 
+
+    if(lnc_hr < 1){
+   	dat$lnc_median[dat$lnc_median == 0] = "risk"
+   	dat$lnc_median[dat$lnc_median == 1] = "less_risk"
+   } 
+
+   mean_diff = round(as.numeric(coexp$mean_diff[which(coexp$combo2 == paste(lnc, canc, pcg, sep="_"))]), digits=4)
+   dat$pcgExp = log1p(dat$pcgExp)
+   g = ggboxplot(dat, x = "lnc_median", y="pcgExp", title=paste(lnc, pcg, mean_diff)) +
+   	stat_compare_means()
+   print(g)
+}
 
 
 

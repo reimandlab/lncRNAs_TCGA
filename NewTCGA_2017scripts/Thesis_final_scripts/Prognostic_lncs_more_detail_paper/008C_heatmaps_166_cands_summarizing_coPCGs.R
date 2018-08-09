@@ -229,7 +229,7 @@ gen_heatmap = function(dat){
     pcg_keep = as.data.table(coexp[z,])
     pcg_keep = as.data.table(filter(pcg_keep, fdr <= 0.05))
     pcg_keep = pcg_keep[order(-abs(mean_diff))]
-    pcgs = pcg_keep[1:100,2]
+    pcgs = pcg_keep[1:50,2]
     z = which(colnames(heat) %in% pcgs$pcg)
     heat = heat[,z]
   }

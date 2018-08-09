@@ -39,7 +39,6 @@ colnames(cisums_results) = c("Cancer", "lncRNA", "type", "n", "sd",
 all_canc_data_robust = as.data.frame(matrix(ncol=7))
 colnames(all_canc_data_robust) = c("lncRNA", "Cancer", "cindex", "type", "round", "Median", "diff")
 
-
 for(i in 1:length(unique(results$Cancer))){
 	canc_data = subset(results, results$Cancer %in% unique(results$Cancer)[i])
 
@@ -63,14 +62,15 @@ for(i in 1:length(unique(results$Cancer))){
 	cisum = as.data.table(canc_data %>% dplyr::group_by(Cancer, lncRNA, type) %>% 
 	  dplyr::summarize(n = n(), sd = sd(cindex), mean = mean(cindex), median=median(cindex), low=quantile(cindex, 0.025), high=quantile(cindex, 0.975)))
 	cisum = cisum[order(-median, sd)]
-	cisum = as.data.table(dplyr::filter(cisum, type == "lncRNAonly", low >=0.5, high>=0.5))
+	#cisum = as.data.table(dplyr::filter(cisum, type == "lncRNAonly", low >=0.5, high>=0.5))
+	cisum = as.data.table(dplyr::filter(cisum, type == "lncRNAonly"))
 	as.data.table(dplyr::filter(cisum, median >= 0.5))
 
 	cisums_results = rbind(cisums_results, cisum)
 
 	#keep only those lncRNAs with CIs not overlapping 0.5 
-	z = which(canc_data$lncRNA %in% c(cisum$lncRNA, "Clinical"))
-	canc_data = canc_data[z,]
+	#z = which(canc_data$lncRNA %in% c(cisum$lncRNA, "Clinical"))
+	#canc_data = canc_data[z,]
 
 	#change ENSG to gene names 
 	#for(k in 1:length(unique(canc_data$lncRNA))){
@@ -145,7 +145,6 @@ saveRDS(cisums_results, file="112_combos_robust_internal_validation_survival_lnc
 all_canc_data_robust = all_canc_data_robust[-1,]
 saveRDS(all_canc_data_robust, file="112_cindicies_combos_robust_internal_validation_survival_lncRNAs_aug8.rds")
 
-
 #summary
 results_lncs = results_lncs[-1,]
 results_lncs = as.data.table(results_lncs)
@@ -168,6 +167,16 @@ all_meds = filter(all_meds, diff >=5)
 #how many of these significant in multivaraite models
 all_meds = as.data.table(all_meds)
 all_meds = filter(all_meds, lncRNA %in% multi$gene)
+all_meds$combo = paste(all_meds$lncRNA, all_meds$Cancer, sep="_")
+#merge confidence interval and % median c-index increase 
+all_meds = merge(all_meds, cisums_results, by=c("lncRNA", "Cancer", "combo")
+all_meds = as.data.table(all_meds)
+saveRDS(all_meds, file="148_combos_robust_5perc_increase_internal_validation_survival_lncRNAs_aug9.rds")
+
+
+
+
+
 
 
 

@@ -100,6 +100,8 @@ cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 #--------------------------------------------------------------------
 
 coexp = readRDS("coexpression_results_processed_july24.rds")
+coexp$combo1 = paste(coexp$lnc, coexp$pcg, sep="_")
+coexp$combo2 = paste(coexp$pcg, coexp$lnc, sep="_")
 
 #PCG lncRNA results
 pcg_lnc = readRDS("summary_pcg_analysis_wHRs_jul2y24.rds") #all these have at least 1, 50-pcg signature 
@@ -205,10 +207,19 @@ all_canc_lnc_data = llply(tissues_data, get_lnc_canc, .progress="text")
 ##3-----------------get correlation pairs-----------------------------------
 
 #PART3 start 
-cancer = cancs[9]
+cancer = cancs[4]
 library(tidyverse)
 
 prog_pcgs = readRDS("mRNAs_Survival_Results_prognostic_pcgs_July19.rds")
+cis_pcgs = readRDS("lncRNA_cands_wPCGs_that_are_in_cis_aug8.rds")
+#convert to ensgs
+get_ensg = function(name){
+  z = which(ucsc$hg19.ensemblToGeneName.value == name)
+  return(ucsc$hg19.ensGene.name2[z])
+}
+cis_pcgs$lnc = sapply(cis_pcgs$lnc, get_ensg)
+cis_pcgs$pcg = sapply(cis_pcgs$pcg, get_ensg)
+cis_pcgs$combo = paste(cis_pcgs$lnc, cis_pcgs$pcg, sep="_")
 
 get_summary = function(cancer){
   
@@ -225,14 +236,17 @@ get_summary = function(cancer){
   canc_dats = all_canc_lnc_data[keep]
   canc_dats = reshape::merge_all(canc_dats)
 
-  print(cancer)
+    print(cancer)
     pcgs = colnames(canc_dats)[which(str_detect(colnames(canc_dats), "ENSG"))]
     lncs = unique(canc_dats$lnc)
     genes = c(pcgs, lncs)
     canc_exp = subset(all, Cancer == cancer)
     rownames(canc_exp) = canc_exp$patient
+    #gene expression data for all pcgs enriched in at least 1 lncRNA of that
+    #cancer type and lncRNAs themselves
     canc_exp = canc_exp[,which(colnames(canc_exp) %in% c(genes))]
     
+    #get their correlations
     res2 = rcorr(as.matrix(canc_exp), type="spearman")
     res2 = flattenCorrMatrix(res2$r, res2$P)
     res2$fdr = p.adjust(res2$p, method="fdr")
@@ -250,52 +264,61 @@ get_summary = function(cancer){
     res2$columngene[-z] = "mRNA"
     
     res2 = as.data.table(res2)
-    res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05, abs(cor) >= 0.3))
+    res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05, abs(cor) >= 0.4))
+
+    #all unique genes that appear
+    allgenes = unique(c(res2$row, res2$column))
+    #this will be the edge table 
+    res2$canc = cancer
+    res2$combo1 = paste(res2$row, res2$column, sep="_")
+    z1 = which(res2$combo1 %in% coexp$combo1)
+    z2 = which(res2$combo1 %in% coexp$combo2)
+    z = unique(c(z1,z2))
+   
+    test = merge(res2, coexp, by=c("combo1", "canc"))
 
     #for now keep all correlations wtih at least 1 lncRNA
     #lnc_cors = dplyr::filter(res2, rowgene == "lncRNA" | columngene == "lncRNA")
-    lnc_cors = dplyr::filter(res2, row == "ENSG00000230432" | column == "ENSG00000230432")
-    lnc_cors$canc = cancer
-    lnc_cors = as.data.table(lnc_cors)
+    #lnc_cors = dplyr::filter(res2, row == "ENSG00000230432" | column == "ENSG00000230432")
+    #lnc_cors$canc = cancer
+    lnc_cors = as.data.table(test)
     lnc_cors = lnc_cors[order(-(abs(cor)))]
-
-    #make lncRNA specific network 
-    #Next function:
-    #take each correlation table and seperate into
-    #node file and edge file 
-    #label each node as lncRNA/risk_type/
-
-    #for lncRNAs if HR > 1 , risk type = unfavourable
-    #if HR < 1, risk type = favourable 
-    #for pcgs, same thing using the file = mRNAs_Survival_Results_prognostic_pcgs_July19.rds
-    #edges = weigth is positive or negative correlation between the 2 genes 
+    lnc_cors$combo2 = NULL
+    lnc_cors$combo1 = NULL
+    lnc_cors$combo = NULL
+    lnc_cors$combo = paste(lnc_cors$lnc, lnc_cors$pcg, sep="_")
+    z = which(lnc_cors$combo %in% cis_pcgs$combo)
+    lnc_cors$distance[z] = "cis"
+    lnc_cors$distance[-z] = "trans"
 
     #mRNA - 
-    z = which(ucsc$hg19.ensemblSource.source == "protein_coding")
-    pcgs = unique(ucsc[z,6]
+    z = which(str_detect(colnames(pcg), "ENSG"))
+    pcgs = colnames(pcg)[z]
 
     nodes = data.frame(gene = unique(c(lnc_cors$row, lnc_cors$column)))
     nodes$type = ""
     z = which(nodes$gene %in% lncs)
+    #these nodes also in coexp results
     nodes$type[z] = "lncRNA"
     nodes$type[-z] = "mRNA"
 
     z = which(canc_dats$lnc %in% unique(nodes$gene[nodes$type == "lncRNA"]))
-    lnc_dat = canc_dats[z,1855:ncol(canc_dats)]
+    lnc_dat = canc_dats[z,(ncol(canc_dats)-4):ncol(canc_dats)]
 
     hrs = allCands[which(allCands$gene %in% unique(nodes$gene[nodes$type == "lncRNA"]))]
-    hrs = hrs[,c(1,3, 4)]
+    hrs = hrs[,c(1,3, 12)]
+    colnames(hrs)[3] = "fdr"
 
     #get pcg HRs
     progs = prog_pcgs[which(prog_pcgs$canc == cancer),]
     lnc_pcsg = unique(nodes$gene[nodes$type == "mRNA"])
     z = which(progs$gene %in% lnc_pcsg)
     progs = progs[z,]
-    hrs_pcgs = progs[,c(1,3,4)]
+    hrs_pcgs = progs[,c(1,3,9)]
 
     all_hrs = rbind(hrs, hrs_pcgs)
     nodes = merge(nodes, all_hrs, by = "gene")
-    nodes$pval = as.numeric(nodes$pval)
+    nodes$fdr = as.numeric(nodes$fdr)
     nodes$HR = as.numeric(nodes$HR)
 
     nodes$risk_type[nodes$HR > 1] = "Unfavourable"
@@ -307,27 +330,88 @@ get_summary = function(cancer){
 
     nodes = fread("node_file_lncRNA_newtwork.txt", sep=";")
     nodes$V1 = NULL
-    colnames(nodes) = c("id", "type", "HR", "pval", "risk", "canc")
+    colnames(nodes) = c("id", "type", "HR", "fdr", "risk", "canc")
 
     #edge file
+    lnc_cors$cancer = lnc_cors$canc
+    lnc_cors$canc = NULL
     colnames(lnc_cors)[1:2] = c("from", "to")
     write.table(lnc_cors, file = "edges_file_lncRNA_newtwork.txt", sep=";")
 
     lnc_cors = fread("edges_file_lncRNA_newtwork.txt", sep=";")
     lnc_cors$V1 = NULL
-    colnames(lnc_cors) = c("from", "to", "cor", "pval", "fdr", "from_type", "to_type", "canc")
+    colnames(lnc_cors) = c("from", "to", "cor", "pval", "fdr_cor", "from_type", "to_type", "lnc", 
+      "pcg", "mean_diff", "pvalue", "fdr_lm", "pcg_risk_group", "combo", "distance", "cancer")
     
-    #make network
-    library(igraph)
-    net <- graph_from_data_frame(d=lnc_cors, vertices=nodes, directed=T) 
     
+    get_name = function(ensg){
+    z = which(ucsc$hg19.ensGene.name2 == ensg)
+     return(ucsc$hg19.ensemblToGeneName.value[z][1])
+    }
+    lnc_cors$from = sapply(lnc_cors$from, get_name)
+    lnc_cors$to = unlist(sapply(lnc_cors$to, get_name))
+    nodes$ensg = nodes$id
+    nodes$id = sapply(nodes$id, get_name)
+    z = which(is.na(nodes$id))
+    if(!(length(z)==0)){
+      nodes = nodes[-z,]
+    }
+    z = which(is.na(lnc_cors$to))
+    if(!(length(z)==0)){
+      lnc_cors = lnc_cors[-z,]
+    }
 
+    #make geom_tile
+    nodes$HR[nodes$fdr > 0.05] = 1
+    nodes$HR = log2(nodes$HR)
 
+    #order by highest correlation
+    lnc_cors = lnc_cors[order(cor)]
+    lnc_cors$from = factor(lnc_cors$from, levels=unique(lnc_cors$from))
+    lnc_cors$to = factor(lnc_cors$to, levels=unique(lnc_cors$to))
+
+    #START plot
+    main_map = ggplot(lnc_cors, aes(from, to)) + geom_tile(aes(fill = cor, color=distance), size=0.25) + 
+      scale_fill_gradient2(low = "blue", mid = "white", high = "orange") +
+      labs(x = "",y = "") +
+      theme(legend.title = element_blank(),
+        axis.text.x = element_text(angle=30,hjust=1,vjust=1.0, size=8),
+        axis.text.y = element_text(size = 4),
+        axis.ticks.x=element_blank(), axis.ticks.y=element_blank()) + ggtitle(cancer)
+
+    #add covaraite for the lncRNAs --> whether they are fav/unfavour
+    lncs_cov = filter(nodes, type =="lncRNA")  
+    lncs_cov$id = factor(lncs_cov$id, levels = unique(lnc_cors$from))
+    lnc_conv_pl = ggplot(lncs_cov, aes(id, 1)) + geom_tile(aes(fill = HR)) + 
+      scale_fill_gradient2(low = "green", mid = "white", high = "red") +
+      labs(x = "",y = "") +
+      theme(legend.title = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y = element_blank(),axis.ticks.y=element_blank()) +
+      guides(fill=FALSE) +theme_void()
+
+    #add covaraite for the mRNAs --> whether they are fav/unfavour
+    mrna_conv = filter(nodes, type =="mRNA") 
+    mrna_conv$id = factor(mrna_conv$id, levels = unique(lnc_cors$to)) 
+    mrna_conv_pl = ggplot(mrna_conv, aes(id, 1)) + geom_tile(aes(fill = HR)) + 
+      coord_flip() +
+      scale_fill_gradient2(low = "green", mid = "white", high = "red") +
+      labs(x = "",y = "") +
+         theme(legend.title = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y = element_blank(),axis.ticks.y=element_blank())+theme_void()
+    
+    p1 = main_map + mrna_conv_pl + plot_layout(ncol = 2, widths = c(10, 3))
+    p2 = p1 + lnc_conv_pl + plot_layout(ncol = 2, heights = c(10, 0.5))
+    print(p2)
 
     return(lnc_cors)
 }
 
 canc_results = llply(cancs, get_summary, .progress = "text")
+dev.off()
 
 #remove null
 canc_results = Filter(Negate(is.null), canc_results)
