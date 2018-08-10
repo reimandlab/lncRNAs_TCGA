@@ -91,6 +91,11 @@ get_ensg = function(lnc){
 	return(fantom$CAT_geneID[z])
 }
 
+get_name = function(ensg){
+    z = which(ucsc$hg19.ensGene.name2 == ensg)
+    return(ucsc$hg19.ensemblToGeneName.value[z][1])
+}
+
 #######
 ##[2]##-------------------------------------------------------------
 #######

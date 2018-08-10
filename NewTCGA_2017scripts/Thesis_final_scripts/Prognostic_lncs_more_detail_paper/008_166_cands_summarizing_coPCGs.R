@@ -407,18 +407,18 @@ mypal = readRDS(file="palette_32_cancer_types.rds")
 pdf("summary_coexpressed_risk_non_risk_wHR_1000.pdf")
 ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
 geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
-geom_vline(xintercept = 100, linetype="dashed", color = "red") +
+geom_vline(xintercept = 200, linetype="dashed", color = "red") +
 theme_bw()+
-geom_label_repel(data=filter(res_tog, NumPCGs >=100), aes(label=name, fill=type), color = 'black',size=2)+
+geom_label_repel(data=filter(res_tog, NumPCGs >=200), aes(label=name, fill=type), color = 'black',size=2)+
 scale_fill_brewer(palette="Paired")
 dev.off()
 
 pdf("summary_coexpressed_risk_non_risk_wHR_1500.pdf")
 ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
 geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
-geom_vline(xintercept = 150, linetype="dashed", color = "red") +
+geom_vline(xintercept = 275, linetype="dashed", color = "red") +
 theme_bw()+
-geom_label_repel(data=filter(res_tog, NumPCGs >=150), aes(label=name, fill=type), color = 'black',size=2)+
+geom_label_repel(data=filter(res_tog, NumPCGs >=275), aes(label=name, fill=type), color = 'black',size=2)+
 scale_fill_brewer(palette="Paired")
 dev.off()
 
@@ -433,9 +433,9 @@ res_tog$perc_risk_label[which(res_tog$perc_risk_label == "")] = "BalRisk"
 pdf("summary_coexpressed_risk_non_risk_wHR_1500_wcolor.pdf")
 ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
 geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
-geom_vline(xintercept = 150, linetype="dashed", color = "red") +
+geom_vline(xintercept = 275, linetype="dashed", color = "red") +
 theme_bw()+
-geom_label_repel(data=filter(res_tog, NumPCGs >=150), aes(label=name, fill=type, color = perc_risk_label), size=2)+
+geom_label_repel(data=filter(res_tog, NumPCGs >=275), aes(label=name, fill=type, color = perc_risk_label), size=2)+
 scale_fill_brewer(palette="Paired") +
 scale_color_manual(values=c("black", "Blue"))
 

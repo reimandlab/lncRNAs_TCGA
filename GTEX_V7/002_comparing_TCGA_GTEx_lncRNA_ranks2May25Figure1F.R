@@ -28,7 +28,7 @@ fantom <- fantom[-z,]
 
 #candidates
 val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
-val_cands = read.csv("112_lncRNA_cancers_combos_22_cancer_types_aug8.csv")
+#val_cands = read.csv("112_lncRNA_cancers_combos_22_cancer_types_aug8.csv")
 val_cands = as.data.table(val_cands)
 val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
@@ -271,7 +271,7 @@ z2 = which(new_results$fc_mean <= -1)
 new_results = new_results[c(z1,z2),]
 
 #how many of these are candidate lncRNAs? 
-allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_Aug8.rds")
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 #save only the ones that came from the noFDR appraoch 
 allCands = filter(allCands, data=="TCGA", fdr_pval <=0.05) #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
 #23 unique cancer types 
@@ -290,24 +290,24 @@ allCands$combo = paste(allCands$gene, allCands$cancer, sep="_")
 #How many were evaluated
 all_results_pre_filtering$combo = paste(all_results_pre_filtering$gene, all_results_pre_filtering$canc, sep="_")
 z = which(all_results_pre_filtering$combo %in% allCands$combo)
-genes = unique(all_results_pre_filtering$gene[z]) #were only able to evaluate 68 unique lncRNAs 
-#68 unique lncRNAs-cancers were evaluated across 10 unique cancer types 
+genes = unique(all_results_pre_filtering$gene[z]) #were only able to evaluate 108 unique lncRNAs 
+#108 unique lncRNAs-cancers were evaluated across 10 unique cancer types 
 
 z = which(new_results$combo %in% allCands$combo)
-#how many candidates are significantly different with fold change >2 --> 16 lncRNAs 
+#how many candidates are significantly different with fold change >2 --> 31 lncRNAs 
 genes = unique(new_results$gene[z]) 
 
 #save all that were evlautaed 
 z = which(all_results_pre_filtering$combo %in% allCands$combo)
 all_results_pre_filtering = all_results_pre_filtering[z,]
-#saveRDS(all_results_pre_filtering, file="108_candidates_lncRNAs_evaluated_gtex_analysis.rds")
+saveRDS(all_results_pre_filtering, file="108_candidates_lncRNAs_evaluated_gtex_analysis.rds")
 #only robust lncRNAs
-saveRDS(all_results_pre_filtering, file="68_candidates_lncRNAs_evaluated_gtex_analysis.rds")
+#saveRDS(all_results_pre_filtering, file="68_candidates_lncRNAs_evaluated_gtex_analysis.rds")
 
 z = which(new_results$combo %in% allCands$combo)
 new_results = new_results[z,]
-#saveRDS(new_results, file="31_candidates_lncRNAs_significant_gtex_analysis.rds")
-saveRDS(new_results, file="16_candidates_lncRNAs_significant_gtex_analysis.rds")
+saveRDS(new_results, file="31_candidates_lncRNAs_significant_gtex_analysis.rds")
+#saveRDS(new_results, file="16_candidates_lncRNAs_significant_gtex_analysis.rds")
 
 print("done sir")
 
