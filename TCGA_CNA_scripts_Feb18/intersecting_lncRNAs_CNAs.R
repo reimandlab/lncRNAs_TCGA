@@ -98,17 +98,15 @@ shorten = function(geneid){
 lncs_coords = llply(lncs, shorten, .progress="text")
 lncs_coords <- ldply(lncs_coords, data.frame)
 
-#candidate lncrnas 
-cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
-#cands = filter(cands, data == "PCAWG", pval <=0.05)
-lncs_coords = lncs_coords[which(lncs_coords$gene %in% cands$gene),] #178/190 are here in GENCODE 
+#lncRNA coordinates candidates 
+#lncs_cords_166_cands_aug8.sorted.merged.bed
 
 write.table(cnas_bed, file="cnas_bed_TCGA.bed", col.names=F, row.names=F, quote=F, sep="\t")
 write.table(lncs_coords, file="lncrna_coords_bed.bed", col.names=F, row.names=F, quote=F, sep="\t")
 
 #################BEDTOOLS#########################################################################
 
-bedtools intersect -a lncrna_coords_bed.bed -b cnas_bed_TCGA.bed -f 0.90 -wa -wb > fantom_lncrnas_wTCGA_CNAs_6cancers.bed
+bedtools intersect -a lncrna_coords_bed.bed -b cnas_bed_TCGA.bed -f 0.50 -wa -wb > fantom_lncrnas_wTCGA_CNAs_23cancers.bed
 
 
 

@@ -33,10 +33,9 @@ lncswcnas = fread("fantom_lncrnas_wTCGA_CNAs_23cancers.bed")
 lncswcnas = as.data.frame(lncswcnas)
 
 #2. cands 
-cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
-#cands = filter(cands, data == "PCAWG", pval <=0.05)
-cands = filter(cands, AnalysisType == "noFDR")
+cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 colnames(cands)[7] = "canc"
+
 colnames(lncswcnas)[4] = "gene"
 colnames(lncswcnas)[11] = "canc"
 
@@ -132,8 +131,7 @@ get_data = function(lnc){
     df$median  # notice the changed order of factor levels
     HR = summary(coxph(Surv(OS.time, OS) ~ median, data = df))$coefficients[2]
     
-
-     fit <- survfit(Surv(OS.time, OS) ~ median, data = df)
+    fit <- survfit(Surv(OS.time, OS) ~ median, data = df)
 
     if(HR >1){
       risk = "high_expression"
@@ -151,8 +149,8 @@ get_data = function(lnc){
     df$V1 = NULL
     df$cna_status = ""
     get_cna_stat = function(seg_mean){
-       dup = seg_mean >=0.1
-       del = seg_mean < (-0.1)
+       dup = seg_mean >=0.2
+       del = seg_mean < (-0.2)
        if(dup){
         return("DUP")
        }        
@@ -218,7 +216,9 @@ get_data = function(lnc){
     names(results) = c("cancer", "gene", "name", "num_patients", "numHighCNAmatch", "numLowCNAmatch", "wilcoxon_pval", "risk_type", "num_risk_pats", "num_risk_pats_wmatchingCNA", "risk_group_correlation", "nonrisk_group_correlation")
     df$median <- factor(df$median, levels = c("Low", "High"))
     df$median  # notice the changed order of factor levels
-  	library("ggExtra")
+  	df$risk = risk
+
+    library("ggExtra")
 	    sp = ggscatter(df, main = paste(df$gene[1], df$type[1]), 
 	   	x = "Segment_Mean", y = "geneexp",
                color = "median", palette = mypal[c(4,1)],
@@ -242,12 +242,15 @@ get_data = function(lnc){
     return(results)
 }
 }
-pdf("candidate_lncRNAs_CNA_versus_Expression_May9.pdf", height=5.5, width=8.3)
+pdf("candidate_lncRNAs_CNA_versus_Expression_Aug13.pdf", height=5.5, width=8.3)
 lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
 dev.off()
 
 lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
 lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
+
+
+#---------PROCESS RESULTS-----------------------------------------------------------------------------------------------------
 
 lnc_cna_cancer_data2$wilcoxon_pval = as.numeric(as.character(lnc_cna_cancer_data2$wilcoxon_pval))
 lnc_cna_cancer_data2 = lnc_cna_cancer_data2[order(wilcoxon_pval)]
@@ -327,6 +330,8 @@ low = matched_sig[z,]
 
 pats_summary = rbind(high, low)
 order = as.character(unique(matched_sig$name))
+
+saveRDS(matched_sig, file="lncRNA_CNA_summary_Aug13.rds")
 
 pats_summary$per_patients_wrisk_cna = (as.numeric(as.character(pats_summary$num_risk_pats_wmatchingCNA)))/(as.numeric(as.character(pats_summary$num_risk_pats)))
 

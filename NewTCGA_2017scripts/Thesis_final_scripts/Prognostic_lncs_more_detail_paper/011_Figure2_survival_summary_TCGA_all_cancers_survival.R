@@ -295,12 +295,11 @@ dev.off()
 
 
 #Variation 2 of survival overview plot
-
 head(all_cancers_genes_surv_comb)
 all_cancers_genes_surv_comb$HR = log2(all_cancers_genes_surv_comb$HR)
 
 # Change violin plot colors by groups
-pdf("HR_vs_pval_survival_all_cancers_scatter_plot_july9.pdf", width=10, height=8)
+pdf("HR_vs_pval_survival_all_cancers_scatter_plot_july9_V2.pdf", width=10, height=8)
 g = ggplot(all_cancers_genes_surv_comb, aes(type, HR)) +
   geom_violin() + 
   geom_jitter(height = 0.005, width = 0.005, aes(colour = factor(fdrsig)), size=0.15, alpha=0.5) +
@@ -362,7 +361,6 @@ pdf("figure2_A_july10.pdf", width=7, height=7)
 part1 + part2 + plot_layout(ncol = 1, heights = c(3, 2))
 dev.off()
 
-
 aggregate(summ[, 4], list(summ$Risk), sum)
 
 
@@ -400,7 +398,7 @@ get_corplot = function(cancer){
 
     # Insignificant correlations are leaved blank
     col<- colorRampPalette(c("blue", "white", "red"))(20)
-    c = corrplot(res2$r, order="hclust", col=col, addrect = 3, 
+    c = corrplot(res2$r, order="hclust", col=col, 
       p.mat = res2$P, sig.level = 0.05, insig = "blank", tl.cex=1, method="color", mar=c(0,0,1,0),bg="snow2",
       tl.pos = "n", title=paste(cancer, "top 50 lncRNA correlations"))
     print(c)

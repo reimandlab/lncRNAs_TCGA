@@ -78,7 +78,7 @@ summ = aggregate(res[, 1], list(res$canc, res$type), median)
 summ = as.data.table(summ)
 summ = filter(summ, Group.2 == "cinds_justlncs", cindex >= 0.5)
 
-res = filter(res, canc %in% summ$Group.1)
+#res = filter(res, canc %in% summ$Group.1)
 canc_conv = rna[,which(colnames(rna) %in% c("Cancer", "type"))]
 canc_conv = canc_conv[!duplicated(canc_conv), ]
 colnames(canc_conv)[2] = "canc"
@@ -89,8 +89,8 @@ colnames(summ)[1] = "canc"
 summ = merge(summ, canc_conv, by="canc")
 summ = as.data.table(summ)
 summ = summ[order(cindex)]
-res$canc <- factor(res$canc, levels =summ$canc)
-res$TYPE <- factor(res$TYPE, levels = summ$type)
+#res$canc <- factor(res$canc, levels =summ$canc)
+#res$TYPE <- factor(res$TYPE, levels = summ$type)
 
 mypal = wes_palette("FantasticFox")
 
@@ -162,6 +162,14 @@ res$TYPE = factor(res$TYPE, levels = wil_sig$TYPE)
 z = which(duplicated(res$imp))
 res$imp[z] = ""
 
+#only keep cancers with at least 50 patients 
+pats_num = as.data.table(table(rna$Cancer))
+pats_num = filter(pats_num, N <50)
+canc_rm = canc_conv$type[which(canc_conv$canc %in% pats_num$V1)]
+#res = res[-which(res$TYPE %in% canc_rm),]
+#remove thymoma because doesnt have any cancdidates and too variable
+canc_rm = c("THYM", "SKCM")
+res = res[-which(res$TYPE %in% canc_rm),]
 
 #-----------final plot figure 2D-------------------------------------------------------------------------------------- 
 
