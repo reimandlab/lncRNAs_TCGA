@@ -199,9 +199,31 @@ get_pcg_enrich = function(lnc, pcg, canc){
    print(g)
 }
 
+#######
+##[5]##-------------------------------------------------------------
+#######
+
+###EASY WAY TO MAKE KM PLOT
 
 
+#######
+##[6]##-------------------------------------------------------------
+#######
 
+###EAST WAY TO BUILD AND TEST MULTIVARIATE MODELS
+
+get_surv_model = function(){
+
+}
+
+#model with how many features would have the best performance? 
+
+#######
+##[7]##-------------------------------------------------------------
+#######
+
+###ROC SURVIVAL CURVES 
+#https://datascienceplus.com/time-dependent-roc-for-survival-prediction-models-in-r/
 
 
 

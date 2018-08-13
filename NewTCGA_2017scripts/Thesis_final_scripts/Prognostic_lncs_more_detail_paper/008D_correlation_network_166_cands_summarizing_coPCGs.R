@@ -243,6 +243,7 @@ get_summary = function(cancer){
     z = unique(c(z1,z2))
    
     test = merge(res2, coexp, by=c("combo1", "canc"))
+    res2 = filter(res2, combo1 %in% test$combo1)
     if(!(dim(test)[1] ==0)){
 
     #for now keep all correlations wtih at least 1 lncRNA
@@ -348,15 +349,23 @@ get_summary = function(cancer){
     lnc_cors$from = factor(lnc_cors$from, levels=unique(lnc_cors$from))
     lnc_cors$to = factor(lnc_cors$to, levels=unique(lnc_cors$to))
 
+    z = which(lnc_cors$to %in% nodes$id)
+    lnc_cors$pcg_hr = ""
+    for(i in 1:length(z)){
+      lnc_cors$pcg_hr[z[i]] = nodes$HR[which(nodes$id == lnc_cors$to[z[i]])]
+    }
+    lnc_cors$pcg_hr = round(as.numeric(lnc_cors$pcg_hr), digits=2)
+
     #START plot
-    main_map = ggplot(lnc_cors, aes(from, to)) + geom_tile(aes(fill = cor, color=distance), size=0.5) + 
+    main_map = ggplot(lnc_cors, aes(from, to)) + geom_tile(aes(fill = cor),colour="grey",size=0.5) + 
     scale_colour_manual(values=c("gray25", "lightsteelblue3")) + 
-      scale_fill_gradient2(low = "blue", mid = "white", high = "orange") +
+      scale_fill_gradient2(low = "blue", mid = "white", high = "red") +
       labs(x = "",y = "") + theme_minimal() +
       theme(axis.text.x = element_text(angle=30,hjust=1,vjust=1.0, size=8),
         axis.text.y = element_text(size = 7),
         axis.ticks.x=element_blank(), axis.ticks.y=element_blank(), legend.position="top", legend.box = "horizontal") + 
-      ggtitle(cancer) 
+      ggtitle(cancer) +
+      geom_text(aes(label=pcg_hr))
 
     #add covaraite for the lncRNAs --> whether they are fav/unfavour
     lncs_cov = filter(nodes, type =="lncRNA")  
@@ -386,8 +395,9 @@ get_summary = function(cancer){
         axis.ticks.x=element_blank(),
         axis.text.y = element_blank(),axis.ticks.y=element_blank())+theme_void()
     
-    p1 = main_map + mrna_conv_pl + plot_layout(ncol = 2, widths = c(10, 3))
-    p2 = p1 + lnc_conv_pl + plot_layout(ncol = 2, heights = c(10, 0.5))
+    #p1 = main_map + mrna_conv_pl + plot_layout(ncol = 2, widths = c(10, 3))
+    p1 = main_map
+    p2 = p1 + lnc_conv_pl + plot_layout(ncol = 1, heights = c(10, 0.5))
     print(p2)
 
     return(lnc_cors)
