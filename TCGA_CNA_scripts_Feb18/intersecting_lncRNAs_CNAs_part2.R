@@ -24,9 +24,9 @@ library(broom)
 library(tidyverse)
 library(parallel)
 library(limma)
+library(EnvStats)
 
 mypal = pal_npg("nrc", alpha = 0.7)(10)
-
 
 #1. See if any candidates have CNAs
 lncswcnas = fread("fantom_lncrnas_wTCGA_CNAs_23cancers.bed")
@@ -214,29 +214,46 @@ get_data = function(lnc){
     results = c(cancer, unique(df$gene), unique(df$name), length(unique(df$patient)), length(which(df$exp_cna_match == "HighExp_Duplicated")), 
       length(which(df$exp_cna_match == "LowExp_Deleted")), wilcoxon_pval, risk, length_risk_pats, length_risk_pats_wcna, rr, rp)
     names(results) = c("cancer", "gene", "name", "num_patients", "numHighCNAmatch", "numLowCNAmatch", "wilcoxon_pval", "risk_type", "num_risk_pats", "num_risk_pats_wmatchingCNA", "risk_group_correlation", "nonrisk_group_correlation")
-    df$median <- factor(df$median, levels = c("Low", "High"))
+    df$median <- factor(df$median, levels = c("High", "Low"))
     df$median  # notice the changed order of factor levels
   	df$risk = risk
 
     library("ggExtra")
-	    sp = ggscatter(df, main = paste(df$gene[1], df$type[1]), 
+	    
+    sp1 = ggplot(df, aes(x=Segment_Mean, y=geneexp, color=median)) + ggtitle(paste(df$gene[1], df$type[1], "\nrisk=", df$risk[1])) + 
+    geom_point() + 
+    geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + theme_bw() + stat_cor() +
+    geom_vline(xintercept=0.2, linetype="dashed", color = "red") + 
+    geom_vline(xintercept=-0.2, linetype="dashed", color = "red") + xlab("Segment Mean SCNA") +
+    ylab("log1p FPKM")
+
+    sp2 = ggplot(df, aes(x=median, y=Segment_Mean, color=median)) + ggtitle(paste(df$gene[1], df$type[1], "\nrisk=", df$risk[1])) + 
+    geom_boxplot() + geom_jitter(shape=16, position=position_jitter(0.2)) +
+    theme_bw() + 
+    geom_hline(yintercept=0.2, linetype="dashed", color = "grey") + stat_n_text() + 
+    geom_hline(yintercept=-0.2, linetype="dashed", color = "grey") + xlab("lncRNA expression group") +
+    ylab("Segment Mean SCNA") + stat_compare_means(label = "p.signif")
+
+      sp = ggscatter(df, main = paste(df$gene[1], df$type[1]), 
 	   	x = "Segment_Mean", y = "geneexp",
                color = "median", palette = mypal[c(4,1)],
                size = 3, alpha = 0.6, add = "reg.line",                         # Add regression line
-          	   ggtheme = theme_light(), ylab = "log1p(FPKM) Expression", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
-          font.tickslab = c(15, "plain", "black"), xlab="Segment Mean SCNA") + stat_cor() 
-    	print(sp)
+          	   ggtheme = theme_bw(), ylab = "log1p(FPKM) Expression", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
+          font.tickslab = c(15, "plain", "black"), xlab="Segment Mean SCNA")
 	     xplot = ggboxplot(df, main= paste(df$name[1], cancer, "CNA vs Exp", "n=", length(unique(df$patient))),
 		    x = "median", y = "Segment_Mean", legend.title = "Expression Tag", font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
           font.tickslab = c(15, "plain", "black"),
-                  fill = "median", palette = mypal[c(4,1)], order=(c("Low", "High")), ggtheme = theme_light(), xlab="Expression", ylab="Segment Mean SCNA")+rotate()
-    	xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5)
+                  fill = "median", palette = mypal[c(4,1)], order=(c("Low", "High")), ggtheme = theme_bw(), xlab="Expression", ylab="Segment Mean SCNA")
+    	xplot= xplot + stat_compare_means(label = "p.signif", label.x = 1.5) + stat_n_text()
     	print(xplot)
        yplot <- ggboxplot(df, x = "median", y = "geneexp", main = df$name[1], font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"),
-          font.tickslab = c(15, "plain", "black"), fill = "median", palette = mypal[c(4,1)], order=(c("Low", "High")), ggtheme = theme_light(),
+          font.tickslab = c(15, "plain", "black"), fill = "median", palette = mypal[c(4,1)], order=(c("Low", "High")), ggtheme = theme_bw(),
                     xlab="Expression", ylab="log1p(FPKM) Expression")
-	     yplot= yplot + stat_compare_means(label = "p.signif", label.x = 1.5)
-    
+	     yplot= yplot + stat_compare_means(label = "p.signif", label.x = 1.5) + stat_n_text()
+      
+      print(sp1)
+      print(sp2)
+      print(sp)
       print(yplot)
       print(lnc)
     return(results)
@@ -285,6 +302,7 @@ match_no = sig_diff[,c(1:4,14,8, 9:13)]
 colnames(match_no)[5] = "num_cna_exp_match"
 match_no$type = "NoExpCNAMatch"
 
+#these ones are the ones that have sig wilcoxon p-value
 matched_sig = rbind(match_h, match_l, match_no)
 matched_sig = as.data.table(matched_sig)
 matched_sig = matched_sig[order(num_cna_exp_match, -type)]
@@ -336,10 +354,12 @@ saveRDS(matched_sig, file="lncRNA_CNA_summary_Aug13.rds")
 pats_summary$per_patients_wrisk_cna = (as.numeric(as.character(pats_summary$num_risk_pats_wmatchingCNA)))/(as.numeric(as.character(pats_summary$num_risk_pats)))
 
 pats_summary = pats_summary[order(match(name, order))] 
+pats_summary = pats_summary[order(per_patients_wrisk_cna)]
+pats_summary$name = factor(pats_summary$name, levels = unique(pats_summary$name))
 
 labels = as.character(pats_summary$cancer)
 
-p2 = ggbarplot(pats_summary, x = "name", y = "per_patients_wrisk_cna", order=order, ylab="% of risk \n patients wCNA", xlab = "lncRNA", 
+p2 = ggbarplot(pats_summary, x = "name", y = "per_patients_wrisk_cna", ylab="% of risk \n patients wCNA", xlab = "lncRNA", 
   color = "type", fill = "risk_type", legend="left", label=labels, lab.size = 2.5, lab.pos = c("out"), lab.vjust = 0.5, lab.hjust = 0.5, 
   palette = mypal) + theme_light() +coord_flip() + scale_colour_manual(values = c("salmon", "steelblue", "snow3")) +
   scale_fill_manual(values = c("mistyrose", "aliceblue")) + geom_hline(yintercept=0.2, linetype="dashed", color = "red") + 
@@ -351,7 +371,7 @@ p2= ggpar(p2,
 
 library(patchwork)
 pdf("CNAs_lncRNAs_summary_30cands_may30.pdf", width=12, height=9)
-p1 + p2 + plot_layout(ncol = 2, widths = c(2, 1))
+print(p2) 
 dev.off()
 
 #divide up the risk correlation and no risk correlation groups
@@ -381,7 +401,7 @@ p3= ggpar(p3,
  xtickslab.rt = 45, legend = "right") 
 
 pdf("CNAs_lncRNAs_summary_30cands_may30_wcor.pdf", width=14, height=8)
-p1 + p2 + p3 + plot_layout(ncol = 3, widths = c(2, 1, 1))
+p3 
 dev.off()
 
 
