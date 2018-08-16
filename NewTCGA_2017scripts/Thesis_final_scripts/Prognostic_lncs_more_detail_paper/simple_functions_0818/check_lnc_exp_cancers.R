@@ -268,9 +268,50 @@ get_km_plot = function(gene, cancer){
 }
 }	
 
+#######
+##[7]##-------------------------------------------------------------
+#######
+
+###EAST WAY TO FOREST PLOT (1 variable)
+get_forest_plot = function(gene, cancer){
+  dat = all[,c(which(colnames(all) %in% c("type", gene, "OS", "OS.time")))]
+  z = which(str_detect(colnames(dat), "ENSG"))
+  if(!(length(z)==0)){
+  colnames(dat)[z] = "gene"
+  dat = subset(dat, type == cancer)
+  #split patients 
+  med = median(dat$gene)
+  #add high low tag
+    if(med ==0){
+    #if median = 0 then anyone greater than zero is 1 
+    l1 = which(dat[,z] > 0)
+    l2 = which(dat[,z] ==0)
+    dat[l1,z] = 1
+    dat[l2, z] = 0
+    }
+
+    if(!(med ==0)){
+    l1 = which(dat[,z] >= med)
+    l2 = which(dat[,z] < med)
+    dat[l1,z] = 1
+    dat[l2, z] = 0
+    }
+
+  dat$OS = as.numeric(dat$OS)
+  dat$OS.time = as.numeric(dat$OS.time)
+
+  #cox model using both
+  cox_lnc = coxph(Surv(OS.time, OS) ~ gene, data = dat)
+
+  #compare coefficeints
+  print(ggforest(cox_lnc, data=exp_dat))
+  print("done")
+}
+}
+
 
 #######
-##[6]##-------------------------------------------------------------
+##[7]##-------------------------------------------------------------
 #######
 
 ###EAST WAY TO BUILD AND TEST MULTIVARIATE MODELS
@@ -307,7 +348,7 @@ get_surv_model = function(){
 #model with how many features would have the best performance? 
 
 #######
-##[7]##-------------------------------------------------------------
+##[8]##-------------------------------------------------------------
 #######
 
 ###ROC SURVIVAL CURVES 

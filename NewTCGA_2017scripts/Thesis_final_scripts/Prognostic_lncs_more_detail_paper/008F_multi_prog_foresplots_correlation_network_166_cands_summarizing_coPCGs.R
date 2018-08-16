@@ -210,8 +210,13 @@ res_all_cors = llply(combos, compare_hrs, .progress="text")
 dev.off()
 
 
+res_all_cors2 = ldply(res_all_cors)
+#filter for the ones where there was an improvmenet 
+res_all_cors2 = as.data.table(res_all_cors2)
+res_all_cors2$fdr = p.adjust(res_all_cors2$res)
+res_all_cors2 = as.data.table(filter(res_all_cors2, res <= 0.05))
 
-
+saveRDS(res_all_cors2, file="surv_results_lncRNA_plus_mRNAs_together_aug15.rds")
 
 
 

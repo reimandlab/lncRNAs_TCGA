@@ -34,6 +34,7 @@ library(broom)
 library(tidyverse)
 library(parallel)
 library(limma)
+library(EnvStats)
 
 mypal = pal_npg("nrc", alpha = 0.7)(10)
 
@@ -41,11 +42,8 @@ tss_codes = read.csv("TCGA_TissueSourceSite_Codes2017.csv")
 source_codes = source = read.csv("TCGA_sample_codes.csv")
 
 #1. cands 
-cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
-#cands = filter(cands, data == "PCAWG", pval <=0.05)
-cands = filter(cands, AnalysisType == "noFDR")
+cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 colnames(cands)[7] = "canc"
-#colnames(cands)[3] = "canc"
 
 #2. lncRNAs that intersected with probes
 probes = fread("fantom_lncrnas_mapped_to450_probes.bed")
@@ -60,6 +58,9 @@ add_canc = function(probeid){
 probes$canc = llply(probes$cgid, add_canc, .progress="text")
 z = which(is.na(probes$canc))
 probes = probes[-z,]
+probes$combo = paste(probes$ensg, probes$canc, sep="_")
+z = which(probes$combo %in% cands$combo)
+length(unique(probes$combo[z]))
 
 #3. methylation files
 #KIRC
@@ -213,7 +214,8 @@ rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
 unique(rna$type)
 
 get_data = function(lnc){
-	cancer = cands$canc[which(cands$gene == lnc)][1]
+	print(lnc)
+  cancer = cands$canc[which(cands$gene == lnc)][1]
 	dat = dplyr::filter(probes, canc == cancer, ensg == lnc)
 	
 	if(!(dim(dat)[1]==0)){
@@ -328,16 +330,18 @@ get_data = function(lnc){
 
   	library("ggExtra")
   	name = probes$lncname[which(probes$ensg == lnc)][1]
-	z = which(is.na(df$beta))
-	if(length(z) >=1){
-		df = df[-z,]
-	}
-	z =length(table(df$probe))	
+	   z = which(is.na(df$beta))
+	   if(length(z) >=1){
+		    df = df[-z,]
+	   }
+	   z =length(table(df$probe))	
+
+  print(paste(length(z), "number of probes"))
 
 	#multiple probes present 	
 	if(z > 1){
-		results_all_probes = as.data.frame(matrix(ncol = 12)) ; colnames(results_all_probes) = c("cancer", "gene", "num_patients", "numHighexpMethmatch", "numLowexpMethmatch", 
-			"wilcoxon_pval", "risk_type", "num_risk_pats", "num_risk_pats_wmatchingMeth", 
+		results_all_probes = as.data.frame(matrix(ncol = 13)) ; colnames(results_all_probes) = c("cancer", "gene", "num_patients", "numHighexpMethmatch", "numLowexpMethmatch", 
+			"wilcoxon_pval", "fc", "risk_type", "num_risk_pats", "num_risk_pats_wmatchingMeth", 
     	"risk_group_correlation", "nonrisk_group_correlation", "probe")
 	
 	for(k in 1:z){
@@ -348,6 +352,7 @@ get_data = function(lnc){
 	#everything else the same as if it was just one probe
 	#get wilcoxon p-value stored between low and high exp patients - get avg beta value for each group 
 		wilcoxon_pval = wilcox.test(beta ~ median, data =new)$p.value  
+    fc = mean(new$beta[new$median == "Low"])/mean(new$beta[new$median == "High"])
 		#label probe as methylated or not methylated for each patient 
 		new$mut_status = ""
     		get_mut_stat = function(beta){
@@ -410,13 +415,41 @@ get_data = function(lnc){
     #what is the number of pateints wtih a cna that matches risk? (within risk grou)
     length_risk_pats_wmeth = length(which(risk_pats$exp_meth_match == meth_risk))
     probe = new$probe[k]
-	results = c(cancer, unique(new$gene), length(unique(new$patient)), length(which(new$exp_meth_match == "HighExp_NoMeth")), 
-      length(which(new$exp_meth_match == "LowExp_Meth")), wilcoxon_pval, risk, length_risk_pats, length_risk_pats_wmeth, rr, rp, probe)
-    names(results) = c("cancer", "gene", "num_patients", "numHighexpMethmatch", "numLowexpMethmatch", "wilcoxon_pval", "risk_type", "num_risk_pats", "num_risk_pats_wmatchingMeth", 
+	  results = c(cancer, unique(new$gene), length(unique(new$patient)), length(which(new$exp_meth_match == "HighExp_NoMeth")), 
+      length(which(new$exp_meth_match == "LowExp_Meth")), wilcoxon_pval, fc, risk, length_risk_pats, length_risk_pats_wmeth, rr, rp, probe)
+    names(results) = c("cancer", "gene", "num_patients", "numHighexpMethmatch", "numLowexpMethmatch", "wilcoxon_pval", "fc", "risk_type", "num_risk_pats", "num_risk_pats_wmatchingMeth", 
     	"risk_group_correlation", "nonrisk_group_correlation", "probe")
     new$median <- factor(new$median, levels = c("Low", "High"))
     new$median  # notice the changed order of factor levels
 
+    new$median <- factor(new$median, levels = c("High", "Low"))
+    new$median  # notice the changed order of factor levels
+
+    library("ggExtra")
+      
+    sp1 = ggplot(new, aes(x=beta, y=geneExp, color=median)) + 
+    geom_point() + 
+    geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + theme_bw() + stat_cor() +
+    geom_vline(xintercept=0.5, linetype="dashed", color = "red") + 
+    xlab("Beta Values") +
+    ylab("log1p FPKM") +
+    ggtitle(paste(cancer, probe, gene, "Expression vs Methylation", "\npats wHigh Exp=", length(which(new$median=="High")),
+        "\npats wLow Exp=" , length(which(new$median=="Low")), "\nwilcoxon p-val =", round(wilcoxon_pval, digits=5), "\nexpression risk = ", med_risk))
+
+
+    sp2 = ggplot(new, aes(x=median, y=beta, color=median)) + 
+    geom_boxplot() + geom_jitter(shape=16, position=position_jitter(0.2)) +
+    theme_bw() + 
+    geom_hline(yintercept=0.5, linetype="dashed", color = "grey") + stat_n_text() + 
+    xlab("lncRNA expression group") +
+    ylab("Beta Values") + stat_compare_means(label = "p.signif") +
+    ggtitle(paste(cancer, probe, gene, "Expression vs Methylation", "\npats wHigh Exp=", length(which(new$median=="High")),
+        "\npats wLow Exp=" , length(which(new$median=="Low")), "\nwilcoxon p-val =", round(wilcoxon_pval, digits=5), "\nexpression risk = ", med_risk))
+
+
+    print(sp1)
+    print(sp2)
+    new$median <- factor(new$median, levels = c("Low", "High"))
 
     	#scatter plot
     	sp = ggscatter(new, 
@@ -455,7 +488,10 @@ get_data = function(lnc){
 
 		#get wilcoxon p-value stored between low and high exp patients - get avg beta value for each group 
 		wilcoxon_pval = wilcox.test(beta ~ median, data =df)$p.value  
-		#label probe as methylated or not methylated for each patient 
+		fc = mean(df$beta[df$median == "Low"])/mean(df$beta[df$median == "High"])
+    #methylation in low expression group relative to high expression group
+
+    #label probe as methylated or not methylated for each patient 
 		df$mut_status = ""
     		get_mut_stat = function(beta){
        		meth = beta > 0.5
@@ -514,20 +550,46 @@ get_data = function(lnc){
     length_risk_pats = length(which(df$median == med_risk))
     risk_pats = df[which(df$median == med_risk),]
 
-    #what is the number of pateints wtih a cna that matches risk? (within risk grou)
+    #what is the number of pateints wtih a methylation that matches risk? (within risk grou)
     length_risk_pats_wmeth = length(which(risk_pats$exp_meth_match == meth_risk))
     probe = df$probe[1]
 	results = c(cancer, unique(df$gene), length(unique(df$patient)), length(which(df$exp_meth_match == "HighExp_NoMeth")), 
-      length(which(df$exp_meth_match == "LowExp_Meth")), wilcoxon_pval, risk, length_risk_pats, length_risk_pats_wmeth, rr, rp, probe)
-    names(results) = c("cancer", "gene", "num_patients", "numHighexpMethmatch", "numLowexpMethmatch", "wilcoxon_pval", "risk_type", "num_risk_pats", "num_risk_pats_wmatchingMeth", 
+      length(which(df$exp_meth_match == "LowExp_Meth")), wilcoxon_pval, fc, risk, length_risk_pats, length_risk_pats_wmeth, rr, rp, probe)
+    names(results) = c("cancer", "gene", "num_patients", "numHighexpMethmatch", "numLowexpMethmatch", "wilcoxon_pval", "fc", "risk_type", "num_risk_pats", "num_risk_pats_wmatchingMeth", 
     	"risk_group_correlation", "nonrisk_group_correlation", "probe")
-    df$median <- factor(df$median, levels = c("Low", "High"))
+    df$median <- factor(df$median, levels = c("High", "Low"))
     df$median  # notice the changed order of factor levels
 
 
+    library("ggExtra")
+      
+    sp1 = ggplot(df, aes(x=beta, y=geneExp, color=median)) + 
+    geom_point() + 
+    geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + theme_bw() + stat_cor() +
+    geom_vline(xintercept=0.5, linetype="dashed", color = "red") + 
+    xlab("Beta Values") +
+    ylab("log1p FPKM") +
+    ggtitle(paste(cancer, probe, gene, "Expression vs Methylation", "\npats wHigh Exp=", length(which(df$median=="High")),
+        "\npats wLow Exp=" , length(which(df$median=="Low")), "\nwilcoxon p-val =", round(wilcoxon_pval, digits=5), "\nexpression risk = ", med_risk))
+
+
+    sp2 = ggplot(df, aes(x=median, y=beta, color=median)) + 
+    geom_boxplot() + geom_jitter(shape=16, position=position_jitter(0.2)) +
+    theme_bw() + 
+    geom_hline(yintercept=0.5, linetype="dashed", color = "grey") + stat_n_text() + 
+    xlab("lncRNA expression group") +
+    ylab("Beta Values") + stat_compare_means(label = "p.signif") +
+    ggtitle(paste(cancer, probe, gene, "Expression vs Methylation", "\npats wHigh Exp=", length(which(df$median=="High")),
+        "\npats wLow Exp=" , length(which(df$median=="Low")), "\nwilcoxon p-val =", round(wilcoxon_pval, digits=5), "\nexpression risk = ", med_risk))
+
+
+    print(sp1)
+    print(sp2)
+    df$median <- factor(df$median, levels = c("Low", "High"))
+
        	#scatter plot
     	 	sp = ggscatter(df, 
-	   	x = "beta", y = "geneExp", conf.int = TRUE, # Add confidence interval
+	   	   x = "beta", y = "geneExp", conf.int = TRUE, # Add confidence interval
    				cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
    				cor.method = "spearman", 
    				cor.coeff.args = list(method = "spearman", label.y = 1, label.sep = "\n"), 
@@ -552,8 +614,8 @@ get_data = function(lnc){
 	}
 
 	if(!((both & (length(unique(df$patient)) >=10)))){
-		results = as.data.frame(matrix(ncol = 12)) ; colnames(results) = c("cancer", "gene", "num_patients", "numHighexpMethmatch", "numLowexpMethmatch", 
-			"wilcoxon_pval", "risk_type", "num_risk_pats", "num_risk_pats_wmatchingMeth", 
+		results = as.data.frame(matrix(ncol = 13)) ; colnames(results) = c("cancer", "gene", "num_patients", "numHighexpMethmatch", "numLowexpMethmatch", 
+			"wilcoxon_pval", "fc", "risk_type", "num_risk_pats", "num_risk_pats_wmatchingMeth", 
     	"risk_group_correlation", "nonrisk_group_correlation", "probe")
 	}
 
@@ -563,8 +625,7 @@ get_data = function(lnc){
 }
 }
 
-pdf("candidate_lncRNAs_methylation_versus_Expression_May30_only_NOFDR_candidates.pdf")
-cands = filter(cands, AnalysisType == "noFDR")
+pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Aug15.pdf")
 genes = as.list(unique(as.character(cands$gene[which(cands$gene %in% probes$ensg)]))) #88/166 have methylation probes overlapping them 
 lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
 dev.off()
@@ -580,23 +641,25 @@ lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,]
 
 lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
 
+
 lnc_meth_cancer_data2$wilcoxon_pval = as.numeric(as.character(lnc_meth_cancer_data2$wilcoxon_pval))
 lnc_meth_cancer_data2 = lnc_meth_cancer_data2[order(wilcoxon_pval)]
 lnc_meth_cancer_data2$fdr = p.adjust(lnc_meth_cancer_data2$wilcoxon_pval, method="fdr")
 
-sig_diff = filter(lnc_meth_cancer_data2, wilcoxon_pval <=0.05)
-sig_diff = as.data.frame(sig_diff)
-
 #is probe in promoter or exon? 
 colnames(probes)[11] = "gene"
 probes = probes[,c(1:4, 6:9, 11:14)]
-colnames(sig_diff)[12] = "cgid"
+
+sig_diff = filter(lnc_meth_cancer_data2, wilcoxon_pval <=0.05)
+sig_diff = as.data.frame(sig_diff)
+
+colnames(sig_diff)[13] = "cgid"
 sig_diff = merge(sig_diff, probes, by=c("gene", "cgid"))
 
 check_promoter = function(row){
 	strand = row$lncstrand
-	lnc_prom_start = row$lncstart-2000
-	lnc_prom_end = row$lncstart+2000
+	lnc_prom_start = row$lncstart-1000
+	lnc_prom_end = row$lncstart+500
 	cpg = row$cpg_start+1
 
 	#promoter
@@ -613,11 +676,17 @@ sig_diff$region = apply(sig_diff, 1, check_promoter)
 sig_diff = as.data.frame(sig_diff)
 
 #subset to promoters
-sig_diff = subset(sig_diff, region == "promoter")
+#sig_diff = subset(sig_diff, region == "promoter")
+
+#plot probe relative to lncRNA start/end
+sig_diff$fc = as.numeric(sig_diff$fc)
+sig_diff$fc = log2(sig_diff$fc)
+sig_diff = as.data.table(sig_diff)
+sig_diff = sig_diff[order(-abs(fc), wilcoxon_pval)]
 
 #these 15 genes have a significant difference in median beta values dsitributions between high 
 #lncRNA expression and low lncRNA expression groups 
-saveRDS(sig_diff, file="methylation_analysis_of_candidate_lncRNAs_promoter_only_wilcoxon_resutls_May31.rds")
+saveRDS(sig_diff, file="methylation_analysis_of_candidate_lncRNAs_promoter_only_wilcoxon_resutls_Aug15.rds")
 
 #----------------------------------------------------
 #SUMMARIZE and visualize same as copy number analysis 
@@ -628,7 +697,6 @@ dups = as.data.table(table(sig_diff$gene), sig_diff$cgid)
 dups = dups$V1[which(dups$N >1)]
 
 #seperate sig_diffs
-
 probes_keep = c()
 
 for(i in 1:length(dups)){
@@ -647,10 +715,9 @@ sig_diff_nodups = subset(sig_diff, !(gene %in% dups))
 sig_diff = rbind(dups_sig_diff, sig_diff_nodups)
 
 
-#---> 15 lncRNAs in total with significant wilcoxon p-value 
+#---> 37 lncRNAs in total with significant wilcoxon p-value (includes probes in both promoters and gene bodies)
 #now let's look at the number of risk pateints that have matcinng methylation trends
 #and how strong the correlation between beta value and expression is 
-
 
 sig_diff$no_match = ""
 get_nomatch = function(row){
@@ -661,17 +728,17 @@ get_nomatch = function(row){
 }
 sig_diff$no_match = apply(sig_diff, 1, get_nomatch)
 
-match_h = sig_diff[,c(1:5,7:24)]
+match_h = sig_diff[,c(1:5,7:25)]
 colnames(match_h)[5] = "num_meth_exp_match"
 match_h$type = "HighExpNoMeth"
 match_h$num_meth_exp_match = as.numeric(as.character(match_h$num_meth_exp_match))
 
-match_l = sig_diff[,c(1:4, 6, 7:24)]
+match_l = sig_diff[,c(1:4, 6, 7:25)]
 colnames(match_l)[5] = "num_meth_exp_match"
 match_l$type = "LowExpMeth"
 match_l$num_meth_exp_match = as.numeric(as.character(match_l$num_meth_exp_match))
 
-match_no = sig_diff[,c(1:4,25, 7:24)]
+match_no = sig_diff[,c(1:4,26, 7:25)]
 colnames(match_no)[5] = "num_meth_exp_match"
 match_no$type = "NoExpMethMatch"
 
@@ -679,9 +746,9 @@ matched_sig = rbind(match_h, match_l, match_no)
 matched_sig = as.data.table(matched_sig)
 matched_sig = matched_sig[order(num_meth_exp_match, -type)]
 matched_sig = as.data.frame(matched_sig)
-order = as.character(unique(matched_sig$gene))
-matched_sig$gene <- factor(matched_sig$gene, levels = order)
-matched_sig$gene  # notice the changed order of factor levels
+order = as.character(unique(matched_sig$lncname))
+matched_sig$lncname <- factor(matched_sig$lncname, levels = order)
+matched_sig$lncname  # notice the changed order of factor levels
 
 #for each lncRNA turn fractions into percentages 
 matched_sig$num_meth_exp_match_patients = matched_sig$num_meth_exp_match
@@ -691,8 +758,8 @@ matched_sig$num_meth_exp_match = round(matched_sig$num_meth_exp_match, digits=3)
 matched_sig = as.data.table(matched_sig)
 matched_sig = matched_sig[order(risk_type, num_meth_exp_match, type)]
 
-order = unique(matched_sig$gene)
-matched_sig$gene <- factor(matched_sig$gene, levels = order)
+order = unique(matched_sig$lncname)
+matched_sig$lncname <- factor(matched_sig$lncname, levels = order)
 
 matched_sig$num_meth_exp_match = as.numeric(matched_sig$num_meth_exp_match)
 # Stacked bar plots, add labels inside bars
@@ -720,29 +787,47 @@ z = which((matched_sig$risk_type == "low_expression") & (matched_sig$type == "Lo
 low = matched_sig[z,]
 
 pats_summary = rbind(high, low)
-order = as.character(unique(matched_sig$gene))
 
-pats_summary$per_patients_wrisk_meth = (as.numeric(as.character(pats_summary$num_risk_pats_wmatchingMeth)))/(as.numeric(as.character(pats_summary$num_risk_pats)))
+pats_summary$per_patients_wrisk_meth = (as.numeric((pats_summary$num_risk_pats_wmatchingMeth)))/(as.numeric((pats_summary$num_risk_pats)))
 pats_summary = as.data.table(pats_summary)
 
-pats_summary = pats_summary[order(match(gene, order))] 
+#those with multiple probes just take the one wtih the largest fc
+z = which(duplicated(pats_summary$lncname))
+lncs = unique(pats_summary$lncname[z])
+for(i in 1:length(lncs)){
+  lnc_dat = pats_summary[pats_summary$lncname == lncs[i],]
+  probe_keep = lnc_dat[order(-fc)]
+  probe_keep1 = probe_keep$cgid[1]
+  rm = probe_keep$cgid[which(!(probe_keep$cgid %in% probe_keep1))]
+  z = which(pats_summary$cgid %in% rm)
+  pats_summary = pats_summary[-z,]
+}
 
-labels = as.character(pats_summary$cancer)
+pats_summary = pats_summary[order(abs(fc))]
+pats_summary$lncname = factor(pats_summary$lncname, levels = unique(pats_summary$lncname))
 
-p2 = ggbarplot(pats_summary, x = "gene", y = "per_patients_wrisk_meth", order=order, ylab="% of risk \n patients wMethylation", xlab = "lncRNA", 
-  color = "type", fill = "risk_type", legend="left", label=labels, lab.size = 2.5, lab.pos = c("out"), lab.vjust = 0.8, lab.hjust = 0.67, 
-  palette = mypal) + theme_light() +coord_flip() + scale_colour_manual(values = c("salmon", "steelblue", "snow3")) +
-  scale_fill_manual(values = c("mistyrose", "aliceblue")) + geom_hline(yintercept=0.2, linetype="dashed", color = "red") + 
+labels = as.character(pats_summary$canc)
+
+p2 = ggbarplot(pats_summary, x = "lncname", y = "fc", ylab="log2(beta FC) \nbetween risk groups", xlab = "lncRNA", 
+  color = "region", fill = "risk_type", legend="left") + 
+theme_light() +coord_flip() + scale_color_manual(values = c("darkslategrey", "peru")) + 
+  scale_fill_manual(values = c("mistyrose", "aliceblue")) + geom_hline(yintercept=-0.2, linetype="dashed", color = "red") + 
+  geom_hline(yintercept=0.2, linetype="dashed", color = "red") +
+  geom_hline(yintercept=0, linetype="dashed", color = "black") + 
   ggtitle("lncRNA Methylation in Risk Groups")
   #label = TRUE, lab.col = "white", lab.pos = "in", lab.size=1.8)
 p2= ggpar(p2,
- font.tickslab = c(8,"plain", "black"),
- xtickslab.rt = 45, legend = "none") 
+ font.tickslab = c(8,"plain", "black"), 
+ xtickslab.rt = 45) 
 
 library(patchwork)
-pdf("Methylation_lncRNAs_summary_15cands_may31.pdf", width=12, height=9)
-p1 + p2 + plot_layout(ncol = 2, widths = c(2, 1))
+pdf("Methylation_lncRNAs_summary_37cands_aug31.pdf", width=12, height=9)
+p2 
 dev.off()
+
+#final ones used to make plot --> 37 lncRNAs 
+saveRDS(pats_summary, file="plot_figure3_methylation_analysis_of_candidate_lncRNAs_promoter_only_wilcoxon_resutls_Aug15.rds")
+
 
 #divide up the risk correlation and no risk correlation groups
 cors_risk = pats_summary[,c(1:10, 12:26)]

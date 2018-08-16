@@ -16,7 +16,6 @@ library(patchwork)
 library(caret)  
 library(Rtsne)
 library(EnvStats)
-library(TCGAbiolinks)
 
 #------FEATURES-----------------------------------------------------
 
@@ -31,6 +30,7 @@ val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos,
 val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
 val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 
+library(TCGAbiolinks)
 
 #--------This script ------------------------------------------------
 
@@ -47,12 +47,12 @@ val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer 
 #write function that adds tag to whole data group 
 #and does survival analysis on whole group
 
-z = which(cancers %in% all_cands$cancer)
+z = which(cancers %in% allCands$cancer)
 cancer_data = canc_datas[z] #cancers list and canc_datas list should be the same 
 
 get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates 
-  z = which(colnames(dtt) %in% c(as.character(all_cands$gene[all_cands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
+  z = which(colnames(dtt) %in% c(as.character(allCands$gene[allCands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
     "new_tumor_event_type", "Cancer"))
   dtt = dtt[,z]
@@ -111,9 +111,15 @@ add_clin_vars = function(dtt){
     dtt = merge(dtt, clin, by=cols)
     return(dtt)
 
-} #end add_clin_vars 
-}
+    } #end add_clin_vars 
 
+  #if not in molecular profiles subset of biolinks
+  #just look at whatever clinical variables are available
+  if(length(z)==0){
+    clinical <- GDCquery_clinic(project = paste("TCGA-", canc, sep=""), type = "clinical")
+  }
+
+}
 
 clin_data_lncs = llply(filtered_data, add_clin_vars)
 
