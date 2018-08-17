@@ -641,7 +641,6 @@ lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,]
 
 lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
 
-
 lnc_meth_cancer_data2$wilcoxon_pval = as.numeric(as.character(lnc_meth_cancer_data2$wilcoxon_pval))
 lnc_meth_cancer_data2 = lnc_meth_cancer_data2[order(wilcoxon_pval)]
 lnc_meth_cancer_data2$fdr = p.adjust(lnc_meth_cancer_data2$wilcoxon_pval, method="fdr")
@@ -828,7 +827,6 @@ dev.off()
 #final ones used to make plot --> 37 lncRNAs 
 saveRDS(pats_summary, file="plot_figure3_methylation_analysis_of_candidate_lncRNAs_promoter_only_wilcoxon_resutls_Aug15.rds")
 
-
 #divide up the risk correlation and no risk correlation groups
 cors_risk = pats_summary[,c(1:10, 12:26)]
 cors_nonrisk = pats_summary[,c(1:9, 11, 12:26)]
@@ -861,8 +859,8 @@ dev.off()
 
 
 
-
-
+pats_summary = readRDS("plot_figure3_methylation_analysis_of_candidate_lncRNAs_promoter_only_wilcoxon_resutls_Aug15.rds")
+pats_summary = pats_summary[order(abs(fc))]
 
 
 
