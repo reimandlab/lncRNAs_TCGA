@@ -123,10 +123,54 @@ get_exp_plots = function(lnc){
 	#rotate_x_text(45)
 	
 	#try density
-	p = ggdensity(dat, x = "lncRNAExp", title=lnc, color="type")
+	p = ggdensity(dat, x = "lncRNAExp", title=paste(lnc, get_name(lnc)), color="type")+
+  xlab("log1p(FPKM)")
 	print(p)
 	print("done plot")
 }
+
+pdf("pca3_expression_across_cancers.pdf")
+get_exp_plots("ENSG00000225937")
+dev.off()
+
+lnc = get_ensg("MALAT1")
+pdf("malat1_expression_across_cancers.pdf")
+get_exp_plots(lnc)
+dev.off()
+
+lnc = get_ensg("NEAT1")
+pdf("neat1_expression_across_cancers.pdf")
+get_exp_plots(lnc)
+dev.off()
+
+lnc = get_ensg("HOTAIR")
+pdf("hotair_expression_across_cancers.pdf")
+get_exp_plots(lnc)
+dev.off()
+
+lnc = get_ensg("TINCR")
+pdf("tincr_expression_across_cancers.pdf")
+get_exp_plots(lnc)
+dev.off()
+
+lnc = get_ensg("XIST")
+pdf("xist_expression_across_cancers.pdf")
+get_exp_plots(lnc)
+dev.off()
+
+lnc = get_ensg("RP5-1158E12.3")
+pdf("RP5-1158E12.3_expression_across_cancers.pdf")
+get_exp_plots(lnc)
+dev.off()
+
+#plot all lncRNAs 
+lncs = unique(colnames(rna))
+z = which(str_detect(lncs, "ENSG"))
+lncs = lncs[z]
+
+#pdf("all_lncs_dist_plots.pdf")
+#llply(lncs, get_exp_plots, .progress="text")
+#dev.off()
 
 #######
 ##[3]##-------------------------------------------------------------
@@ -199,6 +243,11 @@ get_pcg_enrich = function(lnc, pcg, canc){
    print(g)
 }
 
+pdf("pcg_diff_exp_example.pdf")
+get_pcg_enrich(get_ensg("MAPT-AS1"), get_ensg("MAPT"), "Breast invasive carcinoma"))
+dev.off()
+
+
 #######
 ##[5]##-------------------------------------------------------------
 #######
@@ -267,6 +316,36 @@ get_km_plot = function(gene, cancer){
           print(s)
 }
 }	
+
+pdf("pca3_km_plot_prad.pdf")
+get_km_plot("ENSG00000225937", "PRAD")
+dev.off()
+
+pdf("hotair_km_plot_prad.pdf")
+gene = get_ensg("HOTAIR")
+get_km_plot(gene, "BRCA")
+dev.off()
+
+pdf("malat1_esca_km_plot_prad.pdf")
+gene = get_ensg("MALAT1")
+get_km_plot(gene, "ESCA")
+dev.off()
+
+pdf("malat1_stad_km_plot_prad.pdf")
+gene = get_ensg("MALAT1")
+get_km_plot(gene, "STAD")
+dev.off()
+
+pdf("malat1_ov_km_plot_prad.pdf")
+gene = get_ensg("MALAT1")
+get_km_plot(gene, "OV")
+dev.off()
+
+pdf("xist_brca_km_plot_prad.pdf")
+gene = get_ensg("XIST")
+get_km_plot(gene, "BRCA")
+dev.off()
+
 
 #######
 ##[7]##-------------------------------------------------------------
