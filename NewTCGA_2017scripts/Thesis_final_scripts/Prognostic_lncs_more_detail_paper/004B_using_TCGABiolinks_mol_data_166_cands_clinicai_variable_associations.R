@@ -77,6 +77,8 @@ add_clin_vars = function(dtt){
   clin_subtypes <- TCGAquery_subtype(tumor = canc)
 
     clin = clin_subtypes
+    z = which(clin$patient %in% dtt$patient)
+    clin = clin[z,]
     print(length(colnames(clin)))
     print(length(unique(clin$patient)))
     for(i in 1:ncol(clin)){
@@ -115,9 +117,9 @@ add_clin_vars = function(dtt){
 
   #if not in molecular profiles subset of biolinks
   #just look at whatever clinical variables are available
-  if(length(z)==0){
-    clinical <- GDCquery_clinic(project = paste("TCGA-", canc, sep=""), type = "clinical")
-  }
+  #if(length(z)==0){
+  #  clinical <- GDCquery_clinic(project = paste("TCGA-", canc, sep=""), type = "clinical")
+  #}
 
 }
 
@@ -166,8 +168,8 @@ get_clin_lnc_cors = function(dtt){
          new_dat$lncRNA_tag[l2] = 0
         }
     #get risk type 
-    z = as.numeric(which((all_cands$cancer %in% canc) & (all_cands$gene %in% lnc) & (all_cands$data == "TCGA")))
-    hr = all_cands$HR[z]
+    z = as.numeric(which((allCands$cancer %in% canc) & (allCands$gene %in% lnc) & (allCands$data == "TCGA")))
+    hr = as.numeric(allCands$HR[z])
     new_dat$risk = ""
     if(hr >1){new_dat$risk = "HighExp"}
     if(hr <1){new_dat$risk = "LowExp"}

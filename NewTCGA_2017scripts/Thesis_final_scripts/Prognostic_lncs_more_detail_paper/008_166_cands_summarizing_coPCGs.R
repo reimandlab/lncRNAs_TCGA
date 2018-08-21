@@ -78,7 +78,26 @@ cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 #RESULTS-------------------------------------------------------------
 #--------------------------------------------------------------------
 
-coexp = readRDS("new_PCG_enrichment_min_5FPKMmedian_july20.rds")
+#coexp = readRDS("new_PCG_enrichment_min_5FPKMmedian_july20.rds")
+#new file using diff exp to get PCGs
+coexp = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
+#summary how many PCGs per lncRNA
+coexp$combo = paste(coexp$lnc, coexp$cancer)
+sum = as.data.table(table(coexp$combo))
+sum
+sum = sum[order(N)]
+sum$V1 = factor(sum$V1, levels = unique(sum$V1))
+pdf("summary_lncRNA_DE_PCGs_148_pairs_aug21.pdf", height=12)
+p<-ggplot(data=sum, aes(x=V1, y=N)) +
+  geom_bar(stat="identity", color="blue", fill="white")  
+# Horizontal bar plot
+p + coord_flip() + ylab("Number of sig DE PCGs") + xlab("lncRNA-cancer pair")+
+geom_vline(xintercept = 500, linetype="dashed", color = "red")+
+theme(axis.text.y = element_text(size=4)) 
+
+dev.off()
+
+
 
 z = which(coexp$lnc %in% cands_dups)
 if(!(length(z))==0){

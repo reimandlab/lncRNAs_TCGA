@@ -244,7 +244,7 @@ get_pcg_enrich = function(lnc, pcg, canc){
 }
 
 pdf("pcg_diff_exp_example.pdf")
-get_pcg_enrich(get_ensg("MAPT-AS1"), get_ensg("MAPT"), "Breast invasive carcinoma"))
+get_pcg_enrich(get_ensg("MAPT-AS1"), get_ensg("MAPT"), "Breast invasive carcinoma")
 dev.off()
 
 

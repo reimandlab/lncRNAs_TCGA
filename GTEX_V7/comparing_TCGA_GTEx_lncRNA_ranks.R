@@ -6,7 +6,7 @@ source("source_file.R")
 library(stringr)
 
 ###Data
-gtex = readRDS("allGTEX_lncRNAs_scored_May23.rds")
+gtex = readRDS("allGTEX_lncRNAs_scored_Aug21.rds")
 tcga = readRDS("TCGA_all_lncRNAs_cancers_scored_byindexMay23.rds")
 
 lncs_val = fread("6_unique_lncNRAs_validate_PCAWG.txt")
@@ -23,6 +23,8 @@ lncs_val = fread("6_unique_lncNRAs_validate_PCAWG.txt")
 #for one tissue
 
 tcga_canc = unique(tcga$tis)
+gtex$tis[gtex$tis == "Fallopian Tube"] = "Ovar"
+gtex$tis[gtex$tis == "Cervix Uteri"] = "Uter"
 
 gtex$tis = str_sub(gtex$tis, 1, 4)
 gtex_canc = unique(gtex$tis)
@@ -130,6 +132,7 @@ get_fc = function(dataframee){
 #pdf("volcano_plots_foldchange_of_lncRNA_ranks_TCGA_vs_GTEX_May24.pdf")
 results_analysis = llply(all_datas, get_fc, .progress="text")
 #dev.off()
-saveRDS(results_analysis, file="results_analysis_July24.rds")
+#saveRDS(results_analysis, file="results_analysis_July24.rds")
+saveRDS(results_analysis, file="results_analysis_Aug21.rds")
 
 
