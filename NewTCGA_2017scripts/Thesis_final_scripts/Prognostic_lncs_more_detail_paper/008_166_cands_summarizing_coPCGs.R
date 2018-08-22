@@ -97,103 +97,112 @@ theme(axis.text.y = element_text(size=4))
 
 dev.off()
 
+#z = which(coexp$lnc %in% cands_dups)
+#if(!(length(z))==0){
+#coexp$lnc[z] = paste(coexp$lnc[z], coexp$canc[z], sep="_")
+#}
 
-
-z = which(coexp$lnc %in% cands_dups)
-if(!(length(z))==0){
-coexp$lnc[z] = paste(coexp$lnc[z], coexp$canc[z], sep="_")
-}
-
-coexp$combo=""
-z = which(str_detect(coexp$lnc, "_"))
-coexp$combo[-z] = paste(coexp$lnc[-z], coexp$canc[-z], sep="_")
-coexp$combo[z] = coexp$lnc[z]
+#coexp$combo=""
+#z = which(str_detect(coexp$lnc, "_"))
+#coexp$combo[-z] = paste(coexp$lnc[-z], coexp$canc[-z], sep="_")
+#coexp$combo[z] = coexp$lnc[z]
 #there was one extra combination from before that shouldn't be part of this
-z = which(coexp$combo %in% allCands$combo)
-coexp = coexp[z,]
+#z = which(coexp$combo %in% allCands$combo)
+#coexp = coexp[z,]
 
 #can run FDR on all PCGs for all Cancer types 
 #175 * 20,0000 = enormous FDR test 
 
 #1. Get FDR by cancer type 
-cancers = as.list(unique(coexp$canc))
-canc_fdr = function(cancer){
-  dat = subset(coexp, canc == cancer)
-	dat$pvalue = as.numeric(dat$pvalue)
-  dat$fdr = p.adjust(dat$pvalue, method = "fdr")
-	z = which(is.na(dat$pvalue))
-  if(!length(z)==0){
-    dat = dat[-z,]
-  }
-  dat = as.data.table(dat)
-	dat = dat[order(fdr)]
-	return(dat)
-}
+#cancers = as.list(unique(coexp$canc))
+#canc_fdr = function(cancer){
+#  dat = subset(coexp, canc == cancer)
+#	dat$pvalue = as.numeric(dat$pvalue)
+#  dat$fdr = p.adjust(dat$pvalue, method = "fdr")
+#	z = which(is.na(dat$pvalue))
+#  if(!length(z)==0){
+#    dat = dat[-z,]
+#  }
+#  dat = as.data.table(dat)
+#	dat = dat[order(fdr)]
+#	return(dat)
+#}
 
 library(dplyr)
 library(plyr)
-canc_dats = llply(cancers, canc_fdr) 
-canc_dats = ldply(canc_dats, data.frame)
+#canc_dats = llply(cancers, canc_fdr) 
+#canc_dats = ldply(canc_dats, data.frame)
 
 #plot scatter plot, FC versus p-value
 #coexp$fdr = -log10(coexp$fdr)
-canc_dats$mean_diff = as.numeric(canc_dats$mean_diff)
+#canc_dats$mean_diff = as.numeric(canc_dats$mean_diff)
 #z = which(canc_dats$mean_diff == 0)
 #canc_dats = canc_dats[-z,]
-canc_dats = as.data.table(canc_dats)
+#canc_dats = as.data.table(canc_dats)
 
 #2. Summarize per lncRNA/cancer, how many PCGs upregulated in risk group
 #and how many upregulated in non-risk group 
 #(>0 --> more expressed in risk group, <0, more expressed in low risk group)
 
 #keep sig fdr, add risk/non-risk tag
-canc_dats = as.data.table(canc_dats)
-canc_dats = as.data.table(filter(canc_dats, fdr <=0.01))
-canc_dats$risk_type = ""
-canc_dats$risk_type[canc_dats$mean_diff < -1] = "NonRisk"
-canc_dats$risk_type[canc_dats$mean_diff > 1] = "Risk"
-canc_dats = canc_dats[which(!(canc_dats$risk_type =="")),]
+coexp = as.data.table(coexp)
+coexp$combo = paste(coexp$lnc, coexp$cancer, sep="_")
+
+coexp$risk_type = ""
+#add lncRNA - risk status whether its high exp or low exp
+get_risk = function(combo){
+  hr = as.numeric(allCands$HR[which(allCands$combo == combo)])
+  if(hr >1){
+    risk = "high_exp"
+  }
+  if(hr <1){
+    risk = "low_exp"
+  }
+  return(risk)
+}
+coexp$risk_type = llply(coexp$combo, get_risk, .progress="text")
+coexp$risk_type = unlist(coexp$risk_type)
+
+coexp$pcg_risk[(coexp$logFC >= log(2))&(coexp$risk_type=="high_exp")] = "upregulated_in_risk"
+coexp$pcg_risk[(coexp$logFC <= log(0.5))&(coexp$risk_type=="low_exp")] = "upregulated_in_risk"
+coexp$pcg_risk[(coexp$logFC >= log(2))&(coexp$risk_type=="low_exp")] = "downregulated_in_risk"
+coexp$pcg_risk[(coexp$logFC <= log(0.5))&(coexp$risk_type=="high_exp")] = "downregulated_in_risk"
+
+canc_dats = coexp 
 
 #fold change of two equals to 0.51
 #fold change of 1/2 equals to -0.51
-summary = as.data.table(table(canc_dats$lnc, canc_dats$risk_type))
+summary = as.data.table(table(canc_dats$combo, canc_dats$pcg_risk))
 summary = filter(summary, N >0)
 summary = as.data.table(summary)
-colnames(summary) = c("lnc", "Risk", "NumPCGs")
+colnames(summary) = c("combo", "Risk", "NumPCGs")
 
 #re-order
 summary = summary[order(NumPCGs)]
 summary$canc = ""
 for(i in 1:nrow(summary)){
 	print(i)
-  canc = unique(canc_dats$canc[which(canc_dats$lnc %in% summary$lnc[i])])
+  canc = unique(canc_dats$canc[which(canc_dats$combo %in% summary$combo[i])])
 	summary$canc[i] = canc
 }
 
-lncorder = unique(summary$lnc)
-summary$lnc = factor(summary$lnc, levels = lncorder)
+lncorder = unique(summary$combo)
+summary$combo = factor(summary$combo, levels = lncorder)
 
 #Change lnc IDs to gene names 
 summary$name = ""
 for(i in 1:nrow(summary)){
-  z1 = which(allCands$gene == unlist(summary[i,1]))
   z2 = which(allCands$combo == unlist(summary[i,1]))
-  name = allCands$CAT_geneName[c(z1,z2)]
+  name = allCands$CAT_geneName[c(z2)]
   summary$name[i] = name
 }
 
 lncorder = unique(summary$name)
 summary$name = factor(summary$name, levels = lncorder)
 
-#add tag to non-unique ones
-cands_dups = unique(allCands$CAT_geneName[which(duplicated(allCands$CAT_geneName))])
-z = which(summary$name %in% cands_dups)
-summary$name = as.character(summary$name)
-for(y in 1:length(z)){
-  print(y)
-  g = paste(summary$name[z[y]], y, sep="_")
-  summary$name[z[y]] = g
-}
+#############################################################
+####keep those with at least 10 sig PCGs#####################
+#############################################################
 
 summary = as.data.table(filter(summary, NumPCGs >= 10))
 
@@ -209,23 +218,19 @@ colnames(cancers_conv)[2] = "canc"
 saveRDS(cancers_conv, file="cancers_conv_july23.rds")
 summary = merge(summary, cancers_conv, by="canc")
 summary = summary[order(Risk, NumPCGs)]
-lncorder = unique(summary$lnc)
-summary$lnc = factor(summary$lnc, levels = lncorder)
+lncorder = unique(summary$name)
+summary$name = factor(summary$name, levels = lncorder)
 #canc_order = unique(summary$type)
 #summary$type = factor(summary$type, levels = canc_order)
 lncorder = unique(summary$name)
 summary$name = factor(summary$name, levels = lncorder)
-riskorder = c("Risk", "NonRisk")
+riskorder = c("upregulated_in_risk", "downregulated_in_risk")
 summary$Risk = factor(summary$Risk, levels = riskorder)
 
 ##---------Main plot with barplot risk vs non risk -----------------------
 
 #for plot only keep those lnc-canc combos with at least 50 pcgs 
-z = which(str_detect(summary$lnc, "_"))
 summary = as.data.table(summary)
-summary$combo = ""
-summary$combo[z] = as.character(summary$lnc[z])
-summary$combo[-z] = paste(summary$lnc[-z], summary$canc[-z], sep="_")
 
 #add the candidates that validated
 z = which(summary$combo %in% val_cands$combo)
@@ -266,9 +271,8 @@ cancers + ratios + plot_layout(ncol = 2, widths = c(1, 12))
 dev.off()
 
 #summarize which ones didn't have any sig pcgs
-z1 = which(allCands$gene %in% summary$lnc)
-z2 = which(allCands$combo %in% summary$lnc)
-nosig = allCands[-c(z1, z2),]
+z2 = which(allCands$combo %in% summary$combo)
+nosig = allCands[-c(z2),]
 
 ##--------------------------------------------------------------------------------------
 #subset canc_dats to only include lncRNA-cancer-PCGs as in summary
@@ -310,7 +314,7 @@ census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
 
 #how many duplicated PCGs
 #pcgs_sum = as.data.table(table(canc_dats$pcg, canc_dats$risk_type, canc_dats$canc))
-pcgs_sum = as.data.table(table(canc_dats$pcg, canc_dats$risk_type))
+pcgs_sum = as.data.table(table(canc_dats$ID, canc_dats$pcg_risk))
 pcgs_sum = as.data.table(filter(pcgs_sum, N >=1))
 pcgs_sum = pcgs_sum[order(N)]
 pcgs_sum$both_risk_groups = ""
@@ -332,11 +336,11 @@ both_risks = unique(pcgs_sum$V1[z])
 
 #plot summary how many cancer types pcg
 #is in high risk group
-risk = as.data.table(filter(pcgs_sum, V2 == "Risk"))
-risk$groupy = cut(risk$N, breaks =c(0,1,5, 10, 15, 20,25, 30))
+risk = as.data.table(filter(pcgs_sum, V2 == "upregulated_in_risk"))
+risk$groupy = cut(risk$N, breaks =c(0,1,5, 10, 15, 20,25, 31))
 
-nonrisk = as.data.table(filter(pcgs_sum, V2 == "NonRisk"))
-nonrisk$groupy = cut(nonrisk$N, breaks =c(0,1,5, 10, 15, 20,25, 30))
+nonrisk = as.data.table(filter(pcgs_sum, V2 == "downregulated_in_risk"))
+nonrisk$groupy = cut(nonrisk$N, breaks =c(0,1,5, 10, 15, 20,25))
 
 #SUMMARIZE
 # Change line color and fill color
@@ -380,7 +384,7 @@ saveRDS(both, file="pcgs_enriched_in_risk_groups_non_lncRNA_risk_groups_pcg_anal
 #---------BY CANCER TYPE ANALYSIS-----------------------------------------------------------------
 
 #PCGs enriched in risk and non-risk by cancer type 
-pcgs_sum = as.data.table(table(canc_dats$canc, canc_dats$pcg, canc_dats$risk_type))
+pcgs_sum = as.data.table(table(canc_dats$canc, canc_dats$ID, canc_dats$pcg_risk))
 pcgs_sum = as.data.table(filter(pcgs_sum, N >=1))
 pcgs_sum = pcgs_sum[order(N)]
 colnames(pcgs_sum) = c("cancer", "pcg", "group", "NumTimes")
@@ -407,14 +411,7 @@ pcgs_sum$frac_cands = pcgs_sum$NumTimes/pcgs_sum$Num_lncs_cands
 pcgs_sum = filter(pcgs_sum, NumTimes == Num_lncs_cands)
 pcgs_sum = as.data.table(pcgs_sum)
 
-ggplot(pcgs_sum, aes(x=type, y=NumTimes, shape=group)) + geom_point(size=1.5) +
-theme_bw()+
-geom_label_repel(data=filter(res_tog, NumPCGs >=1500), aes(label=name, fill=type, color = perc_risk_label), size=2)+
-scale_fill_brewer(palette="Paired") +
-scale_color_manual(values=c("black", "Blue"))
-
-dev.off()
-
+#dont really know what ^ is for
 
 ##---------HRs versus # of PCGS-------------------------------------------------------------------
 res_tog = merge(allCands, summary, by= "combo")
@@ -423,23 +420,30 @@ res_tog$HR = log2(res_tog$HR)
 mypal = readRDS(file="palette_32_cancer_types.rds")
 
 # Basic scatter plot
-pdf("summary_coexpressed_risk_non_risk_wHR_1000.pdf")
+pdf("summary_coexpressed_risk_non_risk_wHR_500.pdf")
 ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
 geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
-geom_vline(xintercept = 200, linetype="dashed", color = "red") +
+geom_vline(xintercept = 500, linetype="dashed", color = "red") +
 theme_bw()+
-geom_label_repel(data=filter(res_tog, NumPCGs >=200), aes(label=name, fill=type), color = 'black',size=2)+
+geom_label_repel(data=filter(res_tog, NumPCGs >=500), aes(label=name, fill=type), color = 'darkslategrey',size=1)+
+scale_fill_manual(values=mypal)
+dev.off()
+
+pdf("summary_coexpressed_risk_non_risk_wHR_750.pdf")
+ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
+geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
+geom_vline(xintercept = 750, linetype="dashed", color = "red") +
+theme_bw()+
+geom_label_repel(data=filter(res_tog, NumPCGs >=750), aes(label=name, fill=type), color = 'black',size=2)+
 scale_fill_brewer(palette="Paired")
 dev.off()
 
-pdf("summary_coexpressed_risk_non_risk_wHR_1500.pdf")
-ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
-geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
-geom_vline(xintercept = 275, linetype="dashed", color = "red") +
-theme_bw()+
-geom_label_repel(data=filter(res_tog, NumPCGs >=275), aes(label=name, fill=type), color = 'black',size=2)+
-scale_fill_brewer(palette="Paired")
-dev.off()
+#summarize # of PCGs DE in favourable lncRNAs versus unfavourable
+res_tog$lnc_risk[res_tog$HR > log2(1)] = "Unfavourable"
+res_tog$lnc_risk[res_tog$HR < log2(1)] = "Favourable"
+t = table(res_tog$lnc_risk, res_tog$Risk)
+chisq.test(t)
+#no sig association
 
 #add layer about risk, are they all "binary" lncs or "balanced" lncs?
 
@@ -449,14 +453,14 @@ res_tog$perc_risk_label[which(res_tog$perc_risk < 0.49)] = "SmallRisk"
 res_tog$perc_risk_label[which(res_tog$perc_risk > 0.51)] = "HighRisk"
 res_tog$perc_risk_label[which(res_tog$perc_risk_label == "")] = "BalRisk"
 
-pdf("summary_coexpressed_risk_non_risk_wHR_1500_wcolor.pdf")
+pdf("summary_coexpressed_risk_non_risk_wHR_750_wcolor.pdf")
 ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
 geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
-geom_vline(xintercept = 275, linetype="dashed", color = "red") +
+geom_vline(xintercept = 750, linetype="dashed", color = "red") +
 theme_bw()+
-geom_label_repel(data=filter(res_tog, NumPCGs >=275), aes(label=name, fill=type, color = perc_risk_label), size=2)+
+geom_label_repel(data=filter(res_tog, NumPCGs >=750), aes(label=name, fill=type, color = perc_risk_label), size=2)+
 scale_fill_brewer(palette="Paired") +
-scale_color_manual(values=c("black", "Blue"))
+scale_color_manual(values=c("black", "blue", "darkslategrey"))
 
 dev.off()
 

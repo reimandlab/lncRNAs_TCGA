@@ -128,7 +128,8 @@ clin_data_lncs = llply(filtered_data, add_clin_vars)
 #remove Nulls
 clin_data_lncs = Filter(Negate(is.null), clin_data_lncs)
 #save this file can work on at home 
-saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
+#saved file --- below
+#saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
 
 #--------LOOK AT ASSOCIATIONS BETWEEN EXPRESSION-------------------------------
 
@@ -175,11 +176,12 @@ get_clin_lnc_cors = function(dtt){
     if(hr <1){new_dat$risk = "LowExp"}
     
     #each clinical variable
-    canc_col_results = as.data.frame(matrix(ncol=6)) ; colnames(canc_col_results)=c("canc", "lnc", "colname", "cor", "pval", "test")
+    canc_col_results = as.data.frame(matrix(ncol=8)) ; colnames(canc_col_results)=c("canc", "lnc", "colname", "cor", "pval", "test", "chisq", "kw_pval")
     for(i in 1:ncol(new_dat)){
       print(i)    
       col = colnames(new_dat)[i]
-      
+      if(!(col == lnc)){
+
       if(!(is.numeric(new_dat[,i]))){
       new_dat[,i] = as.character(new_dat[,i])}
       
@@ -205,7 +207,9 @@ get_clin_lnc_cors = function(dtt){
           #get correlation results and save results into file
           cor = rcorr(new_dat_plot$lncRNA_exp, new_dat_plot$Clinical, "spearman")$r[2]
           pval_cor = rcorr(new_dat_plot$lncRNA_exp, new_dat_plot$Clinical, "spearman")$P[2]
-          row = c(canc, lnc, col, cor, pval_cor, "spearman")
+          chisq_pval = "nochisq"
+          kw_pval = "nokw"
+          row = c(canc, lnc, col, cor, pval_cor, "spearman", chisq_pval, kw_pval)
           names(row) = colnames(canc_col_results)
           canc_col_results = rbind(canc_col_results, row)
           #scatter plot 
@@ -223,51 +227,69 @@ get_clin_lnc_cors = function(dtt){
         #if(is.na(test)[1]){
         if(length(which(is.na(test))) == length(test)){
         #boxplot
-        colnames(new_dat_plot)[2] = "Clinical"
-        new_dat_plot[,3] = log1p(new_dat_plot[,3])
-        med = median(new_dat_plot[,3])
-        colnames(new_dat_plot)[3] = "lncRNA_exp"
+        
         #palette
         colourCount = length(unique(new_dat_plot$Clinical))
         getPalette = colorRampPalette(brewer.pal(9, "Set1"))
 
-        check = dim(table(new_dat_plot$Clinical))
+        check = dim(table(new_dat_plot[,which(colnames(new_dat_plot) %in% col)]))
         if(check >1){
 
         #remove any NAs 
-        z = which(is.na(new_dat_plot$Clinical))
+        #remove NAs
+
+        new_dat_plot[,3] = log1p(new_dat_plot[,3])
+        med = median(new_dat_plot[,3])
+        colnames(new_dat_plot)[3] = "lncRNA_exp"
+
+        z1 = which(is.na(new_dat_plot[,which(colnames(new_dat_plot) %in% col)]))  
+        z2 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% "#N/A")  
+        z3 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% c("[Unknown]", "[Not Available]", "[Not Evaluated]"))  
+
+        z = unique(c(z1, z2,z3))
+        
         if(!(length(z)==0)){
         new_dat_plot = new_dat_plot[-z,]}
+
+        if(dim(new_dat_plot)[1] > 10){
+
+        colnames(new_dat_plot)[2] = "Clinical"
+        
         m1 = lm(new_dat_plot$lncRNA_exp ~1)
         m2 = lm(new_dat_plot$lncRNA_exp ~ 1 + new_dat_plot$Clinical)
         anova = anova(m1, m2)
         anova = anova[2,6]
 
-        row = c(canc, lnc, col, "nocor", anova, "Ftest")
+        new_dat_plot$Clinical = as.factor(new_dat_plot$Clinical)
+        kw_pval = as.numeric(tidy(kruskal.test(lncRNA_exp ~ Clinical, data = new_dat_plot))[2])
+
+        #do Chisq test of independence 
+        tb = table(new_dat_plot$lncRNA_tag, new_dat_plot$Clinical)
+        chisq_pval = as.numeric(tidy(chisq.test(tb))[2])
+
+        row = c(canc, lnc, col, "nocor", anova, "Ftest", chisq_pval, kw_pval)
         names(row) = colnames(canc_col_results)
         canc_col_results = rbind(canc_col_results, row)
 
         new_dat_plot$lncRNA_exp = as.numeric(new_dat_plot$lncRNA_exp)
-        z = which(new_dat_plot$Clinical %in% c("[Unknown]", "[Not Available]", "[Not Evaluated]"))
-        if(!(length(z)==0)){
-          new_dat_plot = new_dat_plot[-z,]
-        }
-
+    
         p <- ggboxplot(new_dat_plot, x = "Clinical", y = "lncRNA_exp",
           color = "Clinical",
           title = paste(canc, lnc, col), 
           add = "jitter", ylab = "lncRNA expression",  ggtheme = theme_bw()) +
           stat_compare_means() + geom_hline(yintercept=med, linetype="dashed", color = "red") + 
-          stat_n_text() + scale_fill_manual(values = colorRampPalette(brewer.pal(12, "Accent"))(colourCount))
+          stat_n_text()
 
         p = ggpar(p,
-          font.tickslab = c(10,"plain", "black"),
-          xtickslab.rt = 45, legend="none")
+          font.xtickslab = c(5,"plain", "black"),
+          xtickslab.rt = 45, legend="bottom")
         print(p)
           
           } #check >1 
         }
       }
+    }
+    }
     } #for i in 1:ncol(new_dat)
     canc_col_results = canc_col_results[-1,]
     return(canc_col_results)
@@ -282,7 +304,6 @@ get_clin_lnc_cors = function(dtt){
 
 } #end get_clin_lnc_cors
 
-
 clin_data_lncs_cors = llply(clin_data_lncs, get_clin_lnc_cors)
 
 #--------FDR & Summarize Results-------------------------------------
@@ -292,7 +313,7 @@ fdr_sum = function(dtt){
   #first add fdr for p-values
   dtt$fdr = p.adjust(dtt$pval, method="fdr")
   dtt = as.data.table(dtt)
-  dtt = filter(dtt, fdr < 0.05)
+  #dtt = filter(dtt, fdr < 0.05)
 
   #remove OS.time, OS, lncRNA tag... 
   z = which(dtt$colname %in% c("OS", "OS.time", "lncRNA_tag", "vital_status"))
@@ -315,6 +336,23 @@ clean_up = llply(clin_data_lncs_cors, fdr_sum)
 clean_up = ldply(clean_up, data.table)
 clean_up = as.data.table(clean_up)
 clean_up = clean_up[order(fdr)]
+
+#look at just chisq tests
+clean_up$chisq = as.numeric(clean_up$chisq)
+z = which(is.na(clean_up$chisq))
+clean_up = clean_up[-z,]
+z = which(clean_up$chisq <= 0.05)
+sig_chisq = clean_up[z,]
+sig_chisq$tag = "*"
+
+pdf("summary_biolinks_subtypes_lncRNA_exp.pdf", height=10)
+#make geom_tile plot
+ggplot(sig_chisq, aes(canc, colname)) +
+  geom_tile(aes(fill = tag), colour = "grey50") +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 5, face = 'plain', angle = 65, hjust = 0),
+          axis.text.y = element_text(size=5))
+dev.off()
 
 
 saveRDS(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolinks.rds")
