@@ -106,8 +106,9 @@ get_fc = function(dataframee){
 		p = t$p.value
 		fc = mean(x)/mean(y)
 		med_diff = median(x)-median(y)
-		row = c(gene, fc, p, med_diff) #cancer/gtex
-		names(row) = c("gene", "fc_mean", "pval_wilcoxon", "median_difference")
+		canc = dataframee$tis[dataframee$data=="TCGA"][1]
+		row = c(gene, fc, p, med_diff, canc) #cancer/gtex
+		names(row) = c("gene", "fc_mean", "pval_wilcoxon", "median_difference", "canc")
 		return(row)
 	}
 	#genes=genes[1:10]

@@ -104,7 +104,7 @@ for(i in 1:length(unique(results$Cancer))){
 	canc_data = merge(canc_data, meds, by="lncRNA")
 	#meds = unique(canc_data$diff)
 	g = ggboxplot(canc_data, x="lncRNA", y="cindex", color="black", fill="type", palette=c("lightpink3", "lightsteelblue4")) + stat_compare_means(label = "p.signif", method = "wilcox.test", ref.group = "Clinical") + 
-	geom_label(data=meds, aes(x=lncRNA ,y = Median, label=diff), col='tomato', size=2)+
+	geom_label(data=meds, aes(x=lncRNA ,y = Median, label=Median), col='tomato', size=2)+
 	xlab("Predictor")+ theme_classic() + ylim(c(0,1)) + 
 	geom_hline(yintercept=0.5, linetype="dashed", color = "red") + 
 	ylim(0,1)

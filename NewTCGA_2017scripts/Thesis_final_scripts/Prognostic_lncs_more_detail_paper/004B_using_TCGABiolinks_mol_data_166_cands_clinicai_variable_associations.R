@@ -20,15 +20,15 @@ library(EnvStats)
 #------FEATURES-----------------------------------------------------
 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands = subset(allCands, data == "TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 
 val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
 val_cands = as.data.table(val_cands)
-val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+val_cands = subset(val_cands, data == "PCAWG") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
 val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
-val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+val_cands = subset(val_cands, top_pcawg_val == "YES") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
 
 library(TCGAbiolinks)
 

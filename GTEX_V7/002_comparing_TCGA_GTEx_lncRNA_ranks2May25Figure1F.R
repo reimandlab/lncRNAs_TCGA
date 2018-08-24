@@ -9,7 +9,7 @@ library(patchwork)
 library(ggrepel)
 
 ###Data
-gtex = readRDS("allGTEX_lncRNAs_scored_May23.rds")
+gtex = readRDS("allGTEX_lncRNAs_scored_Aug21.rds")
 tcga = readRDS("TCGA_all_lncRNAs_cancers_scored_byindexMay23.rds")
 
 #fantom 
@@ -90,18 +90,19 @@ z = which(cancers$type %in% c("KICH", "CHOL", "DLBC", "UCS"))
 cancers = cancers[-z,]
 cancers = cancers$canc
 
+
 #####------START PLOT----------------------------------------------------------------------------------------
 
 ###Results
-results = readRDS("results_analysis_July24.rds")
+results = readRDS("results_analysis_Aug21.rds")
 
 new_results = as.data.frame(matrix(ncol=8)) ; colnames(new_results) = c("gene", "fc_mean", "pval_wilcoxon", 
-	"median_difference", "fdr", "fdrtag", "canc", "tis")
+	"median_difference", "canc", "fdr", "fdrtag", "tis")
 
 for(i in 1:length(results)){
 	df = results[[i]]
-	df$canc = cancers[i]
-	df$tis = tis_match$tis[which(tis_match$cancer %in% cancers[i])]
+	canc = df$canc[1]
+	df$tis = tis_match$tis[which(tis_match$cancer %in% canc)]
 	new_results = rbind(new_results, df)
 }
 
@@ -123,6 +124,10 @@ new_results = merge(new_results, canc_conv, by="canc")
 z = which(new_results$type %in% c("KICH", "CHOL", "DLBC", "UCS"))
 if(!(length(z)==0)){new_results = new_results[-z,]}
 
+#only look at those with abs median difference > 0.25
+new_results = filter(new_results, abs(median_difference) >= 0.25)
+new_results = as.data.table(new_results)
+
 #get mean order
 means = as.data.table(aggregate(new_results[,3], list(new_results$type), mean))		
 means = means[order(fc_mean)]
@@ -130,8 +135,8 @@ order= means$Group.1
 new_results$fold_change_sign = ""
 
 #label lncRNA whether it is significantly up or downregulated in Cancer 
-new_results$fold_change_sign[new_results$fc_mean >=1] = "Up in Cancer"
-new_results$fold_change_sign[new_results$fc_mean <= -1] = "Up in Normal \nTissue"
+new_results$fold_change_sign[new_results$median_difference >=0.25] = "Up in Cancer"
+new_results$fold_change_sign[new_results$median_difference <= -0.25] = "Up in Normal \nTissue"
 
 #add gene name 
 get_name = function(gene){
@@ -191,26 +196,24 @@ new_results = as.data.table(new_results)
 new_results_extra_detail = merge(new_results, num_times, by=c("name", "fold_change_sign"))
 new_results_extra_detail$fdr = -log10(new_results_extra_detail$fdr)
 num_times$freq = as.factor(num_times$freq)
-num_times$fold_change_sign = factor(num_times$fold_change_sign, levels = c("Up in Normal \nTissue", "Up in Cancer"))
+num_times$fold_change_sign = factor(num_times$fold_change_sign, levels = c("Up in Cancer", "Up in Normal \nTissue"))
 
 #how many times do the 6 lncRNA candidates appear (that validated)? 
 
 #summarize how many cancer specific vs how many multiple cancer types
 
 #FINAL PLOT 1F
-
 pdf("summary_gtex_tcga_updown_regulated_cancer_speicifc_or_not.pdf")
 #x-axis fold_change, y-axis freq of cancer types it is apparent in, color -fold change sign
 g = ggplot(num_times, aes(x=freq, fill=fold_change_sign)) + geom_histogram(stat="count") + 
-scale_fill_manual(values=c("#56B4E9", "#E69F00", "#999999")) + 
+scale_fill_manual(values=c("#E69F00", "#56B4E9", "#999999")) + 
 theme_bw() + xlab("Number of Cancer Types") + ylab("Count") + ggtitle("Summary of Up/Downregulated lncRNAs \nbetween GTEx & TCGA")
 ggpar(g, legend.title = "Difference in \nRank Expression")
 dev.off()
 
 
 #FINAL PLOT 1E
-
-pdf("summary_gtex_tcga_med_ranksdifferences_july23_mean_diff.pdf", width=9, height=7)
+#pdf("summary_gtex_tcga_med_ranksdifferences_july23_mean_diff.pdf", width=9, height=7)
 violins = ggviolin(new_results, x="type", y="fc_mean", ylab="Difference in Mean Ranks", order=order, add = "mean_sd") + theme_bw() + 
 geom_jitter(position=position_jitter(width=0.05,height=0),
          alpha=0.3,
@@ -224,30 +227,52 @@ violins = ggpar(violins, legend.title="Difference in \nRanked \nExpression",
  font.tickslab = c(7,"plain", "black"),
  xtickslab.rt = 45) + geom_hline(yintercept=c(1, -1), linetype="dashed", color = "red") 
 
+#instead of violins summarize in barplot
+
+#order by most diff lncRNAs 
+ordert = as.data.table(table(new_results$type))
+ordert = ordert[order(N)]
+new_results$type = factor(new_results$type, levels = ordert$V1)
+
+bars = ggplot(new_results, aes(x=type, fill=fold_change_sign)) + geom_histogram(stat="count") + 
+scale_fill_manual(values=c("#E69F00", "#56B4E9", "#999999")) + 
+theme_bw() + xlab("Cancer Types") + ylab("Count")
+bars = ggpar(bars, legend.title = "Difference in \nRank Expression", xtickslab.rt = 65)
+
 #add gtex tissue covariate
 tis_data = new_results[,c(8,9)]
 tis_data = as.data.table(tis_data)
+
+new_results$tis[new_results$tis == "Adre"] = "Adrenal \nGland"
+new_results$tis[new_results$tis == "Brai"] = "Brain"
+new_results$tis[new_results$tis == "Brea"] = "Breast"
+new_results$tis[new_results$tis == "Uter"] = "Uterus"
+new_results$tis[new_results$tis == "Cerv"] = "Cervix"
+new_results$tis[new_results$tis == "Pros"] = "Prostate"
+new_results$tis[new_results$tis == "Esop"] = "Esophagus"
+new_results$tis[new_results$tis == "Kidn"] = "Kidney"
+new_results$tis[new_results$tis == "Live"] = "Liver"
+new_results$tis[new_results$tis == "Ovar"] = "Ovary"
+new_results$tis[new_results$tis == "Panc"] = "Pancreas"
+new_results$tis[new_results$tis == "Thyr"] = "Thyroid"
+
+ordert = as.data.table(table(new_results$type, new_results$tis))
+
+#WHAT IS GOING ON ?????? keeps throwing eerrors when running 
+#line below; 
+
+ordert = ordert[order(N)]
+ordert = as.data.table(filter(ordert, N >0))
+tis = unique(ordert$V2)
+
 tis_data = tis_data[!duplicated(tis_data)]
-tis_data$tis[tis_data$tis == "Adre"] = "Adrenal \nGland"
-tis_data$tis[tis_data$tis == "Brai"] = "Brain"
-tis_data$tis[tis_data$tis == "Brea"] = "Breast"
-tis_data$tis[tis_data$tis == "Esop"] = "Esophagus"
-tis_data$tis[tis_data$tis == "Kidn"] = "Kidney"
-tis_data$tis[tis_data$tis == "Live"] = "Liver"
-tis_data$tis[tis_data$tis == "Ovar"] = "Ovary"
-tis_data$tis[tis_data$tis == "Panc"] = "Pancreas"
-tis_data$tis[tis_data$tis == "Thyr"] = "Thyroid"
-tis_data$tis[tis_data$tis == "Uter"] = "Uterus"
+tis_data$tisue = factor(tis_data$tis, levels = tis)
 
-library(viridis)
-library(RColorBrewer)
-library(colorRamps)
-l = length(unique(tis_data$tis)) * 2
-cc2color = structure(names = unique(tis_data$tis),
-         sample(colorRampPalette(brewer.pal(12, "Set1"))(l)[1:l %% 2 == 0]))
+mypal = c("#B83CE0","#79E490", "#D4E7CD", "#E1B148", "#9D9887" ,"#D962C0" ,
+	"#E6CACD", "#866BDF", "#D8DD8D" ,"#CDA6DC" ,"#71DCC6", "#ABE64D", "#89CBE1",
+	 "#698BC5" ,"#DB6B73")
 
-mypal = cc2color
-tis_data$type = factor(tis_data$type, levels = order)
+tis_data$type = factor(tis_data$type, levels = ordert$V1)
 
 tissues = ggplot(tis_data, aes(type, 0.2)) +
     geom_tile(aes(fill = tis)) + geom_text(aes(label = tis), size=2.5) +
@@ -260,14 +285,41 @@ tissues = ggpar(tissues, legend = "none") + theme(axis.title.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank()) + xlab("GTEx Tissue")
 
-violins + tissues + plot_layout(ncol = 1, heights = c(10, 1))
+bars + tissues + plot_layout(ncol = 1, heights = c(10, 1))
 
 dev.off()
 
+#which are cancer specific
+new_results = merge(new_results, num_times, by = c("name", "fold_change_sign"))
+
+#check prostate
+pros = as.data.table(filter(new_results, type=="PRAD"))
+#318 in total (that are only either UP or DOWN regulated not both across cancers)
+pros_spef = as.data.table(filter(pros, freq ==1))
+#122 specific lncRNAs 
+pros_spef = pros_spef[order(abs(median_difference))]
+
+#function to plot diff in distributions of rank bewteen tcga 
+#and gtex
+lnc = "ENSG00000225937"
+canc = "Prostate adenocarcinoma"
+get_dis_ranks = function(lnc, canc){
+	t = subset(tcga, (gene == lnc) & (tis == canc))
+	tissue = tis_match$tis[tis_match$cancer == canc]
+	g = subset(gtex, (gene==lnc) & (tis==tissue))
+	combo = rbind(t, g)
+	combo$data = factor(combo$data, levels = c("GTEX", "TCGA"))
+	g = ggviolin(combo, x="data", y="score",color = "data", palette = c("#E7B800","#FC4E07"),add = c("jitter", "mean_sd")) + ggtitle(paste(get_name(lnc), canc)) +
+	stat_compare_means()
+	print(g)
+	}
+pdf("pca3_gtex_vs_tumours.pdf")
+get_dis_ranks(lnc, canc)
+dev.off()
 
 ###how many lncRNAs in each cancer expressed more in cancers compared to normal 
-z1 = which(new_results$fc_mean >=1)
-z2 = which(new_results$fc_mean <= -1)
+z1 = which(new_results$median_difference >=0.25)
+z2 = which(new_results$median_difference <= 0.25)
 new_results = new_results[c(z1,z2),]
 
 #how many of these are candidate lncRNAs? 
@@ -328,14 +380,27 @@ cands_gtex$HR = log2(cands_gtex$HR)
 cands_gtex = merge(cands_gtex, canc_conv, by = "canc")
 cands_gtex$fdr = -log10(cands_gtex$fdr)
 
-pdf("final_figure_5A_aug8.pdf")
+pdf("final_figure_5A_aug22.pdf")
 
-ggplot(cands_gtex, aes(x=fc_mean, y=HR, shape=fdrtag)) + geom_hline(yintercept=0, linetype="dashed", color = "red") + 
-  geom_point() + geom_vline(xintercept=0, linetype="dashed", color = "red") +
+ggplot(cands_gtex, aes(x=median_difference, y=HR, shape=fdrtag)) + geom_vline(xintercept=0.25, linetype="dashed", color = "red") + 
+geom_vline(xintercept=-0.25, linetype="dashed", color = "red") + 
+  geom_point() + geom_hline(yintercept=0, linetype="dashed", color = "red") +
   scale_color_gradient2(low="grey",
                      high="blue", space ="Lab" ) + xlab("Fold Change") + ylab("log2(HR)") +
-  geom_label_repel(data=filter(cands_gtex, fc_mean >=1, fdr > -log10(0.05), HR > 0), aes(label=CAT_geneName, fill=type), size=2) +
-  geom_label_repel(data=filter(cands_gtex, fc_mean <= -1, fdr > -log10(0.05), HR < 0), aes(label=CAT_geneName, fill=type), size=2) +
+  geom_label_repel(data=filter(cands_gtex, median_difference >=0.25, fdr > -log10(0.05), HR > 0), aes(label=CAT_geneName, fill=type), size=2) +
+  geom_label_repel(data=filter(cands_gtex, median_difference <= -0.25, fdr > -log10(0.05), HR < 0), aes(label=CAT_geneName, fill=type), size=2) +
+  scale_fill_brewer(palette="Paired")
+dev.off()
+
+
+
+pdf("final_figure_5A_aug22_using_fold_change.pdf")
+ggplot(cands_gtex, aes(x=fc_mean, y=HR, shape=fdrtag)) +
+  geom_point() + geom_hline(yintercept=0, linetype="dashed", color = "red") +
+  scale_color_gradient2(low="grey",
+                     high="blue", space ="Lab" ) + xlab("Fold Change") + ylab("log2(HR)") +
+  geom_label_repel(data=filter(cands_gtex, median_difference >=log(2), fdr > -log10(0.05), HR > 0), aes(label=CAT_geneName, fill=type), size=2) +
+  geom_label_repel(data=filter(cands_gtex, median_difference <= -log(0.5), fdr > -log10(0.05), HR < 0), aes(label=CAT_geneName, fill=type), size=2) +
   scale_fill_brewer(palette="Paired")
 dev.off()
 

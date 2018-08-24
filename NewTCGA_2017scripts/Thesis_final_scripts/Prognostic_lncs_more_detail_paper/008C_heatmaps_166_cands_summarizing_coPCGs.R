@@ -84,6 +84,10 @@ cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 
 coexp = readRDS("coexpression_results_processed_july24.rds")
 
+#all these have at least 10 sig DE PCGs
+all_de_results = readRDS("coexpression_results_processed_july24.rds")
+all_de_results = as.data.table(all_de_results)
+
 #PCG lncRNA results
 pcg_lnc = readRDS("summary_pcg_analysis_wHRs_jul2y24.rds") #all these have at least 1, 50-pcg signature 
 pcg_lnc = pcg_lnc[order(-NumPCGs)]

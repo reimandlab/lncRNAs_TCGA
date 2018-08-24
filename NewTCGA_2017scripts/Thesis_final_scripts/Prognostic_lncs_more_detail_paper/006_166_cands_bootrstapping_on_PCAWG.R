@@ -18,15 +18,7 @@ library(Rtsne)
 
 #------FEATURES-----------------------------------------------------
 
-cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
-#cands = filter(cands, data == "PCAWG", pval <=0.05)
-cands = filter(cands, AnalysisType == "noFDR")
-#colnames(cands)[7] = "canc"
-cands$Cancer = NULL
-all_cands = cands
-
 all_cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-
 
 #--------This script ------------------------------------------------
 
