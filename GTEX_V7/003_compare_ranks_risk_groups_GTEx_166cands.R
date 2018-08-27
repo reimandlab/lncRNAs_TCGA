@@ -189,6 +189,7 @@ compare_exp_boxplots = function(lnc){
 	#get median rank difference between GTEx and high risk group
 	#compare only GTEx to high risk
 	risk = unique(all_exp$risk_type)[2]
+	all_exp_for_plot = all_exp
 	all_exp = as.data.table(filter(all_exp, Group %in% c("GTEx", risk)))
 
 		x = all_exp[all_exp$data=="TCGA", ]
@@ -203,14 +204,15 @@ compare_exp_boxplots = function(lnc){
 
 		res = c(lnc, canc, risk, med_diff, fc, p)
 		names(res) = c("lnc", "canc", "risk", "median_diff", "fc", "wilcox_p")
+		all_exp_for_plot$Group = factor(all_exp_for_plot$Group, levels = c("GTEx", "High_exp", "Low_exp"))
 
 		#boxplot
-		g = ggboxplot(all_exp, ylab="lncRNA Score", x="Group", y="lncRNA_score", palette = mypal[c(3,1)], add = "jitter", fill = "Group", 
-		order=c("GTEx", unique(all_exp$Group)[2]), 
+		g = ggboxplot(all_exp_for_plot, ylab="lncRNA Score", x="Group", y="lncRNA_score", palette = mypal[c(3,1,2)], add = "jitter", fill = "Group", 
+		order=c("GTEx", "High_exp", "Low_exp"), 
 		title= paste(lnc, canc, "risk=", risk))+ 
 		stat_compare_means(label = "p.signif", 
                      ref.group = "GTEx") + stat_n_text() + theme_classic()
-		g = ggpar(g, font.tickslab = c(10, "plain", "black"))
+		g = ggpar(g, font.tickslab = c(14, "plain", "black"), legend="none")
 		print(g)
 
 		return(res)
@@ -218,9 +220,9 @@ compare_exp_boxplots = function(lnc){
 }
 
 #DO NOT RUN - ALREADY DONE
-#pdf("lncRNA_expression_tumours_GTEX_matched_normals_cancds_August24.pdf")
-#results = llply(lncs, compare_exp_boxplots, .progress="text")
-#dev.off()
+pdf("lncRNA_expression_tumours_GTEX_matched_normals_cancds_August27.pdf")
+results = llply(lncs, compare_exp_boxplots, .progress="text")
+dev.off()
 
 #-----------SUMMARIZE---------------------------------------------------------
 
@@ -236,8 +238,8 @@ results2$fdr_sig[results2$fdr > 0.05] = "NotFDRsig"
 
 #check if median difference matches type of risk
 results2$match = ""
-results2$match[(results2$risk == "High_exp") & (results2$median_diff >= 0.2)] = "OG"
-results2$match[(results2$risk == "Low_exp") & (results2$median_diff <= -0.2)] = "TS"
+results2$match[(results2$risk == "High_exp") & (results2$median_diff >= 0.25)] = "OG"
+results2$match[(results2$risk == "Low_exp") & (results2$median_diff <= -0.25)] = "TS"
 
 #get lnc names
 get_name = function(ensg){
@@ -255,14 +257,15 @@ results2 = merge(results2, canc_conv, by="canc")
 #keep only sig
 results2 = as.data.table(filter(results2, fdr_sig == "FDRsig"))
 
-pdf("new_figure5A_aug24.pdf", width=10, height=7)
+pdf("new_figure5A_aug24.pdf", width=9, height=7)
 ggplot(results2, aes(x=status, y=median_diff)) +
-  geom_point() + geom_hline(yintercept=0.2, linetype="dashed", color = "red") +
-  geom_hline(yintercept=-0.2, linetype="dashed", color = "red") + 
+  geom_point() + geom_hline(yintercept=0.25, linetype="dashed", color = "red") +
+  geom_hline(yintercept=0, linetype="dashed", color = "grey")+
+  geom_hline(yintercept=-0.25, linetype="dashed", color = "red") + 
   scale_color_gradient2(low="grey",
-                     high="blue", space ="Lab" ) + xlab("lncRNA expression type") + ylab("Median rank difference") +
-  geom_label_repel(data=filter(results2, median_diff >= 0.2, fdr <= 0.05, status == "Unfavourable"), aes(label=name, fill=type), size=2) +
-  geom_label_repel(data=filter(results2, median_diff <= -0.2, fdr <= 0.05, status == "Favourable"), aes(label=name, fill=type), size=2) +
+                     high="blue", space ="Lab" ) + xlab("lncRNA expression type") + ylab("Median rank difference \nRisk Group - GTEx") +
+  geom_label_repel(data=filter(results2, median_diff >= 0.25, fdr <= 0.05, status == "Unfavourable"), aes(label=name, fill=type), size=5) +
+  geom_label_repel(data=filter(results2, median_diff <= -0.2, fdr <= 0.05, status == "Favourable"), aes(label=name, fill=type), size=5) +
   scale_fill_brewer(palette="Paired")
 dev.off()
 

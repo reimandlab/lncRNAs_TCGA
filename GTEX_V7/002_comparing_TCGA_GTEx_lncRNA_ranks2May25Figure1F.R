@@ -127,6 +127,14 @@ if(!(length(z)==0)){new_results = new_results[-z,]}
 #only look at those with abs median difference > 0.25
 new_results = filter(new_results, abs(median_difference) >= 0.25)
 new_results = as.data.table(new_results)
+dim(new_results)
+#[1] 3962    9
+
+#what happens if bring it up to 0.5?
+new_results = filter(new_results, abs(median_difference) >= 0.5)
+new_results = as.data.table(new_results)
+dim(new_results)
+#[1] 191   9
 
 #get mean order
 means = as.data.table(aggregate(new_results[,3], list(new_results$type), mean))		

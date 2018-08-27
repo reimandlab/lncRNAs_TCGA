@@ -26,6 +26,14 @@ allCands = filter(allCands, data=="TCGA") #175 unique lncRNA-cancer combos, #166
 canc_conv = rna[,which(colnames(rna) %in% c("Cancer", "type"))]
 canc_conv = canc_conv[!duplicated(canc_conv), ]
 
+mypal = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
+  "#72A93B", "#74DAE3" ,"#49B98D" ,"#D97B8F" ,"#70A2A4", "#64709B" ,"#DFBF38" ,"#61EA4F" ,
+  "#C7CBE7", "#786DDA",
+"#CFA0E0" ,"#67E9D0" ,"#7C9BE1", "#D94753" ,
+"#AAE6B0", "#D13BDF" ,"#DEAEC7" ,"#BBE6DF" ,"#B2B47A" ,"#E6ECBA", "#C86ED7",
+ "#7BEE95" ,"#6F46E6" ,"#65B9E0", "#C0EC3E",
+"#DE8D54" ,"#DF4FA6")
+
 #-------------------------------------------------------------------
 #-----------------PCA using just all expressed lncRNA --------------
 #-------------------------------------------------------------------
@@ -67,8 +75,9 @@ logged_rna[,z1] = log1p(logged_rna[,z1])
 
 
 #logged - DONE! 
-pdf("logged_nonMAD0lncRNAs_cands_PCA_plots_June25.pdf", width=12)
-autoplot(prcomp(logged_rna[,z1]), data = logged_rna, colour = 'type')
+pdf("logged_nonMAD0lncRNAs_cands_PCA_plots_Aug27.pdf", width=12)
+autoplot(prcomp(logged_rna[,z1]), data = logged_rna, colour = 'type')+ 
+scale_colour_manual(values = mypal)
 dev.off()
 
 

@@ -88,21 +88,13 @@ coexp = readRDS("coexpression_results_processed_july24.rds")
 all_de_results = readRDS("coexpression_results_processed_july24.rds")
 all_de_results = as.data.table(all_de_results)
 
-#PCG lncRNA results
-pcg_lnc = readRDS("summary_pcg_analysis_wHRs_jul2y24.rds") #all these have at least 1, 50-pcg signature 
-pcg_lnc = pcg_lnc[order(-NumPCGs)]
-pcg_lnc$HR = as.numeric(pcg_lnc$HR)
-pcg_lnc$lnc_stat = ""
-pcg_lnc$lnc_stat[which(pcg_lnc$HR < 0)] = "Favourable"
-pcg_lnc$lnc_stat[which(pcg_lnc$HR > 0)] = "Unfavourable"
-
 #-------------------ANALYSIS--------------------------------------------
 #Generate heatmap using those PCGs sig up/down regulated in lncRNA 
 #risk or non-risk groups
 
 #For each cancer type get all required data 
 #PCG and lncRNA expression
-combos = unique(pcg_lnc$combo)
+combos = unique(all_de_results$combo)
 cancs = sapply(combos, function(x){unlist(strsplit(x, "_"))[2]})
 cancs = unique(cancs)
 
@@ -127,8 +119,8 @@ get_lnc_canc = function(dat){
 
   pcgs = colnames(pcg)[2:19351]
   #keep only pcgs that are selected to be in lncRNA signature 
-  z = which(coexp$combo == combo)
-  lnc_pcgs = unique(coexp$pcg[z])
+  z = which(all_de_results$combo == combo)
+  lnc_pcgs = unique(all_de_results$ID[z])
 
   dat_keep = dat[,which(colnames(dat) %in% c("patient", lnc, lnc_pcgs))]
   rownames(dat_keep) = dat_keep$patient
@@ -200,20 +192,17 @@ gen_heatmap = function(dat){
   canc = dat$canc[1]
   lnc_canc_combo = paste(lnc, canc, sep="_")
   #get which pcgs enriched in group
-  z = which(coexp$combo %in% lnc_canc_combo)
+  z = which(all_de_results$combo %in% lnc_canc_combo)
  
   #cancer type
-  lnc_pcgs = coexp[z,]
-  print(length(unique(lnc_pcgs$pcg))) 
-  print(length(unique(lnc_pcgs$pcg[lnc_pcgs$risk_type == "Risk"])))
-  print(length(unique(lnc_pcgs$pcg[lnc_pcgs$risk_type == "NonRisk"])))
-  print(pcg_lnc$lnc_stat[which(pcg_lnc$combo == lnc_canc_combo)][1])
+  lnc_pcgs = all_de_results[z,]
+  print(length(unique(lnc_pcgs$ID))) 
+  print(length(unique(lnc_pcgs$ID[lnc_pcgs$pcg_risk == "upregulated_in_risk"])))
+  print(length(unique(lnc_pcgs$ID[lnc_pcgs$pcg_risk == "downregulated_in_risk"])))
 
   #subset gene expression to those pcgs
   #label patients by either high/low lncRNA expression 
-
-  lnc_pcgs = coexp$pcg[z]
-  z = which(colnames(dat) %in% c(lnc_pcgs, "patient"))
+  z = which(colnames(dat) %in% c(lnc_pcgs$ID, "patient"))
   #heatmap 
   heat = dat[,z]
   rownames(heat) = heat$patient
@@ -221,7 +210,7 @@ gen_heatmap = function(dat){
 
   heat = log1p(heat)
 
-  if(dim(heat)[2] > 50){
+  if(dim(heat)[2] > 75){
     #get most variable genes and only include them in heatmap 
     #instead of variance order them by absolute fold change!? see if that looks better?
     #vars = data.table(genes = colnames(heat), var = apply(heat, 2, var))
@@ -229,12 +218,12 @@ gen_heatmap = function(dat){
     #vars = vars[1:50,]
     #z = which(colnames(heat) %in% vars$genes)
     #heat = heat[,z]
-    z = which(coexp$combo %in% lnc_canc_combo)
-    pcg_keep = as.data.table(coexp[z,])
-    pcg_keep = as.data.table(filter(pcg_keep, fdr <= 0.05))
-    pcg_keep = pcg_keep[order(-abs(mean_diff))]
-    pcgs = pcg_keep[1:50,2]
-    z = which(colnames(heat) %in% pcgs$pcg)
+    z = which(all_de_results$combo %in% lnc_canc_combo)
+    pcg_keep = as.data.table(all_de_results[z,])
+    pcg_keep = as.data.table(filter(pcg_keep, adj.P.Val <= 0.05))
+    pcg_keep = pcg_keep[order(-abs(logFC))]
+    pcgs = pcg_keep[1:75,1]
+    z = which(colnames(heat) %in% pcgs$ID)
     heat = heat[,z]
   }
 
@@ -243,8 +232,8 @@ gen_heatmap = function(dat){
   patientcolors <- unlist(lapply(tags, color.map))
 
   #label whether pcg is fav or unfav 
-  z = which(coexp$combo %in% lnc_canc_combo)
-  lnc_pcgs = coexp[z,]
+  z = which(all_de_results$combo %in% lnc_canc_combo)
+  lnc_pcgs = all_de_results[z,]
 
   # cluster on correlation
   heat = scale(heat)
@@ -253,7 +242,7 @@ gen_heatmap = function(dat){
   pcg_order = as.data.frame(matrix(ncol =2))
   for(i in 1:nrow(heat)){
     pcg = rownames(heat)[i]
-    type = lnc_pcgs$risk_type[which(lnc_pcgs$pcg == pcg)]
+    type = lnc_pcgs$pcg_risk[which(lnc_pcgs$ID == pcg)]
     row = c(pcg, type)
     pcg_order = rbind(pcg_order, row)
   }
@@ -284,7 +273,7 @@ gen_heatmap = function(dat){
     col = list(risk = c("RISK" =  "#FF0000", "noRISK" = "#0000FF")))  
 
   ha_row = rowAnnotation(df = data.frame(PCGtype = pcgs),
-    col = list(PCGtype = c("NonRisk" = "Yellow", "Risk" = "Purple")))
+    col = list(PCGtype = c("upregulated_in_risk" = "Yellow", "downregulated_in_risk" = "Purple")))
 
   h1 = Heatmap(heat, col = c("blue", "white", "orange"), clustering_distance_columns = "spearman", column_title=title, 
     clustering_distance_rows = "spearman", cluster_rows = TRUE, cluster_columns = TRUE, top_annotation = ha_column, show_column_names = FALSE)
@@ -295,7 +284,7 @@ gen_heatmap = function(dat){
 
 }
 
-pdf("lncs_wSIG_PCGs_heatmaps_july18_top30_genes.pdf", width=10, height=10)
+pdf("lncs_wSIG_PCGs_heatmaps_aug27_top75_genes.pdf", width=10, height=10)
 llply(all_canc_lnc_data, gen_heatmap, .progress="text")
 dev.off()
 

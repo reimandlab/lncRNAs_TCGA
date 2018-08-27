@@ -68,7 +68,6 @@ val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos,
 val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
 val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 
-
 #start with only lncRNA_intergenic
 #lincs = subset(fantom, CAT_geneClass == "lncRNA_intergenic")
 #z = which(colnames(rna) %in% lincs$gene)
