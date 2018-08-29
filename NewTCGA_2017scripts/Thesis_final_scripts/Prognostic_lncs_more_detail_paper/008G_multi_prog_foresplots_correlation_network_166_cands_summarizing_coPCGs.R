@@ -351,8 +351,7 @@ length(which(results2$res <= 0.05))
 length(which(results2$fdr <= 0.05))
 length(which(results2$pcg_fdr_pval <= 0.05))
 
-
-
+saveRDS(results2, file="110_cis_antisense_pairs_survival_results_aug28.rds")
 
 
 

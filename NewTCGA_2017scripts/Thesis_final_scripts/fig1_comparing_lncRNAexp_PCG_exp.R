@@ -1,5 +1,6 @@
 source("source_code_Cox_MonteCarlo_CV_April12.R")
 require(caTools)
+library(EnvStats)
 
 #start with only lncRNA_intergenic
 #lincs = subset(fantom, CAT_geneClass == "lncRNA_intergenic")
@@ -45,7 +46,7 @@ meds_lncs$type = "lncRNA"
 colnames(meds_lncs)[1] = "medianFPKM"
 meds_lncs$gene = rownames(meds_lncs)
 meds_lncs = merge(meds_lncs, fantom, by="gene")
-meds_lncs = meds_lncs[,c(1,2,3,5)]
+meds_lncs = meds_lncs[,c(1,2,3,6)]
 colnames(meds_lncs)[4] = "genetype"
 
 #get all pcg median expression across all cancers
@@ -83,7 +84,14 @@ wilcox.test(all_meds$medianFPKM[all_meds$type=="pcg"], all_meds$medianFPKM[all_m
 wilcox.test(all_meds$medianFPKM[all_meds$type=="lncRNA"], all_meds$medianFPKM[all_meds$type=="pcg"])
 
 #not logged --> remvoe outliers 
-mypal = wes_palette("Royal2")
+mypal = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
+  "#72A93B", "#74DAE3" ,"#49B98D" ,"#D97B8F" ,"#70A2A4", "#64709B" ,"#DFBF38" ,"#61EA4F" ,
+  "#C7CBE7", "#786DDA",
+"#CFA0E0" ,"#67E9D0" ,"#7C9BE1", "#D94753" ,
+"#AAE6B0", "#D13BDF" ,"#DEAEC7" ,"#BBE6DF" ,"#B2B47A" ,"#E6ECBA", "#C86ED7",
+ "#7BEE95" ,"#6F46E6" ,"#65B9E0", "#C0EC3E",
+"#DE8D54" ,"#DF4FA6")
+
 require(scales)
 
 pdf("figure1supllementB_notlogged.pdf", width=6, height=7)
@@ -95,31 +103,32 @@ stat_compare_means(method = "wilcox.test") + theme_light() +
 print(g)
 dev.off()
 
-
 all_meds$logged = log1p(all_meds$medianFPKM)
 
 pdf("figure1supllementB.pdf", width=6, height=7)
-g = ggboxplot(all_meds, x = "type", y = "logged", color="black", fill="type", palette = mypal, notch = TRUE, size=0.5, width=0.5)+
+g = ggboxplot(all_meds, x = "type", y = "logged", color="black", fill="type", palette = sample(mypal, 10), notch = TRUE, size=0.5, width=0.5)+
 stat_compare_means(method = "wilcox.test") + theme_light() + geom_jitter(position=position_jitter(width=0.05,height=0),
          alpha=0.1,
-         size=0.75) + ylab("log1p(FPKM)") + 
-  scale_y_continuous(breaks = round(seq(min(all_meds$logged), max(all_meds$logged), by = 5),1))
-
+         size=0.75) + ylab("log1p(FPKM)") + stat_n_text()
+  #scale_y_continuous(breaks = round(seq(min(all_meds$logged), max(all_meds$logged), by = 5),1))
+g = ggpar(g, font.tickslab=c(15, "plain", "black"), xtickslab.rt = 45, font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"), 
+	legend="none")
 print(g)
 a = g
 dev.off()
 
 
-pdf("figure1supllementB_alltypes.pdf", width=6, height=7)
-g = ggboxplot(all_meds, x = "genetype", y = "logged", color="black", fill="genetype", order =c("others", "e_lncRNA", "p_lncRNA_intergenic", "p_lncRNA_divergent", "pcg"), palette = mypal, size=0.5, width=0.5, notch = TRUE)+
+pdf("figure1supllementB_alltypes.pdf", width=8, height=7)
+g = ggboxplot(all_meds, x = "genetype", y = "logged", color="black", fill="genetype", 
+	order = c("lncRNA_intergenic", "lncRNA_sense_intronic", "lncRNA_antisense", "lncRNA_divergent", "pcg"), 
+	palette = sample(mypal, 10), size=0.5, width=0.5, notch = TRUE)+
 stat_compare_means() + theme_light() + geom_jitter(position=position_jitter(width=0.05,height=0),
          alpha=0.1,
-         size=0.75) + ylab("log1p(FPKM)") + 
-  scale_y_continuous(breaks = round(seq(min(all_meds$logged), max(all_meds$logged), by = 5),1))
+         size=0.75) + ylab("log1p(FPKM)") + stat_n_text()
+  #scale_y_continuous(breaks = round(seq(min(all_meds$logged), max(all_meds$logged), by = 5),1))
 
-g = ggpar(g,
- font.tickslab = c(7,"plain", "black"),
- xtickslab.rt = 45)
+g = ggpar(g, font.tickslab=c(15, "plain", "black"), xtickslab.rt = 45, legend="none", 
+	font.x = c(15, "plain", "black"), font.y = c(15, "plain", "black"))
 
 print(g)
 b = g
@@ -128,10 +137,9 @@ dev.off()
 
 #combine plots into one 
 library(patchwork)
-pdf("combined_boxplot.pdf", width=11)
+pdf("combined_boxplot.pdf", width=11, height=10)
 a + b
 dev.off()
-
 
 #how many lncRNAs have median expression graeter than PCG median 
 

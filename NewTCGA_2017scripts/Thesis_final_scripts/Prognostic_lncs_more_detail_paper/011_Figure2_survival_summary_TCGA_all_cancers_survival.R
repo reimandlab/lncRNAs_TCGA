@@ -263,6 +263,55 @@ all_cancers_genes_surv_comb$fdrsig[all_cancers_genes_surv_comb$fdr >= lineval] =
 
 #facet by cancer type 
 
+#check overlap of sig prognostic lncRNAs bewteen cancer types
+all_cancers_genes_surv_comb$risk_perc = as.numeric(all_cancers_genes_surv_comb$risk_size)/as.numeric(all_cancers_genes_surv_comb$num_patients)
+all_cancers_genes_surv_comb$risk_perc_tag[(all_cancers_genes_surv_comb$risk_perc > 0.48) | (all_cancers_genes_surv_comb$risk_perc < 0.52)] = "75%_more_risk_group"
+all_cancers_genes_surv_comb$risk_perc_tag[all_cancers_genes_surv_comb$risk_perc > 0.75] = "75%_more_risk_group"
+
+
+#figure 2B/C?
+sig_lncs = as.data.table(all_cancers_genes_surv_comb)
+sig_lncs = as.data.table(subset(sig_lncs, fdrsig == "FDRsig"))
+
+#sum freq
+sig_lncs = as.data.table(table(sig_lncs$canc, sig_lncs$gene))
+sig_lncs = as.data.table(filter(sig_lncs, N > 0))
+colnames(sig_lncs)[1] = "canc"
+sig_lncs = merge(sig_lncs, canc_conv, by="canc")
+
+#calculate how many lncRNAs overlap between cancer types 
+cancs = unique(sig_lncs$type)
+#note these are FDR significant 
+
+get_pairs = function(canc){
+  canc_lncs = sig_lncs$V2[sig_lncs$type == canc]
+  z = which(sig_lncs$V2 %in% canc_lncs)
+  canc_pairs = sig_lncs[z,]
+  cp = as.data.table(table(canc_pairs$type))
+  cp$canc1 = canc
+  colnames(cp)[1] = "canc2"
+  return(cp)
+}
+
+all_canc_pairs = llply(cancs, get_pairs)
+all_canc_pairs = ldply(all_canc_pairs)
+all_canc_pairs = as.data.table(all_canc_pairs)
+all_canc_pairs = all_canc_pairs[order(-N)]
+all_canc_pairs$canc1 = factor(all_canc_pairs$canc1, levels=unique(all_canc_pairs$canc1))
+all_canc_pairs$canc2 = factor(all_canc_pairs$canc2, levels=unique(all_canc_pairs$canc1))
+
+pdf("overlap_FDR_sig_lncRNA_cands_bw_cancers_aug28.pdf", width=8, height=5)
+g = ggplot(all_canc_pairs, aes(canc1, canc2)) +
+  geom_tile(aes(fill=N)) +
+  geom_text(aes(label = N), size=5) +
+  scale_fill_gradient(low = "azure2", high = "orange", na.value = 'transparent') +
+    xlab("Cancer 1") + ylab("Cancer 2") + theme_bw()
+ggpar(g,
+ font.tickslab = c(12,"plain", "black"),
+ xtickslab.rt = 45, legend.title="# lncRNAs \noverlap")
+
+dev.off()
+
 #order by most significant to least significant 
 order = as.data.table(dplyr::filter(as.data.table(table(all_cancers_genes_surv_comb$canc, all_cancers_genes_surv_comb$fdrsig)), V2 %in% c("FDRsig", "Significant")))
 order = order[order(-V2,N)]

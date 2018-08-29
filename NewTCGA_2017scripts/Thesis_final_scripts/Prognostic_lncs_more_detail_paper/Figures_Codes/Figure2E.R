@@ -53,12 +53,16 @@ allCands$multivar_sig[z] = "yes"
 allCands$multivar_sig[-z] = "no"
 allCands = merge(allCands, canc_conv, by = c("cancer"))
 
-
 #get summary 
 summ = as.data.table(table(allCands$type, allCands$better_than_clin))
 colnames(summ) = c("Cancer", "BetterThanClin", "NumCandidates")
 summ = summ[order(-BetterThanClin, -NumCandidates)]
-summ$Cancer = factor(summ$Cancer, levels = unique(summ$Cancer))
+
+#order of cancer types
+od = as.data.table(table(allCands$type))
+od = od[order(-N)]
+
+summ$Cancer = factor(summ$Cancer, levels = unique(od$V1))
 summ$BetterThanClin = factor(summ$BetterThanClin, levels = c("yes", "no"))
 
 #barplot summary

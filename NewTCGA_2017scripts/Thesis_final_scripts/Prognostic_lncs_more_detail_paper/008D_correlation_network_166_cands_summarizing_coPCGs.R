@@ -89,13 +89,19 @@ pcg_lnc$lnc_stat = ""
 pcg_lnc$lnc_stat[which(pcg_lnc$HR < 0)] = "Favourable"
 pcg_lnc$lnc_stat[which(pcg_lnc$HR > 0)] = "Unfavourable"
 
+#all these have at least 10 sig DE PCGs
+all_de_results = readRDS("coexpression_results_processed_july24.rds")
+all_de_results = as.data.table(all_de_results)
+all_de_results$combo1 = paste(all_de_results$lnc, all_de_results$pcg, sep="_")
+all_de_results$combo2 = paste(all_de_results$pcg, all_de_results$lnc, sep="_")
+
 #-------------------ANALYSIS--------------------------------------------
 #Generate heatmap using those PCGs sig up/down regulated in lncRNA 
 #risk or non-risk groups
 
 #For each cancer type get all required data 
 #PCG and lncRNA expression
-combos = unique(pcg_lnc$combo)
+combos = unique(all_de_results$combo)
 cancs = sapply(combos, function(x){unlist(strsplit(x, "_"))[2]})
 cancs = unique(cancs)
 
@@ -124,7 +130,7 @@ get_lnc_canc = function(dat){
   pcgs = colnames(pcg)[2:19351]
   #keep only pcgs that are selected to be in lncRNA signature 
   z = which(coexp$combo == combo)
-  lnc_pcgs = unique(coexp$pcg[z])
+  lnc_pcgs = unique(coexp$ID[z])
 
   dat_keep = dat[,which(colnames(dat) %in% c("patient", lnc, lnc_pcgs))]
   rownames(dat_keep) = dat_keep$patient
@@ -237,7 +243,7 @@ get_summary = function(cancer){
     #take all pairs with abs cor > 0.5 and redo correlation 
     #analysis to reduce dimension of corplot
     res2 = as.data.table(res2)
-    res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05, abs(cor) >= 0.5))
+    res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05, abs(cor) >= 0.3))
     print("pass2")
 
     if((dim(res2)[1] >1)){
@@ -279,18 +285,21 @@ get_summary = function(cancer){
       p.mat = res$P, sig.level = 0.05, insig = "blank", tl.cex=1, method="color", mar=c(0,0,1,0),bg="snow2",
       tl.pos = "n")
     
-    print(c)
+    #print(c)
 
     #all unique genes that appear
     allgenes = unique(c(res2$row, res2$column))
     #this will be the edge table 
     res2$canc = cancer
     res2$combo1 = paste(res2$row, res2$column, sep="_")
-    z1 = which(res2$combo1 %in% coexp$combo1)
-    z2 = which(res2$combo1 %in% coexp$combo2)
+    all_de_results$combo1 = paste(all_de_results$lnc, all_de_results$ID, sep="_")
+    all_de_results$combo2 = paste(all_de_results$ID, all_de_results$lnc, sep="_")
+    all_de_results$canc = all_de_results$cancer
+    z1 = which(res2$combo1 %in% all_de_results$combo1)
+    z2 = which(res2$combo1 %in% all_de_results$combo2)
     z = unique(c(z1,z2))
    
-    test = merge(res2, coexp, by=c("combo1", "canc"))
+    test = merge(res2, all_de_results, by=c("combo1", "canc"))
     res2 = filter(res2, combo1 %in% test$combo1)
     if(!(dim(test)[1] ==0)){
 
@@ -355,20 +364,12 @@ get_summary = function(cancer){
     colnames(nodes) = c("id", "type", "HR", "fdr", "risk", "canc")
 
     #edge file
-    lnc_cors$cancer = lnc_cors$canc
-    lnc_cors$canc = NULL
-    colnames(lnc_cors)[1:2] = c("from", "to")
-    write.table(lnc_cors, file = "edges_file_lncRNA_newtwork.txt", sep=";")
-
-    lnc_cors = fread("edges_file_lncRNA_newtwork.txt", sep=";")
-    lnc_cors$V1 = NULL
-    colnames(lnc_cors) = c("from", "to", "cor", "pval", "fdr_cor", "from_type", "to_type", "lnc", 
-      "pcg", "mean_diff", "pvalue", "fdr_lm", "pcg_risk_group", "combo", "distance", "cancer")
+    colnames(lnc_cors)[2:3] = c("from", "to")
     
     lnc_cors$from = sapply(lnc_cors$from, get_name)
-    lnc_cors$to = unlist(sapply(lnc_cors$to, get_name))
+    lnc_cors$to = unlist(sapply(lnc_cors$to, get_name_pcg))
     nodes$ensg = nodes$id
-    nodes$id = sapply(nodes$id, get_name)
+    nodes$id = sapply(nodes$id, get_name_pcg)
     z = which(is.na(nodes$id))
     if(!(length(z)==0)){
       nodes = nodes[-z,]

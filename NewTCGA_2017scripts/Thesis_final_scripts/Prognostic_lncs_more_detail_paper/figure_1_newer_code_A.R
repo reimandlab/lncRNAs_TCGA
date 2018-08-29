@@ -17,14 +17,6 @@ require(caTools)
 
 #------FEATURES-----------------------------------------------------
 
-cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
-#cands = filter(cands, data == "PCAWG", pval <=0.05)
-cands = filter(cands, AnalysisType == "noFDR")
-#colnames(cands)[7] = "canc"
-cands$Cancer = NULL
-all_cands = cands
-
-
 #check if this person is in my analysis: TCGA-61-2095
 library(glmnet)
 library(survcomp)
@@ -39,7 +31,6 @@ ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 #ucsc <- ucsc[z,]
 z <- which(duplicated(ucsc[,6]))
 ucsc <- ucsc[-z,]
-
 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 allCands = filter(allCands, data=="TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
