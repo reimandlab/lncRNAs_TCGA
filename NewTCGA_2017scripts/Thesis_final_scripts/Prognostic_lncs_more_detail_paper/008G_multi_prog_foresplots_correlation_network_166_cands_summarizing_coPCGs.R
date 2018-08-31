@@ -395,5 +395,5 @@ prog_pcgs$pval = as.numeric(prog_pcgs$pval)
 prog_pcgs = prog_pcgs[order(pval)]
 
 prog_pcgs = merge(prog_pcgs, cands_pairs, by="pcg_combo")
-
+prog_pcgs = prog_pcgs[order(pval)]
 
