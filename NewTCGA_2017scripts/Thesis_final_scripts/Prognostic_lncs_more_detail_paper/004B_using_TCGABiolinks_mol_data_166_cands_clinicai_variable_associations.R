@@ -89,7 +89,7 @@ add_clin_vars = function(dtt){
     #remove columns where # of NAs is greater than 50% of patietnt cohort
     
     check_nas = function(col){
-      check = length(which((col == "[Not Applicable]") | (col == "[Not Available]")))
+      check = length(which((col == "[Not Applicable]") | (col == "[Not Available]") | (col == "Unknown")))
         if(check < (dim(clin)[1] *0.5)){
           return("keep")
         }
@@ -176,11 +176,12 @@ get_clin_lnc_cors = function(dtt){
     if(hr <1){new_dat$risk = "LowExp"}
     
     #each clinical variable
-    canc_col_results = as.data.frame(matrix(ncol=8)) ; colnames(canc_col_results)=c("canc", "lnc", "colname", "cor", "pval", "test", "chisq", "kw_pval")
-    for(i in 1:ncol(new_dat)){
+    canc_col_results = as.data.frame(matrix(ncol=10)) ; colnames(canc_col_results)=c("canc", "lnc", "colname", "cor", "pval", "test", "chisq", "kw_pval",
+    "clin_pval", "anova_both_vs_lnc")
+    for(i in 1:(ncol(new_dat)-2)){
       print(i)    
       col = colnames(new_dat)[i]
-      if(!(col == lnc)){
+      if((!(col == lnc)) & (!(str_detect(col, "RPPA")))){
 
       if(!(is.numeric(new_dat[,i]))){
       new_dat[,i] = as.character(new_dat[,i])}
@@ -188,7 +189,7 @@ get_clin_lnc_cors = function(dtt){
       print(col)
       if(!(col %in% c("patient", "patient_id", "bcr_patient_uuid", "tissue_source_site", 
         "last_contact_days_to", "days_to_initial_pathologic_diagnosis", "tumor_tissue_site", 
-        "form_completion_date"))){
+        "form_completion_date", "OS.time", "OS", "days_to_death", "Signet.Ring", "MACIS"))){
 
         new_dat_plot = new_dat[,c("patient", col, lnc, "lncRNA_tag", "risk")]
         test = as.numeric(new_dat_plot[,2])  
@@ -198,7 +199,11 @@ get_clin_lnc_cors = function(dtt){
         }
 
         if(!(length(which(is.na(test))) == length(test))){
-        #if(!(is.na(test[1]))){
+        
+          z = test[which(!(is.na(test)))]
+          if((length(z) > 10) & !(length(z) == length(which(test==0)))){
+
+          #if(!(is.na(test[1]))){
           new_dat_plot[,2] = as.numeric(new_dat_plot[,2])
           colnames(new_dat_plot)[2] = "Clinical"
           new_dat_plot[,3] = log1p(new_dat_plot[,3])
@@ -209,8 +214,30 @@ get_clin_lnc_cors = function(dtt){
           pval_cor = rcorr(new_dat_plot$lncRNA_exp, new_dat_plot$Clinical, "spearman")$P[2]
           chisq_pval = "nochisq"
           kw_pval = "nokw"
-          row = c(canc, lnc, col, cor, pval_cor, "spearman", chisq_pval, kw_pval)
+          
+          #how good of a predictor of survial is the clinical variable itself? 
+          surv_dat = rna[,which(colnames(rna) %in% c("patient", "OS", "OS.time"))]
+          new_dat_plot = merge(new_dat_plot, surv_dat, by = c("patient"))
+          new_dat_plot$OS = as.numeric(new_dat_plot$OS)
+          new_dat_plot$OS.time = as.numeric(new_dat_plot$OS.time)
+
+          cox_lnc = coxph(Surv(OS.time, OS) ~ lncRNA_tag, data = new_dat_plot)
+          cox_clin = coxph(Surv(OS.time, OS) ~ Clinical, data = new_dat_plot)
+          both = coxph(Surv(OS.time, OS) ~ lncRNA_tag + Clinical, data = new_dat_plot)
+
+          clin_pval = glance(cox_clin)[6]
+          z = which(is.na(new_dat_plot[,2]))
+          if(!(length(z)==0)){
+            anov_pval = "cant_calc"
+          }
+
+          if(length(z)==0){
+          anov_pval = anova(cox_lnc, both)[2,4]}
+
+          row = c(canc, lnc, col, cor, pval_cor, "Ftest", chisq_pval, kw_pval, 
+          clin_pval, anov_pval)
           names(row) = colnames(canc_col_results)
+
           canc_col_results = rbind(canc_col_results, row)
           #scatter plot 
           sp <- ggscatter(new_dat_plot, x = "Clinical", y = "lncRNA_exp",
@@ -222,6 +249,7 @@ get_clin_lnc_cors = function(dtt){
           sp = sp + stat_cor(method = "spearman") + theme_bw() + ggtitle(paste(canc, lnc, col))
           print(sp)
 
+        }
         }
 
         #if(is.na(test)[1]){
@@ -243,7 +271,7 @@ get_clin_lnc_cors = function(dtt){
         colnames(new_dat_plot)[3] = "lncRNA_exp"
 
         z1 = which(is.na(new_dat_plot[,which(colnames(new_dat_plot) %in% col)]))  
-        z2 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% "#N/A")  
+        z2 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% c("#N/A", "Unknown"))  
         z3 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% c("[Unknown]", "[Not Available]", "[Not Evaluated]"))  
 
         z = unique(c(z1, z2,z3))
@@ -267,7 +295,34 @@ get_clin_lnc_cors = function(dtt){
         tb = table(new_dat_plot$lncRNA_tag, new_dat_plot$Clinical)
         chisq_pval = as.numeric(tidy(chisq.test(tb))[2])
 
-        row = c(canc, lnc, col, "nocor", anova, "Ftest", chisq_pval, kw_pval)
+        #how good of a predictor of survial is the clinical variable itself? 
+        surv_dat = rna[,which(colnames(rna) %in% c("patient", "OS", "OS.time"))]
+        new_dat_plot = merge(new_dat_plot, surv_dat, by = c("patient"))
+        new_dat_plot$OS = as.numeric(new_dat_plot$OS)
+        new_dat_plot$OS.time = as.numeric(new_dat_plot$OS.time)
+
+        num_high = length(which(new_dat$lncRNA_tag ==1))
+        num_low = length(which(new_dat$lncRNA_tag ==0))
+
+        lncheck = ((num_low >=10) & (num_high >=10))
+
+        if((dim(table(new_dat_plot$lncRNA_tag)) > 1) & lncheck){
+
+        cox_lnc = coxph(Surv(OS.time, OS) ~ lncRNA_tag, data = new_dat_plot)
+        cox_clin = coxph(Surv(OS.time, OS) ~ Clinical, data = new_dat_plot)
+        both = coxph(Surv(OS.time, OS) ~ lncRNA_tag + Clinical, data = new_dat_plot)
+
+        clin_pval = glance(cox_clin)[6]
+        anov_pval = anova(cox_lnc, both)[2,4]
+        }
+
+        if((dim(table(new_dat_plot$lncRNA_tag))) <= 1 & (!(check))){
+        clin_pval = "cant_calc"
+        anov_pval = "cant_calc"
+        }
+
+        row = c(canc, lnc, col, "nocor", anova, "Ftest", chisq_pval, kw_pval, 
+          clin_pval, anov_pval)
         names(row) = colnames(canc_col_results)
         canc_col_results = rbind(canc_col_results, row)
 
@@ -304,7 +359,24 @@ get_clin_lnc_cors = function(dtt){
 
 } #end get_clin_lnc_cors
 
-clin_data_lncs_cors = llply(clin_data_lncs, get_clin_lnc_cors)
+#clin_data_lncs_cors = llply(clin_data_lncs, get_clin_lnc_cors)
+d1 = get_clin_lnc_cors(clin_data_lncs[[1]])
+d2 = get_clin_lnc_cors(clin_data_lncs[[2]])
+d3 = get_clin_lnc_cors(clin_data_lncs[[3]])
+d4 = get_clin_lnc_cors(clin_data_lncs[[4]])
+d5 = get_clin_lnc_cors(clin_data_lncs[[5]])
+d6 = get_clin_lnc_cors(clin_data_lncs[[6]])
+d7 = get_clin_lnc_cors(clin_data_lncs[[7]])
+d8 = get_clin_lnc_cors(clin_data_lncs[[8]])
+d9 = get_clin_lnc_cors(clin_data_lncs[[9]])
+d10 = get_clin_lnc_cors(clin_data_lncs[[10]]) #<------ this one didn't work
+d11 = get_clin_lnc_cors(clin_data_lncs[[11]])
+d12 = get_clin_lnc_cors(clin_data_lncs[[12]])
+d13 = get_clin_lnc_cors(clin_data_lncs[[13]])
+d14 = get_clin_lnc_cors(clin_data_lncs[[14]])
+
+all_clin = list(d1, d2,d3,d4,d5,d6,d7,d8,d9,d11,d12,d13,d14)
+saveRDS(all_clin, file="13_data_sets_biolinks_results.rds")
 
 #--------FDR & Summarize Results-------------------------------------
 
@@ -332,7 +404,7 @@ fdr_sum = function(dtt){
 
 }#end fdr_sum
 
-clean_up = llply(clin_data_lncs_cors, fdr_sum)
+clean_up = llply(all_clin, fdr_sum)
 clean_up = ldply(clean_up, data.table)
 clean_up = as.data.table(clean_up)
 clean_up = clean_up[order(fdr)]

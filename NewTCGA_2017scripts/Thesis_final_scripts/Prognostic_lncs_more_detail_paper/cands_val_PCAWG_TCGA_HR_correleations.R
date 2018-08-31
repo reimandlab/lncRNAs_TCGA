@@ -69,7 +69,7 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June1
 t = as.data.table(filter(allCands, data == "TCGA"))
 p = as.data.table(filter(allCands, data == "PCAWG"))
 p$num_risk = as.numeric(p$num_risk)
-p = as.data.table(filter(p, num_risk > 10)) #--> 75
+p = as.data.table(filter(p, num_risk >= 5)) #--> 75
 
 allCands = rbind(t,p)
 
@@ -82,9 +82,9 @@ p$perc_risk[(p$perc_risk >0.45) & (p$perc_risk <0.55)] = 0.5
 p$perc_type[!(p$perc_risk==0.5)] = "unbal"
 p$perc_type[(p$perc_risk==0.5)] = "bal"
 colnames(p)[23] = "pcawg_perc_type"
-
 colnames(p)[3] = "pcawg_hr"
-p = as.data.table(filter(p, pval <= 0.15))
+
+p = as.data.table(filter(p, pval <= 0.2))
 
 t = as.data.table(filter(t, combo %in% p$combo))
 t$perc_risk = as.numeric(t$perc_risk)

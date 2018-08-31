@@ -103,7 +103,7 @@ make_matrix_for_ap = function(canc){
 	lncs = unique(dat$lnc)
 	if(length(lncs) > 1){
 		sum = as.data.table(table(upreg_genes$gene_name))
-		sum = as.data.table(filter(sum, N > 1))
+		sum = as.data.table(filter(sum, N >= 1))
 		upreg_gene_list = unique(sum$V1)
 	}
 	if(!(length(lncs) > 1)){
@@ -124,6 +124,8 @@ make_matrix_for_ap = function(canc){
 		colnames(combined_paths) <- c("GO.ID", "Description", "p.Val", "FDR", "Phenotype", "Genes")
 		file = paste("Aug22_DE_genes_gProfiler_results/", canc, "upregulated_risk_genes_pathways.txt", sep="_")
 		write.table(combined_paths, sep= "\t", file, quote=F, row.names=F)
+		up_path = length(unique(combined_paths$Description))
+
 		}
 	}
 
@@ -131,7 +133,7 @@ make_matrix_for_ap = function(canc){
 	downreg_genes = as.data.table(filter(dat_down, adj.P.Val <= 0.05))
 	if(length(lncs) > 1){
 		sum = as.data.table(table(downreg_genes$ID))
-		sum = as.data.table(filter(sum, N > 1))
+		sum = as.data.table(filter(sum, N >= 1))
 		downreg_gene_list = unique(sum$V1)
 	}
 	if(!(length(lncs) > 1)){
@@ -152,6 +154,8 @@ make_matrix_for_ap = function(canc){
 		colnames(combined_paths) <- c("GO.ID", "Description", "p.Val", "FDR", "Phenotype", "Genes")
 		file = paste("Aug22_DE_genes_gProfiler_results/", canc, "downregulated_risk_genes_pathways.txt", sep="_")
 		write.table(combined_paths, sep= "\t", file, quote=F, row.names=F)
+		down_path = length(unique(combined_paths$Description))
+
 		}
 	}
 

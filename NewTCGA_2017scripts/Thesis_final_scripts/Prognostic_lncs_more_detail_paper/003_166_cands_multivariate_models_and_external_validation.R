@@ -365,7 +365,7 @@ get_survival_models = function(dtt){
     perc = risk_num/nrow(newdat)
   }
 
-  row <- c(colnames(newdat)[1], summary(lncs)$coefficients[1,c(1,2,5)],  summary(lncs)$conf.int[1,c(3,4)], dtt$canc[1], 
+  row <- c(colnames(newdat)[1], summary(lncs)$coefficients[1,c(1,2)],  glance(lncs)[4],  summary(lncs)$conf.int[1,c(3,4)], dtt$canc[1], 
     lnc_test_ph, global, risk_num, perc)
     
   names(row) <- names(results_cox1) 
@@ -437,7 +437,11 @@ pcawg_results1$fdr_pval = p.adjust(pcawg_results1$pval, method="fdr")
 #combine results from TCGA and PCAWG
 pcawg_results1$data = "PCAWG"
 pcawg_results1$num_risk = as.numeric(pcawg_results1$num_risk)
-pcawg_results1 = filter(pcawg_results1, num_risk >=5)
+pcawg_results1 = filter(pcawg_results1, num_risk >=10)
+
+z = which(pcawg_results1$upper95 == "Inf")
+pcawg_results1 = pcawg_results1[-z,]
+
 pcawg_results1$combo = paste(pcawg_results1$gene, pcawg_results1$cancer, sep="_")
 
 #all-results

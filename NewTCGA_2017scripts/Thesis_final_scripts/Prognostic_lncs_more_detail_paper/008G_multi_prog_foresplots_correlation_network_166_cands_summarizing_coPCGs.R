@@ -353,5 +353,47 @@ length(which(results2$pcg_fdr_pval <= 0.05))
 
 saveRDS(results2, file="110_cis_antisense_pairs_survival_results_aug28.rds")
 
+#which of these are candidates? 
+r = readRDS("110_cis_antisense_pairs_survival_results_aug28.rds")
+cancs = rna[,c("type", "Cancer")]
+cancs = unique(cancs)
+colnames(cancs) = c("canc", "Cancer")
+
+r = merge(r, cancs, by="canc")
+r$combo = paste(r$lnc, r$Cancer, sep="_")
+
+z = which(r$combo %in% allCands$combo)
+cands_pairs = r[z,]
+
+cands_pairs$pcg_combo = paste(cands_pairs$pcg, cands_pairs$Cancer, sep="_")
+
+#make summary plot 
+#any of these in cancer gene census list?
+#COSMIC cancer gene census
+census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
+#get ensg
+get_census_ensg = function(genes){
+  glist = unlist(strsplit(genes, ","))
+  z = which(str_detect(glist, "ENSG"))
+  ensg = glist[z]
+  return(ensg)
+}
+census$ensg = sapply(census$Synonyms, get_census_ensg)
+
+z = which(cands_pairs$pcg %in% census$ensg)
+cands_pairs$census = ""
+cands_pairs$census[z] = "YES"
+
+cands_pairs$pcg = unlist(llply(cands_pairs$pcg, get_name))
+cands_pairs$lnc = unlist(llply(cands_pairs$lnc, get_name))
+
+#get pcg HR and p-value?
+
+prog_pcgs$pcg_combo = paste(prog_pcgs$gene, prog_pcgs$canc, sep="_")
+prog_pcgs = prog_pcgs[which(prog_pcgs$pcg_combo %in% cands_pairs$pcg_combo),]
+prog_pcgs$pval = as.numeric(prog_pcgs$pval)
+prog_pcgs = prog_pcgs[order(pval)]
+
+prog_pcgs = merge(prog_pcgs, cands_pairs, by="pcg_combo")
 
 
