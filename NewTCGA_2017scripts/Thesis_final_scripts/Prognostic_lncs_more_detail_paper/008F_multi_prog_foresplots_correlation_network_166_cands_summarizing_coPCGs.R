@@ -37,6 +37,7 @@ val_cands = as.data.table(val_cands)
 val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
 val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+val_cands = subset(val_cands, as.numeric(pval) < 0.05)
 
 #Combined into one dataframe because need to get ranks 
 all <- merge(rna, pcg, by = c("patient", "Cancer", "OS", "OS.time", "type"))

@@ -156,7 +156,7 @@ get_survival_models = function(dtt){
           pval = TRUE,             # show p-value of log-rank test.
           conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-          xlim = c(0,5),        # present narrower X axis, but not affect
+          #xlim = c(0,5),        # present narrower X axis, but not affect
                             # survival estimates.
           break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
@@ -183,9 +183,6 @@ get_survival_models = function(dtt){
         # Change method
   p = p + stat_compare_means(method = "wilcox.test")
   print(p)
-
-  print(ggcoxzph(test.ph))
-
 }
 
 results_cox1 = results_cox1[-1,]
@@ -197,7 +194,7 @@ return(results_cox1)
 
 }
 
-pdf("TCGA_candidates_survival_plots_final_cands_May3rd.pdf")
+pdf("TCGA_candidates_survival_plots_final_cands_FULL_lifespan_May3rd.pdf")
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
 dev.off()
 
@@ -392,7 +389,7 @@ get_survival_models = function(dtt){
           pval = TRUE,             # show p-value of log-rank test.
           conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-          xlim = c(0,5),        # present narrower X axis, but not affect
+          #xlim = c(0,5),        # present narrower X axis, but not affect
                             # survival estimates.
           break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
@@ -425,7 +422,7 @@ results_cox1 = results_cox1[-1,]
 return(results_cox1)
 }
 
-pdf("PCAWG_validating_individual_TCGA_candidates_survival_plots_final_cands_May3rd.pdf")
+pdf("PCAWG_validating_individual_TCGA_candidates_survival_plots_final_cands_May3rd_full_lifespan.pdf")
 pcawg_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
 dev.off()
 

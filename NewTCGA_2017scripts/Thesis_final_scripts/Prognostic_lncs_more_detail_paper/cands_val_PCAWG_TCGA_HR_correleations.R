@@ -69,12 +69,13 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June1
 t = as.data.table(filter(allCands, data == "TCGA"))
 p = as.data.table(filter(allCands, data == "PCAWG"))
 p$num_risk = as.numeric(p$num_risk)
-p = as.data.table(filter(p, num_risk >= 5)) #--> 75
+p = as.data.table(filter(p, num_risk >= 10)) #--> 61
 
 allCands = rbind(t,p)
 
 z = which(p$upper95 == "Inf")
-p = p[-z,]
+if(!(length(z)==0)){
+p = p[-z,]}
 
 p$HR = as.numeric(p$HR)
 p$perc_risk = as.numeric(p$perc_risk)
@@ -84,7 +85,7 @@ p$perc_type[(p$perc_risk==0.5)] = "bal"
 colnames(p)[23] = "pcawg_perc_type"
 colnames(p)[3] = "pcawg_hr"
 
-p = as.data.table(filter(p, pval <= 0.2))
+p = as.data.table(filter(p, pval <= 0.5))
 
 t = as.data.table(filter(t, combo %in% p$combo))
 t$perc_risk = as.numeric(t$perc_risk)
@@ -99,7 +100,13 @@ tp$pcawg_hr = log2(tp$pcawg_hr)
 tp$fav[tp$HR > 0] = "unfav"
 tp$fav[tp$HR < 0] = "fav"
 
-pdf("summary_PCAWG_TCGA_HR_correlation.pdf", width=9)
+#change cancer type
+canc_conv = rna[,c("type", "Cancer")]
+canc_conv = unique(canc_conv)
+colnames(canc_conv)[2]= "cancer"
+tp = merge(canc_conv, tp, by = "cancer")
+
+pdf("summary_PCAWG_TCGA_HR_correlation_all_p<0.5.pdf", width=9)
 g = ggscatter(tp, x = "HR", y = "pcawg_hr",
    color = "black", shape = 21, size = 3, # Points color, shape and size
    add = "reg.line",  # Add regressin line
@@ -107,7 +114,7 @@ g = ggscatter(tp, x = "HR", y = "pcawg_hr",
    conf.int = TRUE, # Add confidence interval
    cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
    cor.coeff.args = list(method = "spearman", label.sep = "\n")
-   ) + geom_label_repel(aes(label=CAT_geneName, color=cancer), size=5) 
+   ) + geom_label_repel(aes(label=CAT_geneName, color=type), size=3) 
 ggpar(g, legend="bottom") + xlab("TCGA Hazard Ratio") + ylab("PCAWG Hazard Ratio")
 
 dev.off()

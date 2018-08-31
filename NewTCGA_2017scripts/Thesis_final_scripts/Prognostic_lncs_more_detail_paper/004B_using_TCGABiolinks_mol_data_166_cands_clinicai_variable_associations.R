@@ -256,6 +256,8 @@ get_clin_lnc_cors = function(dtt){
         if(length(which(is.na(test))) == length(test)){
         #boxplot
         
+        if(!(length(unique(new_dat_plot$Clinical)) > 10)){
+
         #palette
         colourCount = length(unique(new_dat_plot$Clinical))
         getPalette = colorRampPalette(brewer.pal(9, "Set1"))
@@ -345,6 +347,7 @@ get_clin_lnc_cors = function(dtt){
       }
     }
     }
+    }
     } #for i in 1:ncol(new_dat)
     canc_col_results = canc_col_results[-1,]
     return(canc_col_results)
@@ -379,6 +382,7 @@ all_clin = list(d1, d2,d3,d4,d5,d6,d7,d8,d9,d11,d12,d13,d14)
 saveRDS(all_clin, file="13_data_sets_biolinks_results.rds")
 
 #--------FDR & Summarize Results-------------------------------------
+all_clin = readRDS("13_data_sets_biolinks_results.rds")
 
 fdr_sum = function(dtt){
 
@@ -388,7 +392,11 @@ fdr_sum = function(dtt){
   #dtt = filter(dtt, fdr < 0.05)
 
   #remove OS.time, OS, lncRNA tag... 
-  z = which(dtt$colname %in% c("OS", "OS.time", "lncRNA_tag", "vital_status"))
+  z = which(dtt$colname %in% c("OS", "OS.time", "lncRNA_tag", "vital_status", 
+    "Tissue.source.site", "Whole.genome", "SNP6", "HM450", "HM27", "Vital.status..1.dead.", 
+    "COC", "Status", "C1A.C1B", "Survival..months.", "OS.event", "Days.to.date.of.Death", "OS.event", "BCR", 
+    "Tumor", "X2009stagegroup", "time_of_follow.up", "CDE_ID.3045435", "batch", "Survival", "Exome.data", "CDE_ID.3104937","OS.Time",
+    "Country", "os_days", "CDE_ID.2006657", "icd_o_3_site", "WGS"))
   if(!(length(z)==0)){
     dtt = dtt[-z,]
   }
@@ -407,7 +415,7 @@ fdr_sum = function(dtt){
 clean_up = llply(all_clin, fdr_sum)
 clean_up = ldply(clean_up, data.table)
 clean_up = as.data.table(clean_up)
-clean_up = clean_up[order(fdr)]
+clean_up = clean_up[order(clin_pval)]
 
 #look at just chisq tests
 clean_up$chisq = as.numeric(clean_up$chisq)

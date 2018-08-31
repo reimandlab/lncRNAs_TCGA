@@ -37,9 +37,10 @@ val_cands = as.data.table(val_cands)
 val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
 val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+val_cands = subset(val_cands, as.numeric(pval) < 0.05)
 
 #Combined into one dataframe because need to get ranks 
-all <- merge(rna, pcg, by = c("patient", "Cancer"))
+all <- merge(rna, pcg, by = c("patient", "Cancer", "type"))
 all = all[,1:25170]
 
 #------FUNCTIONS-----------------------------------------------------
@@ -243,7 +244,7 @@ get_summary = function(cancer){
     #take all pairs with abs cor > 0.5 and redo correlation 
     #analysis to reduce dimension of corplot
     res2 = as.data.table(res2)
-    res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05, abs(cor) >= 0.3))
+    res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05, abs(cor) >= 0.25))
     print("pass2")
 
     if((dim(res2)[1] >1)){
@@ -263,7 +264,7 @@ get_summary = function(cancer){
     res2 = res2[order(fdr)]
 
     res2 = as.data.table(res2)
-    res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05, abs(cor) >= 0.5))
+    res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05, abs(cor) >= 0.25))
 
     z = which(res2$row %in% lncs)
     res2 = as.data.frame(res2)
@@ -405,8 +406,10 @@ get_summary = function(cancer){
     #order by highest correlation
     lnc_cors = lnc_cors[order(from, cor, distance)]
    
-    if(dim(lnc_cors)[1] > 100){
-      lnc_cors = lnc_cors[1:100,]
+    if(dim(lnc_cors)[1] > 200){
+      #get top 75 PCGs for each lncRNA if there are multiple ones
+      #split --> order & get top 75 --> bind 
+      lnc_cors = lnc_cors[1:200,]
     }
 
     lnc_cors$from = factor(lnc_cors$from, levels=unique(lnc_cors$from))
@@ -428,7 +431,7 @@ get_summary = function(cancer){
       scale_fill_gradient2(low = "blue", mid = "white", high = "red") +
       labs(x = "",y = "") + theme_minimal() +
       theme(axis.text.x = element_text(angle=30,hjust=1,vjust=1.0, size=8),
-        axis.text.y = element_text(size = 7, colour = a),
+        axis.text.y = element_text(size = 4, colour = a),
         axis.ticks.x=element_blank(), axis.ticks.y=element_blank(), legend.position="top", legend.box = "horizontal") + 
       ggtitle(cancer) +
       geom_text(aes(label=pcg_hr), size=2)
@@ -484,7 +487,7 @@ get_summary = function(cancer){
 }#if !(dim(test)[1]==0)
 }
 
-pdf("top100_regulatory_pcgs_heatmaps_aug14.pdf", height=9, width=9)
+pdf("top100_regulatory_pcgs_heatmaps_top75_pcgs_each_lncRNA_aug31.pdf", height=11, width=9)
 canc_results = llply(cancs, get_summary, .progress = "text")
 dev.off()
 

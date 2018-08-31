@@ -59,6 +59,7 @@ val_cands = as.data.table(val_cands)
 val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
 val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+val_cands = subset(val_cands, as.numeric(pval) < 0.05)
 
 #--------This script ------------------------------------------------
 
@@ -419,13 +420,17 @@ res_tog$HR = as.numeric(res_tog$HR)
 res_tog$HR = log2(res_tog$HR)
 mypal = readRDS(file="palette_32_cancer_types.rds")
 
+mypal = c("#73E889","#7D8DDC", "#DCAF40", "#DEEB5C", "#D2EEB8" ,"#84E9E5", "#DFC481",
+ "#86E74D", "#DCDFDC" ,"#C542E3", "#8FC269" ,"#62B3AD", "#8F64DA" ,"#7EBEE4",
+"#DB68B7" ,"#73E4B8", "#DAA6A1" ,"#92A07B", "#83748B" ,"#DCB0E0", "#E37356")
+
 # Basic scatter plot
 pdf("summary_coexpressed_risk_non_risk_wHR_500.pdf")
 ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
 geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
 geom_vline(xintercept = 500, linetype="dashed", color = "red") +
 theme_bw()+
-geom_label_repel(data=filter(res_tog, NumPCGs >=500), aes(label=name, fill=type), color = 'darkslategrey',size=1)+
+geom_label_repel(data=filter(res_tog, NumPCGs >=500), aes(label=name, fill=type), color = 'black',size=2.5)+
 scale_fill_manual(values=mypal)
 dev.off()
 
@@ -434,7 +439,7 @@ ggplot(res_tog, aes(x=NumPCGs, y=HR, shape=Risk)) + geom_point(size=1.5) +
 geom_hline(yintercept = 0, linetype="dashed", color = "red") + 
 geom_vline(xintercept = 750, linetype="dashed", color = "red") +
 theme_bw()+
-geom_label_repel(data=filter(res_tog, NumPCGs >=750), aes(label=name, fill=type), color = 'black',size=2)+
+geom_label_repel(data=filter(res_tog, NumPCGs >=750), aes(label=name, fill=type), color = 'black',size=2.5)+
 scale_fill_brewer(palette="Paired")
 dev.off()
 

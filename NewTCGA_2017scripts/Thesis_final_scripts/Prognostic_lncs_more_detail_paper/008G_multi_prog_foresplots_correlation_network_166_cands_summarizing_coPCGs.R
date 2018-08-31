@@ -35,6 +35,7 @@ val_cands = as.data.table(val_cands)
 val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
 val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+val_cands = subset(val_cands, as.numeric(pval) < 0.05)
 
 #Combined into one dataframe because need to get ranks 
 all <- merge(rna, pcg, by = c("patient", "Cancer", "OS", "OS.time", "type"))
@@ -351,7 +352,10 @@ length(which(results2$res <= 0.05))
 length(which(results2$fdr <= 0.05))
 length(which(results2$pcg_fdr_pval <= 0.05))
 
-saveRDS(results2, file="110_cis_antisense_pairs_survival_results_aug28.rds")
+#saveRDS(results2, file="110_cis_antisense_pairs_survival_results_aug28.rds")
+
+
+###START HERE###-----------------------------------------------------------------
 
 #which of these are candidates? 
 r = readRDS("110_cis_antisense_pairs_survival_results_aug28.rds")
