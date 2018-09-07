@@ -3,6 +3,7 @@ library(data.table)
 library(plyr)
 library(dplyr)
 library(stringr)
+library(rtracklayer)
 
 #Data
 #1. CNAs
@@ -39,6 +40,10 @@ cnas_bed$source = unlist(cnas_bed$source)
 
 #2. GENCODE V27 lncRNAs GTF file
 lncrnas = fread("gencode.v27lift37.long_noncoding_RNAs.gtf")
+
+gtf <- rtracklayer::import("gencode.v27lift37.long_noncoding_RNAs.gtf")
+gtf_df=as.data.frame(gtf)
+
 coords = lncrnas[,1:8]
 genes = lncrnas[,9]
 genelist = as.list(genes$V9)
@@ -52,7 +57,20 @@ genenames = llply(genelist, get_gene)
 genes$V9 = unlist(genenames)
 coords = cbind(coords, genes)
 coords_bed = coords[,c(1, 4:5, 9)]
-colnames(coords_bed) = c("chr", "start", "end", "gene")
+
+gtf_df = as.data.table(gtf_df)
+gtf_df = as.data.table(filter(gtf_df, type == "gene"))
+gtf_df$type = as.character(gtf_df$type)
+
+clean_gene = function(gene){
+	gene = unlist(strsplit(gene, "[.]"))[1]
+	return(gene)
+}
+
+gtf_df$gene_id = unlist(llply(gtf_df$gene_id, clean_gene))
+coords_bed = gtf_df[,c("seqnames", "start", "end", "width", "type", "gene_id", "gene_type", "gene_name")]
+
+colnames(coords_bed) = c("chr", "start", "end", "width", "type", "gene", "gene_type", "gene_name")
 
 #3. FANTOM lncRNAs 
 fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
@@ -62,6 +80,7 @@ extract3 <- function(row){
 	return(ens)
 }
 fantom[,1] <- apply(fantom[,1:2], 1, extract3)
+
 #remove duplicate gene names (gene names with multiple ensembl ids)
 z <- which(duplicated(fantom$CAT_geneName))
 rm <- fantom$CAT_geneName[z]
@@ -95,18 +114,20 @@ shorten = function(geneid){
 	sub$end = max 
 	return(sub)
 }
-lncs_coords = llply(lncs, shorten, .progress="text")
-lncs_coords <- ldply(lncs_coords, data.frame)
+#lncs_coords = llply(lncs, shorten, .progress="text")
+#lncs_coords <- ldply(lncs_coords, data.frame)
 
 #lncRNA coordinates candidates 
 #lncs_cords_166_cands_aug8.sorted.merged.bed
+
+lncs_coords = coords_bed
 
 write.table(cnas_bed, file="cnas_bed_TCGA.bed", col.names=F, row.names=F, quote=F, sep="\t")
 write.table(lncs_coords, file="lncrna_coords_bed.bed", col.names=F, row.names=F, quote=F, sep="\t")
 
 #################BEDTOOLS#########################################################################
 
-bedtools intersect -a lncrna_coords_bed.bed -b cnas_bed_TCGA.bed -f 0.50 -wa -wb > fantom_lncrnas_wTCGA_CNAs_23cancers.bed
+bedtools intersect -a lncrna_coords_bed.bed -b cnas_bed_TCGA.bed -f 0.75 -wa -wb > fantom_lncrnas_wTCGA_CNAs_23cancers.bed
 
 
 

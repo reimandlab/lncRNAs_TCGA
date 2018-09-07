@@ -36,8 +36,8 @@ lncswcnas = as.data.frame(lncswcnas)
 cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 colnames(cands)[7] = "canc"
 
-colnames(lncswcnas)[4] = "gene"
-colnames(lncswcnas)[11] = "canc"
+colnames(lncswcnas)[6] = "gene"
+colnames(lncswcnas)[15] = "canc"
 
 cands$canc[cands$canc=="Ovarian serous cystadenocarcinoma"] = "OV"
 cands$canc[cands$canc=="Liver hepatocellular carcinoma"] = "LIHC"
@@ -77,8 +77,9 @@ lncswcnas = lncswcnas %>%
 #keep gene-cancer combinations, don't really care right now if gene has CNA
 #for a different cancer where it's not a candidate 
 genes = as.list(unique(as.character(cands$gene[which(cands$gene %in% lncswcnas$gene)]))) #146/166 have CNAs overlapping them 
-colnames(lncswcnas) = c("lnc_chr", "lnc_start", "lnc_end", "gene", "name", "Chromosome" , "Start" , 
-	"End", "Num_Probes" , "Segment_Mean", "canc", "rm", "patient")
+colnames(lncswcnas) = c("lnc_chr", "lnc_start", "lnc_end", "width", "type", "gene" , "type_lnc" , "name", "name2", "Chromosome", "Start", 
+	"End", "Num_Probes" , "Segment_Mean", "canc", "rm" ,"patient")
+
 lncswcnas$rm = NULL
 
 rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
@@ -145,7 +146,7 @@ get_data = function(lnc){
     #is copy number aberation associated with expression? 
   	df$geneexp = log1p(df$geneexp)
 
-    df = df[,c(1:2, 3, 36:47)]
+    #df = df[,c(1:2, 3, 36:47)]
     df$V1 = NULL
     df$cna_status = ""
     get_cna_stat = function(seg_mean){
