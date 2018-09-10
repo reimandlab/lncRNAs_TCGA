@@ -76,22 +76,41 @@ lncswcnas = lncswcnas %>%
 
 #keep gene-cancer combinations, don't really care right now if gene has CNA
 #for a different cancer where it's not a candidate 
-genes = as.list(unique(as.character(cands$gene[which(cands$gene %in% lncswcnas$gene)]))) #146/166 have CNAs overlapping them 
+lncswcnas$combo = ""
+lncswcnas$combo = paste(lncswcnas$gene, lncswcnas$canc, sep="_")
+cands$combo = paste(cands$gene, cands$canc, sep="_")
+
+genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% lncswcnas$combo)]))) #153/173 have CNAs overlapping them 
+
 colnames(lncswcnas) = c("lnc_chr", "lnc_start", "lnc_end", "width", "type", "gene" , "type_lnc" , "name", "name2", "Chromosome", "Start", 
-	"End", "Num_Probes" , "Segment_Mean", "canc", "rm" ,"patient")
+	"End", "Num_Probes" , "Segment_Mean", "canc", "rm" ,"patient", "combo")
 
 lncswcnas$rm = NULL
 
 rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
 unique(rna$type)
 
+# Create the function.
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
+
 get_data = function(lnc){
-	cancer = cands$canc[which(cands$gene == lnc)][1]
-	dat = dplyr::filter(lncswcnas, canc == cancer, gene == lnc)
+	 
+  comb = lnc
+
+  cancer = cands$canc[which(cands$combo == lnc)][1]
+	
+  dat = dplyr::filter(lncswcnas, canc == cancer, gene == cands$gene[which(cands$combo == lnc)][1])
 	dat$canc = NULL
 
 	exp_data = subset(rna, type == cancer)
 	#assign high or low to each patient in expression file
+
+  lnc = cands$gene[which(cands$combo == lnc)][1]
+
 	z <- which(colnames(exp_data) %in% lnc)
   	if(!(length(z)==0)){
   	df = as.data.frame(exp_data)
@@ -199,12 +218,19 @@ get_data = function(lnc){
 
     length_risk_pats = length(which(df$med == med_risk))
 
+    #figure out if they are balanced or non-balanced 
+    bal = cands[cands$data=="TCGA",]
+    bal = as.numeric(bal$perc_risk[bal$combo == comb])
+    df$length = (df$End - df$Start)/1000
+    avg_length = mean(df$length)
+
     results = c(cancer, unique(df$gene), unique(df$name2), length(unique(df$patient)), 
       wilcoxon_pval, chi_pval, 
-      risk, length_risk_pats, rr, rp, ro)
+      risk, length_risk_pats, rr, rp, ro, bal, avg_length)
     
     names(results) = c("cancer", "gene", "name", "num_patients", "wilcoxon_pval", "chi_pval", 
-      "risk_type", "num_risk_pats", "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation")
+      "risk_type", "num_risk_pats", "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "balance_risk_pats", 
+      "avg_length")
     
     df$median <- factor(df$median, levels = c("High", "Low"))
     df$median  # notice the changed order of factor levels
@@ -212,7 +238,7 @@ get_data = function(lnc){
 
     library("ggExtra")
 	    
-    sp1 = ggplot(df, aes(x=Segment_Mean, y=geneexp, color=median)) + ggtitle(paste(df$gene[1], df$name2[1], df$type[1], "\nrisk=", df$risk[1])) + 
+    sp1 = ggplot(df, aes(x=Segment_Mean, y=geneexp, color=median)) + ggtitle(paste(df$gene[1], df$name2[1], cancer, df$type[1], "\nrisk=", df$risk[1])) + 
     geom_point() + 
     geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + stat_cor() +
     geom_vline(xintercept=0.2, linetype="dashed", color = "grey") + 
@@ -220,7 +246,7 @@ get_data = function(lnc){
     ylab("log1p FPKM")
 
 
-    sp2 = ggplot(df, aes(x=Segment_Mean, y=geneexp)) + ggtitle(paste(df$gene[1], df$name2[1], df$type[1], "\nrisk=", df$risk[1])) + 
+    sp2 = ggplot(df, aes(x=Segment_Mean, y=geneexp)) + ggtitle(paste(df$gene[1], df$name2[1], cancer, df$type[1], "\nrisk=", df$risk[1])) + 
     geom_point() + 
     geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + stat_cor() +
     geom_vline(xintercept=0.2, linetype="dashed", color = "grey") + 
@@ -228,8 +254,8 @@ get_data = function(lnc){
     ylab("log1p FPKM")
 
 
-    sp3 = ggplot(df, aes(x=median, y=Segment_Mean, color=median)) + ggtitle(paste(df$gene[1], df$name2[1], df$type[1], "\nrisk=", df$risk[1])) + 
-    geom_boxplot() + geom_jitter(shape=16, position=position_jitter(0.2)) +
+    sp3 = ggplot(df, aes(x=median, y=Segment_Mean, color=median)) + ggtitle(paste(df$gene[1], df$name2[1], cancer, df$type[1], "\nrisk=", df$risk[1])) + 
+    geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
     geom_hline(yintercept=0.2, linetype="dashed", color = "grey") + stat_n_text() + 
     geom_hline(yintercept=-0.2, linetype="dashed", color = "grey") + xlab("lncRNA expression group") +
     ylab("Segment Mean SCNA") + stat_compare_means(label = "p.signif")
@@ -238,8 +264,8 @@ get_data = function(lnc){
     mu <- ddply(df, "median", summarise, grp.med=median(Segment_Mean))
     head(mu)
     
-    sp4 = ggplot(df, aes(x=Segment_Mean, fill=median)) + ggtitle(paste(df$gene[1], df$name2[1], df$type[1], "\nrisk=", df$risk[1])) + 
-    geom_density(alpha=0.4) + geom_vline(data=mu, aes(xintercept=grp.med, color=median),
+    sp4 = ggplot(df, aes(x=Segment_Mean, fill=median)) + ggtitle(paste(df$gene[1], df$name2[1], cancer, df$type[1], "\nrisk=", df$risk[1])) + 
+    geom_freqpoly(alpha=0.4, aes(color=median)) + geom_vline(data=mu, aes(xintercept=grp.med, color=median),
              linetype="dashed") 
 
       print(sp1)
@@ -247,7 +273,8 @@ get_data = function(lnc){
       print(sp3)
       print(sp4)
       print(lnc)
-
+    #plot length of segments 
+    print(hist(df$length))
     return(results)
 }
 }
@@ -267,6 +294,23 @@ lnc_cna_cancer_data2$wilcoxon_pval = as.numeric(lnc_cna_cancer_data2$wilcoxon_pv
 lnc_cna_cancer_data2$fdr = p.adjust(lnc_cna_cancer_data2$wilcoxon_pval, method="fdr")
 
 sig_diff = filter(lnc_cna_cancer_data2, wilcoxon_pval <=0.05)
+
+#plot just the sig ones 
+sig_diff$combo = paste(sig_diff$gene, sig_diff$cancer, sep="_")
+genes = as.list(unique(sig_diff$combo))
+pdf("candidate_lncRNAs_CNA_versus_Expression_Sept_JUST_SIG_ONES.pdf")
+lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
+dev.off()
+
+
+
+
+
+
+
+
+
+
 
 lnc_cna_cancer_data2 = lnc_cna_cancer_data2[order(fdr, -numHighCNAmatch, -numLowCNAmatch)]
 
