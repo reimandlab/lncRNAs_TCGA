@@ -80,12 +80,18 @@ lncswcnas$combo = ""
 lncswcnas$combo = paste(lncswcnas$gene, lncswcnas$canc, sep="_")
 cands$combo = paste(cands$gene, cands$canc, sep="_")
 
-genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% lncswcnas$combo)]))) #153/173 have CNAs overlapping them 
-
 colnames(lncswcnas) = c("lnc_chr", "lnc_start", "lnc_end", "width", "type", "gene" , "type_lnc" , "name", "name2", "Chromosome", "Start", 
 	"End", "Num_Probes" , "Segment_Mean", "canc", "rm" ,"patient", "combo")
 
 lncswcnas$rm = NULL
+
+#HOW MANY THOUGH HAVE SEGMENTS AMP/DEL GREATER THAN 30 MEGABASE? 
+lncswcnas$length = lncswcnas$End-lncswcnas$Start
+lncswcnas$length = lncswcnas$length/1000000
+lncswcnas = subset(lncswcnas, length <30)
+
+genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% lncswcnas$combo)]))) #152/173 have CNAs overlapping them 
+#with segments that are shorter than 5 MB
 
 rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
 unique(rna$type)
@@ -96,7 +102,6 @@ getmode <- function(v) {
    uniqv[which.max(tabulate(match(v, uniqv)))]
 }
 
-
 get_data = function(lnc){
 	 
   comb = lnc
@@ -105,6 +110,8 @@ get_data = function(lnc){
 	
   dat = dplyr::filter(lncswcnas, canc == cancer, gene == cands$gene[which(cands$combo == lnc)][1])
 	dat$canc = NULL
+
+  if((dim(dat)[1]) > 30){
 
 	exp_data = subset(rna, type == cancer)
 	#assign high or low to each patient in expression file
@@ -169,8 +176,8 @@ get_data = function(lnc){
     df$V1 = NULL
     df$cna_status = ""
     get_cna_stat = function(seg_mean){
-       dup = seg_mean >=0.2
-       del = seg_mean < (-0.2)
+       dup = seg_mean >=0.3
+       del = seg_mean < (-0.3)
        if(dup){
         return("DUP")
        }        
@@ -196,6 +203,9 @@ get_data = function(lnc){
       med_risk = "Low"
     }
 
+    c_cor = (table(df$median)[1] >=5) & (table(df$median)[2] >=5) 
+
+    if(c_cor){
     r = rcorr(df$Segment_Mean[df$median == med_risk], df$geneexp[df$median == med_risk], type="spearman")$r[2]
     rr = r #correlation in high risk group
 
@@ -203,6 +213,12 @@ get_data = function(lnc){
     rp = rp #correlation in low risk group
     if(is.na(rp)){
       rp = 0
+    }
+    }
+
+    if(!(c_cor)){
+      rr = "cant"
+      rp="cant"
     }
 
     #overall correlation
@@ -221,7 +237,7 @@ get_data = function(lnc){
     #figure out if they are balanced or non-balanced 
     bal = cands[cands$data=="TCGA",]
     bal = as.numeric(bal$perc_risk[bal$combo == comb])
-    df$length = (df$End - df$Start)/1000
+    df$length = (df$End - df$Start)/1000000
     avg_length = mean(df$length)
 
     results = c(cancer, unique(df$gene), unique(df$name2), length(unique(df$patient)), 
@@ -258,7 +274,8 @@ get_data = function(lnc){
     geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
     geom_hline(yintercept=0.2, linetype="dashed", color = "grey") + stat_n_text() + 
     geom_hline(yintercept=-0.2, linetype="dashed", color = "grey") + xlab("lncRNA expression group") +
-    ylab("Segment Mean SCNA") + stat_compare_means(label = "p.signif")
+    ylab("Segment Mean SCNA") + stat_compare_means(label = "p.signif")+
+    geom_boxplot(width=.1)
 
     library(plyr)
     mu <- ddply(df, "median", summarise, grp.med=median(Segment_Mean))
@@ -276,6 +293,7 @@ get_data = function(lnc){
     #plot length of segments 
     print(hist(df$length))
     return(results)
+}
 }
 }
 pdf("candidate_lncRNAs_CNA_versus_Expression_Sept7.pdf")
@@ -303,299 +321,56 @@ lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
 dev.off()
 
 
+#---------FIGURE SUMMARY FOR PAPER--------------------------------------------------------------------------------------------
 
+sig_diff = merge(sig_diff, cands, by=colnames(cands)[which(colnames(cands) %in% colnames(sig_diff))])
+sig_diff = subset(sig_diff, data == "TCGA")
+sig_diff$overall_correlation = unlist(sig_diff$overall_correlation)
+sig_diff$overall_correlation = round(sig_diff$overall_correlation, digits=2)
+sig_diff$wilcoxon_pval = -log10(sig_diff$wilcoxon_pval)
 
+sig_diff$HR = as.numeric(sig_diff$HR)
+sig_diff$stat[sig_diff$HR > 1] = "Unfavourable"
+sig_diff$stat[sig_diff$HR < 1] = "Favourable"
 
+#remove negative correlations 
+sig_diff = subset(sig_diff, overall_correlation >0)
 
+#order 
+sig_diff = as.data.table(sig_diff)
+sig_diff = sig_diff[order(stat, abs(overall_correlation))]
+sig_diff$CAT_geneName = factor(sig_diff$CAT_geneName, levels=unique(sig_diff$CAT_geneName))
+sig_diff$canc = factor(sig_diff$canc, levels=unique(sig_diff$canc))
+sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
 
-
-
-
-
-lnc_cna_cancer_data2 = lnc_cna_cancer_data2[order(fdr, -numHighCNAmatch, -numLowCNAmatch)]
-
-sig_diff = as.data.frame(sig_diff)
-sig_diff$no_match = ""
-get_nomatch = function(row){
-  nomatch = as.numeric(as.character(row[[4]])) #all patients #
-  high = as.numeric(as.character(row[[5]])) #of pats high match
-  low = as.numeric(as.character(row[[6]]))
-  nomatch = nomatch-high-low
-}
-sig_diff$no_match = apply(sig_diff, 1, get_nomatch)
-
-match_h = sig_diff[,c(1:5,8, 9:13)]
-colnames(match_h)[5] = "num_cna_exp_match"
-match_h$type = "HighExpDup"
-match_h$num_cna_exp_match = as.numeric(as.character(match_h$num_cna_exp_match))
-
-match_l = sig_diff[,c(1:4, 6, 8, 9:13)]
-colnames(match_l)[5] = "num_cna_exp_match"
-match_l$type = "LowExpDel"
-match_l$num_cna_exp_match = as.numeric(as.character(match_l$num_cna_exp_match))
-
-match_no = sig_diff[,c(1:4,14,8, 9:13)]
-colnames(match_no)[5] = "num_cna_exp_match"
-match_no$type = "NoExpCNAMatch"
-
-#these ones are the ones that have sig wilcoxon p-value
-matched_sig = rbind(match_h, match_l, match_no)
-matched_sig = as.data.table(matched_sig)
-matched_sig = matched_sig[order(num_cna_exp_match, -type)]
-matched_sig = as.data.frame(matched_sig)
-order = as.character(unique(matched_sig$gene))
-matched_sig$gene <- factor(matched_sig$gene, levels = order)
-matched_sig$gene  # notice the changed order of factor levels
-
-#for each lncRNA turn fractions into percentages 
-matched_sig$num_cna_exp_match_patients = matched_sig$num_cna_exp_match
-matched_sig$num_cna_exp_match = (as.numeric(matched_sig$num_cna_exp_match))/(as.numeric(as.character(matched_sig$num_patients)))
-matched_sig$num_cna_exp_match = round(matched_sig$num_cna_exp_match, digits=3)
-
-matched_sig = as.data.table(matched_sig)
-matched_sig = matched_sig[order(risk_type, num_cna_exp_match, type)]
-
-order = unique(matched_sig$name)
-matched_sig$name <- factor(matched_sig$name, levels = order)
-
-# Stacked bar plots, add labels inside bars
-pdf("num_matching_CNA_exp_tags_23cancers_57lncs.pdf", width= 8, height=5)
-p1 = ggbarplot(matched_sig, x = "name", y = "num_cna_exp_match",
-  color = "type", fill = "risk_type", legend="left", ylab = "% of patients", xlab = "lncRNA",
-  palette = mypal) + theme_light() +coord_flip() + scale_colour_manual(values = c("salmon", "steelblue", "snow3")) +
-  scale_fill_manual(values = c("mistyrose", "aliceblue")) + ggtitle("Overall summary of CNAs overlapping lncRNA") +
-   geom_hline(yintercept=0.5, linetype="dashed", color = "red")
-  #label = TRUE, lab.col = "white", lab.pos = "in", lab.size=1.8)
-p1 = ggpar(p1,
- font.tickslab = c(8,"plain", "black"),
- xtickslab.rt = 45, legend = "left") 
-p1
-dev.off()
-
-#summarize where eahc gene cancer it's coming frmo and whether risk is high or low
-
-#high risk
-z = which((matched_sig$risk_type == "high_expression") & (matched_sig$type == "HighExpDup"))
-high = matched_sig[z,]
-
-#low risk
-z = which((matched_sig$risk_type == "low_expression") & (matched_sig$type == "LowExpDel"))
-low = matched_sig[z,]
-
-pats_summary = rbind(high, low)
-order = as.character(unique(matched_sig$name))
-
-saveRDS(matched_sig, file="lncRNA_CNA_summary_Aug13.rds")
-
-pats_summary$per_patients_wrisk_cna = (as.numeric(as.character(pats_summary$num_risk_pats_wmatchingCNA)))/(as.numeric(as.character(pats_summary$num_risk_pats)))
-
-pats_summary = pats_summary[order(match(name, order))] 
-pats_summary = pats_summary[order(per_patients_wrisk_cna)]
-pats_summary$name = factor(pats_summary$name, levels = unique(pats_summary$name))
-
-labels = as.character(pats_summary$cancer)
-
-p2 = ggbarplot(pats_summary, x = "name", y = "per_patients_wrisk_cna", ylab="% of risk \n patients wCNA", xlab = "lncRNA", 
-  color = "type", fill = "risk_type", legend="left", label=labels, lab.size = 2.5, lab.pos = c("out"), lab.vjust = 0.5, lab.hjust = 0.5, 
-  palette = mypal) + theme_light() +coord_flip() + scale_colour_manual(values = c("salmon", "steelblue", "snow3")) +
-  scale_fill_manual(values = c("mistyrose", "aliceblue")) + geom_hline(yintercept=0.2, linetype="dashed", color = "red") + 
-  ggtitle("lncRNA CNAs in Risk Groups")
-  #label = TRUE, lab.col = "white", lab.pos = "in", lab.size=1.8)
-p2= ggpar(p2,
- font.tickslab = c(8,"plain", "black"),
- xtickslab.rt = 45, legend = "none") 
+#x-axis = cancer
+#y-axis = lncRNA 
 
 library(patchwork)
-pdf("CNAs_lncRNAs_summary_30cands_may30.pdf", width=12, height=9)
-print(p2) 
-dev.off()
 
-#divide up the risk correlation and no risk correlation groups
-cors_risk = pats_summary[,c(1:9, 11:14)]
-cors_nonrisk = pats_summary[,c(1:8, 10, 11:14)]
+pdf("CNA_figure_partA.pdf", width=9, height=7)
 
-colnames(cors_risk)[9] = "cor_spearman"
-cors_risk$cor_group = "risk"
-colnames(cors_nonrisk)[9] = "cor_spearman"
-cors_nonrisk$cor_group = "nonrisk"
-
-pats_summary = rbind(cors_risk, cors_nonrisk)
-
-#plot the overall correlation between lncRNA copy number and expression in cohort 
-pats_summary$cor_spearman = as.numeric(as.character(pats_summary$cor_spearman))
-
-p3 = ggbarplot(pats_summary, x = "name", y = "cor_spearman", order=order, ylab="Spearman correlation \n CNA wExpression", xlab = "lncRNA", 
-  add = "segments", palette = mypal, color = "cor_group", position = position_dodge(0.6)) + theme(axis.title.y=element_blank(),
-        axis.text.y=element_blank(),
-        axis.ticks.y=element_blank()) +  theme_light() +
-  coord_flip() + 
-  geom_hline(yintercept=c(0), linetype="dashed", color = "black") + scale_colour_manual(values = c("steelblue", "salmon")) +
-  ggtitle("lncRNA CNAs in Risk Groups") + geom_hline(yintercept=c(0.15), linetype="dashed", color = "red") 
-  #label = TRUE, lab.col = "white", lab.pos = "in", lab.size=1.8)
-p3= ggpar(p3,
+g = ggplot(sig_diff, aes(canc, CAT_geneName)) +
+  geom_tile(aes(fill = wilcoxon_pval)) + geom_point(aes(size=abs(overall_correlation), color=overall_correlation))+
+    scale_fill_gradient(low = "white", high = "black", na.value = 'transparent') +
+    scale_colour_gradient2(low = "blue", midpoint = 0, high = "red") + 
+    xlab("Cancer") + ylab("lncRNA") + theme_bw() +
+    theme(legend.position="bottom", legend.box = "horizontal", 
+      legend.text=element_text(size=6), legend.title=element_text(size=6))
+g = ggpar(g,
  font.tickslab = c(8,"plain", "black"),
- xtickslab.rt = 45, legend = "right") 
+ xtickslab.rt = 45)
 
-pdf("CNAs_lncRNAs_summary_30cands_may30_wcor.pdf", width=14, height=8)
-p3 
+#covariate favourable vs unfavoubrale
+cov = ggplot(sig_diff, aes(CAT_geneName, 1)) + geom_tile(aes(fill = stat)) +
+theme_void() + coord_flip() + theme(legend.position="none")
+
+cov + g + plot_layout(ncol = 2, widths = c(1,15))
+
+ggplot(sig_diff, aes(CAT_geneName, 1)) + geom_tile(aes(fill = stat)) +
+theme_void() + coord_flip() 
+ 
 dev.off()
-
-
-
-##############----------------------------------------------------------------------------------------------------################
-##############----------------------------------RISK--------------------------------------------------------------################
-##############----------------------------------------------------------------------------------------------------################
-
-
-###save a new dataframe with each patient labelled as high risk/low risk, carry CNA or deletion or no CNA at all 
-###also get average correlation values 
-
-
-#1. for each patient figure out if they are low risk or high risk group 
-head(sig_diff)
-
-#keep gene-cancer combinations, don't really care right now if gene has CNA
-#for a different cancer where it's not a candidate 
-genes = as.list(unique(as.character(cands$gene[which(cands$gene %in% lncswcnas$gene)]))) #146/166 have CNAs overlapping them 
-
-rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
-unique(rna$type)
-
-get_data = function(lnc){
-  cancer = cands$canc[which(cands$gene == lnc)][1]
-  dat = dplyr::filter(lncswcnas, canc == cancer, gene == lnc)
-  dat$canc = NULL
-
-  exp_data = subset(rna, type == cancer)
-  #assign high or low to each patient in expression file
-  z <- which(colnames(exp_data) %in% lnc)
-    if(!(length(z)==0)){
-    df = as.data.frame(exp_data)
-    df <- df[,c(1, z,(ncol(exp_data)-32):ncol(exp_data))]  
-
-  df$median <- ""
-  median2 <- quantile(as.numeric(df[,2]), 0.5)
-    
-  if(median2 ==0){
-        #if median = 0 then anyone greater than zero is 1 
-        l1 = which(df[,2] > 0)
-        l2 = which(df[,2] ==0)
-        df$median[l1] = 1
-        df$median[l2] = 0
-        }
-
-    if(!(median2 ==0)){
-        l1 = which(df[,2] >= median2)
-        l2 = which(df[,2] < median2)
-        df$median[l1] = 1
-        df$median[l2] = 0
-    }
-
-    gene <- colnames(df)[2]
-    df$OS <- as.numeric(df$OS)
-    df$OS.time <- as.numeric(df$OS.time)
-    df$median[df$median ==0] = "Low"
-    df$median[df$median==1] = "High"
-
-    #get summary of SCNA in lncRNA for each patient 
-    #take mean segment mean for all cnas in patient 
-    #covering that lncRNA
-    df = merge(df, dat, by=c("patient"))
-    colnames(df)[2] = "geneexp"
-    
-    #is high expression or low expression associated with worse prognosis? 
-    df$median <- factor(df$median, levels = c("Low", "High"))
-    df$median  # notice the changed order of factor levels
-    HR = summary(coxph(Surv(OS.time, OS) ~ median, data = df))$coefficients[2]
-    if(HR >1){
-      risk = "high_expression"
-    }
-    if(HR <1){
-      risk = "low_expression"
-    }
-    df$risk = risk
-    #is copy number aberation associated with expression? 
-    df$geneexp = log1p(df$geneexp)
-    df = df[,c(1:2, 3, 36:47)]
-    df$V1 = NULL
-    df$cna_status = ""
-    get_cna_stat = function(seg_mean){
-       dup = seg_mean >=0.1
-       del = seg_mean < (-0.1)
-       if(dup){
-        return("DUP")
-       }        
-       if(del){
-        return("DEL")
-       } 
-       if((!(dup)) & (!(del))){
-        return("noCNA")
-       }
-    }
-    df$cna_status = as.character(llply(df$Segment_Mean, get_cna_stat))
-
-    df$median = as.character(df$median)
-    df$exp_cna_match = ""
-    get_cna_exp = function(row){
-      exp = row[[3]]
-      cna = row[[15]]
-      if(((exp == "High") & (cna == "DUP"))){
-        return("HighExp_Duplicated")
-      }
-        if(((exp == "Low") & (cna == "DEL"))){
-        return("LowExp_Deleted")
-      }
-        else{
-          return("DontMatch")
-        }
-    }
-    df$exp_cna_match = as.character(apply(df, 1, get_cna_exp))
-    df$cancer = cancer
-    df$length_cna_segment = df$End-df$Start
-    #convert to megabase 1mil
-    df$length_cna_segment = df$length_cna_segment/1000000
-    return(df)
-}
-}
-
-lnc_cna_cancer_data_files_save = llply(genes, get_data, .progress="text")
-lnc_cna_cancer_data_files_save = as.data.frame(do.call("rbind", lnc_cna_cancer_data_files_save))
-lnc_cna_cancer_data_files_save = as.data.table(lnc_cna_cancer_data_files_save)
-
-#plot summarize length of copy number aberations 
-#by cancer type 
-
-pdf("summary_all_146lncRNAs_copynumber_May30.pdf", width=9)
-g = ggviolin(lnc_cna_cancer_data_files_save, x = "cancer", y  = "length_cna_segment", xlab="length CNA (Kb)", color="risk", draw_quantiles = 0.5, palette=mypal) + theme_light()
- ggpar(g,
- font.tickslab = c(8,"plain", "black"),
- xtickslab.rt = 45, legend = "right") 
-
-dev.off()
-
-#only subset of 44 lncRNAs with associations between cna and expression 
-smaller_subset = subset(lnc_cna_cancer_data_files_save, gene %in% pats_summary$gene)
-
-pdf("summary_all_44_lncRNAs_copynumber_May30.pdf", width=9)
-g = ggviolin(smaller_subset, x = "cancer", y  = "length_cna_segment", xlab="length CNA (Kb)", color="risk", draw_quantiles = 0.5, palette=mypal) + theme_light() + ggtitle("Only lncRNAs with sig Wilcoxon")
- ggpar(g,
- font.tickslab = c(8,"plain", "black"),
- xtickslab.rt = 45, legend = "right") 
-dev.off()
-
-
-
-##############----------------------------------------------------------------------------------------------------################
-##############----------------------------------FINAL FILE SAVE---------------------------------------------------################
-##############----------------------------------------------------------------------------------------------------################
-
-saveRDS(lnc_cna_cancer_data_files_save, file="146_lncRNAs_wCNA_data_patient_status_May30th.rds")
-
-
-
-
-
-
 
 
 

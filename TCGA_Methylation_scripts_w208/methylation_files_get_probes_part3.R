@@ -57,10 +57,11 @@ add_canc = function(probeid){
 }
 probes$canc = llply(probes$cgid, add_canc, .progress="text")
 z = which(is.na(probes$canc))
-probes = probes[-z,]
+if(!(length(z)==0)){
+probes = probes[-z,]}
 probes$combo = paste(probes$ensg, probes$canc, sep="_")
 z = which(probes$combo %in% cands$combo)
-length(unique(probes$combo[z]))
+length(unique(probes$combo[z])) #88 combos have methylation data 
 
 #3. methylation files
 #KIRC

@@ -76,12 +76,11 @@ lncs_coords <- ldply(lncs_coords, data.frame)
 
 #candidate lncrnas 
 
-cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_May4.rds")
-#cands = filter(cands, data == "PCAWG", pval <=0.05)
-cands = filter(cands, AnalysisType == "noFDR")
+cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 colnames(cands)[7] = "canc"
+cands = filter(cands, data == "TCGA")
 
-lncs_coords = lncs_coords[which(lncs_coords$gene %in% cands$gene),] #153/166 are here in GENCODE 
+lncs_coords = lncs_coords[which(lncs_coords$gene %in% cands$gene),] #154/166 are here in GENCODE 
 write.table(lncs_coords, file="lncrna_coords_bed.bed", quote=F, row.names=F, col.names=F, sep="\t")
 
 #################BEDTOOLS#########################################################################
