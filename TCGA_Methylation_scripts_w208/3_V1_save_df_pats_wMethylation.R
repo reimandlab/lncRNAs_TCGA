@@ -364,8 +364,7 @@ get_data = function(lnc){
 
 	#multiple probes present 	
 	if(z > 1){
-		results_all_probes = as.data.frame(matrix(ncol = 13)) ; colnames(results_all_probes) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal")
+		results_all_probes = as.data.frame(matrix(ncol = 8)) ; colnames(results_all_probes) = c("patient", "median", "probe", "mut_status", "gene", "cancer", "risk", "name")
 	
 	for(k in 1:z){
 	new = subset(df, df$probe == unique(df$probe)[k])
@@ -428,64 +427,15 @@ get_data = function(lnc){
     length_risk_pats = length(which(new$median == med_risk))
 
     probe = new$probe[1]
-    results = c(cancer, unique(new$gene), length(unique(new$patient)), 
-      wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, probe, bal)
-    
-    names(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal")
-
-    new$median <- factor(new$median, levels = c("High", "Low"))
-    new$median  # notice the changed order of factor levels
-
-    
-    library("ggExtra")
     new$risk = med_risk
-
     gene_name = fantom$CAT_geneName[which(fantom$gene == lnc)]   
-
-    sp1 = ggplot(new, aes(x=beta, y=geneExp, color=median)) + ggtitle(paste(new$gene[1], gene_name, probe, cancer, "\nrisk=", new$risk[1])) + 
-    geom_point() + 
-    geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + stat_cor() +
-    geom_vline(xintercept=0.5, linetype="dashed", color = "grey") + 
-    geom_vline(xintercept=0, linetype="dashed", color = "grey") + xlab("Beta Values") +
-    ylab("log1p FPKM") + theme(text = element_text(size=15), axis.text = element_text(size=15))
-
-
-    sp2 = ggplot(new, aes(x=beta, y=geneExp)) + ggtitle(paste(new$gene[1], gene_name, probe, cancer, "\nrisk=", new$risk[1])) + 
-    geom_point() + 
-    geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + stat_cor() +
-    geom_vline(xintercept=0.5, linetype="dashed", color = "grey") + 
-    geom_vline(xintercept=0, linetype="dashed", color = "grey") + xlab("Beta Values") +
-    ylab("log1p FPKM") + theme(text = element_text(size=15), axis.text = element_text(size=15))
-
-
-    sp3 = ggplot(new, aes(x=median, y=beta, color=median)) + ggtitle(paste(new$gene[1], gene_name, probe, cancer, "\nrisk=", new$risk[1])) + 
-    geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
-    geom_hline(yintercept=0.5, linetype="dashed", color = "grey") + stat_n_text() + 
-    geom_hline(yintercept=0, linetype="dashed", color = "grey") + xlab("lncRNA expression group") +
-    ylab("Beta Values") + stat_compare_means(label = "p.signif") +
-    geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15)) 
-
-    library(plyr)
-    mu <- ddply(new, "median", summarise, grp.med=median(beta))
-    head(mu)
-    
-    sp4 = ggplot(new, aes(x=beta, fill=median)) + ggtitle(paste(new$gene[1], gene_name, probe, cancer, "\nrisk=", new$risk[1])) + 
-    geom_freqpoly(alpha=0.4, aes(color=median)) + geom_vline(data=mu, aes(xintercept=grp.med, color=median),
-             linetype="dashed", size=2) +
-    geom_vline(xintercept=0.5, linetype="dashed", color = "grey",size=0.5)+
-    geom_vline(xintercept=0, linetype="dashed", color = "grey", size=0.5)+
-    theme(text = element_text(size=15), axis.text = element_text(size=15))
-
-      print(sp1)
-      print(sp2)
-      print(sp3)
-      print(sp4)
-      print(lnc)
+    new$name = gene_name
+    new$cancer = cancer
+    pat_dat = new[,c("patient", "median", "probe", "mut_status", "gene", "cancer", "risk", "name")]
 
     print(lnc)
+    results_all_probes = rbind(results_all_probes, pat_dat)
 
-    results_all_probes = rbind(results_all_probes, results)
 	}
 
 	results_all_probes = results_all_probes[-1,]
@@ -550,72 +500,19 @@ get_data = function(lnc){
     length_risk_pats = length(which(df$median == med_risk))
 
     probe = df$probe[1]
-	  results = c(cancer, unique(df$gene), length(unique(df$patient)), 
-      wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, probe, bal)
-    
-    names(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-    	"risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal")
-    
-    results = as.data.frame(results)
-
-    df$median <- factor(df$median, levels = c("High", "Low"))
-    df$median  # notice the changed order of factor levels
-
-    library("ggExtra")
-    df$risk = med_risk
-
-    library("ggExtra")
-    
+	  df$risk = med_risk
     gene_name = fantom$CAT_geneName[which(fantom$gene == lnc)]   
-
-    sp1 = ggplot(df, aes(x=beta, y=geneExp, color=median)) + ggtitle(paste(df$gene[1], gene_name, probe, cancer, "\nrisk=", df$risk[1])) + 
-    geom_point() + 
-    geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + stat_cor() +
-    geom_vline(xintercept=0.5, linetype="dashed", color = "grey") + 
-    geom_vline(xintercept=0, linetype="dashed", color = "grey") + xlab("Beta Values") +
-    ylab("log1p FPKM") + theme(text = element_text(size=15), axis.text = element_text(size=15))
-
-
-    sp2 = ggplot(df, aes(x=beta, y=geneExp)) + ggtitle(paste(df$gene[1], gene_name, probe, cancer, "\nrisk=", df$risk[1])) + 
-    geom_point() + 
-    geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + stat_cor() +
-    geom_vline(xintercept=0.5, linetype="dashed", color = "grey") + 
-    geom_vline(xintercept=0, linetype="dashed", color = "grey") + xlab("Beta Values") +
-    ylab("log1p FPKM") + theme(text = element_text(size=15), axis.text = element_text(size=15))
-
-
-    sp3 = ggplot(df, aes(x=median, y=beta, color=median)) + ggtitle(paste(df$gene[1], gene_name, probe, cancer, "\nrisk=", df$risk[1])) + 
-    geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
-    geom_hline(yintercept=0.5, linetype="dashed", color = "grey") + stat_n_text() + 
-    geom_hline(yintercept=0, linetype="dashed", color = "grey") + xlab("lncRNA expression group") +
-    ylab("Beta Values") + stat_compare_means(label = "p.signif") +
-    geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15)) 
-
-    library(plyr)
-    mu <- ddply(df, "median", summarise, grp.med=median(beta))
-    head(mu)
-    
-    sp4 = ggplot(df, aes(x=beta, fill=median)) + ggtitle(paste(df$gene[1], gene_name, probe, cancer, "\nrisk=", df$risk[1])) + 
-    geom_freqpoly(alpha=0.4, aes(color=median)) + geom_vline(data=mu, aes(xintercept=grp.med, color=median),
-             linetype="dashed", size=2) +
-    geom_vline(xintercept=0.5, linetype="dashed", color = "grey",size=0.5)+
-    geom_vline(xintercept=0, linetype="dashed", color = "grey", size=0.5) + 
-    theme(text = element_text(size=15), axis.text = element_text(size=15))
-
-      print(sp1)
-      print(sp2)
-      print(sp3)
-      print(sp4)
-      print(lnc)
-      print("pass")
-  	print(lnc)
+    df$name = gene_name
+    df$cancer = cancer
+    pat_dat = df[,c("patient", "median", "probe", "mut_status", "gene", "cancer", "risk", "name")]
+  	results = pat_dat
+    print(lnc)
 
   }
 	}
 
 	if(!((both & (length(unique(df$patient)) >=10)))){
-		results = as.data.frame(matrix(ncol = 13)) ; colnames(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal")
+		results = as.data.frame(matrix(ncol = 8)) ; colnames(results) = c("patient", "median", "probe", "mut_status", "gene", "cancer", "risk", "name")
   }  
   return(results)
 }
@@ -623,10 +520,8 @@ get_data = function(lnc){
 }
 }
 
-pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Aug15.pdf")
 genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% probes$combo)]))) #88/166 have methylation probes overlapping them 
 lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
-dev.off()
 
 lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
 lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
@@ -634,106 +529,8 @@ lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
 z= which(is.na(lnc_meth_cancer_data2$cancer))
 lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #362 lncRNA-probe pairs evaluated 
 
-saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Sept11.rds")
 
-#---------PROCESS RESULTS-----------------------------------------------------------------------------------------------------
-lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer, sep="_") #74 combos evaluated 
-lnc_meth_cancer_data2$wilcoxon_pval = as.numeric(as.character(lnc_meth_cancer_data2$wilcoxon_pval))
-lnc_meth_cancer_data2 = lnc_meth_cancer_data2[order(wilcoxon_pval)]
-lnc_meth_cancer_data2$wilcoxon_pval = as.numeric(lnc_meth_cancer_data2$wilcoxon_pval)
-
-#get fdr by cancer type - if only one test then there weren't multiple tests done
-dats = split(lnc_meth_cancer_data2, by="cancer")
-add_fdr = function(dat){
-  if(dim(dat)[1]>5){
-  dat$fdr = p.adjust(dat$wilcoxon_pval, method="fdr")
-  }
-  if(dim(dat)[1] <=5){
-    dat$fdr = dat$wilcoxon_pval
-  }
-  return(dat)
-}
-lnc_meth_cancer_data2 = llply(dats, add_fdr)
-lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
-sig_diff = filter(lnc_meth_cancer_data2, fdr <=0.05)
-
-#plot just the sig ones 
-sig_diff$combo = paste(sig_diff$gene, sig_diff$cancer, sep="_") #37/74 unique combos ~ 40% 
-
-#---------FIGURE SUMMARY FOR PAPER--------------------------------------------------------------------------------------------
-cands$combo = paste(cands$gene, cands$canc, sep="_")
-sig_diff = merge(sig_diff, cands, by=colnames(cands)[which(colnames(cands) %in% colnames(sig_diff))])
-sig_diff = subset(sig_diff, data == "TCGA")
-sig_diff$overall_correlation = unlist(sig_diff$overall_correlation)
-sig_diff$overall_correlation = round(sig_diff$overall_correlation, digits=2)
-sig_diff$wilcoxon_pval = -log10(sig_diff$wilcoxon_pval)
-
-sig_diff$HR = as.numeric(sig_diff$HR)
-sig_diff$stat[sig_diff$HR > 1] = "Unfavourable"
-sig_diff$stat[sig_diff$HR < 1] = "Favourable"
-
-#order 
-sig_diff = as.data.table(sig_diff)
-sig_diff = sig_diff[order(stat, abs(overall_correlation))]
-sig_diff$CAT_geneName = factor(sig_diff$CAT_geneName, levels=unique(sig_diff$CAT_geneName))
-sig_diff$canc = factor(sig_diff$canc, levels=unique(sig_diff$canc))
-sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
-
-#x-axis = cancer
-#y-axis = lncRNA 
-
-library(patchwork)
-
-pdf("Methylation_figure_partB.pdf", width=9, height=8)
-
-g = ggplot(sig_diff, aes(canc, CAT_geneName)) +
-  geom_tile(aes(fill = wilcoxon_pval)) + geom_point(aes(size=abs(overall_correlation), color=overall_correlation))+
-    scale_fill_gradient(low = "white", high = "black", na.value = 'transparent') +
-    scale_colour_gradient2(low = "blue", midpoint = 0, high = "red") + 
-    xlab("Cancer") + ylab("lncRNA") + theme_bw() +
-    theme(legend.position="bottom", legend.box = "horizontal", 
-      legend.text=element_text(size=6), legend.title=element_text(size=6)) +
-    guides(colour = guide_colourbar(order = 1),
-         fill = guide_colourbar(order = 2),
-         size = guide_legend(order = 3))
-
-g = ggpar(g,
- font.tickslab = c(8,"plain", "black"),
- xtickslab.rt = 45)
-
-#covariate favourable vs unfavoubrale
-cov = ggplot(sig_diff, aes(CAT_geneName, 1)) + geom_tile(aes(fill = stat)) +
-theme_void() + coord_flip() + theme(legend.position="none")
-
-cov + g + plot_layout(ncol = 2, widths = c(1,15))
-
-ggplot(sig_diff, aes(CAT_geneName, 1)) + geom_tile(aes(fill = stat)) +
-theme_void() + coord_flip() 
- 
-dev.off()
-
-
-##visualize probes 
-
-probe_dat = filter(probes, cgid == "cg04490290")
-probe_cord = probe_dat[,c("probe_chr", "cpg_start", "cpg_end", "cgid", "cpgstrand")]
-lnc_cord = probe_dat[,c("lncchr", "lncstart", "lncend", "ensg", "lncstrand")]
-colnames(lnc_cord) = c("probe_chr", "cpg_start", "cpg_end", "cgid", "cpgstrand")
-probe_dat = rbind(probe_cord, lnc_cord)
-
-probe_dat = melt(probe_dat)
-probe_dat$yaxis = c(0,1)
-
-pdf("ucec_probe_figure.pdf", height=2)
-ggplot(probe_dat, aes(x=value, y=yaxis, color=cgid)) +
-  geom_line(aes(linetype=cgid))+
-  geom_point(size=1) +
-  geom_line(arrow = arrow(length=unit(0.20,"cm"), ends="first", type = "closed"), size = 1)+ 
-  scale_y_continuous(breaks = c(0,1), labels = c(0,1))
-
-dev.off()
-
-
+saveRDS(lnc_meth_cancer_data2, file="all_dfs_methylaion_status_exp_patients_sept12.rds")
 
 
 

@@ -102,8 +102,6 @@ getmode <- function(v) {
    uniqv[which.max(tabulate(match(v, uniqv)))]
 }
 
-pat_dat_all = as.data.frame(matrix(ncol = 7)) ; colnames(pat_dat_all) = c("patient", "median", "cna_status", "name", "name2", "combo", "cancer")
-
 get_data = function(lnc){
 	 
   comb = lnc
@@ -253,147 +251,22 @@ get_data = function(lnc){
     df$median <- factor(df$median, levels = c("High", "Low"))
     df$median  # notice the changed order of factor levels
   	df$risk = risk
-
-    library("ggExtra")
-	    
-    sp1 = ggplot(df, aes(x=Segment_Mean, y=geneexp, color=median)) + ggtitle(paste(df$gene[1], df$name2[1], cancer, df$type[1], "\nrisk=", df$risk[1])) + 
-    geom_point() + 
-    geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + stat_cor() +
-    geom_vline(xintercept=0.2, linetype="dashed", color = "grey") + 
-    geom_vline(xintercept=-0.2, linetype="dashed", color = "grey") + xlab("Segment Mean SCNA") +
-    ylab("log1p FPKM") + theme(text = element_text(size=15), axis.text = element_text(size=15))
-
-
-    sp2 = ggplot(df, aes(x=Segment_Mean, y=geneexp)) + ggtitle(paste(df$gene[1], df$name2[1], cancer, df$type[1], "\nrisk=", df$risk[1])) + 
-    geom_point() + 
-    geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + stat_cor() +
-    geom_vline(xintercept=0.2, linetype="dashed", color = "grey") + 
-    geom_vline(xintercept=-0.2, linetype="dashed", color = "grey") + xlab("Segment Mean SCNA") +
-    ylab("log1p FPKM") + theme(text = element_text(size=15), axis.text = element_text(size=15))
-
-
-    sp3 = ggplot(df, aes(x=median, y=Segment_Mean, color=median)) + ggtitle(paste(df$gene[1], df$name2[1], cancer, df$type[1], "\nrisk=", df$risk[1])) + 
-    geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
-    geom_hline(yintercept=0.2, linetype="dashed", color = "grey") + stat_n_text() + 
-    geom_hline(yintercept=-0.2, linetype="dashed", color = "grey") + xlab("lncRNA expression group") +
-    ylab("Segment Mean SCNA") + stat_compare_means(label = "p.signif")+
-    geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15))
-
-    library(plyr)
-    mu <- ddply(df, "median", summarise, grp.med=median(Segment_Mean))
-    head(mu)
     
-    sp4 = ggplot(df, aes(x=Segment_Mean, fill=median)) + ggtitle(paste(df$gene[1], df$name2[1], cancer, df$type[1], "\nrisk=", df$risk[1])) + 
-    geom_freqpoly(alpha=0.4, aes(color=median)) + geom_vline(data=mu, aes(xintercept=grp.med, color=median),
-             linetype="dashed") + theme(text = element_text(size=15), axis.text = element_text(size=15))
-
-      print(sp1)
-      print(sp2)
-      print(sp3)
-      print(sp4)
-      print(lnc)
+    print(lnc)
     #plot length of segments 
     print(hist(df$length))
     pat_dat = df[,c("patient", "median", "cna_status", "name", "name2", "combo")]
     pat_dat$cancer = cancer
-    pat_dat_all = rbind(pat_dat_all, pat_dat)
-    return(results)
+    return(pat_dat)
 }
 }
 }
-pdf("candidate_lncRNAs_CNA_versus_Expression_Sept7.pdf")
-lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
-dev.off()
 
+
+#each df for each combo - saved patients with CNAs and CNA status 
+lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
 lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
 lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
-saveRDS(lnc_cna_cancer_data2, file="new_results_CNAs_Sept7.rds")
-
-#---------PROCESS RESULTS-----------------------------------------------------------------------------------------------------
-
-lnc_cna_cancer_data2$wilcoxon_pval = as.numeric(as.character(lnc_cna_cancer_data2$wilcoxon_pval))
-lnc_cna_cancer_data2 = lnc_cna_cancer_data2[order(wilcoxon_pval)]
-lnc_cna_cancer_data2$wilcoxon_pval = as.numeric(lnc_cna_cancer_data2$wilcoxon_pval)
-lnc_cna_cancer_data2$cancer = as.character(lnc_cna_cancer_data2$cancer)
-
-#get fdr by cancer type - if only one test then there weren't multiple tests done
-dats = split(lnc_cna_cancer_data2, by="cancer")
-add_fdr = function(dat){
-  if(dim(dat)[1]>5){
-  dat$fdr = p.adjust(dat$wilcoxon_pval, method="fdr")
-  }
-  if(dim(dat)[1] <=5){
-    dat$fdr = dat$wilcoxon_pval
-  }
-  return(dat)
-}
-lnc_cna_cancer_data2 = llply(dats, add_fdr)
-lnc_cna_cancer_data2 = ldply(lnc_cna_cancer_data2)
-sig_diff = filter(lnc_cna_cancer_data2, fdr <=0.05)
-
-#plot just the sig ones 
-sig_diff$combo = paste(sig_diff$gene, sig_diff$cancer, sep="_")
-genes = as.list(unique(sig_diff$combo))
-pdf("FDR_sig_candidate_lncRNAs_CNA_versus_Expression_Sept_JUST_SIG_ONES.pdf")
-lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
-dev.off()
-
-
-#---------FIGURE SUMMARY FOR PAPER--------------------------------------------------------------------------------------------
-
-sig_diff = merge(sig_diff, cands, by=colnames(cands)[which(colnames(cands) %in% colnames(sig_diff))])
-sig_diff = subset(sig_diff, data == "TCGA")
-sig_diff$overall_correlation = unlist(sig_diff$overall_correlation)
-sig_diff$overall_correlation = round(sig_diff$overall_correlation, digits=2)
-sig_diff$wilcoxon_pval = -log10(sig_diff$wilcoxon_pval)
-
-sig_diff$HR = as.numeric(sig_diff$HR)
-sig_diff$stat[sig_diff$HR > 1] = "Unfavourable"
-sig_diff$stat[sig_diff$HR < 1] = "Favourable"
-
-#remove negative correlations 
-sig_diff = subset(sig_diff, overall_correlation >0)
-
-#order 
-sig_diff = as.data.table(sig_diff)
-sig_diff = sig_diff[order(stat, abs(overall_correlation))]
-sig_diff$CAT_geneName = factor(sig_diff$CAT_geneName, levels=unique(sig_diff$CAT_geneName))
-sig_diff$canc = factor(sig_diff$canc, levels=unique(sig_diff$canc))
-sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
-
-#x-axis = cancer
-#y-axis = lncRNA 
-
-library(patchwork)
-
-pdf("CNA_figure_partA.pdf", width=9, height=7)
-
-g = ggplot(sig_diff, aes(canc, CAT_geneName)) +
-  geom_tile(aes(fill = wilcoxon_pval)) + geom_point(aes(size=abs(overall_correlation), color=overall_correlation))+
-    scale_fill_gradient(low = "white", high = "black", na.value = 'transparent') +
-    scale_colour_gradient2(low = "blue", midpoint = 0, high = "red") + 
-    xlab("Cancer") + ylab("lncRNA") + theme_bw() +
-    theme(legend.position="bottom", legend.box = "horizontal", 
-      legend.text=element_text(size=6), legend.title=element_text(size=6))
-g = ggpar(g,
- font.tickslab = c(8,"plain", "black"),
- xtickslab.rt = 45)
-
-#covariate favourable vs unfavoubrale
-cov = ggplot(sig_diff, aes(CAT_geneName, 1)) + geom_tile(aes(fill = stat)) +
-theme_void() + coord_flip() + theme(legend.position="none")
-
-cov + g + plot_layout(ncol = 2, widths = c(1,15))
-
-ggplot(sig_diff, aes(CAT_geneName, 1)) + geom_tile(aes(fill = stat)) +
-theme_void() + coord_flip() 
- 
-dev.off()
-
-
-
-
-
-
+saveRDS(lnc_cna_cancer_data2, file="all_dfs_CNAs_status_exp_patients_sept12.rds")
 
 
