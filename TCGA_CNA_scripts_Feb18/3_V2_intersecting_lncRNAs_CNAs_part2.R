@@ -90,7 +90,7 @@ lncswcnas$length = lncswcnas$End-lncswcnas$Start
 lncswcnas$length = lncswcnas$length/1000000
 lncswcnas = subset(lncswcnas, length <30)
 
-genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% lncswcnas$combo)]))) #152/173 have CNAs overlapping them 
+genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% lncswcnas$combo)]))) #153/173 have CNAs overlapping them 
 #with segments that are shorter than 5 MB
 
 rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
@@ -255,8 +255,8 @@ get_data = function(lnc){
   	df$risk = risk
 
     library("ggExtra")
-	    
-    sp1 = ggplot(df, aes(x=Segment_Mean, y=geneexp, color=median)) + ggtitle(paste(df$gene[1], df$name2[1], cancer, df$type[1], "\nrisk=", df$risk[1])) + 
+
+    sp1 = ggplot(df, aes(x=Segment_Mean, y=geneexp, color=median)) + ggtitle(paste(df$name2[1], cancer)) + 
     geom_point() + 
     geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + stat_cor() +
     geom_vline(xintercept=0.2, linetype="dashed", color = "grey") + 
@@ -264,7 +264,7 @@ get_data = function(lnc){
     ylab("log1p FPKM") + theme(text = element_text(size=15), axis.text = element_text(size=15))
 
 
-    sp2 = ggplot(df, aes(x=Segment_Mean, y=geneexp)) + ggtitle(paste(df$gene[1], df$name2[1], cancer, df$type[1], "\nrisk=", df$risk[1])) + 
+    sp2 = ggplot(df, aes(x=Segment_Mean, y=geneexp)) + ggtitle(paste(df$name2[1], cancer)) + 
     geom_point() + 
     geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + stat_cor() +
     geom_vline(xintercept=0.2, linetype="dashed", color = "grey") + 
@@ -272,9 +272,9 @@ get_data = function(lnc){
     ylab("log1p FPKM") + theme(text = element_text(size=15), axis.text = element_text(size=15))
 
 
-    sp3 = ggplot(df, aes(x=median, y=Segment_Mean, color=median)) + ggtitle(paste(df$gene[1], df$name2[1], cancer, df$type[1], "\nrisk=", df$risk[1])) + 
+    sp3 = ggplot(df, aes(x=median, y=Segment_Mean, color=median)) + ggtitle(paste(df$name2[1], cancer)) + 
     geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
-    geom_hline(yintercept=0.2, linetype="dashed", color = "grey") + stat_n_text() + 
+    geom_hline(yintercept=0.2, linetype="dashed", color = "grey") + stat_n_text(size = 6) + 
     geom_hline(yintercept=-0.2, linetype="dashed", color = "grey") + xlab("lncRNA expression group") +
     ylab("Segment Mean SCNA") + stat_compare_means(label = "p.signif")+
     geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15))
@@ -283,7 +283,7 @@ get_data = function(lnc){
     mu <- ddply(df, "median", summarise, grp.med=median(Segment_Mean))
     head(mu)
     
-    sp4 = ggplot(df, aes(x=Segment_Mean, fill=median)) + ggtitle(paste(df$gene[1], df$name2[1], cancer, df$type[1], "\nrisk=", df$risk[1])) + 
+    sp4 = ggplot(df, aes(x=Segment_Mean, fill=median)) + ggtitle(paste(df$name2[1], cancer)) + 
     geom_freqpoly(alpha=0.4, aes(color=median)) + geom_vline(data=mu, aes(xintercept=grp.med, color=median),
              linetype="dashed") + theme(text = element_text(size=15), axis.text = element_text(size=15))
 
@@ -356,25 +356,30 @@ sig_diff = subset(sig_diff, overall_correlation >0)
 
 #order 
 sig_diff = as.data.table(sig_diff)
-sig_diff = sig_diff[order(stat, abs(overall_correlation))]
+sig_diff = sig_diff[order(stat, -(abs(overall_correlation)))]
 sig_diff$CAT_geneName = factor(sig_diff$CAT_geneName, levels=unique(sig_diff$CAT_geneName))
 sig_diff$canc = factor(sig_diff$canc, levels=unique(sig_diff$canc))
 sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
+
+
+sig_diff$cor[sig_diff$overall_correlation < 0] = "Negative" 
+sig_diff$cor[sig_diff$overall_correlation > 0] = "Positive" 
+
 
 #x-axis = cancer
 #y-axis = lncRNA 
 
 library(patchwork)
 
-pdf("CNA_figure_partA.pdf", width=9, height=7)
+pdf("CNA_figure_partA.pdf", width=10, height=7)
 
 g = ggplot(sig_diff, aes(canc, CAT_geneName)) +
-  geom_tile(aes(fill = wilcoxon_pval)) + geom_point(aes(size=abs(overall_correlation), color=overall_correlation))+
+  geom_tile(aes(fill = wilcoxon_pval)) + geom_point(aes(size=abs(overall_correlation), color=cor))+
     scale_fill_gradient(low = "white", high = "black", na.value = 'transparent') +
-    scale_colour_gradient2(low = "blue", midpoint = 0, high = "red") + 
+    scale_colour_manual(values = c("red", "red")) + 
     xlab("Cancer") + ylab("lncRNA") + theme_bw() +
     theme(legend.position="bottom", legend.box = "horizontal", 
-      legend.text=element_text(size=6), legend.title=element_text(size=6))
+      legend.text=element_text(size=9), legend.title=element_text(size=6))
 g = ggpar(g,
  font.tickslab = c(8,"plain", "black"),
  xtickslab.rt = 45)

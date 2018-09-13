@@ -459,9 +459,9 @@ get_data = function(lnc){
     ylab("log1p FPKM") + theme(text = element_text(size=15), axis.text = element_text(size=15))
 
 
-    sp3 = ggplot(new, aes(x=median, y=beta, color=median)) + ggtitle(paste(new$gene[1], gene_name, probe, cancer, "\nrisk=", new$risk[1])) + 
+    sp3 = ggplot(new, aes(x=median, y=beta, color=median)) + ggtitle(paste(gene_name, probe, cancer)) + 
     geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
-    geom_hline(yintercept=0.5, linetype="dashed", color = "grey") + stat_n_text() + 
+    geom_hline(yintercept=0.5, linetype="dashed", color = "grey") + stat_n_text(size=6) + 
     geom_hline(yintercept=0, linetype="dashed", color = "grey") + xlab("lncRNA expression group") +
     ylab("Beta Values") + stat_compare_means(label = "p.signif") +
     geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15)) 
@@ -584,9 +584,9 @@ get_data = function(lnc){
     ylab("log1p FPKM") + theme(text = element_text(size=15), axis.text = element_text(size=15))
 
 
-    sp3 = ggplot(df, aes(x=median, y=beta, color=median)) + ggtitle(paste(df$gene[1], gene_name, probe, cancer, "\nrisk=", df$risk[1])) + 
+    sp3 = ggplot(df, aes(x=median, y=beta, color=median)) + ggtitle(paste(gene_name, probe, cancer)) + 
     geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
-    geom_hline(yintercept=0.5, linetype="dashed", color = "grey") + stat_n_text() + 
+    geom_hline(yintercept=0.5, linetype="dashed", color = "grey") + stat_n_text(size=6) + 
     geom_hline(yintercept=0, linetype="dashed", color = "grey") + xlab("lncRNA expression group") +
     ylab("Beta Values") + stat_compare_means(label = "p.signif") +
     geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15)) 
@@ -684,16 +684,41 @@ sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
 
 library(patchwork)
 
-pdf("Methylation_figure_partB.pdf", width=9, height=8)
+sig_diff$cor[sig_diff$overall_correlation < 0] = "Negative" 
+sig_diff$cor[sig_diff$overall_correlation > 0] = "Positive" 
+
+#which have multiple probes per lncRNA? --> keep strongest correlated one
+t = as.data.table(table(sig_diff$combo))
+t = as.data.table(filter(t, N > 1))
+dups = unique(t$V1)
+
+keep_dat = as.data.frame(matrix(ncol=ncol(sig_diff))) ; colnames(keep_dat) = colnames(sig_diff)
+for(i in 1:length(dups)){
+  dat = as.data.table(filter(sig_diff, combo == dups[i]))
+  dat = dat[order(-(abs(overall_correlation)))]
+  keep = dat[1,]
+  keep_dat = rbind(keep_dat, keep)
+}
+keep_dat = keep_dat[-1,]
+z = which(!(sig_diff$combo %in% dups))
+keep_dat = rbind(keep_dat, sig_diff[z,])
+sig_diff = keep_dat
+sig_diff = sig_diff[order(stat, -(abs(overall_correlation)))]
+
+sig_diff$CAT_geneName = factor(sig_diff$CAT_geneName, levels=unique(sig_diff$CAT_geneName))
+sig_diff$canc = factor(sig_diff$canc, levels=unique(sig_diff$canc))
+sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
+
+pdf("Methylation_figure_partB.pdf", width=10, height=8)
 
 g = ggplot(sig_diff, aes(canc, CAT_geneName)) +
-  geom_tile(aes(fill = wilcoxon_pval)) + geom_point(aes(size=abs(overall_correlation), color=overall_correlation))+
+  geom_tile(aes(fill = wilcoxon_pval)) + geom_point(aes(size=abs(overall_correlation), color=cor))+
     scale_fill_gradient(low = "white", high = "black", na.value = 'transparent') +
-    scale_colour_gradient2(low = "blue", midpoint = 0, high = "red") + 
+    scale_colour_manual(values = c("blue", "red")) + 
     xlab("Cancer") + ylab("lncRNA") + theme_bw() +
     theme(legend.position="bottom", legend.box = "horizontal", 
-      legend.text=element_text(size=6), legend.title=element_text(size=6)) +
-    guides(colour = guide_colourbar(order = 1),
+      legend.text=element_text(size=9), legend.title=element_text(size=6)) +
+    guides(colour = guide_legend(order = 1),
          fill = guide_colourbar(order = 2),
          size = guide_legend(order = 3))
 
@@ -722,12 +747,13 @@ colnames(lnc_cord) = c("probe_chr", "cpg_start", "cpg_end", "cgid", "cpgstrand")
 probe_dat = rbind(probe_cord, lnc_cord)
 
 probe_dat = melt(probe_dat)
-probe_dat$yaxis = c(0,1)
+probe_dat$yaxis = c(1.4,1.5)
 
 pdf("ucec_probe_figure.pdf", height=2)
 ggplot(probe_dat, aes(x=value, y=yaxis, color=cgid)) +
   geom_line(aes(linetype=cgid))+
-  geom_point(size=1) +
+  scale_colour_manual(values = c("brown", "purple"))+
+  geom_point(size=0) +
   geom_line(arrow = arrow(length=unit(0.20,"cm"), ends="first", type = "closed"), size = 1)+ 
   scale_y_continuous(breaks = c(0,1), labels = c(0,1))
 

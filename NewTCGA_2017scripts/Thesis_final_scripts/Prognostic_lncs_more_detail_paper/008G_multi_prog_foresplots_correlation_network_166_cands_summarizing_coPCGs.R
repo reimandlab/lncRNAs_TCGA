@@ -80,113 +80,8 @@ coexp = readRDS("coexpression_results_processed_july24.rds")
 coexp$combo1 = paste(coexp$lnc, coexp$pcg, sep="_")
 coexp$combo2 = paste(coexp$pcg, coexp$lnc, sep="_")
 
-#PCG lncRNA results
-pcg_lnc = readRDS("summary_pcg_analysis_wHRs_jul2y24.rds") #all these have at least 1, 50-pcg signature 
-pcg_lnc = pcg_lnc[order(-NumPCGs)]
-pcg_lnc$HR = as.numeric(pcg_lnc$HR)
-pcg_lnc$lnc_stat = ""
-pcg_lnc$lnc_stat[which(pcg_lnc$HR < 0)] = "Favourable"
-pcg_lnc$lnc_stat[which(pcg_lnc$HR > 0)] = "Unfavourable"
-
 #-------------------ANALYSIS--------------------------------------------
-#Generate heatmap using those PCGs sig up/down regulated in lncRNA 
-#risk or non-risk groups
-
-#For each cancer type get all required data 
-#PCG and lncRNA expression
-combos = unique(pcg_lnc$combo)
-cancs = sapply(combos, function(x){unlist(strsplit(x, "_"))[2]})
-cancs = unique(cancs)
-
-##1-----------------all expression--------------------------------------
-
-get_tissue_specific <- function(combo){
-  canc = unlist(strsplit(combo, "_"))[2]
-  lnc = unlist(strsplit(combo, "_"))[1]
-  tis = all[all$Cancer==canc,]
-  tis$combo = combo
-  print(combo)
-  return(tis)
-}
-#this is all lncRNA and pcg expression data for each lncRNA-cancer combo
-tissues_data <- llply(combos, get_tissue_specific, .progress="text")
-
-##2-----------------label patients by risk------------------------------
-
-#PART2 start 
-
-get_lnc_canc = function(dat){
-  cancer = dat$Cancer[1]
-  combo = dat$combo[1]
-  lnc = unlist(strsplit(combo, "_"))[1]
-
-  pcgs = colnames(pcg)[2:19351]
-  #keep only pcgs that are selected to be in lncRNA signature 
-  z = which(coexp$combo == combo)
-  lnc_pcgs = unique(coexp$pcg[z])
-
-  dat_keep = dat[,which(colnames(dat) %in% c("patient", lnc, lnc_pcgs))]
-  rownames(dat_keep) = dat_keep$patient
-  dat_keep$patient = NULL
-  #figure out which patients are high risk and which patients low risk
-  dat_keep$median <- ""
-  median2 <- quantile(as.numeric(dat_keep[,1]), 0.5)
-
-       if(median2 ==0){
-        #if median = 0 then anyone greater than zero is 1 
-        l1 = which(dat_keep[,1] > 0)
-        l2 = which(dat_keep[,1] ==0)
-        dat_keep$median[l1] = 1
-        dat_keep$median[l2] = 0
-        }
-
-      if(!(median2 ==0)){
-        l1 = which(dat_keep[,1] >= median2)
-        l2 = which(dat_keep[,1] < median2)
-        dat_keep$median[l1] = 1
-        dat_keep$median[l2] = 0
-    }
-
-    #which one is high risk --> need surivval data
-    dat_keep$patient = rownames(dat_keep)
-    
-      dat_keep$median[dat_keep$median ==0] = "Low"
-      dat_keep$median[dat_keep$median==1] = "High"
-
-      #cox ph
-      z = which((allCands$gene == lnc) & (allCands$cancer == cancer))
-
-      HR = as.numeric(allCands$HR[z])
-      
-      if(HR <1){
-        risk = "Low"
-        dat_keep$risk = ""
-        dat_keep$risk[dat_keep$median=="High"] ="noRISK"
-        dat_keep$risk[dat_keep$median=="Low"] ="RISK"
-      }
-      if(HR >1){
-        risk = "High"
-        dat_keep$risk = ""
-        dat_keep$risk[dat_keep$median=="High"] ="RISK"
-        dat_keep$risk[dat_keep$median=="Low"] ="noRISK"
-      }
-
-      dat_keep$lnc = colnames(dat_keep)[1]
-      dat_keep$canc = cancer
-      colnames(dat_keep)[1] = "lncRNA"
-
-  return(dat_keep)  
-
-}
-
-#all lncRNAs with status 
-all_canc_lnc_data = llply(tissues_data, get_lnc_canc, .progress="text")
-
 ##3-----------------get correlation pairs-----------------------------------
-
-#PART3 start 
-cancer = cancs[4]
-library(tidyverse)
 
 prog_pcgs = readRDS("mRNAs_Survival_Results_prognostic_pcgs_July19.rds")
 prog_pcgs = as.data.table(prog_pcgs)
@@ -276,12 +171,27 @@ check_cis_pcg = function(combo){
   exp_dat$OS = as.numeric(exp_dat$OS)
   exp_dat$OS.time = as.numeric(exp_dat$OS.time)
 
+  z = which(colnames(exp_dat) == pcgg)
+  exp_dat[,z] = log1p(exp_dat[,z])
+  colnames(exp_dat)[z] = "PCG"
+
+  z = which(colnames(exp_dat) == lnc)
+  exp_dat[,z] = log1p(exp_dat[,z])
+  colnames(exp_dat)[z] = "LNC"
+
+  #get correlation between them (1)
+  rho = rcorr(exp_dat$LNC, exp_dat$PCG, type="spearman")$r[2]
+  rho_p = rcorr(exp_dat$LNC, exp_dat$PCG, type="spearman")$P[2]
+
   #cox model using both
   cox_lnc = coxph(Surv(OS.time, OS) ~ lnc_median, data = exp_dat)
   cox_pcg = coxph(Surv(OS.time, OS) ~ pcg_median, data = exp_dat)
   cox_both = coxph(Surv(OS.time, OS) ~ lnc_median + pcg_median, data = exp_dat)
   #does pcgg improve lnc?
   res = as.numeric(tidy(anova(cox_lnc, cox_both))[2,4]) #if sig, then yes 
+
+  #does lnc improve pcg?
+  res2 = as.numeric(tidy(anova(cox_pcg, cox_both))[2,4]) #if sig, then yes 
 
   #compare coefficeints
   lnc_plot = print(ggforest(cox_lnc, data=exp_dat))
@@ -290,18 +200,35 @@ check_cis_pcg = function(combo){
 
   #arrange
   library(patchwork)
-  print(lnc_plot + pcg_plot + both_plot)
 
   #train model using both of these genes and compare performance to just using lncRNA 
   res = as.data.frame(res)
+  res$res2 = res2
   res$lnc = lnc
   res$pcg = pcgg
   res$canc = exp_dat$type[1]
-  res$improve = ""
-  res$improve[res$res <= 0.05] = "yes"
-  res$improve[res$res > 0.05] = "no"
-  res$pcg_fdr_pval = pcg_pvalue
+  
+  res$pcg_improvelnc = ""
+  res$pcg_improvelnc[res$res <= 0.05] = "yes"
+  res$pcg_improvelnc[res$res > 0.05] = "no"
+  
+  res$lnc_improvepcg = ""
+  res$lnc_improvepcg[res$res2 <= 0.05] = "yes"
+  res$lnc_improvepcg[res$res2 > 0.05] = "no"
+
+  res$pcg_fdr_pval = pcg_pvalue #Fdr from cox model
   print(res)
+
+  res$rho = rho
+  res$rho_p = rho_p
+
+  
+  #get concordance and AIC values
+  res$lncAIC = as.data.table(glance(cox_lnc))$AIC
+  res$lncConcordance = as.data.table(glance(cox_lnc))$concordance
+  res$pcgAIC= as.data.table(glance(cox_pcg))$AIC
+  res$pcgConcordance = as.data.table(glance(cox_pcg))$concordance
+
   exp_dat$OS.time = exp_dat$OS.time/365
   fit <- survfit(Surv(OS.time, OS) ~ lnc_median + pcg_median, data = exp_dat)
           s <- ggsurvplot(
@@ -344,13 +271,16 @@ results = llply(combos, check_cis_pcg, .progress="text")
 #dev.off()
 
 results2 = ldply(results)
-results2$fdr = p.adjust(results2$res, method="fdr")
+results2$fdr_res = p.adjust(results2$res, method="fdr")
+results2$fdr_res2 = p.adjust(results2$res2, method="fdr")
+results2$rho_fdr = p.adjust(results2$rho_p, method="fdr")
+
 results2 = as.data.table(results2)
-results2 = results2[order(fdr)]
+results2 = results2[order(fdr_res)]
 
 length(which(results2$res <= 0.05))
-length(which(results2$fdr <= 0.05))
-length(which(results2$pcg_fdr_pval <= 0.05))
+length(which(results2$fdr_res <= 0.05))
+length(which(results2$fdr_res2 <= 0.05))
 
 #saveRDS(results2, file="110_cis_antisense_pairs_survival_results_aug28.rds")
 
@@ -388,16 +318,54 @@ z = which(cands_pairs$pcg %in% census$ensg)
 cands_pairs$census = ""
 cands_pairs$census[z] = "YES"
 
-cands_pairs$pcg = unlist(llply(cands_pairs$pcg, get_name))
+cands_pairs$pcg = unlist(llply(cands_pairs$pcg, get_name_pcg))
 cands_pairs$lnc = unlist(llply(cands_pairs$lnc, get_name))
 
 #get pcg HR and p-value?
-
 prog_pcgs$pcg_combo = paste(prog_pcgs$gene, prog_pcgs$canc, sep="_")
 prog_pcgs = prog_pcgs[which(prog_pcgs$pcg_combo %in% cands_pairs$pcg_combo),]
 prog_pcgs$pval = as.numeric(prog_pcgs$pval)
 prog_pcgs = prog_pcgs[order(pval)]
 
-prog_pcgs = merge(prog_pcgs, cands_pairs, by="pcg_combo")
-prog_pcgs = prog_pcgs[order(pval)]
+prog_pcgs = merge(prog_pcgs, cands_pairs, by=c("pcg_combo"))
+colnames(prog_pcgs)[12] = "type"
+prog_pcgs = prog_pcgs[order(fdr_res)]
+
+
+#x-axis lnc concordance 
+#y-axis pcg concordance 
+#color of point - +/- correlation red or blue 
+#size of point - Spearman FDR
+prog_pcgs$cor[prog_pcgs$rho <0] = "Negative"
+prog_pcgs$cor[prog_pcgs$rho >0] = "Positive"
+prog_pcgs$cor[prog_pcgs$rho_fdr > 0.05] = "NS"
+
+
+prog_pcgs$rho_fdr[prog_pcgs$rho_fdr <0.0000000001] = 0.000001
+prog_pcgs$lnc_pcg = paste(prog_pcgs$lnc, prog_pcgs$pcg, prog_pcgs$type, sep="/")
+
+
+pdf("figure2E_summary_lncs_pcgs_antisense.pdf", width=8,height=5)
+g = ggplot(prog_pcgs, aes(lncConcordance, pcgConcordance, label=lnc_pcg)) +
+ geom_point(aes(color=cor), size=2)+
+    scale_colour_manual(values = c("grey", "blue", "red")) + 
+    xlab("lncRNA Concordance") + ylab("PCG Concordance") + theme_bw() +
+    theme(legend.box = "horizontal", 
+      legend.text=element_text(size=9), legend.title=element_text(size=9))+
+     xlim(0.45,0.75) + ylim(0.45,0.75) + geom_abline(intercept=0) +
+     geom_text_repel(data = subset(prog_pcgs, lncConcordance > 0.7 | pcgConcordance > 0.65), size=3)
+
+g
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
 
