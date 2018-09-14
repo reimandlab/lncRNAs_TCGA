@@ -17,6 +17,8 @@ library(caret)
 library(Rtsne)
 library(EnvStats)
 
+source("check_lnc_exp_cancers.R")
+
 #------FEATURES-----------------------------------------------------
 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
@@ -176,8 +178,8 @@ get_clin_lnc_cors = function(dtt){
     if(hr <1){new_dat$risk = "LowExp"}
     
     #each clinical variable
-    canc_col_results = as.data.frame(matrix(ncol=10)) ; colnames(canc_col_results)=c("canc", "lnc", "colname", "cor", "pval", "test", "chisq", "kw_pval",
-    "clin_pval", "anova_both_vs_lnc")
+    canc_col_results = as.data.frame(matrix(ncol=12)) ; colnames(canc_col_results)=c("canc", "lnc", "colname", "cor", "pval", "test", "chisq", "kw_pval",
+    "clin_pval", "anova_both_vs_lnc", "lnc_concordance", "clin_concordance")
     for(i in 1:(ncol(new_dat)-2)){
       print(i)    
       col = colnames(new_dat)[i]
@@ -224,6 +226,9 @@ get_clin_lnc_cors = function(dtt){
           cox_lnc = coxph(Surv(OS.time, OS) ~ lncRNA_tag, data = new_dat_plot)
           cox_clin = coxph(Surv(OS.time, OS) ~ Clinical, data = new_dat_plot)
           both = coxph(Surv(OS.time, OS) ~ lncRNA_tag + Clinical, data = new_dat_plot)
+          
+          clin_concordance = glance(cox_clin)$concordance
+          lnc_concordance = glance(cox_lnc)$concordance
 
           clin_pval = glance(cox_clin)[6]
           z = which(is.na(new_dat_plot[,2]))
@@ -235,7 +240,7 @@ get_clin_lnc_cors = function(dtt){
           anov_pval = anova(cox_lnc, both)[2,4]}
 
           row = c(canc, lnc, col, cor, pval_cor, "Ftest", chisq_pval, kw_pval, 
-          clin_pval, anov_pval)
+          clin_pval, anov_pval, lnc_concordance, clin_concordance)
           names(row) = colnames(canc_col_results)
 
           canc_col_results = rbind(canc_col_results, row)
@@ -256,6 +261,14 @@ get_clin_lnc_cors = function(dtt){
         if(length(which(is.na(test))) == length(test)){
         #boxplot
         
+        #remove catgeories with less than 5 patients 
+        t = as.data.table(table(new_dat_plot[,2]))
+        t = filter(t, N < 5)
+        rm = unique(t$V1)
+        if(!(length(rm) ==0)){
+          new_dat_plot = new_dat_plot[-(which(new_dat_plot[,2] %in% rm)),]
+        }
+
         if(!(length(unique(new_dat_plot$Clinical)) > 10)){
 
         #palette
@@ -273,13 +286,17 @@ get_clin_lnc_cors = function(dtt){
         colnames(new_dat_plot)[3] = "lncRNA_exp"
 
         z1 = which(is.na(new_dat_plot[,which(colnames(new_dat_plot) %in% col)]))  
-        z2 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% c("#N/A", "Unknown"))  
+        z2 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% c("#N/A", "Unknown", "N/A"))  
         z3 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% c("[Unknown]", "[Not Available]", "[Not Evaluated]"))  
 
         z = unique(c(z1, z2,z3))
         
         if(!(length(z)==0)){
         new_dat_plot = new_dat_plot[-z,]}
+
+        unq = length(unique(new_dat_plot[,2]))
+
+        if(unq > 1){
 
         if(dim(new_dat_plot)[1] > 10){
 
@@ -315,21 +332,29 @@ get_clin_lnc_cors = function(dtt){
         both = coxph(Surv(OS.time, OS) ~ lncRNA_tag + Clinical, data = new_dat_plot)
 
         clin_pval = glance(cox_clin)[6]
+        
+        clin_concordance = glance(cox_clin)$concordance
+        lnc_concordance = glance(cox_lnc)$concordance
+        
         anov_pval = anova(cox_lnc, both)[2,4]
         }
 
         if((dim(table(new_dat_plot$lncRNA_tag))) <= 1 & (!(check))){
         clin_pval = "cant_calc"
         anov_pval = "cant_calc"
+        clin_concordance = "cant_calc"
+        lnc_concordance = "cant_calc"
         }
 
         row = c(canc, lnc, col, "nocor", anova, "Ftest", chisq_pval, kw_pval, 
-          clin_pval, anov_pval)
+          clin_pval, anov_pval, lnc_concordance, clin_concordance)
         names(row) = colnames(canc_col_results)
         canc_col_results = rbind(canc_col_results, row)
 
-        new_dat_plot$lncRNA_exp = as.numeric(new_dat_plot$lncRNA_exp)
-    
+        meds = as.data.table(aggregate(lncRNA_exp ~ Clinical, new_dat_plot, median))
+        meds = meds[order(lncRNA_exp)]
+        new_dat_plot$Clinical = factor(new_dat_plot$Clinical, levels = unique(meds$Clinical))
+
         p <- ggboxplot(new_dat_plot, x = "Clinical", y = "lncRNA_exp",
           color = "Clinical",
           title = paste(canc, lnc, col), 
@@ -338,10 +363,11 @@ get_clin_lnc_cors = function(dtt){
           stat_n_text()
 
         p = ggpar(p,
-          font.xtickslab = c(5,"plain", "black"),
-          xtickslab.rt = 45, legend="bottom")
+          font.xtickslab = c(9,"plain", "black"),
+          xtickslab.rt = 65, legend="none")
         print(p)
           
+          }
           } #check >1 
         }
       }
@@ -354,7 +380,7 @@ get_clin_lnc_cors = function(dtt){
 
   } #end get_cor
 
-  pdf(paste(canc, "clinical_plots.pdf", sep="_"), width=10)
+  pdf(paste(canc, "clinical_plots.pdf", sep="_"))
   all_canc_lncs_results = llply(lncs, get_cor)
   all_canc_lncs_results = do.call(rbind.data.frame, all_canc_lncs_results)
   dev.off()
@@ -394,7 +420,7 @@ fdr_sum = function(dtt){
   #remove OS.time, OS, lncRNA tag... 
   z = which(dtt$colname %in% c("OS", "OS.time", "lncRNA_tag", "vital_status", 
     "Tissue.source.site", "Whole.genome", "SNP6", "HM450", "HM27", "Vital.status..1.dead.", 
-    "COC", "Status", "C1A.C1B", "Survival..months.", "OS.event", "Days.to.date.of.Death", "OS.event", "BCR", 
+    "COC", "Status", "Survival..months.", "OS.event", "Days.to.date.of.Death", "OS.event", "BCR", 
     "Tumor", "X2009stagegroup", "time_of_follow.up", "CDE_ID.3045435", "batch", "Survival", "Exome.data", "CDE_ID.3104937","OS.Time",
     "Country", "os_days", "CDE_ID.2006657", "icd_o_3_site", "WGS"))
   if(!(length(z)==0)){
@@ -415,33 +441,89 @@ fdr_sum = function(dtt){
 clean_up = llply(all_clin, fdr_sum)
 clean_up = ldply(clean_up, data.table)
 clean_up = as.data.table(clean_up)
-clean_up = clean_up[order(clin_pval)]
+clean_up = clean_up[order(fdr)]
 
 #look at just chisq tests
 clean_up$chisq = as.numeric(clean_up$chisq)
-z = which(is.na(clean_up$chisq))
-clean_up = clean_up[-z,]
 z = which(clean_up$chisq <= 0.05)
-sig_chisq = clean_up[z,]
-sig_chisq$tag = "*"
+clean_up$sig_chisq[z] = "*"
+
+canc_conv = rna[,c("type", "Cancer")]
+canc_conv = unique(canc_conv)
+colnames(canc_conv)[2] = "canc"
+clean_up = merge(clean_up, canc_conv, by="canc")
+clean_up = clean_up[order(fdr)]
+clean_up$type = factor(clean_up$type, levels=unique(clean_up$type))
+
+clean_up$colname[which(str_detect(clean_up$colname, "age_at"))] = "Age"
+clean_up$colname[clean_up$colname == "age"] = "Age"
 
 pdf("summary_biolinks_subtypes_lncRNA_exp.pdf", height=10)
 #make geom_tile plot
-ggplot(sig_chisq, aes(canc, colname)) +
-  geom_tile(aes(fill = tag), colour = "grey50") +
+ggplot(clean_up, aes(type, colname)) +
+  geom_tile(aes(fill = sig_chisq), colour = "grey50") +
   theme_bw() +
-  theme(axis.text.x = element_text(size = 5, face = 'plain', angle = 65, hjust = 0),
+  theme(axis.text.x = element_text(size = 7),
           axis.text.y = element_text(size=5))
 dev.off()
-
 
 saveRDS(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolinks.rds")
 write.table(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolnks.txt", row.names=F, quote=F)
 
-
 #-------PLOT summary results-------------------------------------------
+
 clin_results = readRDS("correlation_results_clinical_lncRNA_exp_July19_using_biolinks.rds")
 
+clean_up$combo = paste(clean_up$lnc, clean_up$type, sep="_")
+
+
+clean_up = as.data.table(filter(clean_up, pval < 0.05))
+
+
+get_name = function(ensg){
+    z = which(fantom$gene == ensg)
+    return(fantom$CAT_geneName[z][1])
+}
+
+clean_up$name = unlist(llply(clean_up$lnc, get_name))
+
+#split by cancer type
+cancer_clins = split(clean_up, by="type")
+
+get_nodes_edges = function(canc){
+
+  canc = as.data.table(filter(canc, pval < 0.05))
+
+  #make node file
+  lncs = as.data.frame(unique(canc$name))
+  lncs$node_type = "lncRNA"
+  colnames(lncs)[1] = "node"
+
+  clinical = as.data.frame(unique(canc$colname))
+  clinical$node_type = "clinical"
+  colnames(clinical)[1] = "node"
+  nodes = rbind(clinical, lncs)
+  nodes$canc = canc$type[1]
+  write.table(nodes, file=paste(canc$type[1], "clinical_biolinks_analysis_nodes_table_sept14.txt", sep="_"), quote=F, row.names=F, sep="\t")
+  
+  #make edge file 
+  #node1  node2   edge_type
+  edges = canc[,c("name", "colname", "pval", "lnc_concordance", "clin_concordance")]
+  edges = unique(edges)
+  edges$edge_type = "lnc_clin"
+  write.table(edges, file=paste(canc$type[1], "clinical_biolinks_analysis_edges_table_sept14.txt", sep="_"), quote=F, row.names=F, sep="\t")
+
+  g = ggplot(edges, aes(lnc_concordance, clin_concordance, label=name)) + ggtitle(canc$type[1], "lncRNA vs Clinical variables")+
+  geom_point()+
+    xlab("lncRNA Concordance") + ylab("Clinical Concordance") + theme_bw() +
+      xlim(0.45,0.75) + ylim(0.45,0.75) + geom_abline(intercept=0)
+  print(g)
+  print(paste("done", canc$type[1]))
+}
+
+pdf("lncRNA_vs_Clinical_variables_CIs_sep14.pdf")
+llply(cancer_clins, get_nodes_edges)
+dev.off()
 
 
 

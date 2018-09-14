@@ -268,10 +268,11 @@ all_cancers_genes_surv_comb$risk_perc = as.numeric(all_cancers_genes_surv_comb$r
 all_cancers_genes_surv_comb$risk_perc_tag[(all_cancers_genes_surv_comb$risk_perc > 0.48) | (all_cancers_genes_surv_comb$risk_perc < 0.52)] = "75%_more_risk_group"
 all_cancers_genes_surv_comb$risk_perc_tag[all_cancers_genes_surv_comb$risk_perc > 0.75] = "75%_more_risk_group"
 
-
 #figure 2B/C?
 sig_lncs = as.data.table(all_cancers_genes_surv_comb)
-sig_lncs = as.data.table(subset(sig_lncs, fdrsig == "FDRsig"))
+sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, pval >= -log10(0.05)))
+
+#sig_lncs = as.data.table(subset(sig_lncs, fdrsig == "FDRsig"))
 
 #sum freq
 sig_lncs = as.data.table(table(sig_lncs$canc, sig_lncs$gene))
@@ -300,17 +301,37 @@ all_canc_pairs = all_canc_pairs[order(-N)]
 all_canc_pairs$canc1 = factor(all_canc_pairs$canc1, levels=unique(all_canc_pairs$canc1))
 all_canc_pairs$canc2 = factor(all_canc_pairs$canc2, levels=unique(all_canc_pairs$canc1))
 
-pdf("overlap_FDR_sig_lncRNA_cands_bw_cancers_aug28.pdf", width=8, height=5)
+#pdf("overlap_FDR_sig_lncRNA_cands_bw_cancers_aug28.pdf", width=8, height=5)
+pdf("overlap_ALL_sig_lncRNA_cands_bw_cancers_aug28.pdf", width=8, height=5)
 g = ggplot(all_canc_pairs, aes(canc1, canc2)) +
   geom_tile(aes(fill=N)) +
-  geom_text(aes(label = N), size=5) +
-  scale_fill_gradient(low = "azure2", high = "orange", na.value = 'transparent') +
+  geom_text(aes(label = N), size=1.5) +
+  scale_fill_gradient(low = "grey", high = "orange", na.value = 'transparent') +
     xlab("Cancer 1") + ylab("Cancer 2") + theme_bw()
 ggpar(g,
- font.tickslab = c(12,"plain", "black"),
+ font.tickslab = c(8,"plain", "black"),
  xtickslab.rt = 45, legend.title="# lncRNAs \noverlap")
 
 dev.off()
+
+
+#make node and edge table for cytoscape 
+nodes = all_canc_pairs
+nodes$type = "Cancer"
+colnames(nodes)[1] = "Node"
+nodes = nodes[,c("Node", "type")]
+nodes = unique(nodes)
+
+edges = all_canc_pairs
+#node1  node2   edge_type
+edges$edge_type = "common_surv_lncs"
+edges = edges[,c("canc1", "canc2", "edge_type", "N")]
+edges = as.data.table(filter(edges, N > 20))
+
+#cytoscape files
+write.table(nodes, file="nodes_overlap_surv_lncs_28cancers.txt", sep="\t", quote=F, row.names=F)
+write.table(edges, file="edges_overlap_surv_lncs_28cancers.txt", sep="\t", quote=F, row.names=F)
+
 
 #order by most significant to least significant 
 order = as.data.table(dplyr::filter(as.data.table(table(all_cancers_genes_surv_comb$canc, all_cancers_genes_surv_comb$fdrsig)), V2 %in% c("FDRsig", "Significant")))
