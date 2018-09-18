@@ -49,6 +49,10 @@ fantom <- fantom[-z,]
 rna = readRDS("rna_lncRNAs_expression_data_june29.rds")
 pcg = readRDS("rna_pcg_expression_data_june29.rds")
 
+#Combined into one dataframe because need to get ranks 
+all <- merge(rna, pcg, by = c("patient", "Cancer"))
+all = all[,1:25170]
+
 #------FEATURES-----------------------------------------------------
 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
@@ -145,17 +149,19 @@ all_lnc_pathways_df = ldply(all_lnc_pathways)
 
 ###---------------Summary figure-------------------------------###
 
-saveRDS(all_lnc_pathways_df, file="pathways_for_each_lncRNA_Sept14.rds")
+#saveRDS(all_lnc_pathways_df, file="pathways_for_each_lncRNA_Sept14.rds")
+
+all_lnc_pathways_df = readRDS("pathways_for_each_lncRNA_Sept14.rds")
 
 #number of PCGs/lncRNA vs number of Pathways/lncRNAs 
 
 #1. DE PCGs/lncRNA
-sig_des = as.data.table(filter(all_lnc_pathways_df, adj.P.Val <= 0.05))
+sig_des = as.data.table(filter(all_de_results, adj.P.Val <= 0.05))
 sig_des_sum = as.data.table(table(sig_des$combo))
 sig_des_sum = sig_des_sum[order(N)]
 
 #keep those wtih at least 20pcgs
-sig_des_sum = as.data.table(filter(sig_des_sum, N > 20))
+#sig_des_sum = as.data.table(filter(sig_des_sum, N > 20))
 colnames(sig_des_sum) = c("combo", "num_sig_des")
 
 #2. pathways/lncRNA
@@ -165,7 +171,7 @@ sig_paths_sum = as.data.table(table(all_lnc_pathways_df$combo))
 sig_paths_sum = sig_paths_sum[order(N)]
 
 #keep those with least 5 pathways 
-sig_paths_sum = as.data.table(filter(sig_paths_sum, N > 5))
+#sig_paths_sum = as.data.table(filter(sig_paths_sum, N > 5))
 colnames(sig_paths_sum) = c("combo", "num_sig_pathways")
 sig_paths_sum = unique(sig_paths_sum)
 
@@ -196,6 +202,200 @@ t=t[order(N)]
 ggbarplot(t, "V1", "N",
    fill = "V1")
 dev.off()
+
+
+paths = sig_paths_sum[,c("canc", "combo", "num_sig_pathways", "type")]
+paths$type = "pathways"
+genes = sig_paths_sum[,c("canc", "combo", "num_sig_des", "type")]
+genes$type = "genes"
+
+colnames(paths)[3] = "num_sig_des"
+all_res = rbind(paths, genes)
+sig_paths_sum = sig_paths_sum[order(-num_sig_des)]
+all_res$combo = factor(all_res$combo, levels=unique(sig_paths_sum$combo))
+
+#network part A 
+pdf("summary_barplot_#DE_pcgs_vs_pathways_pathways_figure_sep14.pdf", width=16, height=5)
+g = ggplot(all_res, aes(combo, num_sig_des, group=type)) + theme_classic() + 
+   geom_col(position = "dodge", aes(fill=type), color="grey29")+xlab("lncRNA-cancer pair") + ylab("Number of significant \ngenes/pathways")+
+   theme(legend.title=element_blank(), legend.position="top", axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
+print(g)
+dev.off()
+
+#add cancer covariate 
+all_res = merge(all_res, canc_conv, by="canc")
+colnames(all_res)[4:5] = c("type", "canc_name")
+all_res$canc_name = factor(all_res$canc_name, levels=unique(sig_paths_sum$type))
+
+library(patchwork)
+
+#20 col palette
+pall =  c("#72E1E0" ,"#7CE147", "#73E590", "#E180E3" ,"#D39794", "#D4DC8D", "#A6E6BB", "#A4C9E9",
+ "#DC5FA5" ,"#D8DB50" ,"#6891DB" ,"#633CE1" ,"#DDDDCF" ,"#DAAADA" ,"#D849DE",
+"#7C9F6A" ,"#E6565F" ,"#8C68D2" ,"#63859B" ,"#DD9955")
+
+pdf("summary_barplot_w_covariate_#DE_pcgs_vs_pathways_pathways_figure_sep14.pdf", width=16, height=5)
+
+#covariate for cancer
+cov = ggplot(all_res, aes(combo, 1)) + geom_tile(aes(fill = canc_name)) +
+theme_void() + theme(legend.position="none")+
+scale_fill_manual(values=pall)
+
+g + cov + plot_layout(ncol = 1, heights = c(15,1))
+dev.off()
+
+pdf("canc_cov_legend.pdf")
+ggplot(all_res, aes(combo, 1)) + geom_tile(aes(fill = canc_name)) +
+theme_void() + coord_flip() + 
+scale_fill_manual(values=pall)
+dev.off()
+
+#instead of cancer type do gene name
+all_res$gene = as.character(all_res$combo)
+all_res$gene = sapply(all_res$gene, function(x){unlist(strsplit(x, "_"))[1]})
+
+get_name = function(ensg){
+    z = which(fantom$CAT_geneID == ensg)
+    return(fantom$CAT_geneName[z][1])
+}
+
+all_res$genename = unlist(llply(all_res$gene, get_name))
+all_res$combo2 = paste(all_res$genename, all_res$canc_name, sep=" ")
+
+sig_paths_sum$gene = ""
+sig_paths_sum$gene = sig_paths_sum$combo
+sig_paths_sum$gene = sapply(sig_paths_sum$gene, function(x){unlist(strsplit(x, "_"))[1]})
+sig_paths_sum$genename = unlist(llply(sig_paths_sum$gene, get_name))
+sig_paths_sum$combo2 = paste(sig_paths_sum$genename, sig_paths_sum$type, sep=" ")
+sig_paths_sum = sig_paths_sum[order(-num_sig_des)]
+
+all_res$combo2 = factor(all_res$combo2, levels = unique(sig_paths_sum$combo2))
+all_res$font_col = ""
+all_res$font_col[all_res$canc_name == "LGG"] = "1"
+
+sig_paths_sum$font_col = ""
+sig_paths_sum$font_col[sig_paths_sum$type == "LGG"] = "1"
+a <- ifelse(sig_paths_sum$font_col == 1, "red", "black")
+
+pdf("summary_barplot_genenames_#DE_pcgs_vs_pathways_pathways_figure_sep14.pdf", width=16, height=5)
+g = ggplot(all_res, aes(combo2, num_sig_des, group=type)) + theme_classic() + 
+   geom_col(position = "dodge", aes(fill=type), color="grey29")+xlab("lncRNA-cancer pair") + ylab("Number of significant \ngenes/pathways")+
+   theme(legend.title=element_blank(), legend.position="top", axis.title.x=element_blank(), 
+   	axis.text.x = element_text(angle = 45, hjust = 1, colour = a, size=7)) + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
+#ggpar(g,
+# font.tickslab = c(6,"plain", "black"),
+# xtickslab.rt = 45)
+print(g)
+dev.off()
+
+
+###---------------Make heatmap-------------------------------###
+
+#brain development pathways 
+brain_paths = c("forebrain development", "central nervous system development", "brain development",
+	"head development", "telencephalon development")
+
+load("_Brain_Lower_Grade_Glioma_.2018-09-14.rdata")
+colnames(res)
+brain = subset(res, res$term.name %in% brain_paths)
+
+#1. get all PCGs that are in these pathways 
+pcgs_brain = unique(unlist(brain$overlap)) #152 unique PCGs
+lncs_brain = unique(unlist(brain$evidence)) #6 unique lncRNAs to be used as covariates high vs low 
+
+##2-----------------label patients by risk------------------------------
+
+dat = subset(all, Cancer=="Brain Lower Grade Glioma")
+
+  dat_keep = dat[,which(colnames(dat) %in% c("patient", lncs_brain, pcgs_brain))]
+  rownames(dat_keep) = dat_keep$patient
+  dat_keep$patient = NULL
+  #figure out which patients are high risk and which patients low risk
+  for(i in 1:length(lncs_brain)){	
+
+  	   z = which(colnames(dat_keep) %in% lncs_brain[i])
+  	   median2 <- quantile(as.numeric(dat_keep[,z]), 0.5)
+
+       if(median2 ==0){
+        #if median = 0 then anyone greater than zero is 1 
+        l1 = which(dat_keep[,z] > 0)
+        l2 = which(dat_keep[,z] ==0)
+        dat_keep[l1,z] = 1
+        dat_keep[l2,z] = 0
+        }
+
+       if(!(median2 ==0)){
+        l1 = which(dat_keep[,z] >= median2)
+        l2 = which(dat_keep[,z] < median2)
+        dat_keep[l1,z] = 1
+        dat_keep[l2,z] = 0
+        }
+  }
+
+  #subset gene expression to those pcgs
+  #label patients by either high/low lncRNA expression 
+  z = which(colnames(dat_keep) %in% c(pcgs_brain, "patient"))
+  #heatmap 
+  heat = dat_keep[,z]
+  heat = log1p(heat)
+
+
+  library(ComplexHeatmap)
+
+  #tags <- dat_keep$risk
+  #color.map <- function(tags) { if (tags=="RISK") "#FF0000" else "#0000FF" }
+  #patientcolors <- unlist(lapply(tags, color.map))
+
+  df2 = dat_keep[,1:6] #lncRNA data
+
+  col = list(
+    ENSG00000254635 = c("1" = "red", "0" = "blue"),
+    ENSG00000253187 = c("1" = "red", "0" = "blue"),
+    ENSG00000256482 = c("1" = "red", "0" = "blue"),
+    ENSG00000224950 = c("1" = "red", "0" = "blue"),
+    ENSG00000239552 = c("1" = "red", "0" = "blue"),
+    ENSG00000250360 = c("1" = "red", "0" = "blue"))
+
+  # Create the heatmap annotation
+  ha <- HeatmapAnnotation(df2, col = col)
+
+  # cluster on correlation
+  heat = scale(heat)
+  heat = t(heat)
+
+  #change pcg names
+  for(i in 1:nrow(heat)){
+    pcg = rownames(heat)[i]
+    newname = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == pcg)][1]
+    rownames(heat)[i] = newname
+  }
+
+  Heatmap(heat, clustering_distance_columns = "pearson", 
+  clustering_distance_rows = "pearson", cluster_rows = TRUE, cluster_columns = TRUE, 
+  top_annotation = ha, clustering_method_rows = "complete", clustering_method_columns = "complete", 
+  show_column_names = FALSE, row_names_gp = gpar(fontsize = 2))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
