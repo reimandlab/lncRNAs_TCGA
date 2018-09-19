@@ -346,17 +346,19 @@ prog_pcgs$lnc_pcg = paste(prog_pcgs$lnc, prog_pcgs$pcg, prog_pcgs$type, sep="/")
 
 
 pdf("figure2E_summary_lncs_pcgs_antisense.pdf", width=9,height=4)
-g = ggplot(prog_pcgs, aes(lncConcordance, pcgConcordance, label=lnc_pcg)) +
+g = ggplot(prog_pcgs, aes(pcgConcordance, lncConcordance, label=lnc_pcg)) +
  geom_point(aes(color=cor, size=rho))+
  scale_size(range = c(0, 3))+
     scale_colour_manual(values = c("grey", "blue", "red")) + 
-    xlab("lncRNA Concordance") + ylab("PCG Concordance") + theme_bw() +
-    theme(legend.box = "horizontal", 
+    xlab("Neighbour PCG Concordance") + ylab("lncRNA Concordance") + theme_bw() +
+    theme(legend.box = "horizontal", axis.text = element_text(size=10), 
       legend.text=element_text(size=10), legend.title=element_text(size=10))+
-     xlim(0.45,0.75) + ylim(0.45,0.75) + geom_abline(intercept=0) +
-     geom_text_repel(data = subset(prog_pcgs, lncConcordance > 0.7 | pcgConcordance > 0.65), size=2, nudge_y = 0.1,
-      direction = "x",segment.color = "grey50",
-      segment.size = 0.05)
+     xlim(0.45,0.75) + ylim(0.45,0.75) + geom_abline(intercept=0) 
+     
+
+     #geom_text_repel(data = subset(prog_pcgs, lncConcordance > 0.7 | pcgConcordance > 0.65), size=2, nudge_y = 0.1,
+      #direction = "x",segment.color = "grey50",
+      #segment.size = 0.05)
 
 g
 dev.off()

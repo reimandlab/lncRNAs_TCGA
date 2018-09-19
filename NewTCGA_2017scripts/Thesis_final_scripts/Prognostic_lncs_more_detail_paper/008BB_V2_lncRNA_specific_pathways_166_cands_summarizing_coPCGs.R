@@ -142,8 +142,8 @@ make_matrix_for_ap = function(canc){
 	}
 }
 
-all_lnc_pathways = llply(cancers, make_matrix_for_ap, .progress="text")
-all_lnc_pathways_df = ldply(all_lnc_pathways)
+#all_lnc_pathways = llply(cancers, make_matrix_for_ap, .progress="text")
+#all_lnc_pathways_df = ldply(all_lnc_pathways)
 #done gave Marta matriced produced by this code for ActivePathways 
 
 
@@ -359,7 +359,8 @@ dat = subset(all, Cancer=="Brain Lower Grade Glioma")
     ENSG00000250360 = c("1" = "red", "0" = "blue"))
 
   # Create the heatmap annotation
-  ha <- HeatmapAnnotation(df2, col = col)
+  ha <- HeatmapAnnotation(df2, col = col, annotation_height = unit.c(unit(0.25, "cm"), unit(0.25, "cm"), unit(0.25, "cm"), unit(0.25, "cm"),
+  	unit(0.25, "cm"), unit(0.25, "cm")))
 
   # cluster on correlation
   heat = scale(heat)
@@ -372,15 +373,39 @@ dat = subset(all, Cancer=="Brain Lower Grade Glioma")
     rownames(heat)[i] = newname
   }
 
-  Heatmap(heat, clustering_distance_columns = "pearson", 
-  clustering_distance_rows = "pearson", cluster_rows = TRUE, cluster_columns = TRUE, 
-  top_annotation = ha, clustering_method_rows = "complete", clustering_method_columns = "complete", 
-  show_column_names = FALSE, row_names_gp = gpar(fontsize = 2))
+  library(circlize)
+
+  #which genes are cancer gene census genes?
+  pcgs = unique(rownames(heat))
+#COSMIC cancer gene census
+census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
+#get ensg
+get_census_ensg = function(genes){
+  glist = unlist(strsplit(genes, ","))
+  z = which(str_detect(glist, "ENSG"))
+  ensg = glist[z]
+  return(ensg)
+}
+census$ensg = sapply(census$Synonyms, get_census_ensg)
+
+hox_genes = which(str_detect(rownames(heat), "HOX"))
+z = which(rownames(heat) %in% census$Gene.Symbol)
+subset = unique(c(hox_genes, z))
+
+labels = rownames(heat)[subset]
 
 
+  pdf("heatmap_brain_development_pathway_LGG_sep19.pdf", width=12, height=4)
 
-
-
+  Heatmap(heat, clustering_distance_columns = "pearson", show_row_names = FALSE, 
+  clustering_distance_rows = "pearson", col = colorRamp2(c(-3, 0, 3), c("steelblue1", "white", "orange")), 
+  cluster_rows = TRUE, cluster_columns = TRUE, 
+  top_annotation = ha, clustering_method_rows = "complete", 
+  clustering_method_columns = "complete",show_column_names = FALSE, row_names_gp = gpar(fontsize = 1))+
+  rowAnnotation(link = row_anno_link(at = subset, labels = labels),
+  width = unit(0.75, "cm") + max_text_width(labels))
+	
+  dev.off()
 
 
 

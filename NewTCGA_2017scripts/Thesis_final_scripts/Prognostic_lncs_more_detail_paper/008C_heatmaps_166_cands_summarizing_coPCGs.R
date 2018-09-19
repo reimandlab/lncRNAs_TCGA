@@ -275,8 +275,9 @@ gen_heatmap = function(dat){
   ha_row = rowAnnotation(df = data.frame(PCGtype = pcgs),
     col = list(PCGtype = c("upregulated_in_risk" = "Yellow", "downregulated_in_risk" = "Purple")))
 
-  h1 = Heatmap(heat, col = c("blue", "white", "orange"), clustering_distance_columns = "spearman", column_title=title, 
-    clustering_distance_rows = "spearman", cluster_rows = TRUE, cluster_columns = TRUE, top_annotation = ha_column, show_column_names = FALSE)
+  h1 = Heatmap(heat, col = colorRamp2(c(-3, 0, 3), c("steelblue1", "white", "orange")), clustering_distance_columns = "pearson", column_title=title, 
+    clustering_distance_rows = "spearman", cluster_rows = TRUE, cluster_columns = TRUE, top_annotation = ha_column, show_column_names = FALSE, 
+    clustering_method_rows = "complete", clustering_method_columns = "complete", row_names_gp = gpar(fontsize = 2))
   h1 + ha_row
 
   #heatmap.2(as.matrix(heat), col=my_palette, ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6, Rowv=as.dendrogram(hc), 
@@ -284,7 +285,7 @@ gen_heatmap = function(dat){
 
 }
 
-pdf("lncs_wSIG_PCGs_heatmaps_aug27_top75_genes.pdf", width=10, height=10)
+pdf("lncs_wSIG_PCGs_heatmaps_sep19_top75_genes.pdf", width=10, height=10)
 llply(all_canc_lnc_data, gen_heatmap, .progress="text")
 dev.off()
 
