@@ -205,8 +205,24 @@ gen_heatmap = function(dat){
   z = which(colnames(dat) %in% c(lnc_pcgs$ID, "patient"))
   #heatmap 
   heat = dat[,z]
+  pca_dat = heat
+  pca_dat$patient = NULL
+  pca_dat = log1p(pca_dat)
+
   rownames(heat) = heat$patient
   heat$patient = NULL
+  res.pca = prcomp(pca_dat, scale=TRUE)
+
+  groups <- as.factor(dat$risk)
+  print(fviz_pca_ind(res.pca,
+             col.ind = groups, # color by groups
+             palette = c("#00AFBB",  "#FC4E07"),
+             addEllipses = TRUE, # Concentration ellipses
+             legend.title = "Groups",
+             repel = TRUE, label="none", ellipse.level=0.5
+             ) + labs(title = paste("PCA", lnc, canc)))
+
+
 
   heat = log1p(heat)
 
@@ -278,14 +294,15 @@ gen_heatmap = function(dat){
   h1 = Heatmap(heat, col = colorRamp2(c(-3, 0, 3), c("steelblue1", "white", "orange")), clustering_distance_columns = "pearson", column_title=title, 
     clustering_distance_rows = "spearman", cluster_rows = TRUE, cluster_columns = TRUE, top_annotation = ha_column, show_column_names = FALSE, 
     clustering_method_rows = "complete", clustering_method_columns = "complete", row_names_gp = gpar(fontsize = 2))
-  h1 + ha_row
+  #h1 + ha_row
 
   #heatmap.2(as.matrix(heat), col=my_palette, ColSideColors= patientcolors, cexRow=0.5, cexCol=0.6, Rowv=as.dendrogram(hc), 
   #  RowSideColors= pcg_cols, trace="none", scale="row", dendrogram="row", labCol="", main = title, key=FALSE)
 
 }
 
-pdf("lncs_wSIG_PCGs_heatmaps_sep19_top75_genes.pdf", width=10, height=10)
+#pdf("lncs_wSIG_PCGs_heatmaps_sep19_top75_genes.pdf", width=10, height=10)
+pdf("lncs_wSIG_PCGs_PCAs_sep19_top75_genes.pdf", width=10, height=10)
 llply(all_canc_lnc_data, gen_heatmap, .progress="text")
 dev.off()
 

@@ -389,23 +389,23 @@ get_clin_lnc_cors = function(dtt){
 } #end get_clin_lnc_cors
 
 #clin_data_lncs_cors = llply(clin_data_lncs, get_clin_lnc_cors)
-d1 = get_clin_lnc_cors(clin_data_lncs[[1]])
-d2 = get_clin_lnc_cors(clin_data_lncs[[2]])
-d3 = get_clin_lnc_cors(clin_data_lncs[[3]])
-d4 = get_clin_lnc_cors(clin_data_lncs[[4]])
-d5 = get_clin_lnc_cors(clin_data_lncs[[5]])
-d6 = get_clin_lnc_cors(clin_data_lncs[[6]])
-d7 = get_clin_lnc_cors(clin_data_lncs[[7]])
-d8 = get_clin_lnc_cors(clin_data_lncs[[8]])
-d9 = get_clin_lnc_cors(clin_data_lncs[[9]])
-d10 = get_clin_lnc_cors(clin_data_lncs[[10]]) #<------ this one didn't work
-d11 = get_clin_lnc_cors(clin_data_lncs[[11]])
-d12 = get_clin_lnc_cors(clin_data_lncs[[12]])
-d13 = get_clin_lnc_cors(clin_data_lncs[[13]])
-d14 = get_clin_lnc_cors(clin_data_lncs[[14]])
+#d1 = get_clin_lnc_cors(clin_data_lncs[[1]])
+#d2 = get_clin_lnc_cors(clin_data_lncs[[2]])
+#d3 = get_clin_lnc_cors(clin_data_lncs[[3]])
+#d4 = get_clin_lnc_cors(clin_data_lncs[[4]])
+#d5 = get_clin_lnc_cors(clin_data_lncs[[5]])
+#d6 = get_clin_lnc_cors(clin_data_lncs[[6]])
+#d7 = get_clin_lnc_cors(clin_data_lncs[[7]])
+#d8 = get_clin_lnc_cors(clin_data_lncs[[8]])
+#d9 = get_clin_lnc_cors(clin_data_lncs[[9]])
+#d10 = get_clin_lnc_cors(clin_data_lncs[[10]]) #<------ this one didn't work
+#d11 = get_clin_lnc_cors(clin_data_lncs[[11]])
+#d12 = get_clin_lnc_cors(clin_data_lncs[[12]])
+#d13 = get_clin_lnc_cors(clin_data_lncs[[13]])
+#d14 = get_clin_lnc_cors(clin_data_lncs[[14]])
 
-all_clin = list(d1, d2,d3,d4,d5,d6,d7,d8,d9,d11,d12,d13,d14)
-saveRDS(all_clin, file="13_data_sets_biolinks_results.rds")
+#all_clin = list(d1, d2,d3,d4,d5,d6,d7,d8,d9,d11,d12,d13,d14)
+#saveRDS(all_clin, file="13_data_sets_biolinks_results.rds")
 
 #--------FDR & Summarize Results-------------------------------------
 all_clin = readRDS("13_data_sets_biolinks_results.rds")
@@ -458,6 +458,8 @@ clean_up$type = factor(clean_up$type, levels=unique(clean_up$type))
 clean_up$colname[which(str_detect(clean_up$colname, "age_at"))] = "Age"
 clean_up$colname[clean_up$colname == "age"] = "Age"
 
+write.csv(clean_up, file="cleaned_clinical_variables_associations_data_sept19.csv", quote=F, row.names=F)
+
 pdf("summary_biolinks_subtypes_lncRNA_exp.pdf", height=10)
 #make geom_tile plot
 ggplot(clean_up, aes(type, colname)) +
@@ -472,23 +474,24 @@ write.table(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using
 
 #-------PLOT summary results-------------------------------------------
 
-clin_results = readRDS("correlation_results_clinical_lncRNA_exp_July19_using_biolinks.rds")
-
-clean_up$combo = paste(clean_up$lnc, clean_up$type, sep="_")
-
+#clin_results = readRDS("correlation_results_clinical_lncRNA_exp_July19_using_biolinks.rds")
+clin_results = read.csv("cleaned_clinical_variables_associations_data_sept19.csv")
+clin_results$combo = paste(clin_results$lnc, clin_results$type, sep="_")
+clean_up = clin_results
 
 clean_up = as.data.table(filter(clean_up, pval < 0.05))
-
+clean_up$cor = as.numeric(clean_up$cor)
+clean_up = filter(clean_up, (is.na(cor) | (abs(cor) >= 0.3)), chisq < 0.05)
 
 get_name = function(ensg){
-    z = which(fantom$gene == ensg)
+    z = which(fantom$CAT_geneID == ensg)
     return(fantom$CAT_geneName[z][1])
 }
 
 clean_up$name = unlist(llply(clean_up$lnc, get_name))
 
 #split by cancer type
-cancer_clins = split(clean_up, by="type")
+cancer_clins = split(clean_up, clean_up$type)
 
 get_nodes_edges = function(canc){
 
@@ -516,7 +519,7 @@ get_nodes_edges = function(canc){
   g = ggplot(edges, aes(lnc_concordance, clin_concordance, label=name)) + ggtitle(canc$type[1], "lncRNA vs Clinical variables")+
   geom_point()+
     xlab("lncRNA Concordance") + ylab("Clinical Concordance") + theme_bw() +
-      xlim(0.45,0.75) + ylim(0.45,0.75) + geom_abline(intercept=0)
+      xlim(0.45,0.95) + ylim(0.45,0.95) + geom_abline(intercept=0)
   print(g)
   print(paste("done", canc$type[1]))
 }
@@ -525,7 +528,27 @@ pdf("lncRNA_vs_Clinical_variables_CIs_sep14.pdf")
 llply(cancer_clins, get_nodes_edges)
 dev.off()
 
+clean_up$combo = paste(clean_up$name, clean_up$type, sep = " ")
+clean_up$sig_tag = ""
+clean_up$sig_tag[clean_up$clin_pval < 0.05] = "V"
+clean_up$sig_tag[clean_up$clin_pval > 0.05] = ""
 
+#get order 
+t = as.data.table(table(clean_up$colname))
+t = as.data.table(filter(t, N > 0))
+t = t[order(-N)]
+
+clean_up$colname = factor(clean_up$colname, levels = t$V1)
+
+pdf("summary_biolinks_subtypes_lncRNA_exp_Sept20.pdf", height=6, width=12)
+#make geom_tile plot
+ggplot(clean_up, aes(combo, colname)) +
+  geom_tile(aes(fill = sig_tag), colour = "grey50") +
+  theme_bw() +
+  theme(legend.title=element_blank(), legend.position="bottom", axis.title.x=element_blank(), 
+    axis.text.x = element_text(angle = 45, hjust = 1, size=7)) + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
+
+dev.off()
 
 
 
