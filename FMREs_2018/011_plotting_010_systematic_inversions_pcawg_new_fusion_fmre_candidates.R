@@ -58,6 +58,9 @@ get_fc = function(row){
 	z = which(colnames(canc_exp) == ens)
 	#canc_exp[,z] = log1p(canc_exp[,z])
 
+	scaled_exp = as.data.frame(scale(canc_exp[,z]))
+	scaled_exp$pateint = canc_exp$patient
+
 	#expression of patient
 	pat_exp =canc_exp[which(canc_exp$patient == pat),z]
 
@@ -65,7 +68,11 @@ get_fc = function(row){
 	else_ppl = mean(canc_exp[which(!(canc_exp$patient ==pat)),z])
 
 	#fold change 
-	fc = log2(pat_exp/else_ppl)
+	fc = (pat_exp/else_ppl)
+	#fc = log2(pat_exp/else_ppl)
+
+	#Z score 
+	#fc = scaled_exp$V1[scaled_exp$pateint == pat]
 
 	#pvalue
 	pval = row[[10]]
@@ -153,11 +160,11 @@ dev.off()
 
 
 #------barplot with x-axis ticks pcg + fmre--------------------------------------------------------------
-
+plotting_dat = subset(plotting_dat, !(fc == "Inf"))
 plotting_dat$translocation = paste(plotting_dat$fmre, plotting_dat$name, sep=" - ")
 labels = plotting_dat$newpval
-plotting_dat$expression[plotting_dat$fc >0] = "Upregulated"
-plotting_dat$expression[plotting_dat$fc <0] = "Downregulated"
+plotting_dat$expression[log2(plotting_dat$fc) >0] = "Upregulated"
+plotting_dat$expression[log2(plotting_dat$fc) <0] = "Downregulated"
 plotting_dat$expression = factor(plotting_dat$expression, levels = c("Upregulated", "Downregulated"))
 
 #Add patient pseudonames
@@ -177,21 +184,33 @@ pats = ggpar(pats, legend = "none") + theme(axis.title.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
+cancers = ggplot(plotting_dat, aes(name, 0.2)) +
+    geom_tile(aes(fill = cancer)) + geom_text(aes(label = cancer), size=1.7) +
+    theme_classic() + scale_fill_manual(values=unique(plotting_dat$color_code)) 
+
+cancers = ggpar(cancers, legend = "none") + theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + 
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())
+
 #####3 USE--------------------
 
 barplot = ggbarplot(plotting_dat, x="translocation", y="fc", lab.size = 6, label = labels, lab.vjust=-0.1, fill="expression") +
- 	xlab("Translocation") + ylab("log2(Fold Change)") + theme_bw() +
- 	scale_fill_manual(values=c("#E69F00", "#56B4E9"))
+ 	xlab("Translocation") + ylab("Fold Change") + theme_bw() +
+ 	scale_fill_manual(values=c("#E69F00", "#56B4E9")) #+ coord_trans(y="log10")
  
-barplot = ggpar(barplot,
+barplot = ggpar(barplot, yscale = "log2", 
  font.tickslab = c(7,"plain", "black"), legend.title = "Expression", font.legend = c(8, "plain", "black"), 
- xtickslab.rt = 45) + 
-scale_y_continuous(breaks = round(seq(-3, 11, by = 1),1))
+ xtickslab.rt = 45) #+ 
+#scale_y_continuous(breaks = round(seq(-3, 11 , by = 1),1)) 
 
-pdf("summary_barplot_translocation_exp_fc_version_3_.pdf", width=7, height=7)
+pdf("summary_mean_barplot_translocation_exp_fc_version_3_.pdf", width=7, height=7)
 barplot + cancers + pats + plot_layout(ncol = 1, heights = c(10, 1, 1))
 dev.off()
 
+write.table(plotting_dat, file="data_table_SV_exp_barplot_KI_sept21.txt", quote=F, row.names=F, sep="\t")
 
 
 ######2 Don't USE
