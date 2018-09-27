@@ -364,8 +364,8 @@ get_data = function(lnc){
 
 	#multiple probes present 	
 	if(z > 1){
-		results_all_probes = as.data.frame(matrix(ncol = 13)) ; colnames(results_all_probes) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal")
+		results_all_probes = as.data.frame(matrix(ncol = 16)) ; colnames(results_all_probes) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
+      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test")
 	
 	for(k in 1:z){
 	new = subset(df, df$probe == unique(df$probe)[k])
@@ -428,12 +428,7 @@ get_data = function(lnc){
     length_risk_pats = length(which(new$median == med_risk))
 
     probe = new$probe[1]
-    results = c(cancer, unique(new$gene), length(unique(new$patient)), 
-      wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, probe, bal)
     
-    names(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal")
-
     new$median <- factor(new$median, levels = c("High", "Low"))
     new$median  # notice the changed order of factor levels
 
@@ -477,16 +472,48 @@ get_data = function(lnc){
     geom_vline(xintercept=0, linetype="dashed", color = "grey", size=0.5)+
     theme(text = element_text(size=15), axis.text = element_text(size=15))
 
-      print(sp1)
-      print(sp2)
-      print(sp3)
-      print(sp4)
+    test = length(unique(new$mut_status))
+    if(test >1){  
+
+    #x-axis --> CNA status
+    new$geneExp = as.numeric(new$geneExp)
+    new$mut_status = factor(new$mut_status, levels = c("Unmethylated", "Methylated"))
+    #get correlation between cna_Status and gene expression
+    stat_exp_cor = rcorr(new$mut_status, new$geneExp, type="spearman")$r[2]
+    stat_exp_pval = rcorr(new$mut_status, new$geneExp, type="spearman")$P[2]
+
+    text_add = paste("rho=", round(stat_exp_cor, digits=2), "pval=", round(stat_exp_pval, digits=8))
+    ycord = as.numeric(summary(new$geneExp)[6]-0.75)
+
+    #Create a custom color scale
+    library(RColorBrewer)
+    myColors <- brewer.pal(n = 3, name = "Set1")[c(2,1)]
+    names(myColors) <- levels(new$mut_status)
+    colScale <- scale_colour_manual(name = "mut_status",values = myColors)
+    ks_test = kruskal.test(geneExp ~ mut_status, data = new)$p.value 
+
+    sp6 = ggplot(new, aes(x=mut_status, y=geneExp, color=mut_status)) + ggtitle(paste(gene_name, cancer, probe)) + 
+    geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
+    stat_n_text(size = 6) + 
+    xlab("lncRNA CNA status") +
+    ylab("log1p(FPKM-UQ)") + stat_compare_means()+
+    geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15))+
+    colScale +
+    annotate("text", x = 1.3, y =ycord , label = text_add)
+
+    results = c(cancer, unique(new$gene), length(unique(new$patient)), 
+      wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, probe, bal, stat_exp_cor, stat_exp_pval, ks_test)
+    
+    names(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
+      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test")
+
+      print(sp6)
       print(lnc)
 
     print(lnc)
-
+    }
     results_all_probes = rbind(results_all_probes, results)
-	}
+  }
 
 	results_all_probes = results_all_probes[-1,]
 	results = results_all_probes
@@ -550,13 +577,6 @@ get_data = function(lnc){
     length_risk_pats = length(which(df$median == med_risk))
 
     probe = df$probe[1]
-	  results = c(cancer, unique(df$gene), length(unique(df$patient)), 
-      wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, probe, bal)
-    
-    names(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-    	"risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal")
-    
-    results = as.data.frame(results)
 
     df$median <- factor(df$median, levels = c("High", "Low"))
     df$median  # notice the changed order of factor levels
@@ -566,7 +586,7 @@ get_data = function(lnc){
 
     library("ggExtra")
     
-    gene_name = fantom$CAT_geneName[which(fantom$gene == lnc)]   
+    gene_name = fantom$CAT_geneName[which(fantom$gene == lnc)]  
 
     sp1 = ggplot(df, aes(x=beta, y=geneExp, color=median)) + ggtitle(paste(df$gene[1], gene_name, probe, cancer, "\nrisk=", df$risk[1])) + 
     geom_point() + 
@@ -602,20 +622,57 @@ get_data = function(lnc){
     geom_vline(xintercept=0, linetype="dashed", color = "grey", size=0.5) + 
     theme(text = element_text(size=15), axis.text = element_text(size=15))
 
-      print(sp1)
-      print(sp2)
-      print(sp3)
-      print(sp4)
+    test = length(unique(df$mut_status))
+    if(test >1){  
+
+    #x-axis --> CNA status
+    df$geneExp = as.numeric(df$geneExp)
+    df$mut_status = factor(df$mut_status, levels = c("Unmethylated", "Methylated"))
+    #get correlation between cna_Status and gene expression
+    stat_exp_cor = rcorr(df$mut_status, df$geneExp, type="spearman")$r[2]
+    stat_exp_pval = rcorr(df$mut_status, df$geneExp, type="spearman")$P[2]
+
+    text_add = paste("rho=", round(stat_exp_cor, digits=2), "pval=", round(stat_exp_pval, digits=8))
+    ycord = as.numeric(summary(df$geneExp)[6]-0.75)
+
+    #Create a custom color scale
+    library(RColorBrewer)
+    myColors <- brewer.pal(n = 3, name = "Set1")[c(2,1)]
+    names(myColors) <- levels(df$mut_status)
+    colScale <- scale_colour_manual(name = "mut_status",values = myColors)
+    ks_test = kruskal.test(geneExp ~ mut_status, data = df)$p.value 
+
+    sp6 = ggplot(df, aes(x=mut_status, y=geneExp, color=mut_status)) + ggtitle(paste(gene_name, cancer, probe)) + 
+    geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
+    stat_n_text(size = 6) + 
+    xlab("lncRNA CNA status") +
+    ylab("log1p(FPKM-UQ)") + stat_compare_means()+
+    geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15))+
+    colScale +
+    annotate("text", x = 1.3, y =ycord , label = text_add)
+
+    results = c(cancer, unique(df$gene), length(unique(df$patient)), 
+      wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, probe, bal, stat_exp_cor, stat_exp_pval, ks_test)
+    
+    names(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
+      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test")
+    
+    results = as.data.frame(results)
+
+      #print(sp1)
+      #print(sp2)
+      #print(sp3)
+      print(sp6)
       print(lnc)
       print("pass")
   	print(lnc)
-
+  }
   }
 	}
 
 	if(!((both & (length(unique(df$patient)) >=10)))){
-		results = as.data.frame(matrix(ncol = 13)) ; colnames(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal")
+		results = as.data.frame(matrix(ncol = 16)) ; colnames(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
+      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test")
   }  
   return(results)
 }
@@ -623,7 +680,7 @@ get_data = function(lnc){
 }
 }
 
-pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Aug15.pdf")
+pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Sept27.pdf")
 genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% probes$combo)]))) #88/166 have methylation probes overlapping them 
 lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
 dev.off()
@@ -632,24 +689,27 @@ lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
 lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
 lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
 z= which(is.na(lnc_meth_cancer_data2$cancer))
-lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #362 lncRNA-probe pairs evaluated 
+lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #341 lncRNA-probe pairs evaluated 
 
-saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Sept11.rds")
+saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Sept27.rds")
 
 #---------PROCESS RESULTS-----------------------------------------------------------------------------------------------------
 lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer, sep="_") #74 combos evaluated 
 lnc_meth_cancer_data2$wilcoxon_pval = as.numeric(as.character(lnc_meth_cancer_data2$wilcoxon_pval))
 lnc_meth_cancer_data2 = lnc_meth_cancer_data2[order(wilcoxon_pval)]
 lnc_meth_cancer_data2$wilcoxon_pval = as.numeric(lnc_meth_cancer_data2$wilcoxon_pval)
+lnc_meth_cancer_data2$ks_test = as.numeric(as.character(lnc_meth_cancer_data2$ks_test))
+lnc_meth_cancer_data2$stat_exp_cor = as.numeric(as.character(lnc_meth_cancer_data2$stat_exp_cor))
+lnc_meth_cancer_data2$stat_exp_pval = as.numeric(as.character(lnc_meth_cancer_data2$stat_exp_pval))
 
 #get fdr by cancer type - if only one test then there weren't multiple tests done
 dats = split(lnc_meth_cancer_data2, by="cancer")
 add_fdr = function(dat){
-  if(dim(dat)[1]>5){
-  dat$fdr = p.adjust(dat$wilcoxon_pval, method="fdr")
+  if(dim(dat)[1]>10){
+  dat$fdr = p.adjust(dat$ks_test, method="fdr")
   }
-  if(dim(dat)[1] <=5){
-    dat$fdr = dat$wilcoxon_pval
+  if(dim(dat)[1] <=10){
+    dat$fdr = dat$ks_test
   }
   return(dat)
 }
@@ -658,15 +718,15 @@ lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
 sig_diff = filter(lnc_meth_cancer_data2, fdr <=0.05)
 
 #plot just the sig ones 
-sig_diff$combo = paste(sig_diff$gene, sig_diff$cancer, sep="_") #37/74 unique combos ~ 40% 
+sig_diff$combo = paste(sig_diff$gene, sig_diff$cancer, sep="_") #24/69 unique combos ~ 35% 
 
 #---------FIGURE SUMMARY FOR PAPER--------------------------------------------------------------------------------------------
 cands$combo = paste(cands$gene, cands$canc, sep="_")
 sig_diff = merge(sig_diff, cands, by=colnames(cands)[which(colnames(cands) %in% colnames(sig_diff))])
 sig_diff = subset(sig_diff, data == "TCGA")
-sig_diff$overall_correlation = unlist(sig_diff$overall_correlation)
-sig_diff$overall_correlation = round(sig_diff$overall_correlation, digits=2)
-sig_diff$wilcoxon_pval = -log10(sig_diff$wilcoxon_pval)
+sig_diff$stat_exp_cor = unlist(sig_diff$stat_exp_cor)
+sig_diff$stat_exp_cor = round(sig_diff$stat_exp_cor, digits=2)
+sig_diff$ks_test = -log10(sig_diff$ks_test)
 
 sig_diff$HR = as.numeric(sig_diff$HR)
 sig_diff$stat[sig_diff$HR > 1] = "Unfavourable"
@@ -684,8 +744,8 @@ sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
 
 library(patchwork)
 
-sig_diff$cor[sig_diff$overall_correlation < 0] = "Negative" 
-sig_diff$cor[sig_diff$overall_correlation > 0] = "Positive" 
+sig_diff$cor[sig_diff$stat_exp_cor < 0] = "Negative" 
+sig_diff$cor[sig_diff$stat_exp_cor > 0] = "Positive" 
 
 #which have multiple probes per lncRNA? --> keep strongest correlated one
 t = as.data.table(table(sig_diff$combo))
@@ -695,7 +755,7 @@ dups = unique(t$V1)
 keep_dat = as.data.frame(matrix(ncol=ncol(sig_diff))) ; colnames(keep_dat) = colnames(sig_diff)
 for(i in 1:length(dups)){
   dat = as.data.table(filter(sig_diff, combo == dups[i]))
-  dat = dat[order(-(abs(overall_correlation)))]
+  dat = dat[order(-(abs(stat_exp_cor)))]
   keep = dat[1,]
   keep_dat = rbind(keep_dat, keep)
 }
@@ -703,17 +763,17 @@ keep_dat = keep_dat[-1,]
 z = which(!(sig_diff$combo %in% dups))
 keep_dat = rbind(keep_dat, sig_diff[z,])
 sig_diff = keep_dat
-sig_diff = sig_diff[order(stat, -(abs(overall_correlation)))]
+sig_diff = sig_diff[order(stat, -(abs(stat_exp_cor)))]
 
 sig_diff$CAT_geneName = factor(sig_diff$CAT_geneName, levels=unique(sig_diff$CAT_geneName))
 sig_diff$canc = factor(sig_diff$canc, levels=unique(sig_diff$canc))
 sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
 
-pdf("Methylation_figure_partB.pdf", width=10, height=8)
+pdf("Methylation_figure_partB_sep27.pdf", width=10, height=8)
 
 g = ggplot(sig_diff, aes(canc, CAT_geneName)) +
-  geom_tile(aes(fill = wilcoxon_pval)) + geom_point(aes(size=abs(overall_correlation), color=cor))+
-    scale_fill_gradient(low = "white", high = "black", na.value = 'transparent') +
+  geom_tile(aes(fill = ks_test)) + geom_point(aes(size=abs(stat_exp_cor), color=cor))+
+    scale_fill_gradient(low = "lightgrey", high = "black", na.value = 'transparent') +
     scale_colour_manual(values = c("blue", "red")) + 
     xlab("Cancer") + ylab("lncRNA") + theme_bw() +
     theme(legend.position="bottom", legend.box = "horizontal", 
@@ -740,7 +800,7 @@ dev.off()
 
 ##visualize probes 
 
-probe_dat = filter(probes, cgid == "cg04490290")
+probe_dat = filter(probes, cgid == "cg11225405")
 probe_cord = probe_dat[,c("probe_chr", "cpg_start", "cpg_end", "cgid", "cpgstrand")]
 lnc_cord = probe_dat[,c("lncchr", "lncstart", "lncend", "ensg", "lncstrand")]
 colnames(lnc_cord) = c("probe_chr", "cpg_start", "cpg_end", "cgid", "cpgstrand")

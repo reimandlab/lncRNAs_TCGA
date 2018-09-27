@@ -88,7 +88,7 @@ lncswcnas$rm = NULL
 #HOW MANY THOUGH HAVE SEGMENTS AMP/DEL GREATER THAN 30 MEGABASE? 
 lncswcnas$length = lncswcnas$End-lncswcnas$Start
 lncswcnas$length = lncswcnas$length/1000000
-lncswcnas = subset(lncswcnas, length <30)
+lncswcnas = subset(lncswcnas, length <20)
 
 genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% lncswcnas$combo)]))) #152/173 have CNAs overlapping them 
 #with segments that are shorter than 5 MB
@@ -156,6 +156,12 @@ get_data = function(lnc){
     #is high expression or low expression associated with worse prognosis? 
     df$median <- factor(df$median, levels = c("Low", "High"))
     df$median  # notice the changed order of factor levels
+
+    test1 = table(df$median)[1]
+    test2 = table(df$median)[2]
+
+    if((test1 > 10) & (test2 > 10)){
+
     HR = summary(coxph(Surv(OS.time, OS) ~ median, data = df))$coefficients[2]
     
     fit <- survfit(Surv(OS.time, OS) ~ median, data = df)
@@ -255,18 +261,96 @@ get_data = function(lnc){
     print(lnc)
     #plot length of segments 
     print(hist(df$length))
-    pat_dat = df[,c("patient", "median", "cna_status", "name", "name2", "combo")]
+    pat_dat = df[,c("patient", "median", "cna_status", "name", "name2", "combo", "length", "Segment_Mean", "Num_Probes")]
     pat_dat$cancer = cancer
     return(pat_dat)
 }
 }
 }
-
+}
 
 #each df for each combo - saved patients with CNAs and CNA status 
 lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
 lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
 lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
-saveRDS(lnc_cna_cancer_data2, file="all_dfs_CNAs_status_exp_patients_sept12.rds")
+saveRDS(lnc_cna_cancer_data2, file="all_dfs_CNAs_status_exp_patients_sept26.rds")
+
+r = readRDS("all_dfs_CNAs_status_exp_patients_sept26.rds")
+r$combo = paste(r$name2, r$cancer)
+
+print("done sir")
+
+get_dens_plot = function(lnc){
+
+  dat = as.data.table(filter(r, combo == lnc))
+  
+  library(plyr)
+  mu <- ddply(dat, "median", summarise, grp.med=median(Segment_Mean))
+  head(mu)
+
+  sp5 = ggplot(dat, aes(x=Segment_Mean, fill=median)) + ggtitle(dat$name2[1]) + 
+    geom_density(alpha = 0.5) + geom_vline(xintercept = 0.3, linetype="dotted", 
+                color = "grey") + geom_vline(xintercept = -0.3, linetype="dotted", color = "grey") +
+    theme(text = element_text(size=6), axis.text = element_text(size=6), legend.position="none")
+  return(sp5)
+}
+
+get_boxplot_plot = function(lnc){
+
+  dat = as.data.table(filter(r, combo == lnc))
+  
+  sp5 = ggplot(dat, aes(x=median, y=Segment_Mean, color=median)) + 
+    geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
+    geom_hline(yintercept=0.3, linetype="dashed", color = "grey") + stat_n_text(size = 3) + 
+    geom_hline(yintercept=-0.3, linetype="dashed", color = "grey") + xlab("lncRNA expression group") +
+    ylab("Segment Mean SCNA") + stat_compare_means(label = "p.signif")+
+    geom_boxplot(width=.1) + theme(text = element_text(size=6), axis.text = element_text(size=6), legend.position="none")
+
+  return(sp5)
+}
+
+sig_diff = readRDS("sig_diff_CNAs_sept26.rds")
+sig_diff = as.data.table(sig_diff)
+sig_diff = sig_diff[order(fdr)]
+sig_diff$combo = paste(sig_diff$name, sig_diff$cancer)
+
+lncs = unique(as.character(sig_diff$combo)) #65 lncRNAs have both gene expression and copy number data available 
+#with enough pateints for analysis (>30 patients) & segment mean of max 10mb
+
+list_cna_plots = llply(lncs, get_dens_plot)
+
+library(gridExtra)
+n <- length(list_cna_plots)
+nCol <- floor(sqrt(n))
+
+arranged = align_plots(plotlist = list_cna_plots, align="hv", axis="tblr")
+
+pdf("sig_cnas_density_plots.pdf", height=10)
+do.call("grid.arrange", c(arranged, nrow=7, ncol=2))
+dev.off()
+dev.off()
+
+list_cna_boxplots = llply(lncs, get_boxplot_plot)
+
+library(gridExtra)
+n <- length(list_cna_boxplots)
+nCol <- floor(sqrt(n))
+
+arranged = align_plots(plotlist = list_cna_boxplots, align="hv", axis="tblr")
+
+pdf("sig_cnas_boxplots_plots.pdf", height=13, width=10)
+do.call("grid.arrange", c(arranged, nrow=7, ncol=2))
+dev.off()
+dev.off()
+
+
+
+
+
+
+
+
+
+
 
 

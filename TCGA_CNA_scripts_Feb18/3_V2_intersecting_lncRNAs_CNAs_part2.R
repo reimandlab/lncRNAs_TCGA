@@ -88,10 +88,10 @@ lncswcnas$rm = NULL
 #HOW MANY THOUGH HAVE SEGMENTS AMP/DEL GREATER THAN 30 MEGABASE? 
 lncswcnas$length = lncswcnas$End-lncswcnas$Start
 lncswcnas$length = lncswcnas$length/1000000
-lncswcnas = subset(lncswcnas, length <30)
+lncswcnas = subset(lncswcnas, length <20) #10 KB
 
 genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% lncswcnas$combo)]))) #153/173 have CNAs overlapping them 
-#with segments that are shorter than 5 MB
+#with segments that are shorter than 20 MB
 
 rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
 unique(rna$type)
@@ -158,6 +158,12 @@ get_data = function(lnc){
     #is high expression or low expression associated with worse prognosis? 
     df$median <- factor(df$median, levels = c("Low", "High"))
     df$median  # notice the changed order of factor levels
+    
+    test1 = table(df$median)[1]
+    test2 = table(df$median)[2]
+
+    if((test1 > 10) & (test2 > 10)){
+
     HR = summary(coxph(Surv(OS.time, OS) ~ median, data = df))$coefficients[2]
     
     fit <- survfit(Surv(OS.time, OS) ~ median, data = df)
@@ -181,7 +187,7 @@ get_data = function(lnc){
        dup = seg_mean >=0.3
        del = seg_mean < (-0.3)
        if(dup){
-        return("DUP")
+        return("AMP")
        }        
        if(del){
         return("DEL")
@@ -241,14 +247,6 @@ get_data = function(lnc){
     bal = as.numeric(bal$perc_risk[bal$combo == comb])
     df$length = (df$End - df$Start)/1000000
     avg_length = mean(df$length)
-
-    results = c(cancer, unique(df$gene), unique(df$name2), length(unique(df$patient)), 
-      wilcoxon_pval, chi_pval, 
-      risk, length_risk_pats, rr, rp, ro, bal, avg_length)
-    
-    names(results) = c("cancer", "gene", "name", "num_patients", "wilcoxon_pval", "chi_pval", 
-      "risk_type", "num_risk_pats", "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "balance_risk_pats", 
-      "avg_length")
     
     df$median <- factor(df$median, levels = c("High", "Low"))
     df$median  # notice the changed order of factor levels
@@ -287,27 +285,72 @@ get_data = function(lnc){
     geom_freqpoly(alpha=0.4, aes(color=median)) + geom_vline(data=mu, aes(xintercept=grp.med, color=median),
              linetype="dashed") + theme(text = element_text(size=15), axis.text = element_text(size=15))
 
-      print(sp1)
-      print(sp2)
-      print(sp3)
-      print(sp4)
+    sp5 = ggplot(df, aes(x=Segment_Mean, fill=median)) + ggtitle(paste(df$name2[1], cancer)) + 
+    geom_density(alpha = 0.5) + geom_vline(data=mu, aes(xintercept=grp.med, color=median),
+             linetype="dashed") + theme(text = element_text(size=15), axis.text = element_text(size=15))
+
+    #x-axis --> CNA status
+    df$geneexp = as.numeric(df$geneexp)
+    df$cna_status = factor(df$cna_status, levels = c("DEL", "noCNA", "AMP"))
+    #get correlation between cna_Status and gene expression
+    stat_exp_cor = rcorr(df$cna_status, df$geneexp, type="spearman")$r[2]
+    stat_exp_pval = rcorr(df$cna_status, df$geneexp, type="spearman")$P[2]
+
+    text_add = paste("rho=", round(stat_exp_cor, digits=2), "pval=", round(stat_exp_pval, digits=8))
+    ycord = as.numeric(summary(df$geneexp)[6]-0.75)
+
+    #Create a custom color scale
+    library(RColorBrewer)
+    myColors <- brewer.pal(n = 3, name = "Set1")[c(2,3,1)]
+    names(myColors) <- levels(df$cna_status)
+    colScale <- scale_colour_manual(name = "cna_status",values = myColors)
+    
+    test = length(unique(df$cna_status))
+    if(test >1){  
+
+    ks_test = kruskal.test(geneexp ~ cna_status, data = df)$p.value 
+
+    sp6 = ggplot(df, aes(x=cna_status, y=geneexp, color=cna_status)) + ggtitle(paste(df$name2[1], cancer)) + 
+    geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
+    stat_n_text(size = 6) + 
+    xlab("lncRNA CNA status") +
+    ylab("log1p(FPKM-UQ)") + stat_compare_means()+
+    geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15))+
+    colScale +
+    annotate("text", x = 1.3, y =ycord , label = text_add)
+
+      #print(sp1)
+      #print(sp2)
+      #print(sp3)
+      print(sp6)
       print(lnc)
     #plot length of segments 
     print(hist(df$length))
     pat_dat = df[,c("patient", "median", "cna_status", "name", "name2", "combo")]
     pat_dat$cancer = cancer
     pat_dat_all = rbind(pat_dat_all, pat_dat)
+    
+    results = c(cancer, unique(df$gene), unique(df$name2), length(unique(df$patient)), 
+      wilcoxon_pval, chi_pval, 
+      risk, length_risk_pats, rr, rp, ro, bal, avg_length, stat_exp_cor, stat_exp_pval, ks_test)
+    
+    names(results) = c("cancer", "gene", "name", "num_patients", "wilcoxon_pval", "chi_pval", 
+      "risk_type", "num_risk_pats", "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "balance_risk_pats", 
+      "avg_length", "stat_exp_cor", "stat_exp_pval", "ks_test")
+
     return(results)
 }
 }
 }
-pdf("candidate_lncRNAs_CNA_versus_Expression_Sept7.pdf")
+}
+}
+pdf("candidate_lncRNAs_CNA_versus_Expression_Sept27_new_plots.pdf")
 lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
 dev.off()
 
 lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
 lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
-saveRDS(lnc_cna_cancer_data2, file="new_results_CNAs_Sept7.rds")
+saveRDS(lnc_cna_cancer_data2, file="new_results_CNAs_Sept27.rds")
 
 #---------PROCESS RESULTS-----------------------------------------------------------------------------------------------------
 
@@ -315,67 +358,76 @@ lnc_cna_cancer_data2$wilcoxon_pval = as.numeric(as.character(lnc_cna_cancer_data
 lnc_cna_cancer_data2 = lnc_cna_cancer_data2[order(wilcoxon_pval)]
 lnc_cna_cancer_data2$wilcoxon_pval = as.numeric(lnc_cna_cancer_data2$wilcoxon_pval)
 lnc_cna_cancer_data2$cancer = as.character(lnc_cna_cancer_data2$cancer)
+lnc_cna_cancer_data2$stat_exp_cor = as.numeric(as.character(lnc_cna_cancer_data2$stat_exp_cor))
+lnc_cna_cancer_data2$stat_exp_pval = as.numeric(as.character(lnc_cna_cancer_data2$stat_exp_pval))
+lnc_cna_cancer_data2$ks_test = as.numeric(as.character(lnc_cna_cancer_data2$ks_test))
 
 #get fdr by cancer type - if only one test then there weren't multiple tests done
 dats = split(lnc_cna_cancer_data2, by="cancer")
 add_fdr = function(dat){
-  if(dim(dat)[1]>5){
-  dat$fdr = p.adjust(dat$wilcoxon_pval, method="fdr")
+  if(dim(dat)[1]>10){
+  dat$fdr = p.adjust(dat$ks_test, method="fdr")
   }
-  if(dim(dat)[1] <=5){
-    dat$fdr = dat$wilcoxon_pval
+  if(dim(dat)[1] <=10){
+    dat$fdr = dat$ks_test
   }
   return(dat)
 }
 lnc_cna_cancer_data2 = llply(dats, add_fdr)
 lnc_cna_cancer_data2 = ldply(lnc_cna_cancer_data2)
-sig_diff = filter(lnc_cna_cancer_data2, fdr <=0.05)
+
+#check which have sig overall correlation and sig kruskal wallis 
+sig_diff = as.data.table(filter(lnc_cna_cancer_data2, fdr <=0.05))
+#positive correlation
+sig_diff = as.data.table(filter(sig_diff, stat_exp_cor > 0))
+
+saveRDS(sig_diff, file="sig_diff_CNAs_sept27.rds")
 
 #plot just the sig ones 
 sig_diff$combo = paste(sig_diff$gene, sig_diff$cancer, sep="_")
+sig_diff = sig_diff[order(fdr)]
 genes = as.list(unique(sig_diff$combo))
-pdf("FDR_sig_candidate_lncRNAs_CNA_versus_Expression_Sept_JUST_SIG_ONES.pdf")
+pdf("FDR_sig_candidate_lncRNAs_CNA_versus_Expression_Sept_JUST_SIG_ONES_sep28.pdf")
 lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
 dev.off()
 
 
 #---------FIGURE SUMMARY FOR PAPER--------------------------------------------------------------------------------------------
-
+sig_diff$gene = as.character(sig_diff$gene)
 sig_diff = merge(sig_diff, cands, by=colnames(cands)[which(colnames(cands) %in% colnames(sig_diff))])
 sig_diff = subset(sig_diff, data == "TCGA")
-sig_diff$overall_correlation = unlist(sig_diff$overall_correlation)
-sig_diff$overall_correlation = round(sig_diff$overall_correlation, digits=2)
-sig_diff$wilcoxon_pval = -log10(sig_diff$wilcoxon_pval)
+sig_diff$stat_exp_cor = unlist(sig_diff$stat_exp_cor)
+sig_diff$stat_exp_cor = round(sig_diff$stat_exp_cor, digits=2)
+sig_diff$ks_test = -log10(sig_diff$ks_test)
 
 sig_diff$HR = as.numeric(sig_diff$HR)
 sig_diff$stat[sig_diff$HR > 1] = "Unfavourable"
 sig_diff$stat[sig_diff$HR < 1] = "Favourable"
 
 #remove negative correlations 
-sig_diff = subset(sig_diff, overall_correlation >0)
+sig_diff = subset(sig_diff, stat_exp_cor >0)
 
 #order 
 sig_diff = as.data.table(sig_diff)
-sig_diff = sig_diff[order(stat, -(abs(overall_correlation)))]
+sig_diff = sig_diff[order(stat, -(abs(stat_exp_cor)))]
 sig_diff$CAT_geneName = factor(sig_diff$CAT_geneName, levels=unique(sig_diff$CAT_geneName))
 sig_diff$canc = factor(sig_diff$canc, levels=unique(sig_diff$canc))
 sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
 
 
-sig_diff$cor[sig_diff$overall_correlation < 0] = "Negative" 
-sig_diff$cor[sig_diff$overall_correlation > 0] = "Positive" 
-
+sig_diff$cor[sig_diff$stat_exp_cor < 0] = "Negative" 
+sig_diff$cor[sig_diff$stat_exp_cor > 0] = "Positive" 
 
 #x-axis = cancer
 #y-axis = lncRNA 
 
 library(patchwork)
 
-pdf("CNA_figure_partA.pdf", width=10, height=7)
+pdf("CNA_figure_partA_sept27.pdf", width=10, height=7)
 
 g = ggplot(sig_diff, aes(canc, CAT_geneName)) +
-  geom_tile(aes(fill = wilcoxon_pval)) + geom_point(aes(size=abs(overall_correlation), color=cor))+
-    scale_fill_gradient(low = "white", high = "black", na.value = 'transparent') +
+  geom_tile(aes(fill = ks_test)) + geom_point(aes(size=abs(stat_exp_cor), color=cor))+
+    scale_fill_gradient(low = "lightgrey", high = "black", na.value = 'transparent') +
     scale_colour_manual(values = c("red", "red")) + 
     xlab("Cancer") + ylab("lncRNA") + theme_bw() +
     theme(legend.position="bottom", legend.box = "horizontal", 

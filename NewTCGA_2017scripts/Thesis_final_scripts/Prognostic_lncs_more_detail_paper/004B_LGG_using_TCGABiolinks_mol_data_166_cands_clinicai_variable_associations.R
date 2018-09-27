@@ -133,6 +133,16 @@ clin_data_lncs = Filter(Negate(is.null), clin_data_lncs)
 #saved file --- below
 #saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
 
+
+lgg = clin_data_lncs[[13]]
+#plot lgg overall survival curve
+lgg$OS = as.numeric(lgg$OS)
+lgg$OS.time = as.numeric(lgg$OS.time)
+res.cox <- coxph(Surv(OS.time, OS) ~ 1, data =  lgg)
+summary(res.cox)
+ggsurvplot(survfit(res.cox), data=lgg, color = "#2E9FDF",
+           ggtheme = theme_minimal())
+
 #--------LOOK AT ASSOCIATIONS BETWEEN EXPRESSION-------------------------------
 
 #For each clinical variable -> xaxis is the clinical variable
@@ -458,7 +468,7 @@ clean_up$type = factor(clean_up$type, levels=unique(clean_up$type))
 clean_up$colname[which(str_detect(clean_up$colname, "age_at"))] = "Age"
 clean_up$colname[clean_up$colname == "age"] = "Age"
 
-write.csv(clean_up, file="cleaned_clinical_variables_associations_data_sept19_precleanup.csv", quote=F, row.names=F)
+write.csv(clean_up, file="cleaned_clinical_variables_associations_data_sept19.csv", quote=F, row.names=F)
 
 pdf("summary_biolinks_subtypes_lncRNA_exp.pdf", height=10)
 #make geom_tile plot
@@ -470,20 +480,18 @@ ggplot(clean_up, aes(type, colname)) +
 dev.off()
 
 saveRDS(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolinks.rds")
-#write.table(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolnks.txt", row.names=F, quote=F)
+write.table(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolnks.txt", row.names=F, quote=F)
 
 #-------PLOT summary results-------------------------------------------
 
 #clin_results = readRDS("correlation_results_clinical_lncRNA_exp_July19_using_biolinks.rds")
-clin_results = read.csv("cleaned_clinical_variables_associations_data_sept19_precleanup.csv")
+clin_results = read.csv("cleaned_clinical_variables_associations_data_sept19.csv")
 clin_results$combo = paste(clin_results$lnc, clin_results$type, sep="_")
 clean_up = clin_results
 
-clean_up = as.data.table(filter(clean_up, fdr < 0.05))
+clean_up = as.data.table(filter(clean_up, pval < 0.05))
 clean_up$cor = as.numeric(clean_up$cor)
-clean_up$kw_pval = as.numeric(clean_up$kw_pval)
-
-clean_up = filter(clean_up, (is.na(cor) | (abs(cor) >= 0.3)), kw_pval < 0.05)
+clean_up = filter(clean_up, (is.na(cor) | (abs(cor) >= 0.3)), chisq < 0.05)
 
 get_name = function(ensg){
     z = which(fantom$CAT_geneID == ensg)
@@ -532,13 +540,11 @@ dev.off()
 
 clean_up$combo = paste(clean_up$name, clean_up$type, sep = " ")
 clean_up$sig_tag = ""
-clean_up$clin_pval = p.adjust(clean_up$clin_pval, method="fdr")
 clean_up$sig_tag[clean_up$clin_pval < 0.05] = "V"
 clean_up$sig_tag[clean_up$clin_pval > 0.05] = ""
 
-write.csv(clean_up, file="cleaned_clinical_variables_associations_data_sept19_precleanup.csv", quote=F, row.names=F)
+write.csv(clean_up, file="cleaned_clinical_variables_associations_data_sept19.csv", quote=F, row.names=F)
 
-#post manual cleanup of variables 
 clin_results = read.csv("cleaned_clinical_variables_associations_data_sept19.csv")
 
 #get order 

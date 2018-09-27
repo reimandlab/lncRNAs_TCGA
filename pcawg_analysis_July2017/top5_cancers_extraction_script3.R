@@ -176,8 +176,8 @@ pcg_rna <- rna[zz,]
 ###################
 lnc_rna <- rna[-zz,]
 #keep only fantom lncrnas 
-z = which(rownames(lnc_rna) %in% fantom$CAT_geneID)
-lnc_rna = lnc_rna[z,]
+#z = which(rownames(lnc_rna) %in% fantom$CAT_geneID)
+#lnc_rna = lnc_rna[z,]
 
 ###SUBSET CLINICAL AND EXPRESSION FILE TO ONLY THE TOP 5 CANCERS/HISTOS
 

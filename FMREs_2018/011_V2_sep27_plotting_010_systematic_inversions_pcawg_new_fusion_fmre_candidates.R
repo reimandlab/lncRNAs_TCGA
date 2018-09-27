@@ -183,20 +183,26 @@ dev.off()
 
 #------barplot with x-axis ticks pcg + fmre--------------------------------------------------------------
 plotting_dat = subset(plotting_dat, !(fc == "Inf"))
-plotting_dat$translocation = paste(plotting_dat$fmre, plotting_dat$name, sep=" - ")
+#plotting_dat$translocation = paste(plotting_dat$fmre, plotting_dat$name, sep=" - ")
 labels = plotting_dat$newpval
 plotting_dat$expression[log2(plotting_dat$fc) >0] = "Upregulated"
 plotting_dat$expression[log2(plotting_dat$fc) <0] = "Downregulated"
 plotting_dat$expression = factor(plotting_dat$expression, levels = c("Upregulated", "Downregulated"))
 
 #Add patient pseudonames
-plotting_dat$patient_pseudo = paste("donor", LETTERS[seq(from = 1, to = 9)], sep="")
+plotting_dat$patient_pseudo = paste("donor", seq(from = 1, to = 28), sep="")
 z = which(duplicated(plotting_dat$patient))
-plotting_dat$patient_pseudo[z] = plotting_dat$patient_pseudo[which(plotting_dat$patient == plotting_dat$patient[z])]
+for(i in 1:length(z)){
+	pat = plotting_dat$patient[z[i]]
+	k = which(plotting_dat$patient == pat)
+	id = plotting_dat$patient_pseudo[k[1]]
+	plotting_dat$patient_pseudo[z[i]] = id
+}
+#plotting_dat$patient_pseudo[z] = plotting_dat$patient_pseudo[which(plotting_dat$patient == plotting_dat$patient[z])]
 
 #patient covariate
 pats = ggplot(plotting_dat, aes(name, 0.2)) +
-    geom_tile(fill="snow") + geom_text(aes(label = patient_pseudo), size=3) +
+    geom_tile(fill="snow") + geom_text(aes(label = patient_pseudo), size=1.7) +
     theme_void() 
 
 pats = ggpar(pats, legend = "none") + theme(axis.title.x=element_blank(),
@@ -207,10 +213,10 @@ pats = ggpar(pats, legend = "none") + theme(axis.title.x=element_blank(),
         axis.ticks.y=element_blank())
 
 cancers = ggplot(plotting_dat, aes(name, 0.2)) +
-    geom_tile(aes(fill = cancer)) + geom_text(aes(label = cancer), size=1.7) +
+    geom_tile(aes(fill = cancer)) + #geom_text(aes(label = cancer), size=1) +
     theme_classic() + scale_fill_manual(values=unique(plotting_dat$color_code)) 
 
-cancers = ggpar(cancers, legend = "none") + theme(axis.title.x=element_blank(),
+cancers = ggpar(cancers, legend = "bottom") + theme(axis.title.x=element_blank(),
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank()) + 
   theme(axis.title.y=element_blank(),
@@ -219,7 +225,7 @@ cancers = ggpar(cancers, legend = "none") + theme(axis.title.x=element_blank(),
 
 #####3 USE--------------------
 
-barplot = ggbarplot(plotting_dat, x="translocation", y="fc", lab.size = 6, label = labels, lab.vjust=-0.1, fill="expression") +
+barplot = ggbarplot(plotting_dat, x="name", y="fc", lab.size = 6, label = labels, lab.vjust=-0.1, fill="expression") +
  	xlab("Translocation") + ylab("Fold Change") + theme_bw() +
  	scale_fill_manual(values=c("#E69F00", "#56B4E9")) #+ coord_trans(y="log10")
  
@@ -228,8 +234,8 @@ barplot = ggpar(barplot, yscale = "log2",
  xtickslab.rt = 45) #+ 
 #scale_y_continuous(breaks = round(seq(-3, 11 , by = 1),1)) 
 
-pdf("summary_mean_barplot_translocation_exp_fc_version_3_.pdf", width=7, height=7)
-barplot + cancers + pats + plot_layout(ncol = 1, heights = c(10, 1, 1))
+pdf("summary_mean_barplot_translocation_exp_fc_version_3_sep27.pdf", width=10, height=7)
+barplot + pats + cancers + plot_layout(ncol = 1, heights = c(10, 1, 1))
 dev.off()
 
 write.table(plotting_dat, file="data_table_SV_exp_barplot_KI_sept21.txt", quote=F, row.names=F, sep="\t")
