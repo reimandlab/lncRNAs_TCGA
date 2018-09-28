@@ -349,9 +349,9 @@ pdf("figure2E_summary_lncs_pcgs_antisense.pdf", width=9,height=4)
 g = ggplot(prog_pcgs, aes(pcgConcordance, lncConcordance, label=lnc_pcg)) +
  geom_point(aes(color=cor, size=rho))+
  scale_size(range = c(0, 3))+
-    scale_colour_manual(values = c("grey", "blue", "red")) + 
+    scale_colour_manual(values = c("blue", "dimgrey", "red")) + 
     xlab("Neighbour PCG Concordance") + ylab("lncRNA Concordance") + theme_bw() +
-    theme(legend.box = "horizontal", axis.text = element_text(size=10), 
+    theme(legend.box = "horizontal", axis.text = element_text(size=12), 
       legend.text=element_text(size=10), legend.title=element_text(size=10))+
      xlim(0.45,0.75) + ylim(0.45,0.75) + geom_abline(intercept=0) 
      

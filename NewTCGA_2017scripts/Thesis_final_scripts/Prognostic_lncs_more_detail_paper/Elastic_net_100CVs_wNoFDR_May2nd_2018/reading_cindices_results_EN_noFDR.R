@@ -173,14 +173,14 @@ res = res[-which(res$TYPE %in% canc_rm),]
 
 #-----------final plot figure 2D-------------------------------------------------------------------------------------- 
 
-pdf("cindices_results_elastic_net_100CVs_No_FDR_cancers_July11_nofacet_horizontal_boxplots.pdf", width=7, height=7)
+pdf("cindices_results_elastic_net_100CVs_No_FDR_cancers_Sept28_nofacet_horizontal_boxplots.pdf", width=7, height=7)
 g = ggplot(res, aes(TYPE, cindex)) + 
-geom_boxplot(aes(fill = type), color="black", outlier.size = 0.01) + theme_bw() + xlab("Cancer") + ylab("C-index") +
+geom_boxplot(aes(fill = type), color="black", outlier.size = 0.01) + theme_bw() + xlab("Cancer Type") + ylab("C-index") +
 stat_compare_means(aes(group = type), label = "p.signif") + 
-coord_flip() + scale_fill_manual(values=mypal) +
+coord_flip() + scale_fill_manual(values=c("gainsboro", "darkorange1", "steelblue")) +
 geom_hline(yintercept=0.5, linetype="dashed", color = "red")
 ggpar(g, legend.title= "Predictor \nVariables") +
- theme(text = element_text(size=10),
+ theme(text = element_text(size=12),
         axis.text.x = element_text(hjust=1, size=10))
 dev.off()
 

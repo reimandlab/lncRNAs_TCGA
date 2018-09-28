@@ -178,8 +178,9 @@ get_clin_lnc_cors = function(dtt){
     if(hr <1){new_dat$risk = "LowExp"}
     
     #each clinical variable
-    canc_col_results = as.data.frame(matrix(ncol=12)) ; colnames(canc_col_results)=c("canc", "lnc", "colname", "cor", "pval", "test", "chisq", "kw_pval",
-    "clin_pval", "anova_both_vs_lnc", "lnc_concordance", "clin_concordance")
+    canc_col_results = as.data.frame(matrix(ncol=15)) ; colnames(canc_col_results)=c("canc", "lnc", "colname", "cor", "pval", "test", "chisq", "kw_pval",
+    "clin_pval", "anova_both_vs_lnc", "lnc_concordance", "clin_concordance", "lnc_HR", "clin_HR", "concordance_combo_model")
+
     for(i in 1:(ncol(new_dat)-2)){
       print(i)    
       col = colnames(new_dat)[i]
@@ -229,6 +230,9 @@ get_clin_lnc_cors = function(dtt){
           
           clin_concordance = glance(cox_clin)$concordance
           lnc_concordance = glance(cox_lnc)$concordance
+          combo_concordance = glance(both)$concordance
+
+          hr_clin = summary(cox_clin)$coefficients[2]
 
           clin_pval = glance(cox_clin)[6]
           z = which(is.na(new_dat_plot[,2]))
@@ -239,9 +243,13 @@ get_clin_lnc_cors = function(dtt){
           if(length(z)==0){
           anov_pval = anova(cox_lnc, both)[2,4]}
 
+          #add lnc, clinical Hazard Ratios and conordance of combined model 
+
           row = c(canc, lnc, col, cor, pval_cor, "Ftest", chisq_pval, kw_pval, 
-          clin_pval, anov_pval, lnc_concordance, clin_concordance)
+          clin_pval, anov_pval, lnc_concordance, clin_concordance, hr, hr_clin, combo_concordance)
           names(row) = colnames(canc_col_results)
+
+          print(ggforest(both, main = paste(lnc, col, canc), data=new_dat_plot))
 
           canc_col_results = rbind(canc_col_results, row)
           #scatter plot 
@@ -335,8 +343,11 @@ get_clin_lnc_cors = function(dtt){
         
         clin_concordance = glance(cox_clin)$concordance
         lnc_concordance = glance(cox_lnc)$concordance
-        
+        combo_concordance = glance(both)$concordance
+        hr_clin = summary(cox_clin)$coefficients[2]
         anov_pval = anova(cox_lnc, both)[2,4]
+        print(ggforest(both, main = paste(lnc, col, canc), data=new_dat_plot))
+
         }
 
         if((dim(table(new_dat_plot$lncRNA_tag))) <= 1 & (!(check))){
@@ -344,10 +355,12 @@ get_clin_lnc_cors = function(dtt){
         anov_pval = "cant_calc"
         clin_concordance = "cant_calc"
         lnc_concordance = "cant_calc"
+        combo_concordance = "cant_calc"
+        hr_clin = "cant_calc"
         }
 
         row = c(canc, lnc, col, "nocor", anova, "Ftest", chisq_pval, kw_pval, 
-          clin_pval, anov_pval, lnc_concordance, clin_concordance)
+          clin_pval, anov_pval, lnc_concordance, clin_concordance, hr, hr_clin, combo_concordance)
         names(row) = colnames(canc_col_results)
         canc_col_results = rbind(canc_col_results, row)
 
@@ -458,7 +471,12 @@ clean_up$type = factor(clean_up$type, levels=unique(clean_up$type))
 clean_up$colname[which(str_detect(clean_up$colname, "age_at"))] = "Age"
 clean_up$colname[clean_up$colname == "age"] = "Age"
 
-write.csv(clean_up, file="cleaned_clinical_variables_associations_data_sept19_precleanup.csv", quote=F, row.names=F)
+fdr = as.data.table(filter(clean_up, fdr < 0.05))
+fdr$cor = as.numeric(fdr$cor)
+fdr$kw_pval = as.numeric(fdr$kw_pval)
+fdr = filter(fdr, (is.na(cor) | (abs(cor) >= 0.3)), kw_pval < 0.05)
+
+write.csv(fdr, file="cleaned_clinical_variables_associations_data_sept19_precleanup.csv", quote=F, row.names=F)
 
 pdf("summary_biolinks_subtypes_lncRNA_exp.pdf", height=10)
 #make geom_tile plot
@@ -484,6 +502,9 @@ clean_up$cor = as.numeric(clean_up$cor)
 clean_up$kw_pval = as.numeric(clean_up$kw_pval)
 
 clean_up = filter(clean_up, (is.na(cor) | (abs(cor) >= 0.3)), kw_pval < 0.05)
+clean_up$better = ""
+z = which((clean_up$concordance_combo_model > clean_up$lnc_concordance) & (clean_up$anova_both_vs_lnc < 0.05))
+clean_up$better[z] = "V"
 
 get_name = function(ensg){
     z = which(fantom$CAT_geneID == ensg)
@@ -536,10 +557,10 @@ clean_up$clin_pval = p.adjust(clean_up$clin_pval, method="fdr")
 clean_up$sig_tag[clean_up$clin_pval < 0.05] = "V"
 clean_up$sig_tag[clean_up$clin_pval > 0.05] = ""
 
-write.csv(clean_up, file="cleaned_clinical_variables_associations_data_sept19_precleanup.csv", quote=F, row.names=F)
+write.csv(clean_up, file="cleaned_clinical_variables_associations_data_sept28_post_cleanup.csv", quote=F, row.names=F)
 
 #post manual cleanup of variables 
-clin_results = read.csv("cleaned_clinical_variables_associations_data_sept19.csv")
+clin_results = read.csv("cleaned_clinical_variables_associations_data_sept28_post_cleanup.csv")
 
 #get order 
 t = as.data.table(table(clin_results$colname))
@@ -548,27 +569,29 @@ t = t[order(-N)]
 
 clin_results$colname = factor(clin_results$colname, levels = t$V1)
 
-
 #get order 
 t = as.data.table(table(clin_results$combo))
 t = as.data.table(filter(t, N > 0))
 t = t[order(-N)]
 
 clin_results$combo = factor(clin_results$combo, levels = t$V1)
+clin_results$concordance_combo_model = as.numeric(clin_results$concordance_combo_model)
 
-
-pdf("summary_biolinks_subtypes_lncRNA_exp_Sept20.pdf", height=6, width=12)
+pdf("summary_biolinks_subtypes_lncRNA_exp_Sept28.pdf", height=6, width=12)
 #make geom_tile plot
 ggplot(clin_results, aes(combo, colname)) +
-  geom_tile(aes(fill = sig_tag), colour = "grey50") +
-  theme_bw() +
+  geom_tile(aes(fill = concordance_combo_model), colour = "grey50") +
+  theme_bw() + geom_text(aes(label = better), size=2.5) + 
   theme(legend.title=element_blank(), legend.position="bottom", axis.title.x=element_blank(), 
-    axis.text.x = element_text(angle = 45, hjust = 1, size=7)) + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
+    axis.text.x = element_text(angle = 45, hjust = 1, size=7)) +
+    scale_fill_gradient(low = "tan1", high = "darkred")
+    #+ scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
 
 dev.off()
 
 
 
+write.csv(clin_results, file="cleaned_clinical_variables_associations_data_sept28_post_cleanup_final_figure_data.csv", quote=F, row.names=F)
 
 
 
