@@ -273,10 +273,10 @@ sig_paths_sum = sig_paths_sum[order(-num_sig_des)]
 
 all_res$combo2 = factor(all_res$combo2, levels = unique(sig_paths_sum$combo2))
 all_res$font_col = ""
-all_res$font_col[all_res$canc_name == "LGG"] = "1"
+all_res$font_col[all_res$canc_name == "LIHC"] = "1"
 
 sig_paths_sum$font_col = ""
-sig_paths_sum$font_col[sig_paths_sum$type == "LGG"] = "1"
+sig_paths_sum$font_col[sig_paths_sum$type == "LIHC"] = "1"
 a <- ifelse(sig_paths_sum$font_col == 1, "red", "black")
 
 pdf("summary_barplot_genenames_#DE_pcgs_vs_pathways_pathways_figure_sep14.pdf", width=16, height=5)
@@ -293,21 +293,22 @@ dev.off()
 
 ###---------------Make heatmap-------------------------------###
 
-#brain development pathways 
-brain_paths = c("forebrain development", "central nervous system development", "brain development",
-	"head development", "telencephalon development")
+#liver gluco related pathways 
+liver_paths = c("monosaccharide metabolic process", "carbohydrate metabolic process", "gluconeogenesis",
+	"monosaccharide biosynthetic process", "hexose biosynthetic process", "hexose metabolic process", "glucose metabolic process", 
+  "carbohydrate biosynthetic process")
 
-load("_Brain_Lower_Grade_Glioma_.2018-09-14.rdata")
+load("_Liver_hepatocellular_carcinoma_all_up_down_genes_fActivepathways_Sep14.rds.2018-10-01.rdata")
 colnames(res)
-brain = subset(res, res$term.name %in% brain_paths)
+liver = subset(res, res$term.name %in% liver_paths)
 
 #1. get all PCGs that are in these pathways 
-pcgs_brain = unique(unlist(brain$overlap)) #152 unique PCGs
-lncs_brain = unique(unlist(brain$evidence)) #6 unique lncRNAs to be used as covariates high vs low 
+pcgs_brain = unique(unlist(liver$overlap)) #152 unique PCGs
+lncs_brain = unique(unlist(liver$evidence)) #6 unique lncRNAs to be used as covariates high vs low 
 
 ##2-----------------label patients by risk------------------------------
 
-dat = subset(all, Cancer=="Brain Lower Grade Glioma")
+dat = subset(all, Cancer=="Liver hepatocellular carcinoma")
 
   dat_keep = dat[,which(colnames(dat) %in% c("patient", lncs_brain, pcgs_brain))]
   rownames(dat_keep) = dat_keep$patient
@@ -348,19 +349,17 @@ dat = subset(all, Cancer=="Brain Lower Grade Glioma")
   #color.map <- function(tags) { if (tags=="RISK") "#FF0000" else "#0000FF" }
   #patientcolors <- unlist(lapply(tags, color.map))
 
-  df2 = dat_keep[,1:6] #lncRNA data
+  df2 = dat_keep[,1:2] #lncRNA data
 
   col = list(
-    ENSG00000254635 = c("1" = "red", "0" = "blue"),
-    ENSG00000253187 = c("1" = "red", "0" = "blue"),
-    ENSG00000256482 = c("1" = "red", "0" = "blue"),
-    ENSG00000224950 = c("1" = "red", "0" = "blue"),
-    ENSG00000239552 = c("1" = "red", "0" = "blue"),
-    ENSG00000250360 = c("1" = "red", "0" = "blue"))
+    ENSG00000263400 = c("1" = "red", "0" = "blue"),
+    ENSG00000230432 = c("1" = "red", "0" = "blue"))
 
   # Create the heatmap annotation
-  ha <- HeatmapAnnotation(df2, col = col, annotation_height = unit.c(unit(0.25, "cm"), unit(0.25, "cm"), unit(0.25, "cm"), unit(0.25, "cm"),
-  	unit(0.25, "cm"), unit(0.25, "cm")))
+  #ha <- HeatmapAnnotation(df2, col = col, annotation_height = unit.c(unit(0.25, "cm"), unit(0.25, "cm"), unit(0.25, "cm"), unit(0.25, "cm"),
+  #	unit(0.25, "cm"), unit(0.25, "cm")))
+
+  ha <- HeatmapAnnotation(df2, col = col, annotation_height = unit.c(unit(0.25, "cm"), unit(0.25, "cm")))
 
   # cluster on correlation
   heat = scale(heat)

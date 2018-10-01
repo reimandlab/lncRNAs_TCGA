@@ -17,6 +17,7 @@ library(caret)
 library(Rtsne)
 library(EnvStats)
 library(TCGAbiolinks)
+library(stringr)
 
 source("check_lnc_exp_cancers.R")
 
@@ -48,6 +49,43 @@ fantom <- fantom[-z,]
 
 rna = readRDS("rna_lncRNAs_expression_data_june29.rds")
 pcg = readRDS("rna_pcg_expression_data_june29.rds")
+
+antibody = fread("GBM.antibody_annotation.txt")
+rppa = fread("GBM.rppa.txt")
+
+#-----------------------------------------------------
+#process RPPA files 
+#-----------------------------------------------------
+
+#1. change patient ids to match rna paitnet ids 
+change_id = function(pat){
+  l =(unlist(strsplit(pat, "-"))[1:3])
+  #make sure it's tumour sample
+  check= (unlist(strsplit(pat, "-"))[4])
+  z = which(str_detect(check, "01"))
+  if(!(length(z)==0)){
+    l = paste(l[1],l[2], l[3], sep="-")
+  }
+  else{
+    l = "no"
+  }
+  return(l)
+}
+
+newnames = unlist(llply(colnames(rppa)[2:ncol(rppa)], change_id))
+z = which(newnames == "no")
+z = z+1
+rppa = as.data.frame(rppa)
+rppa = rppa[,-z]
+newnames = newnames[-which(newnames=="no")]
+colnames(rppa)[2:ncol(rppa)] = newnames
+
+#2. element-genes 
+get_gene = function(element){
+  g = unlist(strsplit(element, "\\|"))[1]
+  return(g)
+}
+rppa$gene_id = unlist(llply(rppa[,1], get_gene))
 
 #------FEATURES-----------------------------------------------------
 
@@ -87,7 +125,7 @@ sp <- ggscatter(clin_subtypes, x = "ENSG00000125968", y = "ENSG00000146648",
   add = "reg.line",  # Add regressin line
   add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
   conf.int = TRUE # Add confidence interval
-  )
+  ) + xlab("ID1 expression") + ylab("EGFR expression")
 # Add correlation coefficient
 sp = sp + stat_cor(method = "spearman") + theme_bw() + ggtitle("GBM, ID1 vs EGFR Expression")
 print(sp)
@@ -112,9 +150,10 @@ clin_subtypes$subtype[!(clin_subtypes$Original.Subtype == "Classical")] = "Other
 p <- ggboxplot(clin_subtypes, x = "subtype", y = "ENSG00000125968",
           color = "subtype", order = c("Classical", "Other"), 
           title = "GBM subtypes vs ID1 expression", 
-          add = "jitter", ylab = "ID1 expression",  ggtheme = theme_bw()) +
+          add = "jitter",ggtheme = theme_bw()) +
           stat_compare_means(ref.group = "Classical") + 
-          stat_n_text()
+          stat_n_text()+
+          ylab("ID1 expression")
 
         p = ggpar(p,
           font.xtickslab = c(9,"plain", "black"),
@@ -132,12 +171,148 @@ sp <- ggscatter(clin_subtypes[which(clin_subtypes$subtype == "Classical"),], x =
   conf.int = TRUE # Add confidence interval
   )
 # Add correlation coefficient
-sp = sp + stat_cor(method = "pearson") + theme_bw() + ggtitle("GBM, ID1 vs EGFR Expression, \nClassical only")
+sp = sp + stat_cor(method = "pearson") + theme_bw() + ggtitle("GBM, ID1 vs EGFR Expression, \nClassical only")+
+xlab("ID1 expression") + ylab("EGFR expression")
 print(sp)
 
 dev.off()
 
 # 2. what if the correlation of EGFR is apparent at proteome not transcriptome level? We could check it in the RPPA data. 
+egfr_rrpa = t(rppa[which(rppa$gene_id == "EGFR"),])
+#add rppa data to datafile
+colnames(egfr_rrpa) = egfr_rrpa[1,]
+egfr_rrpa = egfr_rrpa[-1,]
+egfr_rrpa = egfr_rrpa[-(nrow(egfr_rrpa)),]
+egfr_rrpa = as.data.frame(egfr_rrpa)
+egfr_rrpa$patient = ""
+egfr_rrpa$patient = unlist(rownames(egfr_rrpa))
+
+clin_subtypes = merge(clin_subtypes, egfr_rrpa, by="patient")
+
+#plot ID1 expression vs EGFR rppa levels 
+
+#one for each EGFR antibody 
+colnames(clin_subtypes)[55] = "EGFR"
+colnames(clin_subtypes)[56] = "EGFR_pY1068"
+colnames(clin_subtypes)[57] = "EGFR_pY1173"
+clin_subtypes$EGFR = as.numeric(clin_subtypes$EGFR)
+clin_subtypes$EGFR_pY1068 = as.numeric(clin_subtypes$EGFR_pY1068)
+clin_subtypes$EGFR_pY1173 = as.numeric(clin_subtypes$EGFR_pY1173)
+
+
+pdf("GBM_ID1_EGFR_rppa_analysis_oct1.pdf")
+#scatter plot 
+sp <- ggscatter(clin_subtypes, x = "ENSG00000125968", y = "EGFR",
+  add = "reg.line",  # Add regressin line
+  add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+  conf.int = TRUE # Add confidence interval
+  )
+# Add correlation coefficient
+sp = sp + stat_cor(method = "spearman") + theme_bw() + ggtitle("GBM, ID1 expression vs EGFR RPPA")+
+xlab("ID1 gene expression")
+print(sp)
+
+sp <- ggscatter(clin_subtypes, x = "ENSG00000125968", y = "EGFR_pY1068",
+  add = "reg.line",  # Add regressin line
+  add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+  conf.int = TRUE # Add confidence interval
+  )
+# Add correlation coefficient
+sp = sp + stat_cor(method = "spearman") + theme_bw() + ggtitle("GBM, ID1 expression vs EGFR_pY1068 RPPA")+
+xlab("ID1 gene expression")
+
+print(sp)
+
+sp <- ggscatter(clin_subtypes, x = "ENSG00000125968", y = "EGFR_pY1173",
+  add = "reg.line",  # Add regressin line
+  add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+  conf.int = TRUE # Add confidence interval
+  )
+# Add correlation coefficient
+sp = sp + stat_cor(method = "spearman") + theme_bw() + ggtitle("GBM, ID1 expression vs EGFR_pY1173 RPPA")+
+xlab("ID1 gene expression")
+
+print(sp)
+
+dev.off()
+
+
+####within classical subtype 
+
+
+pdf("ID1_EGFR_rppa_correlation_classical_subtype_oct1.pdf")
+#scatter plot 
+sp <- ggscatter(clin_subtypes[which(clin_subtypes$subtype == "Classical"),], x = "ENSG00000125968", y = "EGFR",
+  add = "reg.line",  # Add regressin line
+  add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+  conf.int = TRUE # Add confidence interval
+  )
+# Add correlation coefficient
+sp = sp + stat_cor(method = "pearson") + theme_bw() + ggtitle("GBM, ID1 expression vs EGFR RPPA, \nClassical only")+
+xlab("ID1 gene expression")
+
+print(sp)
+
+#scatter plot 
+sp <- ggscatter(clin_subtypes[which(clin_subtypes$subtype == "Classical"),], x = "ENSG00000125968", y = "EGFR_pY1068",
+  add = "reg.line",  # Add regressin line
+  add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+  conf.int = TRUE # Add confidence interval
+  )
+# Add correlation coefficient
+sp = sp + stat_cor(method = "pearson") + theme_bw() + ggtitle("GBM, ENSG00000125968 expression vs EGFR_pY1068 RPPA, \nClassical only")+
+xlab("ID1 gene expression")
+
+print(sp)
+
+#scatter plot 
+sp <- ggscatter(clin_subtypes[which(clin_subtypes$subtype == "Classical"),], x = "ENSG00000125968", y = "EGFR_pY1173",
+  add = "reg.line",  # Add regressin line
+  add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+  conf.int = TRUE # Add confidence interval
+  )
+# Add correlation coefficient
+sp = sp + stat_cor(method = "pearson") + theme_bw() + ggtitle("GBM, ID1 expression vs EGFR_pY1173 RPPA, \nClassical only")+
+xlab("ID1 gene expression")
+
+print(sp)
+
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

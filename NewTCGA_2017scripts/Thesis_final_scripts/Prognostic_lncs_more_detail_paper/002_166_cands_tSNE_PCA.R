@@ -75,9 +75,61 @@ logged_rna[,z1] = log1p(logged_rna[,z1])
 
 
 #logged - DONE! 
-pdf("logged_nonMAD0lncRNAs_cands_PCA_plots_Aug27.pdf", width=12)
-autoplot(prcomp(logged_rna[,z1]), data = logged_rna, colour = 'type')+ 
-scale_colour_manual(values = mypal)
+#pdf("logged_nonMAD0lncRNAs_cands_PCA_plots_Aug27.pdf", width=12)
+#autoplot(prcomp(logged_rna[,z1]), data = logged_rna, colour = 'type')+ 
+#scale_colour_manual(values = mypal)
+#dev.off()
+
+#try t-SNE 
+library(Rtsne)
+iris_unique <- unique(iris) # Remove duplicates
+iris_matrix <- as.matrix(iris_unique[,1:4])
+set.seed(42) # Set a seed if you want reproducible results
+tsne_out <- Rtsne(logged_rna[,z1]) # Run TSNE
+saveRDS(tsne_out, file="tsne_out_28_cancers_Oct1.rds")
+
+tsne_plot = readRDS("tsne_out_28_cancers_Oct1.rds")
+# Show the objects in the 2D tsne representation
+tsne_plot <- data.frame(x = tsne_out$Y[,1], y = tsne_out$Y[,2], col = logged_rna$type)
+
+z = which(duplicated(tsne_plot$col))
+tsne_plot$label[z] ="no"
+tsne_plot$label[-z] = "yes"
+
+z = (which(tsne_plot$label == "yes"))
+for(i in 1:length(z)){
+	canc = tsne_plot$col[z[i]]
+	tsne_plot$label[z[i]] = canc
+}
+
+
+pdf("tSNE_28_cancers_oct1_all_lncs.pdf", width=9)
+ggplot(tsne_plot,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col)) + scale_colour_manual(values=mypal)+
+geom_text_repel(data = subset(tsne_plot, !(label == "no")))
+dev.off()
+
+
+#tSNA just candidates 
+z1 = which(colnames(logged_rna) %in% allCands$gene)
+tsne_out <- Rtsne(logged_rna[,z1]) # Run TSNE
+saveRDS(tsne_out, file="just_cands_tsne_out_28_cancers_Oct1.rds")
+
+tsne_plot <- data.frame(x = tsne_out$Y[,1], y = tsne_out$Y[,2], col = logged_rna$type)
+
+z = which(duplicated(tsne_plot$col))
+tsne_plot$label[z] ="no"
+tsne_plot$label[-z] = "yes"
+
+z = (which(tsne_plot$label == "yes"))
+for(i in 1:length(z)){
+	canc = tsne_plot$col[z[i]]
+	tsne_plot$label[z[i]] = canc
+}
+
+
+pdf("tSNE_28_cancers_oct1_just_can_lncs.pdf", width=9)
+ggplot(tsne_plot,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col)) + scale_colour_manual(values=mypal)+
+geom_text_repel(data = subset(tsne_plot, !(label == "no")))
 dev.off()
 
 

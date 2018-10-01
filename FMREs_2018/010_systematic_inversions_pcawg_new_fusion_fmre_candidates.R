@@ -38,9 +38,9 @@ cancers = as.list(unique(pcg_rna$cancer))
 ucsc = fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt")
 
 #**** translocations
-load("k.frame_complete_25000.rsav")
-head(k.frame_complete_25000)
-k.frame_complete = k.frame_complete_25000
+load("k.frame_complete_10000.rsav")
+head(k.frame_complete_10000)
+k.frame_complete = k.frame_complete_10000
 k.frame_complete$gene_id = unlist(lapply(k.frame_complete$gene_id, function(x){unlist(strsplit(x, "::"))[1]}))
 k.frame_complete$FMRE_id = unlist(lapply(k.frame_complete$FMRE_id, function(x){unlist(strsplit(x, "::"))[2]}))
 k.frame_complete$fmre_start = unlist(lapply(k.frame_complete$FMRE_id, function(x){unlist(strsplit(x, ":"))[2]}))

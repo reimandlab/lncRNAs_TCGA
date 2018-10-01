@@ -202,7 +202,7 @@ for(i in 1:length(z)){
 
 #patient covariate
 pats = ggplot(plotting_dat, aes(name, 0.2)) +
-    geom_tile(fill="snow") + geom_text(aes(label = patient_pseudo), size=1.7) +
+    geom_tile(fill="snow") + geom_text(aes(label = patient_pseudo), size=2) +
     theme_void() 
 
 pats = ggpar(pats, legend = "none") + theme(axis.title.x=element_blank(),
@@ -230,11 +230,11 @@ barplot = ggbarplot(plotting_dat, x="name", y="fc", lab.size = 6, label = labels
  	scale_fill_manual(values=c("#E69F00", "#56B4E9")) #+ coord_trans(y="log10")
  
 barplot = ggpar(barplot, yscale = "log2", 
- font.tickslab = c(7,"plain", "black"), legend.title = "Expression", font.legend = c(8, "plain", "black"), 
+ font.tickslab = c(8,"plain", "black"), legend.title = "Expression", font.legend = c(8, "plain", "black"), 
  xtickslab.rt = 45) #+ 
 #scale_y_continuous(breaks = round(seq(-3, 11 , by = 1),1)) 
 
-pdf("summary_mean_barplot_translocation_exp_fc_version_3_sep27.pdf", width=10, height=7)
+pdf("summary_mean_barplot_translocation_exp_fc_version_3_oct1.pdf", width=10, height=7)
 barplot + pats + cancers + plot_layout(ncol = 1, heights = c(10, 1, 1))
 dev.off()
 
