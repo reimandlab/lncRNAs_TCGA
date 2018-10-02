@@ -388,35 +388,140 @@ get_census_ensg = function(genes){
 census$ensg = sapply(census$Synonyms, get_census_ensg)
 
 hox_genes = which(str_detect(rownames(heat), "HOX"))
+random_genes = which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4", "SLC2A2", "DHDH", "IGF2", "G6PD"))
 z = which(rownames(heat) %in% census$Gene.Symbol)
-subset = unique(c(hox_genes, z))
+rownames(heat)[z] = paste(rownames(heat)[z], "*")
 
+subset = unique(c(hox_genes, random_genes, z))
 labels = rownames(heat)[subset]
+#labels = rownames(heat)
 
-
-  pdf("heatmap_brain_development_pathway_LGG_sep19.pdf", width=12, height=4)
+  #pdf("heatmap_brain_development_pathway_LGG_sep19.pdf", width=12, height=4)
+  pdf("heatmap_liver_gluconeogensis_pathway_LIHC_oct1.pdf", width=12, height=4)
 
   Heatmap(heat, clustering_distance_columns = "pearson", show_row_names = FALSE, 
   clustering_distance_rows = "pearson", col = colorRamp2(c(-3, 0, 3), c("steelblue1", "white", "orange")), 
   cluster_rows = TRUE, cluster_columns = TRUE, 
-  top_annotation = ha, clustering_method_rows = "complete", 
+  top_annotation = ha, clustering_method_rows = "centroid", 
   clustering_method_columns = "complete",show_column_names = FALSE, row_names_gp = gpar(fontsize = 1))+
   rowAnnotation(link = row_anno_link(at = subset, labels = labels),
   width = unit(0.75, "cm") + max_text_width(labels))
 	
   dev.off()
 
+#try another plot 
+
+z = which(colnames(dat_keep) %in% c(pcgs_brain, "patient", "ENSG00000263400", "ENSG00000230432"))
+#heatmap 
+heat = dat_keep[,z]
+heat = log1p(heat)
+heat = scale(heat)
+heat = t(heat)
+
+#change pcg names
+  for(i in 1:nrow(heat)){
+    print(i)
+    pcg = rownames(heat)[i]
+    newname = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == pcg)][1]
+    rownames(heat)[i] = newname
+  }
+
+#which genes are cancer gene census genes?
+pcgs = unique(rownames(heat))
+#COSMIC cancer gene census
+census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
+#get ensg
+get_census_ensg = function(genes){
+  glist = unlist(strsplit(genes, ","))
+  z = which(str_detect(glist, "ENSG"))
+  ensg = glist[z]
+  return(ensg)
+}
+census$ensg = sapply(census$Synonyms, get_census_ensg)
+
+hox_genes = which(str_detect(rownames(heat), "HOX"))
+random_genes = which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4", "SLC2A2", "DHDH", "IGF2", "G6PD"))
+z = which(rownames(heat) %in% census$Gene.Symbol)
+rownames(heat)[z] = paste(rownames(heat)[z], "*")
 
 
+pdf("liver_gluconeogenesis_pathway.pdf", width=11, height=7)
+res.dist <- get_dist(heat, stand = TRUE, method = "pearson")
+fviz_dist(res.dist, 
+   gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+dev.off()
 
 
+#try corrplot
+
+z = which(colnames(dat_keep) %in% c(pcgs_brain, "patient", "ENSG00000263400", "ENSG00000230432"))
+#heatmap 
+heat = dat_keep[,z]
+heat = log1p(heat)
+#heat = scale(heat)
+heat = t(heat)
+
+#change pcg names
+  for(i in 1:nrow(heat)){
+    print(i)
+    pcg = rownames(heat)[i]
+    newname = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == pcg)][1]
+    rownames(heat)[i] = newname
+  }
+
+#which genes are cancer gene census genes?
+pcgs = unique(rownames(heat))
+#COSMIC cancer gene census
+census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
+#get ensg
+get_census_ensg = function(genes){
+  glist = unlist(strsplit(genes, ","))
+  z = which(str_detect(glist, "ENSG"))
+  ensg = glist[z]
+  return(ensg)
+}
+census$ensg = sapply(census$Synonyms, get_census_ensg)
+
+heat = t(heat)
 
 
+hox_genes = which(str_detect(rownames(heat), "HOX"))
+random_genes = which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4", "SLC2A2", "DHDH", "IGF2", "G6PD"))
+z = which(rownames(heat) %in% census$Gene.Symbol)
+rownames(heat)[z] = paste(rownames(heat)[z], "*")
+M<-cor(heat)
+library(corrplot)
+corrplot(M, method="circle")
+col<- colorRampPalette(c("blue", "white", "red"))(20)
+pdf("liver_gluconeogenesis_pathway.pdf", width=11, height=5)
+corrplot(M, type="upper", order="hclust", col=col, tl.col="black", tl.srt=90, tl.cex=0.5)
+dev.off()
 
 
+#get PCA
+pca_dat = heat
 
+res.pca = prcomp(pca_dat, scale=TRUE)
+pca_dat = as.data.frame(pca_dat)
+pca_dat$lnc_combo = ""
 
+get_mean = function(row){
+  means = sum(as.numeric(row[[1]], row[[2]]))
+  return(means)
+}
+pca_dat$lnc_combo = apply(pca_dat, 1, get_mean)
+pca_dat = as.data.table(pca_dat)
+pca_dat = pca_dat[order(lnc_combo)]
 
+groups <- as.factor(dat$risk)
+
+print(fviz_pca_ind(res.pca,
+             #col.ind = groups, # color by groups
+             #palette = c("#00AFBB",  "#FC4E07"),
+             addEllipses = TRUE, # Concentration ellipses
+             #legend.title = "Groups",
+             repel = TRUE, label="none", ellipse.level=0.5
+             ) #+ labs(title = paste("PCA", lnc, canc)))
 
 
 
