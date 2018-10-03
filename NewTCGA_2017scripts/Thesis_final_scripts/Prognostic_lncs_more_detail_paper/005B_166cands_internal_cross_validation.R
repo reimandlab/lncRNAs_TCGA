@@ -13,9 +13,15 @@ allCands = filter(allCands, data=="TCGA") #173 unique lncRNA-cancer combos, #166
 
 #which cancer types are the non-unique lncRNAs from?
 allCands$Combo = NULL
-allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "CAT_geneName")]
+#allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "CAT_geneName")]
 allCands = allCands[!duplicated(allCands), ]
 cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
+
+allCands = as.data.table(allCands)
+allCands
+filter(allCands, gene %in% cands_dups)
+dups = as.data.table(filter(allCands, gene %in% cands_dups))
+dups = dups[order(gene)]
 
 #------––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 #----------------------------------------Analyze Results---------------------------------------------------------------
