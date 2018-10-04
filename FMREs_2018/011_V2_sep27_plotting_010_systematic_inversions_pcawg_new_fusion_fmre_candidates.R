@@ -240,6 +240,23 @@ dev.off()
 
 write.table(plotting_dat, file="data_table_SV_exp_barplot_KI_sept21.txt", quote=F, row.names=F, sep="\t")
 
+#re-order up to down 
+plotting_dat = plotting_dat[order(-fc)]
+
+barplot = ggbarplot(plotting_dat, x="name", y="fc", lab.size = 6, fill="expression") +
+ 	xlab("Translocation") + ylab("Fold Change") + theme_bw() +
+ 	scale_fill_manual(values=c("#E69F00", "#56B4E9")) #+ coord_trans(y="log10")
+ 
+barplot = ggpar(barplot,  yticks.by=log2(100), yscale = "log2", legend="none",
+ tickslab=FALSE, ticks=F, xlab = FALSE, ylab = FALSE, font.legend = c(12, "plain", "black")) +
+ coord_flip()#+ 
+#scale_y_continuous(breaks = round(seq(-3, 11 , by = 1),1)) 
+
+pdf("summary_mean_barplot_translocation_exp_fc_version_3_oct4.pdf", width=9, height=6)
+barplot 
+dev.off()
+
+
 
 ######2 Don't USE
 

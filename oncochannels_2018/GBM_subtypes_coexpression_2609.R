@@ -180,10 +180,15 @@ dev.off()
 #can you please try sub-type weighted correlation:
 #ID1~subtype vs ID1~subtype+EGFR
 
-id1_m1 = lm(clin_subtypes$ID1 ~ subtype)
-id1_m2 = lm(clin_subtypes$ID1 ~ subtype + EGFR)
+id1_m1 = lm(clin_subtypes$ENSG00000125968 ~ clin_subtypes$subtype)
+id1_m2 = lm(clin_subtypes$ENSG00000125968 ~ clin_subtypes$subtype + clin_subtypes$ENSG00000146648)
 
 anova(id1_m1, id1_m2)
+
+egfr_m1 = lm(clin_subtypes$ENSG00000146648 ~ clin_subtypes$subtype)
+egfr_m2 = lm(clin_subtypes$ENSG00000146648 ~ clin_subtypes$subtype + clin_subtypes$ENSG00000125968)
+
+anova(egfr_m1, egfr_m2)
 
 #----------------------------------------------
 #####RPPA#######################################

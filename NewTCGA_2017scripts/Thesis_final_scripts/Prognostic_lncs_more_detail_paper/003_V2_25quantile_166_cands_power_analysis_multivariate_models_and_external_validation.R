@@ -16,7 +16,7 @@ library(patchwork)
 library(caret)  
 library(Rtsne)
 require("powerSurvEpi")
-library(SIBER)
+
 
 #------FEATURES-----------------------------------------------------
 
@@ -58,7 +58,7 @@ add_tags = function(dtt){
   #log1p 
   z = which(str_detect(colnames(dtt), "ENSG"))
   if(length(z)>1){
-  medians = apply(dtt[,z], 2, median)}
+  medians = apply(dtt[,z], 2, function(x){quantile(x)[2]})}
   if(length(z)==1){
     medians = median(dtt[,z])
   }
@@ -252,7 +252,7 @@ return(results_cox1)
 }
 
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_lifespan_May3rd.pdf")
-pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_oct3.pdf")
+pdf("TCGA_25_percentile_candidates_survival_plots_final_cands_FULL_5year_surv_oct3.pdf")
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
 dev.off()
 
@@ -264,7 +264,7 @@ tcga_results1$fdr_pval = as.numeric(tcga_results1$fdr_pval)
 tcga_results1 = as.data.table(tcga_results1)
 tcga_results1 = tcga_results1[order(fdr_pval)]
 
-saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
+saveRDS(tcga_results1, file="TCGA_25_percentile_results_multivariate_results_Oct3.rds")
 
 #check which models violate the PH assumption
 #to those models add age * survival time interaction 
@@ -273,17 +273,17 @@ tcga_results1$num_risk = as.numeric(tcga_results1$num_risk)
 tcga_results1[tcga_results1$num_risk <15,]
 
 #plot distribution, cut number of risk patients 
-tcga_results1$groupy = cut(tcga_results1$num_risk, breaks =c(1, 20, 40, 60, 80, 100, 200, 300, 
-  400, 500, 600, 700, 800, 900, 1000))
+#tcga_results1$groupy = cut(tcga_results1$num_risk, breaks =c(1, 20, 40, 60, 80, 100, 200, 300, 
+#  400, 500, 600, 700, 800, 900, 1000))
 
 #SUMMARIZE
 # Change line color and fill color
-riskplot = gghistogram(tcga_results1, x = "groupy", y = "..count..", stat="count", 
-   fill = "white", color="black",  palette = c("#00AFBB", "#E7B800")) + xlab("Number of Risk patients")+
-ylab("Frequency")
-pdf("Dist_num_risk_patients_per_lncRNA.pdf", width=10)
-riskplot
-dev.off()
+#riskplot = gghistogram(tcga_results1, x = "groupy", y = "..count..", stat="count", 
+#   fill = "white", color="black",  palette = c("#00AFBB", "#E7B800")) + xlab("Number of Risk patients")+
+#ylab("Frequency")
+#pdf("Dist_num_risk_patients_per_lncRNA.pdf", width=10)
+#riskplot
+#dev.off()
 
 tcga_results1$perc_risk = as.numeric(tcga_results1$perc_risk)
 riskplot = gghistogram(tcga_results1, x = "perc_risk", 
@@ -300,7 +300,7 @@ dev.off()
 #------PCAWG DATA---------------------------------------------------
 #-------------------------------------------------------------------
 
-tcga_results1 = readRDS("TCGA_results_multivariate_results_Oct3.rds")
+tcga_results1 = readRDS("TCGA_25_percentile_results_multivariate_results_Oct3.rds")
 tcga_results1$data = "TCGA"
 tcga_results1$combo = paste(tcga_results1$gene, tcga_results1$cancer, sep="_")
 #z = which(tcga_results1$combo %in% robust$combo)
@@ -344,7 +344,8 @@ add_tags = function(dtt){
   #log1p 
   z = which(str_detect(colnames(dtt), "ENSG"))
   if(length(z)>1){
-  medians = apply(dtt[,z], 2, median)}
+  medians = apply(dtt[,z], 2, function(x){quantile(x)[2]})}
+
   if(length(z)==1){
     medians = median(dtt[,z])
   }
@@ -505,44 +506,30 @@ get_survival_models = function(dtt){
     names(row) <- names(results_cox1) 
     results_cox1 = rbind(results_cox1, row)
 
+
     #make density plot using FPKM-UQ values and logged values
-    #visualize bimodality 
-    exp_data$median=""
-    exp_data$median[exp_data$gene==0] = "Low"
-    exp_data$median[exp_data$gene==1] = "High"
-    exp_data$median = factor(exp_data$median, levels=c("High", "Low"))
+   #visualize bimodality 
+   exp_data$median=""
+   exp_data$median[exp_data$gene==0] = "Low"
+   exp_data$median[exp_data$gene==1] = "High"
+   exp_data$median = factor(exp_data$median, levels=c("High", "Low"))
    
-    gg <- ggplot(exp_data)
-    gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
-    gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" "))
-    print(gg)
+   gg <- ggplot(exp_data)
+   gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
+   gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$canc[1] , sep=" "))
+   print(gg)
 
-        p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
-          color = "gene",
-         palette = mypal[c(4,1)], title = paste(gene_name, "Expression", dtt$canc[1] , sep=" "), 
-          add = "jitter", ylab = "FPKM-UQ",  ggtheme = theme_bw())
-        # Change method
-       p = p + stat_compare_means(method = "wilcox.test")
-       print(p)
-
-
-   #get measure of bimodality 
-   SIBER(y=exp_data$geneexp, model='LN')
-
-
-
-    exp_data$geneexp = log1p(exp_data$geneexp)
+   exp_data$geneexp = log1p(exp_data$geneexp)
   
-    gg <- ggplot(exp_data)
-    gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
-    gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" "))
-    print(gg)
+   gg <- ggplot(exp_data)
+   gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
+   gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$canc[1] , sep=" "))
+   print(gg)      
 
-      exp_data$geneexp = log1p(exp_data$geneexp)
       p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
           color = "gene",
          palette = mypal[c(4,1)], title = paste(gene_name, "Expression", dtt$canc[1] , sep=" "), 
-          add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_bw())
+          add = "jitter", ylab = "FPKM",  ggtheme = theme_bw())
         # Change method
        p = p + stat_compare_means(method = "wilcox.test")
        print(p)
@@ -572,7 +559,7 @@ pcawg_results1 = pcawg_results1[-z,]
 
 pcawg_results1$combo = paste(pcawg_results1$gene, pcawg_results1$cancer, sep="_")
 
-saveRDS(pcawg_results1, file="PCAWG_external_validation_lncCands_oct3.rds")
+saveRDS(pcawg_results1, file="PCAWG_25_percentile_external_validation_lncCands_oct3.rds")
 
 #plot power versus Hazard Ratio 
 pcawg_results1$pval = as.numeric(pcawg_results1$pval)
@@ -592,7 +579,7 @@ dev.off()
 #all-results
 #tcga_results1$lnc_test_ph =NULL
 #tcga_results1$global_test_ph = NULL
-tcga_results1$groupy = NULL
+#tcga_results1$groupy = NULL
 all_results = as.data.table(rbind(tcga_results1, pcawg_results1))
 all_results = all_results[order(gene, cancer)]
 
@@ -617,14 +604,14 @@ all_results$CAT_browser_link = NULL
 
 #this file was created without first filtering to only include the robust lncRNAs
 #so contains results for all 173 lncRNAs 
-saveRDS(all_results, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+saveRDS(all_results, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15_25_percentile.rds")
 
 #this file was created by FIRST filtering to inlclude ONLY robust lncRNAs
 #saveRDS(all_results, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_Aug8.rds")
 
 #-----check which actually match---------------------------------------------------------------------------
 
-all_results_orig = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+all_results_orig = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15_25_percentile.rds")
 #all_results_orig = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_Aug8.rds")
 
 all_results = all_results_orig[!duplicated(all_results_orig), ]
@@ -678,7 +665,7 @@ matches = merge(matches, ucsc, by=c("gene"))
 #z = which(matches$gene == "ENSG00000250360")
 #matches = matches[-z,]
 
-write.table(matches, file="5_unique_lncNRAs_validate_PCAWG.txt", quote=F, row.names=F, sep=";")
+write.table(matches, file="5_unique_lncNRAs_validate_PCAWG_from_25_percentile_splitting.txt", quote=F, row.names=F, sep=";")
 
 #write.table(matches, file="4_unique_lncNRAs_validate_PCAWG.txt", quote=F, row.names=F, sep=";")
 matches = as.data.frame(matches)
@@ -726,9 +713,9 @@ all_results_orig$fdr_pval = round(all_results_orig$fdr_pval, digits=4)
 
 all_results_orig$combo = paste(all_results_orig$gene, all_results_orig$cancer, sep="_")
 
-write.csv(all_results_orig, file="173_lncRNA_cancers_combos_22_cancer_types_oct3.csv", quote=F, row.names=F)
+write.csv(all_results_orig, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15_25_percentile.csv", quote=F, row.names=F)
 #write.csv(all_results_orig, file="112_lncRNA_cancers_combos_22_cancer_types_aug8.csv", quote=F, row.names=F)
-saveRDS(all_results_orig, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+saveRDS(all_results_orig, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15_25_percentile.rds")
 
 
 
