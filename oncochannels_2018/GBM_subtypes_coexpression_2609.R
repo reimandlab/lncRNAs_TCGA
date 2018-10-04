@@ -177,6 +177,18 @@ print(sp)
 
 dev.off()
 
+#can you please try sub-type weighted correlation:
+#ID1~subtype vs ID1~subtype+EGFR
+
+id1_m1 = lm(clin_subtypes$ID1 ~ subtype)
+id1_m2 = lm(clin_subtypes$ID1 ~ subtype + EGFR)
+
+anova(id1_m1, id1_m2)
+
+#----------------------------------------------
+#####RPPA#######################################
+#----------------------------------------------
+
 # 2. what if the correlation of EGFR is apparent at proteome not transcriptome level? We could check it in the RPPA data. 
 egfr_rrpa = t(rppa[which(rppa$gene_id == "EGFR"),])
 #add rppa data to datafile
