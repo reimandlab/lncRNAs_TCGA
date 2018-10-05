@@ -271,7 +271,7 @@ get_clin_lnc_cors = function(dtt){
         
         #remove catgeories with less than 5 patients 
         t = as.data.table(table(new_dat_plot[,2]))
-        t = filter(t, N < 5)
+        t = filter(t, N < 10)
         rm = unique(t$V1)
         if(!(length(rm) ==0)){
           new_dat_plot = new_dat_plot[-(which(new_dat_plot[,2] %in% rm)),]
@@ -294,7 +294,7 @@ get_clin_lnc_cors = function(dtt){
         colnames(new_dat_plot)[3] = "lncRNA_exp"
 
         z1 = which(is.na(new_dat_plot[,which(colnames(new_dat_plot) %in% col)]))  
-        z2 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% c("#N/A", "Unknown", "N/A", "NA", "Not Available"))  
+        z2 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% c("#N/A", "Unknown", "N/A", "NA", "Not Available", "Not performed", "Performed but Not Available"))  
         z3 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% c("[Unknown]", "[Not Available]", "[Not Evaluated]", "[Discrepancy]"))  
 
         z = unique(c(z1, z2,z3))
@@ -488,7 +488,7 @@ ggplot(clean_up, aes(type, colname)) +
 dev.off()
 
 saveRDS(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolinks.rds")
-#write.table(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolnks.txt", row.names=F, quote=F)
+write.table(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolnks.txt", row.names=F, quote=F)
 
 #-------PLOT summary results-------------------------------------------
 
