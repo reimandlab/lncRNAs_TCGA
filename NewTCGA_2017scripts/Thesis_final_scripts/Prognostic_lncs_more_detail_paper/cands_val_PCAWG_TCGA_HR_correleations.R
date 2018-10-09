@@ -69,7 +69,7 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June1
 t = as.data.table(filter(allCands, data == "TCGA"))
 p = as.data.table(filter(allCands, data == "PCAWG"))
 p$num_risk = as.numeric(p$num_risk)
-p = as.data.table(filter(p, num_risk >= 10)) #--> 61
+p = as.data.table(filter(p, num_risk >= 5)) #--> 57
 
 allCands = rbind(t,p)
 
@@ -106,15 +106,25 @@ canc_conv = unique(canc_conv)
 colnames(canc_conv)[2]= "cancer"
 tp = merge(canc_conv, tp, by = "cancer")
 
-pdf("summary_PCAWG_TCGA_HR_correlation_all_p<0.5.pdf", width=9)
-g = ggscatter(tp, x = "HR", y = "pcawg_hr",
-   color = "black", shape = 21, size = 3, # Points color, shape and size
+
+mypal = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
+  "#72A93B", "#74DAE3" ,"#49B98D" ,"#D97B8F" ,"#70A2A4", "#64709B" ,"#DFBF38" ,"#61EA4F" ,
+  "#C7CBE7", "#786DDA",
+"#CFA0E0" ,"#67E9D0" ,"#7C9BE1", "#D94753" ,
+"#AAE6B0", "#D13BDF" ,"#DEAEC7" ,"#BBE6DF" ,"#B2B47A" ,"#E6ECBA", "#C86ED7",
+ "#7BEE95" ,"#6F46E6" ,"#65B9E0", "#C0EC3E",
+"#DE8D54" ,"#DF4FA6")
+
+
+pdf("summary_PCAWG_TCGA_HR_correlation_all_p<0.5.pdf", height=5, width=6)
+g = ggscatter(tp, x = "HR", y = "pcawg_hr", 
+   color = "black", shape = 21, size = 2, # Points color, shape and size
    add = "reg.line",  # Add regressin line
    add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
    conf.int = TRUE, # Add confidence interval
    cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
    cor.coeff.args = list(method = "spearman", label.sep = "\n")
-   ) + geom_label_repel(aes(label=CAT_geneName, color=type), size=3) 
+   ) + geom_label_repel(aes(label=CAT_geneName, color=type), size=2) 
 ggpar(g, legend="bottom") + xlab("TCGA Hazard Ratio") + ylab("PCAWG Hazard Ratio")
 
 dev.off()

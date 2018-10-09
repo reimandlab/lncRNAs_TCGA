@@ -251,6 +251,8 @@ return(results_cox1)
 
 }
 
+#DO NOT RUN
+#-----------------------------------------------------------------------------------------------------------
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_lifespan_May3rd.pdf")
 pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_oct3.pdf")
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
@@ -435,7 +437,15 @@ get_survival_models = function(dtt){
     risk_num = length(which(newdat[,1] == 0))
     perc = risk_num/nrow(newdat)
   }
-    
+  
+
+  #check that HR Confidence Interval is not infiinite 
+  #check that at least 5 patients have expression greater than 0.1 
+  lower95 = summary(lncs)[8][[1]][3]
+  upper95 = summary(lncs)[8][[1]][4]
+
+  check = ((!(lower95 == "Inf")) & (!(upper95=="Inf")))
+  if(check){
   gene = colnames(newdat)[1]
   colnames(newdat)[1] = "gene"
   newdat$time = newdat$time/365
@@ -468,7 +478,7 @@ get_survival_models = function(dtt){
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          print(s)
+          #print(s)
       #generate boxplot 
       z = which(cancers_tests == dtt$canc[1])
       exp_data = filtered_data[[z]]
@@ -496,7 +506,13 @@ get_survival_models = function(dtt){
       max_nonzero = "notavail"
       }
 
-    row <- c(gene_name, summary(lncs)$coefficients[1,c(1,2,5)],  summary(lncs)$conf.int[1,c(3,4)], dtt$canc[1], 
+    #check at least 5 pateints witih exp > 5
+    num_pats = length(which(exp_data$geneexp >= 0.1))
+    pval = as.numeric(glance(lncs)[4])
+
+    if(num_pats >= (0.01 * nrow(exp_data))){
+    print(s)
+    row <- c(gene_name, summary(lncs)$coefficients[1,c(1,2)], pval,  summary(lncs)$conf.int[1,c(3,4)], dtt$canc[1], 
     lnc_test_ph, global, risk_num, perc, power, median_nonzero,
     sd_nonzero,
     min_nonzero,
@@ -527,9 +543,7 @@ get_survival_models = function(dtt){
 
 
    #get measure of bimodality 
-   SIBER(y=exp_data$geneexp, model='LN')
-
-
+   #SIBER(y=exp_data$geneexp, model='LN')
 
     exp_data$geneexp = log1p(exp_data$geneexp)
   
@@ -546,6 +560,8 @@ get_survival_models = function(dtt){
         # Change method
        p = p + stat_compare_means(method = "wilcox.test")
        print(p)
+}
+}
 }
 
 results_cox1 = results_cox1[-1,]
@@ -565,10 +581,10 @@ pcawg_results1$fdr_pval = p.adjust(pcawg_results1$pval, method="fdr")
 #combine results from TCGA and PCAWG
 pcawg_results1$data = "PCAWG"
 pcawg_results1$num_risk = as.numeric(pcawg_results1$num_risk)
-pcawg_results1 = filter(pcawg_results1, num_risk >=10)
+pcawg_results1 = filter(pcawg_results1, num_risk >=5)
 
-z = which(pcawg_results1$upper95 == "Inf")
-pcawg_results1 = pcawg_results1[-z,]
+#z = which(pcawg_results1$upper95 == "Inf")
+#pcawg_results1 = pcawg_results1[-z,]
 
 pcawg_results1$combo = paste(pcawg_results1$gene, pcawg_results1$cancer, sep="_")
 

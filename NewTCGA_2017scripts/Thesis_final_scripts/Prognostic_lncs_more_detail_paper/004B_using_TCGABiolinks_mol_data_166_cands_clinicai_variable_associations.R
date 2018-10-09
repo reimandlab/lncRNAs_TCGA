@@ -178,8 +178,8 @@ get_clin_lnc_cors = function(dtt){
     if(hr <1){new_dat$risk = "LowExp"}
     
     #each clinical variable
-    canc_col_results = as.data.frame(matrix(ncol=15)) ; colnames(canc_col_results)=c("canc", "lnc", "colname", "cor", "pval", "test", "chisq", "kw_pval",
-    "clin_pval", "anova_both_vs_lnc", "lnc_concordance", "clin_concordance", "lnc_HR", "clin_HR", "concordance_combo_model")
+    canc_col_results = as.data.frame(matrix(ncol=16)) ; colnames(canc_col_results)=c("canc", "lnc", "colname", "cor", "pval", "test", "chisq", "kw_pval",
+    "clin_pval", "anova_both_vs_lnc", "lnc_concordance", "clin_concordance", "lnc_HR", "clin_HR", "concordance_combo_model", "clin_vs_combo_anova")
 
     for(i in 1:(ncol(new_dat)-2)){
       print(i)    
@@ -241,12 +241,14 @@ get_clin_lnc_cors = function(dtt){
           }
 
           if(length(z)==0){
-          anov_pval = anova(cox_lnc, both)[2,4]}
+          anov_pval = anova(cox_lnc, both)[2,4]
+          clin_vs_combo_anova = anova(cox_clin, both)[2,4]
+          }
 
           #add lnc, clinical Hazard Ratios and conordance of combined model 
 
           row = c(canc, lnc, col, cor, pval_cor, "Ftest", chisq_pval, kw_pval, 
-          clin_pval, anov_pval, lnc_concordance, clin_concordance, hr, hr_clin, combo_concordance)
+          clin_pval, anov_pval, lnc_concordance, clin_concordance, hr, hr_clin, combo_concordance, clin_vs_combo_anova)
           names(row) = colnames(canc_col_results)
 
           print(ggforest(both, main = paste(lnc, col, canc), data=new_dat_plot))
@@ -333,7 +335,12 @@ get_clin_lnc_cors = function(dtt){
 
         lncheck = ((num_low >=10) & (num_high >=10))
 
-        if((dim(table(new_dat_plot$lncRNA_tag)) > 1) & lncheck){
+        #make sure medians of two groups aren't the same
+        #ie both are 0 then effect isn't really significant 
+        med_check = as.data.table(new_dat_plot %>% group_by(Clinical) %>% summarise_each(funs(median),lncRNA_exp))
+        med_check = !(med_check$lncRNA_exp[1] == med_check$lncRNA_exp[2])
+
+        if((dim(table(new_dat_plot$lncRNA_tag)) > 1) & lncheck & med_check){
 
         cox_lnc = coxph(Surv(OS.time, OS) ~ lncRNA_tag, data = new_dat_plot)
         cox_clin = coxph(Surv(OS.time, OS) ~ Clinical, data = new_dat_plot)
@@ -346,6 +353,7 @@ get_clin_lnc_cors = function(dtt){
         combo_concordance = glance(both)$concordance
         hr_clin = summary(cox_clin)$coefficients[2]
         anov_pval = anova(cox_lnc, both)[2,4]
+        clin_vs_combo_anova = anova(cox_clin, both)[2,4]
         print(ggforest(both, main = paste(lnc, col, canc), data=new_dat_plot))
 
         }
@@ -360,7 +368,7 @@ get_clin_lnc_cors = function(dtt){
         }
 
         row = c(canc, lnc, col, "nocor", anova, "Ftest", chisq_pval, kw_pval, 
-          clin_pval, anov_pval, lnc_concordance, clin_concordance, hr, hr_clin, combo_concordance)
+          clin_pval, anov_pval, lnc_concordance, clin_concordance, hr, hr_clin, combo_concordance, clin_vs_combo_anova)
         names(row) = colnames(canc_col_results)
         canc_col_results = rbind(canc_col_results, row)
 

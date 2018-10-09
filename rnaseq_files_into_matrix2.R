@@ -4,7 +4,7 @@ library(data.table)
 library(plyr)
 library(dplyr)
 
-named.list <- readRDS(file="9246rnaSEQfilesLIST.rds")
+named.list <- readRDS(file="9314_raw_countsLIST.rds")
 print("finished reading file")
 
 #remove datafiles with nothing in them not sure why

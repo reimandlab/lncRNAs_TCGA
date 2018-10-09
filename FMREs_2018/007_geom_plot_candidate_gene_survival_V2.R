@@ -74,6 +74,16 @@ tcga_results1 = merge(tcga_results1, cancers_conv, by="cancer")
 tcga_results1 = tcga_results1[order(fdr_pval)]
 tcga_results1$HR = as.numeric(tcga_results1$HR)
 
+
+t = as.data.table(table(rna$type))
+t
+t = as.data.table(t, N > 50)
+t
+t = t[order(N)]
+t
+t = as.data.table(filter(t, N >50))
+tcga_results1 = as.data.table(filter(tcga_results1, type %in% t$V1))
+
 #Remove with unrealistic larger HRs
 z = which(tcga_results1$upper95 == "Inf")
 tcga_results1 = tcga_results1[-z,]
@@ -83,17 +93,17 @@ tcga_results1$HR = log2(tcga_results1$HR)
 
 #replace fdr values with **
 tcga_results1$fdr_text = ""
-tcga_results1$fdr_text[tcga_results1$fdr_pval <= 0.05] = "*"
-tcga_results1$fdr_text[tcga_results1$fdr_pval <= 0.01] = "**"
-tcga_results1$fdr_text[tcga_results1$fdr_pval <= 0.001] = "***"
-tcga_results1$fdr_text[tcga_results1$fdr_pval <= 0.0001] = "****"
+tcga_results1$fdr_text[tcga_results1$pval <= 0.05] = "*"
+tcga_results1$fdr_text[tcga_results1$pval <= 0.01] = "**"
+tcga_results1$fdr_text[tcga_results1$pval <= 0.001] = "***"
+tcga_results1$fdr_text[tcga_results1$pval <= 0.0001] = "****"
 
 #keep only those with ***
 #z = which(tcga_results1$fdr_text == "")
 #tcga_results1 = tcga_results1[-z,]
 
 #order by increasing fdr
-tcga_results1 = tcga_results1[order(fdr_pval)]
+tcga_results1 = tcga_results1[order(pval)]
 cancers = unique(tcga_results1$type)
 tcga_results1$type = factor(tcga_results1$type, levels = cancers)
 genes = unique(tcga_results1$name)
@@ -119,7 +129,8 @@ tcga_results1 = subset(tcga_results1, type %in% empty$V1)
 
 a <- ifelse(unique(tcga_results1$mut_coef_lm) > 0, "red", "blue")
 
-pdf("10_diff_exp_cands_survival_results_TCGA_july3.pdf")
+#pdf("10_diff_exp_cands_survival_results_TCGA_july3.pdf")
+pdf("10_diff_exp_cands_survival_results_TCGA_Oct9_pvalues.pdf")
 g = ggplot(tcga_results1, aes(name, type)) +
   geom_tile(aes(fill = HR)) +
   geom_text(aes(label = fdr_text), size=5) +
@@ -168,7 +179,8 @@ theme(axis.text.x = element_text(colour = "black"), plot.title=element_text(size
         axis.ticks.y=element_blank())
 
 
-pdf("10_diff_exp_cands_survival_results_TCGA_july3_split_two.pdf")
+#pdf("10_diff_exp_cands_survival_results_TCGA_july3_split_two.pdf")
+pdf("10_diff_exp_cands_survival_results_TCGA_Oct9_pvalues_split_two.pdf")
 n + p + plot_layout(ncol = 2, widths = c(1, 3)) 
 dev.off()
 
