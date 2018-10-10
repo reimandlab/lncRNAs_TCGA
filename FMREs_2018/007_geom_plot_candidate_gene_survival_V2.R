@@ -66,14 +66,13 @@ cands$gene = unlist(llply(cands$gene, clean_gene))
 #DATA - results 
 #--------------------------------------------------------------------
 
-tcga_results1 = readRDS(file="TCGA_FMRE_diff_exp_PCGS_survival_results_July3.rds")
+tcga_results1 = readRDS(file="TCGA_FMRE_diff_exp_PCGS_survival_results_Oct10.rds")
 cancers_conv = rna[,which(colnames(rna) %in% c("type", "Cancer"))]
 cancers_conv = cancers_conv[!duplicated(cancers_conv), ]
 colnames(cancers_conv)[2] = "cancer"
 tcga_results1 = merge(tcga_results1, cancers_conv, by="cancer")
 tcga_results1 = tcga_results1[order(fdr_pval)]
 tcga_results1$HR = as.numeric(tcga_results1$HR)
-
 
 t = as.data.table(table(rna$type))
 t
@@ -88,6 +87,9 @@ tcga_results1 = as.data.table(filter(tcga_results1, type %in% t$V1))
 z = which(tcga_results1$upper95 == "Inf")
 tcga_results1 = tcga_results1[-z,]
 z = which(tcga_results1$HR >=3)
+tcga_results1 = tcga_results1[order(pval)]
+write.csv(tcga_results1, file="TCGA_FMRE_diff_exp_PCGs_survival_results_Oct10.csv", quote=F, row.names=F)
+
 
 tcga_results1$HR = log2(tcga_results1$HR)
 

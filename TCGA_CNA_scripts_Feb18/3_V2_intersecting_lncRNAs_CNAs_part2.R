@@ -326,17 +326,46 @@ get_data = function(lnc){
       print(lnc)
     #plot length of segments 
     print(hist(df$length))
-    pat_dat = df[,c("patient", "median", "cna_status", "name", "name2", "combo")]
+    pat_dat = df[,c("patient", "median", "cna_status", "name", "name2", "combo", "risk")]
     pat_dat$cancer = cancer
-    pat_dat_all = rbind(pat_dat_all, pat_dat)
-    
+    pat_dat$median = as.character(pat_dat$median)
+    pat_dat$median[pat_dat$median == "Low"] = "low_expression"
+    pat_dat$median[pat_dat$median == "High"] = "high_expression"
+    z = which(pat_dat$median == pat_dat$risk[1])
+    pat_dat$median[z] = "RISK"
+    pat_dat$median[-z] = "nonRISK"
+
+    t = as.data.table(table(pat_dat$median, pat_dat$cna_status))
+    t = as.data.table(filter(t, N >0))
+    t = t[order(N)]
+
+    if(risk == "low_expression"){
+      risk_cna = filter(t, V1=="RISK", V2 == "DEL")$N
+      nonrisk_cna = filter(t, V1=="nonRISK", V2 == "AMP")$N
+    }
+
+    if(risk == "high_expression"){
+      risk_cna = filter(t, V1=="RISK", V2 == "AMP")$N
+      nonrisk_cna = filter(t, V1=="nonRISK", V2 == "DEL")$N
+    }
+
+    if(length(risk_cna) == 0){
+      risk_cna = 0
+    }
+
+    if(length(nonrisk_cna) == 0){
+      nonrisk_cna = 0
+    }
+
+    other = length(unique(df$patient)) - risk_cna - nonrisk_cna
+
     results = c(cancer, unique(df$gene), unique(df$name2), length(unique(df$patient)), 
       wilcoxon_pval, chi_pval, 
-      risk, length_risk_pats, rr, rp, ro, bal, avg_length, stat_exp_cor, stat_exp_pval, ks_test)
+      risk, length_risk_pats, rr, rp, ro, bal, avg_length, stat_exp_cor, stat_exp_pval, ks_test, risk_cna, nonrisk_cna, other)
     
     names(results) = c("cancer", "gene", "name", "num_patients", "wilcoxon_pval", "chi_pval", 
       "risk_type", "num_risk_pats", "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "balance_risk_pats", 
-      "avg_length", "stat_exp_cor", "stat_exp_pval", "ks_test")
+      "avg_length", "stat_exp_cor", "stat_exp_pval", "ks_test", "risk_cna", "nonrisk_cna", "other")
 
     return(results)
 }
@@ -446,6 +475,85 @@ ggplot(sig_diff, aes(CAT_geneName, 1)) + geom_tile(aes(fill = stat)) +
 theme_void() + coord_flip() 
  
 dev.off()
+
+
+###############################
+###stacked barplot#############
+###############################
+
+sig_diff$total_cnas = unlist(sig_diff$risk_cna) + unlist(sig_diff$nonrisk_cna) + unlist(sig_diff$other)
+sig_diff = sig_diff[order(-total_cnas)]
+sig_diff$combo = paste(sig_diff$CAT_geneName, sig_diff$canc)
+sig_diff$cna_impact = (unlist(sig_diff$risk_cna) + unlist(sig_diff$nonrisk_cna))/sig_diff$total_cnas
+sig_diff = sig_diff[order(-cna_impact)]
+
+
+barplot_1 = sig_diff[,c("gene", "name", "cancer", "canc", "CAT_geneName", "ks_test", "stat_exp_cor", "cor", "num_risk", 
+  "perc_risk", "risk_cna")]
+barplot_1$type = "risk_cna"
+colnames(barplot_1)[ncol(barplot_1)-1] = "cna_counts"
+barplot_1$cna_counts = unlist(barplot_1$cna_counts)/sig_diff$total_cnas
+
+barplot_2 = sig_diff[,c("gene", "name", "cancer", "canc", "CAT_geneName", "ks_test", "stat_exp_cor", "cor", "num_risk", 
+  "perc_risk", "nonrisk_cna")]
+barplot_2$type = "nonrisk_cna"
+colnames(barplot_2)[ncol(barplot_2)-1] = "cna_counts"
+barplot_2$cna_counts = unlist(barplot_2$cna_counts)/sig_diff$total_cnas
+
+barplot_3 = sig_diff[,c("gene", "name", "cancer", "canc", "CAT_geneName", "ks_test", "stat_exp_cor", "cor", "num_risk", 
+  "perc_risk", "other")]
+barplot_3$type = "other"
+colnames(barplot_3)[ncol(barplot_3)-1] = "cna_counts"
+barplot_3$cna_counts = unlist(barplot_3$cna_counts)/sig_diff$total_cnas
+
+barplot = rbind(barplot_1, barplot_2, barplot_3)
+
+barplot = barplot[order(type)]
+barplot$combo = paste(barplot$CAT_geneName, barplot$canc)
+barplot$type = factor(barplot$type, levels = c("risk_cna", "nonrisk_cna", "other"))
+barplot$combo = factor(barplot$combo, levels=sig_diff$combo)
+
+pdf("final_cna_figure_partA.pdf", width=9, height=7)
+g <- ggplot(barplot, aes(combo, cna_counts))
+# Number of cars in each class:
+g + geom_col(aes(fill = type)) + scale_fill_manual(values=mypal[c(1,4,3)], name="CNA Type",
+                       breaks=c("risk_cna", "nonrisk_cna", "other"),
+                       labels=c("Risk wCNA", "Non-Risk wCNA", "Other"))+
+theme_bw()+
+theme(axis.text.x = element_text(size=10, angle=45, hjust=1),
+          axis.text.y = element_text(size=14), legend.position="top") + xlab("lncRNA-cancer") + ylab("% of patients")
+dev.off()
+
+saveRDS(sig_diff, file="cna_data_16_candidates_final_figure_oct10.rds")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

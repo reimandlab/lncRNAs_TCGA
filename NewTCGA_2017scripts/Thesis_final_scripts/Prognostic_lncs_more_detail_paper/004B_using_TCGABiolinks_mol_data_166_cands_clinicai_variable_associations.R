@@ -381,11 +381,11 @@ get_clin_lnc_cors = function(dtt){
           title = paste(canc, lnc, col), 
           add = "jitter", ylab = "lncRNA expression",  ggtheme = theme_bw()) +
           stat_compare_means() + geom_hline(yintercept=med, linetype="dashed", color = "red") + 
-          stat_n_text()
+          stat_n_text(size=5)
 
         p = ggpar(p,
-          font.xtickslab = c(9,"plain", "black"),
-          xtickslab.rt = 65, legend="none")
+          font.xtickslab = c(14,"plain", "black"),font.tickslab=c(14,"plain", "black"), 
+          xtickslab.rt = 55, legend="none")
         print(p)
           
           }
@@ -569,6 +569,14 @@ write.csv(clean_up, file="cleaned_clinical_variables_associations_data_sept28_po
 
 #post manual cleanup of variables 
 clin_results = read.csv("cleaned_clinical_variables_associations_data_sept28_post_cleanup.csv")
+
+clin_results = as.data.table(clin_results)
+
+#which combos are better once lncRNA is used
+#look at only those where clinical variable also associated with survival
+clinsig = as.data.table(filter(clin_results, sig_tag == "V"))
+clinsig_cause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova < 0.05)) #229/237
+clinsig_notcause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova > 0.05)) #229/237
 
 #get order 
 t = as.data.table(table(clin_results$colname))

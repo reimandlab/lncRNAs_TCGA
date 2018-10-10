@@ -117,8 +117,8 @@ add_tags = function(dtt){
 filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
 
 get_survival_models = function(dtt){
-  results_cox1 <- as.data.frame(matrix(ncol=9)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
-    "lnc_test_ph", 'global_test_ph')
+  results_cox1 <- as.data.frame(matrix(ncol=11)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
+    "lnc_test_ph", 'global_test_ph', "sample_size", "num_events")
 
   dat = dtt
   dat$Cancer = NULL
@@ -155,7 +155,8 @@ get_survival_models = function(dtt){
   lnc_test_ph = test.ph$table[1,3]
   global = test.ph$table[nrow(test.ph$table),3]
 
-  row <- c(colnames(newdat)[1], summary(lncs)$coefficients[1,c(1,2,5)],  summary(lncs)$conf.int[1,c(3,4)], dtt$Cancer[1], lnc_test_ph, global)
+  row <- c(colnames(newdat)[1], summary(lncs)$coefficients[1,c(1,2,5)],  summary(lncs)$conf.int[1,c(3,4)], dtt$Cancer[1], lnc_test_ph, global, 
+    dim(dat)[1], length(which(dat$OS==1)))
     
   names(row) <- names(results_cox1) 
   results_cox1 = rbind(results_cox1, row)
@@ -172,9 +173,9 @@ return(results_cox1)
 
 }
 
-#pdf("TCGA_candidates_survival_plots_final_cands_May3rd.pdf")
+pdf("TCGA_candidates_survival_plots_final_cands_Oct10.pdf")
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
-#dev.off()
+dev.off()
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
@@ -191,7 +192,7 @@ change_gene = function(ge){
 }
 tcga_results1$name = ""
 tcga_results1$name = unlist(llply(tcga_results1$gene, change_gene))
-saveRDS(tcga_results1, file="TCGA_FMRE_diff_exp_PCGS_survival_results_July3.rds")
+saveRDS(tcga_results1, file="TCGA_FMRE_diff_exp_PCGS_survival_results_Oct10.rds")
 
 #------plot survival curves-------
 
@@ -199,92 +200,92 @@ saveRDS(tcga_results1, file="TCGA_FMRE_diff_exp_PCGS_survival_results_July3.rds"
 #DO NOT RUN---------------------------------------------
 #-------------------------------------------------------
 
-#pdf("TCGA_FMRE_10_diff_Exp_cands_surv_plots_july3.pdf")
+pdf("TCGA_FMRE_10_diff_Exp_cands_surv_plots_Oct10.pdf")
 
-#for(i in 1:nrow(tcga_results1)){
-#  canc = tcga_results1$cancer[i]
-#  gene = tcga_results1$gene[i]
-#  name = tcga_results1$name[i]
-#  hr = round(as.numeric(tcga_results1$HR[i]), digits=3)
+for(i in 1:nrow(tcga_results1)){
+  canc = tcga_results1$cancer[i]
+  gene = tcga_results1$gene[i]
+  name = tcga_results1$name[i]
+  hr = round(as.numeric(tcga_results1$HR[i]), digits=3)
 
-#  newdat = subset(pcg, Cancer %in% canc)
-#  newdat = as.data.frame(newdat) 
-#  z = which(colnames(newdat) %in% c(gene, "Cancer", "type", "OS", "OS.time"))
-#  newdat = newdat[,z]
-#  colnames(newdat)[1] = name
-#  gene = colnames(newdat)[1]
-#  colnames(newdat)[1] = "gene"
-#  newdat$OS = as.numeric(newdat$OS)
-#  newdat$OS.time = as.numeric(newdat$OS.time)
-#  newdat$OS.time = newdat$OS.time/365
-#  newdat$geneexp = newdat[,1]
+  newdat = subset(pcg, Cancer %in% canc)
+  newdat = as.data.frame(newdat) 
+  z = which(colnames(newdat) %in% c(gene, "Cancer", "type", "OS", "OS.time"))
+  newdat = newdat[,z]
+  colnames(newdat)[1] = name
+  gene = colnames(newdat)[1]
+  colnames(newdat)[1] = "gene"
+  newdat$OS = as.numeric(newdat$OS)
+  newdat$OS.time = as.numeric(newdat$OS.time)
+  newdat$OS.time = newdat$OS.time/365
+  newdat$geneexp = newdat[,1]
 
   #add tags
-#  medians = median(newdat[,1])
+  medians = median(newdat[,1])
   #add high low tag
-#  med = medians
-#    k = 1
-#    if(med ==0){
-#    #if median = 0 then anyone greater than zero is 1 
-#    l1 = which(newdat[,k] > 0)
-#    l2 = which(newdat[,k] ==0)
-#    newdat[l1,k] = 1
-#    newdat[l2, k] = 0
-#    }
+  med = medians
+    k = 1
+    if(med ==0){
+    #if median = 0 then anyone greater than zero is 1 
+    l1 = which(newdat[,k] > 0)
+    l2 = which(newdat[,k] ==0)
+    newdat[l1,k] = 1
+    newdat[l2, k] = 0
+    }
 
-#    if(!(med ==0)){
-#    l1 = which(newdat[,k] >= med)
-#    l2 = which(newdat[,k] < med)
-#    newdat[l1,k] = 1
-#    newdat[l2, k] = 0
-#    } 
+    if(!(med ==0)){
+    l1 = which(newdat[,k] >= med)
+    l2 = which(newdat[,k] < med)
+    newdat[l1,k] = 1
+    newdat[l2, k] = 0
+    } 
   
-# order = c(0, 1)
-# newdat$gene = factor(newdat$gene, levels = order) 
-# fit <- survfit(Surv(OS.time, OS) ~ gene, data = newdat)
-#          s <- ggsurvplot(
-#          title = paste(gene, newdat$type[1], "HR =", hr),
-#          fit, 
-#          xlab = "Time (Years)", 
-#          surv.median.line = "hv",
-#          font.main = c(16, "bold", "black"),
-#          font.x = c(14, "plain", "black"),
-#          font.y = c(14, "plain", "black"),
-#          font.tickslab = c(14, "plain", "black"),
-#          font.legend = 12,
-#          risk.table.fontsize = 5, 
-#          legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
-#          data = newdat,      # data used to fit survival curves. 
-#          risk.table = TRUE,       # show risk table.
-#          legend = "right", 
-#          pval = TRUE,             # show p-value of log-rank test.
-#          conf.int = FALSE,        # show confidence intervals for 
+ order = c(0, 1)
+ newdat$gene = factor(newdat$gene, levels = order) 
+ fit <- survfit(Surv(OS.time, OS) ~ gene, data = newdat)
+          s <- ggsurvplot(
+          title = paste(gene, newdat$type[1], "HR =", hr),
+          fit, 
+          xlab = "Time (Years)", 
+          surv.median.line = "hv",
+          font.main = c(16, "bold", "black"),
+          font.x = c(14, "plain", "black"),
+          font.y = c(14, "plain", "black"),
+          font.tickslab = c(14, "plain", "black"),
+          font.legend = 12,
+          risk.table.fontsize = 5, 
+          legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
+          data = newdat,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-#          xlim = c(0,5),        # present narrower X axis, but not affect
+          xlim = c(0,5),        # present narrower X axis, but not affect
                             # survival estimates.
-#          break.time.by = 1,     # break X axis in time intervals by 500.
+          break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
-#          palette = mypal[c(4,1)],
-#          ggtheme = theme_bw(), # customize plot and risk table with a theme.
-#          risk.table.y.text.col = T, # colour risk table text annotations.
-#          risk.table.y.text = FALSE # show bars instead of names in text annotations
+          palette = mypal[c(4,1)],
+          ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
-#          )
-#          print(s)
+          )
+          print(s)
 
    #generate boxplot 
-#   newdat$geneexp = log1p(newdat$geneexp)
-#   p <- ggboxplot(newdat, x = "gene", y = "geneexp",
-#          color = "gene",
-#         palette = mypal[c(4,1)], title = paste(gene, "Expression", newdat$type[1] , sep=" "), 
-#          add = "jitter", ylab = "FPKM",  ggtheme = theme_bw())
+   newdat$geneexp = log1p(newdat$geneexp)
+   p <- ggboxplot(newdat, x = "gene", y = "geneexp",
+          color = "gene",
+         palette = mypal[c(4,1)], title = paste(gene, "Expression", newdat$type[1] , sep=" "), 
+          add = "jitter", ylab = "FPKM",  ggtheme = theme_bw())
         # Change method
-#  p = p + stat_compare_means(method = "wilcox.test")
-#  print(p)
+  p = p + stat_compare_means(method = "wilcox.test")
+  print(p)
 
-#}#end tcga_results1
+}#end tcga_results1
 
-#dev.off()
+dev.off()
 
 
 

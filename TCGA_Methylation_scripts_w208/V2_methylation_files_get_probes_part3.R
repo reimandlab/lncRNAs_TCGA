@@ -364,8 +364,9 @@ get_data = function(lnc){
 
 	#multiple probes present 	
 	if(z > 1){
-		results_all_probes = as.data.frame(matrix(ncol = 16)) ; colnames(results_all_probes) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test")
+		results_all_probes = as.data.frame(matrix(ncol = 19)) ; colnames(results_all_probes) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
+      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test", 
+      "risk_met", "nonrisk_met", "other")
 	
 	for(k in 1:z){
 	new = subset(df, df$probe == unique(df$probe)[k])
@@ -501,11 +502,46 @@ get_data = function(lnc){
     colScale +
     annotate("text", x = 1.3, y =ycord , label = text_add)
 
+
+    pat_dat = new
+    pat_dat$median = as.character(pat_dat$median)
+    z = which(pat_dat$median == pat_dat$risk[1])
+    pat_dat$median[z] = "RISK"
+    pat_dat$median[-z] = "nonRISK"
+
+    t = as.data.table(table(pat_dat$median, pat_dat$mut_status))
+    t = as.data.table(filter(t, N >0))
+    t = t[order(N)]
+
+    risk = pat_dat$risk[1]
+
+    if(risk == "Low"){
+      risk_met = filter(t, V1=="RISK", V2 == "Methylated")$N
+      nonrisk_met = filter(t, V1=="nonRISK", V2 == "Unmethylated")$N
+    }
+
+    if(risk == "High"){
+      risk_met = filter(t, V1=="RISK", V2 == "Unmethylated")$N
+      nonrisk_met = filter(t, V1=="nonRISK", V2 == "Methylated")$N
+    }
+
+    if(length(risk_met) == 0){
+      risk_met = 0
+    }
+
+    if(length(nonrisk_met) == 0){
+      nonrisk_met = 0
+    }
+
+    other = length(unique(pat_dat$patient)) - risk_met - nonrisk_met
+
     results = c(cancer, unique(new$gene), length(unique(new$patient)), 
-      wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, probe, bal, stat_exp_cor, stat_exp_pval, ks_test)
+      wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, probe, bal, stat_exp_cor, stat_exp_pval, ks_test, 
+      risk_met, nonrisk_met, other)
     
     names(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test")
+      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test",
+      "risk_met", "nonrisk_met", "other")
 
       print(sp6)
       print(lnc)
@@ -651,11 +687,44 @@ get_data = function(lnc){
     colScale +
     annotate("text", x = 1.3, y =ycord , label = text_add)
 
+    pat_dat = df
+    pat_dat$median = as.character(pat_dat$median)
+    z = which(pat_dat$median == pat_dat$risk[1])
+    pat_dat$median[z] = "RISK"
+    pat_dat$median[-z] = "nonRISK"
+
+    t = as.data.table(table(pat_dat$median, pat_dat$mut_status))
+    t = as.data.table(filter(t, N >0))
+    t = t[order(N)]
+
+    risk = pat_dat$risk[1]
+
+    if(risk == "Low"){
+      risk_met = filter(t, V1=="RISK", V2 == "Methylated")$N
+      nonrisk_met = filter(t, V1=="nonRISK", V2 == "Unmethylated")$N
+    }
+
+    if(risk == "High"){
+      risk_met = filter(t, V1=="RISK", V2 == "Unmethylated")$N
+      nonrisk_met = filter(t, V1=="nonRISK", V2 == "Methylated")$N
+    }
+
+    if(length(risk_met) == 0){
+      risk_met = 0
+    }
+
+    if(length(nonrisk_met) == 0){
+      nonrisk_met = 0
+    }
+
+    other = length(unique(df$patient)) - risk_met - nonrisk_met
+
     results = c(cancer, unique(df$gene), length(unique(df$patient)), 
-      wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, probe, bal, stat_exp_cor, stat_exp_pval, ks_test)
+      wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, probe, bal, stat_exp_cor, stat_exp_pval, ks_test, risk_met, nonrisk_met, other)
     
     names(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test")
+      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test", 
+      "risk_met", "nonrisk_met", "other")
     
     results = as.data.frame(results)
 
@@ -719,6 +788,9 @@ sig_diff = filter(lnc_meth_cancer_data2, fdr <=0.05)
 
 #plot just the sig ones 
 sig_diff$combo = paste(sig_diff$gene, sig_diff$cancer, sep="_") #24/69 unique combos ~ 35% 
+
+z = which(sig_diff$other < 0)
+sig_diff = sig_diff[-z,]
 
 #---------FIGURE SUMMARY FOR PAPER--------------------------------------------------------------------------------------------
 cands$combo = paste(cands$gene, cands$canc, sep="_")
@@ -799,8 +871,11 @@ dev.off()
 
 
 ##visualize probes 
+probes_list = unique(sig_diff$probe)
 
-probe_dat = filter(probes, cgid == "cg11225405")
+get_plot_dist_probe_tss = function(pb){
+
+probe_dat = filter(probes, cgid == pb)
 probe_cord = probe_dat[,c("probe_chr", "cpg_start", "cpg_end", "cgid", "cpgstrand")]
 lnc_cord = probe_dat[,c("lncchr", "lncstart", "lncend", "ensg", "lncstrand")]
 colnames(lnc_cord) = c("probe_chr", "cpg_start", "cpg_end", "cgid", "cpgstrand")
@@ -809,20 +884,71 @@ probe_dat = rbind(probe_cord, lnc_cord)
 probe_dat = melt(probe_dat)
 probe_dat$yaxis = c(1.4,1.5)
 
-pdf("ucec_probe_figure.pdf", height=2)
-ggplot(probe_dat, aes(x=value, y=yaxis, color=cgid)) +
+g = ggplot(probe_dat, aes(x=value, y=yaxis, color=cgid)) +
   geom_line(aes(linetype=cgid))+
   scale_colour_manual(values = c("brown", "purple"))+
   geom_point(size=0) +
   geom_line(arrow = arrow(length=unit(0.20,"cm"), ends="first", type = "closed"), size = 1)+ 
   scale_y_continuous(breaks = c(0,1), labels = c(0,1))
+print(g)
+lprobetss = probe_dat$value[2] - probe_dat$value[1]
+return(c(pb, probe_dat$cgid[2], lprobetss))
 
+}
+
+pdf("ucec_probe_figure.pdf", height=2)
+probe_dat = llply(probes_list, get_plot_dist_probe_tss)
 dev.off()
 
+probe_dat = ldply(probe_dat)
+saveRDS(probe_dat, "summary_probes_genes_oct10.rds")
 
+###############################
+###stacked barplot#############
+###############################
 
+sig_diff$total_mets = unlist(sig_diff$risk_met) + unlist(sig_diff$nonrisk_met)
+sig_diff = sig_diff[order(-total_mets)]
+sig_diff$combo = paste(sig_diff$CAT_geneName, sig_diff$canc)
+sig_diff$met_impact = (unlist(sig_diff$risk_met) + unlist(sig_diff$nonrisk_met))/sig_diff$num_patients
+sig_diff = sig_diff[order(-met_impact)]
 
+barplot_1 = sig_diff[,c("gene", "combo", "cancer", "risk_type", "probe", "cor", "num_risk", 
+  "perc_risk", "risk_met")]
+barplot_1$type = "risk_met"
+colnames(barplot_1)[ncol(barplot_1)-1] = "met_counts"
+barplot_1$met_counts = unlist(barplot_1$met_counts)/sig_diff$num_patients
 
+barplot_2 = sig_diff[,c("gene", "combo", "cancer", "risk_type", "probe", "cor", "num_risk", 
+  "perc_risk", "nonrisk_met")]
+barplot_2$type = "nonrisk_met"
+colnames(barplot_2)[ncol(barplot_2)-1] = "met_counts"
+barplot_2$met_counts = unlist(barplot_2$met_counts)/sig_diff$num_patients
+
+barplot_3 = sig_diff[,c("gene", "combo", "cancer", "risk_type", "probe", "cor", "num_risk", 
+  "perc_risk", "other")]
+barplot_3$type = "other"
+colnames(barplot_3)[ncol(barplot_3)-1] = "met_counts"
+barplot_3$met_counts = unlist(barplot_3$met_counts)/sig_diff$num_patients
+
+barplot = rbind(barplot_1, barplot_2, barplot_3)
+
+barplot = barplot[order(type)]
+barplot$type = factor(barplot$type, levels = c("risk_met", "nonrisk_met", "other"))
+barplot$combo = factor(barplot$combo, levels=sig_diff$combo)
+
+pdf("final_methylation_figure_partC.pdf", width=9, height=8)
+g <- ggplot(barplot, aes(combo, met_counts))
+# Number of cars in each class:
+g + geom_col(aes(fill = type)) + scale_fill_manual(values=mypal[c(1,4,3)], name="Methylation Type",
+                       breaks=c("risk_met", "nonrisk_met", "other"),
+                       labels=c("Risk wMethylation", "NonRisk wMethylation", "Other"))+
+theme_bw()+
+theme(axis.text.x = element_text(size=9, angle=45, hjust=1),
+          axis.text.y = element_text(size=12), legend.position="top") + xlab("lncRNA-cancer") + ylab("% of patients")
+dev.off()
+
+saveRDS(sig_diff, file="methylation_data_23_candidates_final_figure_oct10.rds")
 
 
 
