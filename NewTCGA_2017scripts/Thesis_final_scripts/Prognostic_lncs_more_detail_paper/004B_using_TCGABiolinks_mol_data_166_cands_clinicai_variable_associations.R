@@ -575,8 +575,10 @@ clin_results = as.data.table(clin_results)
 #which combos are better once lncRNA is used
 #look at only those where clinical variable also associated with survival
 clinsig = as.data.table(filter(clin_results, sig_tag == "V"))
-clinsig_cause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova < 0.05)) #229/237
-clinsig_notcause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova > 0.05)) #229/237
+clinsig_cause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova < 0.05)) #121/125
+clinsig_notcause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova > 0.05)) #4/125
+
+#36 unique lncRNA-cancer combos 
 
 #get order 
 t = as.data.table(table(clin_results$colname))
@@ -592,6 +594,9 @@ t = t[order(-N)]
 
 clin_results$combo = factor(clin_results$combo, levels = t$V1)
 clin_results$concordance_combo_model = as.numeric(clin_results$concordance_combo_model)
+clin_results$anova_both_vs_lnc = as.numeric(clin_results$anova_both_vs_lnc)
+z = which((clin_results$concordance_combo_model > clin_results$lnc_concordance) & (clin_results$anova_both_vs_lnc < 0.05))
+clin_results$better[z] = "V"
 
 pdf("summary_biolinks_subtypes_lncRNA_exp_Sept28.pdf", height=6, width=12)
 #make geom_tile plot
@@ -610,7 +615,179 @@ dev.off()
 write.csv(clin_results, file="cleaned_clinical_variables_associations_data_sept28_post_cleanup_final_figure_data.csv", quote=F, row.names=F)
 
 
+#barplot comparing concordance 
+#combo 
+#y-axis concordance 
+#fill bars by lncRNA only/clinical only/combined 
+#clinsig = as.data.table(filter(clin_results, sig_tag == "V"))
+clinsig = clin_results
+clinsig_cause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova < 0.05)) #121/125
+clinsig_cause_lnc = clinsig
+clinsig_cause_lnc$combo_clin = paste(clinsig_cause_lnc$combo, clinsig_cause_lnc$colname)
+clinsig_cause_lnc$anova_both_vs_lnc = as.numeric(clinsig_cause_lnc$anova_both_vs_lnc)
+clinsig_cause_lnc$better_than_clin = ""
+z = which((clinsig_cause_lnc$concordance_combo_model > clinsig_cause_lnc$clin_concordance) & (clinsig_cause_lnc$clin_vs_combo_anova < 0.05))
+clinsig_cause_lnc$better_than_clin[z] = "V"
 
+z = which(clinsig_cause_lnc$colname %in% c("Spread to Lymph nodes", "treatment_outcome_first_course"))
+clinsig_cause_lnc = clinsig_cause_lnc[-z,]
+#z = which(clinsig_cause_lnc$lnc_concordance > 0.5)
+#clinsig_cause_lnc= clinsig_cause_lnc[z,]
+
+clinsig_cause_lnc = clinsig_cause_lnc[order(-concordance_combo_model)]
+
+lnc_conc = clinsig_cause_lnc[,c("combo", "combo_clin", "lnc_concordance")]
+colnames(lnc_conc)[ncol(lnc_conc)] = "Concordance"
+lnc_conc$type = "lncRNA"
+
+clin_conc = clinsig_cause_lnc[,c("combo", "combo_clin", "clin_concordance")]
+colnames(clin_conc)[ncol(clin_conc)] = "Concordance"
+clin_conc$type = "clin"
+
+combo_conc = clinsig_cause_lnc[,c("combo", "combo_clin", "concordance_combo_model")]
+colnames(combo_conc)[ncol(combo_conc)] = "Concordance"
+combo_conc$type = "combo"
+
+all = rbind(lnc_conc, clin_conc, combo_conc)
+
+all$combo_clin = factor(all$combo_clin, levels=unique(clinsig_cause_lnc$combo_clin))
+all$type = factor(all$type, levels=c("clin", "lncRNA", "combo"))
+
+pdf("summary_clinical_concordances_oct11.pdf", width=8, height=10)
+g <- ggplot(all, aes(combo_clin, Concordance))
+# Number of cars in each class:
+g + geom_col(position = "dodge", aes(fill = type)) + scale_fill_manual(values=mypal[c(1,4,3)], name="Predictor type",
+                       breaks=c("clin", "lncRNA", "combo"),
+                       labels=c("Clinical", "lncRNA", "Combined"))+
+theme_bw()+
+theme(axis.text.x = element_text(size=6, angle=45, hjust=1),
+          axis.text.y = element_text(size=5), legend.position="top") + xlab("lncRNA-Cancer-Clinical") + ylab("Concordance")+
+ coord_flip()
+dev.off()
+
+#try scatter plot
+
+
+pdf("summary_clinical_concordances_scatterplot_oct11.pdf",width=6, height=6)
+g = ggplot(clinsig_cause_lnc, aes(lnc_concordance, concordance_combo_model, label=combo_clin)) +
+ geom_point(aes(color=type, size=-log10(anova_both_vs_lnc)))+
+ #scale_size(range = c(0, 3))+
+    scale_colour_manual(values = mypal) + 
+    xlab("lncRNA Concordance") + ylab("lncRNA & Clinical Combined Concordance") + theme_bw() +
+    theme(legend.position = "top", axis.text = element_text(size=12), 
+      legend.text=element_text(size=10), legend.title=element_text(size=10)) +
+     xlim(0.5,1) + ylim(0.5,1) + geom_abline(intercept=0) + 
+     geom_text_repel(data = subset(clinsig_cause_lnc, combo_clin == "MAPT-AS1 BRCA PAM50.mRNA"), size=2, nudge_y = 0.1,
+      direction = "x",segment.color = "grey50",
+      segment.size = 0.05)
+     
+     #geom_text_repel(data = subset(prog_pcgs, lncConcordance > 0.7 | pcgConcordance > 0.65), size=2, nudge_y = 0.1,
+      #direction = "x",segment.color = "grey50",
+      #segment.size = 0.05)
+
+g
+dev.off()
+
+pdf("summary_clinical_concordances_vs_lnc_scatterplot_oct11.pdf", width=7, height=6)
+g = ggplot(clinsig_cause_lnc, aes(clin_concordance, concordance_combo_model, label=combo_clin)) +
+ geom_point(aes(color=type), size=4)+
+ #scale_size(range = c(0, 3))+
+    #scale_colour_manual(values = mypal[c(1,2,3,4,5,7)]) + 
+    xlab("Clinical Concordance") + ylab("lncRNA & Clinical Combined Concordance") + theme_bw() +
+    theme(legend.position = "top", axis.text = element_text(size=12), 
+      legend.text=element_text(size=10), legend.title=element_text(size=10)) +
+     xlim(0.5,1) + ylim(0.5,1) + geom_abline(intercept=0) + 
+     
+     geom_text_repel(data = subset(clinsig_cause_lnc, combo_clin == "HOXB-AS2 LGG TERT.promoter.status"), size=2, nudge_y = 0.1,
+      direction = "x",segment.color = "grey50",
+      segment.size = 1)
+g
+dev.off()
+
+clinsig_cause_lnc$imp_concord = (clinsig_cause_lnc$concordance_combo_model - clinsig_cause_lnc$clin_concordance)
+clinsig_cause_lnc = clinsig_cause_lnc[order(-better_than_clin,-imp_concord )]
+
+
+#make KM plot for TERT promoter status
+lgg = clin_data_lncs[[13]]
+lgg = lgg[,which(colnames(lgg) %in% c("patient", "ENSG00000239552", "OS", "OS.time", "TERT.promoter.status"))]
+med = median(lgg$ENSG00000239552)
+#median = 0
+lgg$med = ""
+lgg$med[which(lgg$ENSG00000239552 > 0)] = "High"
+lgg$med[which(lgg$ENSG00000239552 == 0)] = "Low"
+
+z = which(is.na(lgg$TERT.promoter.status))
+lgg = lgg[-z,]
+
+pdf("lgg_tert_vs_HOXBAS2_km_plots.pdf", width=9)
+
+lgg$OS = as.numeric(lgg$OS)
+  lgg$OS.time = as.numeric(lgg$OS.time)
+  lgg$OS.time = lgg$OS.time/365
+  lgg$med = factor(lgg$med, levels = c("Low","High"))
+  fit <- survfit(Surv(OS.time, OS) ~ med, data = lgg)
+          s <- ggsurvplot(
+          fit, 
+          xlab = "Time (Years)", 
+          surv.median.line = "hv",
+          font.main = c(16, "bold", "black"),
+          font.x = c(14, "plain", "black"),
+          font.y = c(14, "plain", "black"),
+          font.tickslab = c(14, "plain", "black"),
+          font.legend = 12,
+          risk.table.fontsize = 5, 
+          legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
+          data = lgg,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,10),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          palette = mypal[c(4,1)],
+          ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          print(s)
+
+  fit <- survfit(Surv(OS.time, OS) ~ TERT.promoter.status, data = lgg)
+          s <- ggsurvplot(
+          fit, 
+          xlab = "Time (Years)", 
+          surv.median.line = "hv",
+          font.main = c(16, "bold", "black"),
+          font.x = c(14, "plain", "black"),
+          font.y = c(14, "plain", "black"),
+          font.tickslab = c(14, "plain", "black"),
+          font.legend = 8,
+          risk.table.fontsize = 5, 
+          #legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
+          data = lgg,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,10),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          palette = mypal[c(4,1)],
+          ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          print(s)
+
+
+dev.off()
 
 
 

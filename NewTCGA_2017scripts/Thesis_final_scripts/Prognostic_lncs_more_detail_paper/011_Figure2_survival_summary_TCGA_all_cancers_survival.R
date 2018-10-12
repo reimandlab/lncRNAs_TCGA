@@ -257,7 +257,7 @@ all_cancers_genes_surv_comb$fdrsig = ""
 all_cancers_genes_surv_comb$fdrsig[all_cancers_genes_surv_comb$fdr < lineval] = "FDRnotSig"
 all_cancers_genes_surv_comb$fdrsig[all_cancers_genes_surv_comb$pval > lineval] = "Significant"
 all_cancers_genes_surv_comb$fdrsig[all_cancers_genes_surv_comb$pval < lineval] = "NotSignificant"
-all_cancers_genes_surv_comb$fdrsig[all_cancers_genes_surv_comb$fdr >= lineval] = "FDRsig"
+all_cancers_genes_surv_comb$fdrsig[all_cancers_genes_surv_comb$fdr >= lineval] = "Significant"
 #z = which((all_cancers_genes_surv_comb$fdr < lineval) & (all_cancers_genes_surv_comb$fdr > -log10(0.1)))
 #all_cancers_genes_surv_comb$fdrsig[z] = "FDR00.1"
 
@@ -383,8 +383,9 @@ dev.off()
 #get order of cancer types by total number of lncRNAs 
 order = as.data.table(table(all_cancers_genes_surv_comb$type, all_cancers_genes_surv_comb$fdrsig))
 order = as.data.table(dplyr::filter(order, N >0))
-order = as.data.table(dplyr::filter(order, V2 %in% c("Significant", "FDRsig")))
+order = as.data.table(dplyr::filter(order, V2 %in% c("Significant")))
 order = order[order(V2, -N)]
+
 order = unique(order$V1)
 
 summ = as.data.table(table(all_cancers_genes_surv_comb$type, all_cancers_genes_surv_comb$fdrsig,
@@ -395,13 +396,14 @@ summ = as.data.table(dplyr::filter(summ, N > 0))
 #barplot----summary
 #only include significant ones
 #how many significant favourable vs unfavourable 
-summ = as.data.table(dplyr::filter(summ, Sig %in% c("Significant", "FDRsig")))
+summ = as.data.table(dplyr::filter(summ, Sig %in% c("Significant")))
 
 #just sig
 summ = dplyr::filter(summ, N > 0)
 summ$Cancer = factor(summ$Cancer, levels = order)
 
 #pdf("Univariate_summary_28_Cancers_july9.pdf", width=10)
+pdf("fig1_summ_all_prognostic_lncs.pdf", width=9, height=7)
 part1 <- ggplot(data=summ, aes(x=Cancer, y=N, fill=Risk)) +
 geom_bar(stat="identity")+
   theme_bw() + coord_flip() +
@@ -409,7 +411,8 @@ geom_bar(stat="identity")+
 
 part1 = ggpar(part1, legend="none",
  font.xtickslab = c(8,"plain", "black"), ylab="Number of lncRNAs")
-#dev.off()
+part1
+dev.off()
 
 #just fdrsig
 summ = as.data.table(dplyr::filter(summ, Sig == "FDRsig"))

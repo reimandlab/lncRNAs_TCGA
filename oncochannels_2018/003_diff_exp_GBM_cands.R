@@ -1,153 +1,155 @@
-#008_AA_diff_Exp_pcgs_Aug21.R
+#42candidate_lncs_limma_diffCoexpression .R
 
-#------------------------------------------------------------------------------
-#Take each lncRNA candidate and conduct LIMMA diff exp between lncRNA
-#high and low risk groups
-#------------------------------------------------------------------------------
+#Karina Isaev
+#September 5th, 2017
 
-#source code
-source("check_lnc_exp_cancers.R")
-library(corrplot)
+#Purpose: using the top 5 cancers selected for analysis, 
+#run co-expression analysis with cancer type and sex? as confounders
+#to get list of co-expressed PCGs with NEAT1 to run through m:Explorer  
 
-#COSMIC cancer gene census
-census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
-#get ensg
-get_census_ensg = function(genes){
-  glist = unlist(strsplit(genes, ","))
-  z = which(str_detect(glist, "ENSG"))
-  ensg = glist[z]
-  return(ensg)
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#RNA files used here obtained from script: 
+#pcawg_analysis_July2017/top5_cancers_extraction_script3.R 
+##++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+#Preamble#-------------------------------------------------
+options(stringsAsFactors=F)
+source("universal_LASSO_survival_script.R")
+
+#Later on - incorporate FANTOM5 and CRISPRi lncRNAs 
+
+#Libraries#------------------------------------------------
+library(data.table)
+library(survival)
+library(ggplot2)
+library(ggfortify)
+library(cluster)
+library(qqman)
+library(dplyr)
+library(rafalib)
+library(RColorBrewer) 
+#library(genefilter)
+library(gplots) ##Available from CRAN
+library(survminer)
+library(MASS)
+library(Hmisc)
+library(gProfileR)
+library(wesanderson)
+library(ggsci)
+library(gridExtra)
+library(ggpubr)
+library(ggthemes)
+library(plyr)
+
+mypal = pal_npg("nrc", alpha = 0.7)(10)
+
+
+#Data#-------------------------------------------------
+
+#UCSC gene info
+ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
+z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
+ucsc <- ucsc[z,]
+z <- which(duplicated(ucsc[,6]))
+ucsc <- ucsc[-z,]
+
+#fantom 
+fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
+extract3 <- function(row){
+	gene <- as.character(row[[1]])
+	ens <- gsub("\\..*","",gene)
+	return(ens)
 }
-census$ensg = sapply(census$Synonyms, get_census_ensg)
+fantom[,1] <- apply(fantom[,1:2], 1, extract3)
+#remove duplicate gene names (gene names with multiple ensembl ids)
+z <- which(duplicated(fantom$CAT_geneName))
+rm <- fantom$CAT_geneName[z]
+z <- which(fantom$CAT_geneName %in% rm)
+fantom <- fantom[-z,]
 
-#HiC data 
-load("hic_data.rsav")
-#remove rownames
-rownames(hic_data) = c(1:nrow(hic_data))
+#split by cancer type 
 
-#------FEATURES-----------------------------------------------------
-
-allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
-allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
-
-val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
-val_cands = as.data.table(val_cands)
-val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
-val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
-val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
-
-#Combined into one dataframe because need to get ranks 
-all <- merge(rna, pcg, by = c("patient", "Cancer"))
-all = all[,1:25170]
-
-#------------------------------------------------------------------
-#Within each tissue type, rank lncRNAs by which percentile of 
-#expression they fall into to then compare with PCAWG lncRNAS exp
-#------------------------------------------------------------------
-
-#1. log1p
-z = which(str_detect(colnames(all), "ENSG"))	
-all[,z] <- log1p(all[,z])
+z = which(str_detect(colnames(pcg), "ENSG"))	
+pcg = as.data.frame(pcg)
+pcg[,z] <- log1p(pcg[,z])
 
 #2. Get lncRNA - median within each tissue type
-allCands$combo = paste(allCands$gene, allCands$cancer, sep="_")
-combos = unique(allCands$combo)
+tissues <- unique(pcg$type)
+tissues = tissues[which(tissues %in% c("LGG", "GBM"))]
 
-#3. Want ranking seperatley for high lncRNA expression group versus low lncRNA expression group
+#---------------------------------------------------------
+#Pre-Processing - set up lnc/PCG matrix for LM
 #---------------------------------------------------------
 #Function 1
-#for each lnc-cancer, label patient as lncRNA-risk or non-risk 
-#---------------------------------------------------------
+#input: tissue 
+#output: list of dataframes by tissue
+get_tissue_specific <- function(tissue){
+	tis <- pcg[pcg$type==tissue,]
+	return(tis)
+}
+tissues_data <- llply(tissues, get_tissue_specific, .progress="text")
 
-get_lnc_canc = function(comb){
-	lnc = unlist(strsplit(comb, "_"))[1]
-	canc = unlist(strsplit(comb, "_"))[2]
+#FUNCTION2 - get PCG data, complete dataset necessary for regression analysis  
 
-	canc_data = subset(all, Cancer == canc)
-	
-	z = which(colnames(canc_data) %in% c("patient", lnc))
-	lnc_dat = canc_data[,z]
-	med = median(as.numeric(lnc_dat[,2]))
-	if(med ==0){
-		z = which(lnc_dat[,2] > 0)
-		lnc_dat$lnc_tag = ""
-		lnc_dat$lnc_tag[z] = "high"
-		lnc_dat$lnc_tag[-z] = "low"
-	}
-	
-	if(!(med ==0)){
-		z = which(lnc_dat[,2] >= med)
-		lnc_dat$lnc_tag = ""
-		lnc_dat$lnc_tag[z] = "high"
-		lnc_dat$lnc_tag[-z] = "low"
-	}
+#genes to test
+
+get_ensg_pcg = function(pcg){
+  z = which(ucsc$hg19.ensemblToGeneName.value == pcg)
+  if(length(z)>1){
+    z = z[1]
+  }
+  return(ucsc$hg19.ensGene.name2[z])
+}
+
+genes_test = c("CATSPER1", "SCN9A", "AQP9", "KCNN4")
+genes_test = unlist(llply(genes_test, get_ensg_pcg))
+
+getPCGS <- function(df){
+	#add RCC1 state column
+
+	z = which(colnames(df) %in% c("patient", genes_test[[4]]))
+	rcc1 = df[,z]
+	med = median(as.numeric(rcc1[,2]))
+	z = which(rcc1[,2] >= med)
+	rcc1$rcc1_tag = ""
+	rcc1$rcc1_tag[z] = "high"
+	rcc1$rcc1_tag[-z] = "low"
 
 	#merge back with orgiinal dataframe
-	canc_data = merge(canc_data, lnc_dat, by=c("patient", lnc))
-
-	#keep only PCGs not lncRNAs 
-	pcgs_id = unique(colnames(pcg))
-	z = which(colnames(canc_data) %in% c(pcgs_id, colnames(lnc_dat)))
-	canc_data = canc_data[,z]
+	df = merge(df, rcc1, by=c("patient", genes_test[[4]]))
 
 	#Remove PCGs with median E < 5 FPKM 	
 	#get medians of all PCGs
-	z = which(str_detect(colnames(canc_data), "ENSG"))	
+	z = which(str_detect(colnames(df), "ENSG"))	
 
-	meds <- apply(canc_data[,z], 2, median)
+	meds <- apply(df[,z], 2, median)
 
 	#names of pcgs with median <5 
 	low <- names(meds[which(meds <(log1p(5)))]) 
-	z = which(low %in% lnc)
-	if(!(length(z) ==0)){
-		low = low[-z]
-	}
+	df <- df[,-(which(colnames(df) %in% low))] 
 
-	canc_data <- canc_data[,-(which(colnames(canc_data) %in% low))] 
+	return(df)
+}
 
-  		#cox ph
-  		z = which(allCands$combo == comb)
-  		HR = as.numeric(allCands$HR[z])
-  		
-  		if(HR <1){
-  			risk = "Low"
-  			canc_data$risk = ""
-  			canc_data$risk[canc_data$median=="High"] ="noRISK"
-  			canc_data$risk[canc_data$median=="Low"] ="RISK"
-  		}
-  		if(HR >1){
-  			risk = "High"
-  			canc_data$risk = ""
-  			canc_data$risk[canc_data$median=="High"] ="RISK"
-  			canc_data$risk[canc_data$median=="Low"] ="noRISK"
-  		}
+dividedWpcgs <- llply(tissues_data, getPCGS, .progress = "text")
+print("pass2")
 
-  		canc_data$lnc = lnc
-  		canc_data$canc = canc
-  		colnames(canc_data)[which(colnames(canc_data)==lnc)] = "lncRNA"
-
-  	return(canc_data)	
-	}#end function evaluate_each_lnc
-
-all_canc_lnc_data = llply(combos, get_lnc_canc, .progress="text")
-
-#---------------------------------------------------------
-#Function 2
-#wtihin each cancer 
-#calculate for each lncRNAs differentially expressed PCGs
-#---------------------------------------------------------
-
+#FUNCTION3 - limma differential expression between high and low lncRNA groups
 diffE <- function(d){
-	design <- model.matrix(~ 0 + factor(d$lnc_tag))
+	design <- model.matrix(~ 0 + factor(d$rcc1_tag))
 	colnames(design) <- c("high", "low")
 	rownames(d) <- d$patient
+	#remove rcc1 from matrix 
+
+	z = which(colnames(d) == genes_test[[4]])
+	d = d[,-z]
 
 	z = which(str_detect(colnames(d), "ENSG"))	
 	expression <- t(d[,z])
 
 	fit <- lmFit(expression, design)
-	cont.matrix <- makeContrasts(HighvsLow=high-low, levels=design)
+	cont.matrix <- makeContrasts(LowvsHigh=low-high, levels=design)
 	fit2 <- contrasts.fit(fit, cont.matrix)
 	fit2 <- eBayes(fit2)
 	ps <- fit2$p.value
@@ -155,153 +157,59 @@ diffE <- function(d){
 	#numGenes <- length(which(ps <= 0.05))
 
 	numGenes <- length(ps)
+
 	genes=rownames(expression)
-
     t <- topTable(fit2,coef=1,adjust.method="fdr",n=numGenes,p.value=1,genelist=genes)
+
+    if(dim(t)[1] > 10){
+
     #rank list of genes before making heatmap
-    t = as.data.table(t)
-	t$cancer = d$Cancer[1]
+    t <- as.data.table(t)
+    #first by adj p values then by decreasing FC
+    #t <- t[order(adj.P.Val)]
+    t <- t[order(-abs(as.numeric(logFC)))]
+    #t = filter(t, abs(logFC) >=2)
+    if(dim(t)[1] >= 5){
+
+    #save top gene names 
+    top <- c(paste(genes_test[[4]], d$type[1]), t$ID)
     
-	#dist of fold change
-	summary(t$logFC)
-	t$gene_name = llply(t$ID, get_name_pcg)
-	t$lnc = d$lnc[1]
+    print(paste("t before subset", dim(t)[1]))
+    
+    #generate volcano plot
+    point <- quantile(as.numeric(-log10(t$P.Value)),0.95)
+   
+	}
 
-    #plot fold changes
-    #p <- ggplot(t, aes(logFC, -log10(adj.P.Val)))
-	#print(p + geom_point(alpha = 0.55, color="lightcyan4") +
-	#geom_vline(xintercept=log(2), linetype="dashed", color = "red")+
-	#geom_vline(xintercept=log(0.5), linetype="dashed", color = "red")+
-	#geom_hline(yintercept=-log10(0.05), linetype="dashed", color = "gray40")+
-	#geom_text_repel(
-    #data = filter(t, -log10(adj.P.Val) > -log10(0.05) , abs(logFC) >= 2),
-    #aes(label=gene_name), size =2, 
-    #segment.size  = 0.2,
-    #segment.color = "grey50")+
-	#ggtitle(paste(d$Cancer[1], d$lnc[1], get_name(d$lnc[1]))))
+	t = as.data.frame(t) 
+	t$cancer = d$type[1]
 
-	#only include those with FC >2 or <2
-	t = as.data.table(filter(t, adj.P.Val <=0.05 & ((logFC <= log(0.5)) | (logFC >= log(2)))))
-
-    #if(dim(t)[1] <= 1){
-    #	t <- c(paste(d$lnc[1], d$canc[1]), "none")
-   	#}
-
+    if(dim(t)[1] <= 1){
+    	top <- c(paste(colnames(d)[6], d$canc[1]), "none")
+   	}
     return(t)   	
 }
+}
 
-#pdf("LGG_HOXA10_volcano_plot_Aug21.pdf")
-#diffE(all_canc_lnc_data[[2]])
-#dev.off()
 
-#pdf("volcano_plots_diffE_lncRNA_risks.pdf")
-diffEresults = llply(all_canc_lnc_data, diffE, .progress="text")
-#dev.off()
-
+diffEresults = llply(dividedWpcgs, diffE, .progress="text")
 diffEresults1 = ldply(diffEresults, data.frame)
-diffEresults1 = as.data.table(diffEresults1)
-saveRDS(diffEresults1, file="diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
 
-##########
-###DONE###
-##########
+saveRDS(diffEresults1, file=paste(genes_test[[4]], "diff_exp_results.rds", sep="_"))
 
-#--------------------------------------------------------------------------------------------------
-#-----------------------------------old analysis below---------------------------------------------
-#using linear regression with binary predictor 
-#--------------------------------------------------------------------------------------------------
 
-get_pcg_enrichment = function(dat){
-	lncs = unique(dat$lnc)
-	
-	get_pcgs_high = function(lncrna){
-		newdat = subset(dat, lnc == lncrna)
-		#which PCGs have higher expression in the high risk group
-		z = which(str_detect(colnames(newdat), "ENSG"))
-		meds = apply(newdat[,z], 2, median)
-		z = which(meds <= log1p(5))
-		rm = names(meds)[z]
-		z = which(colnames(newdat) %in% rm)
-		newdat = newdat[,-z]
+#FC > 1 means higher in low RCC1 group 
 
-		pcgs = colnames(newdat)[which(str_detect(colnames(newdat), "ENSG"))]
-		pcgs_exps = newdat[,c(pcgs)]
-		#medians = apply(pcgs_exps, 2, median)
-		#pcgs = names(medians[medians > 2])
-		print(length(pcgs))
-		#lnc_pcg_results = as.data.frame(matrix(ncol=5)) ; colnames(lnc_pcg_results) = c("lnc", "pcg", "canc", "mean_diff", "pvalue")
-		#pcgs = pcgs[1:10]
-		get_correlation = function(pcg){
-			p = pcg
-			z = which(colnames(newdat) %in% p)
-			lncpcg = newdat[,c(z, 1, (ncol(newdat)-4):ncol(newdat))]
-			colnames(lncpcg)[1] = "pcgExp"
-			order = c("RISK", "noRISK")
-			lncpcg$risk <- factor(lncpcg$risk, levels = order)
-			
-			fit <- lm(pcgExp ~ risk, data=lncpcg)
-			#get p-value and generate boxplot with wilcoxon p-value 
-			fit_pval = summary(fit)$coefficients[2,4]
-			#which group is it higher in? 
-			mean_diff = mean(lncpcg$pcgExp[lncpcg$risk == "RISK"]) - mean(lncpcg$pcgExp[lncpcg$risk == "noRISK"])
-			#if higher than 0 --> more expressed in risk group, less than 0 --> more expressed in low risk group
-			#g = ggboxplot(lncpcg, x = "risk", y="pcgExp", color="median", title=paste(lncpcg$lnc[1], p, lncpcg$canc[1]))
-			#g = g + stat_compare_means()
-			#print(g)
-			row = c(lncpcg$lnc[1], p, lncpcg$canc[1], mean_diff, fit_pval)
-			return(row)
-			#names(row) = colnames(lnc_pcg_results)
-			#lnc_pcg_results = rbind(lnc_pcg_results, row)
-		
-		}#end get_correlation function 
-		
-		pcgs_results = llply(pcgs, get_correlation, .progress="text")
-		pcgs_results1 = as.data.frame(do.call("rbind", pcgs_results))
-		colnames(pcgs_results1) = c("lnc", "pcg", "canc", "mean_diff", "pvalue")
-		return(pcgs_results1)
 
-	} #end get_pcgs_high function
-	
-	results_lncs = llply(lncs, get_pcgs_high, .progress="text")
-	results_lncs1 = as.data.frame(do.call("rbind", results_lncs))
-	#results for all lncRNA-PCG correlations in a single cancer type 
-	return(results_lncs1)
 
-}
 
-#all_canc_lnc_data = all_canc_lnc_data[1:2] ###TEST CASE -------------------------------------------------------------
-all_canc_lnc_data = llply(all_canc_lnc_data, get_pcg_enrichment, .progress="text")
 
-all_canc_lnc_data1 = as.data.frame(do.call("rbind", all_canc_lnc_data))
-z = which(all_canc_lnc_data1$lnc %in% cands_dups)
 
-if(!(length(z))==0){
-all_canc_lnc_data1$lnc[z] = paste(all_canc_lnc_data1$lnc[z], all_canc_lnc_data1$canc[z], sep="_")
-}
 
-saveRDS(all_canc_lnc_data1, file="all_results_for_each_cancer_from_coexpression_analysis_july19_allCands.rds")
 
-#For each cancer type, for each lncRNA ... 
-#Summarize #of PCGs upregulated in risk group and #of PCGs upregulated in non-risk group 
 
-#divide into high risk and low risk lncRNAs
-high_risk = subset(all_canc_lnc_data1, mean_diff >=1.5) #should set higher mean difference threshold?
-low_risk = subset(all_canc_lnc_data1, mean_diff <=0.75) #should set higher mean difference threshold? 
 
-library(reshape2)
 
-#pcgs enriched in high risk lncRNAs 
-high_risk_matrix = acast(high_risk, pcg ~ lnc, function(x) {sort(as.character(x))[1]},
-      value.var = 'pvalue', fill = 'na')
-
-#pcgs enriched in low risk lncRNAS
-low_risk_matrix = acast(low_risk, pcg ~ lnc, function(x) {sort(as.character(x))[1]},
-      value.var = 'pvalue', fill = 'na')
-
-#columns are lncRNAs and rows are PCGs
-
-saveRDS(high_risk_matrix, file="high_risk_matrix_lncRNA_candidates_June6.rds")
-saveRDS(low_risk_matrix, file="low_risk_matrix_lncRNA_candidates_June6.rds")
 
 
 
