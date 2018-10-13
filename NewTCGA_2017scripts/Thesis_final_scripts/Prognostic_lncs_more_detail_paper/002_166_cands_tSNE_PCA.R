@@ -103,6 +103,11 @@ for(i in 1:length(z)){
 }
 
 
+#assign color to variable 
+
+
+
+
 pdf("tSNE_28_cancers_oct1_all_lncs.pdf", width=9)
 ggplot(tsne_plot,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col)) + scale_colour_manual(values=mypal)+
 geom_text_repel(data = subset(tsne_plot, !(label == "no")))

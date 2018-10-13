@@ -26,7 +26,7 @@ cancer_data = canc_datas[z] #cancers list and canc_datas list should be the same
 
 get_canc_data = function(dtt){
   #get cancer specific candidates 
-  z = which(colnames(dtt) %in% c(as.character(allCands$gene[allCands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
+  z = which(colnames(dtt) %in% c(sample(fantom$CAT_geneID, 100), "age_at_initial_pathologic_diagnosis", 
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
     "new_tumor_event_type", "Cancer"))
   dtt = dtt[,z]
@@ -37,8 +37,8 @@ get_canc_data = function(dtt){
   for(y in 1:length(z)){
   	lnc = colnames(dtt)[z[y]]
   	#check 15 patients yes/no
-  	res = (get_num_pats(lnc, canc, exp_cut))
-  	print(res)
+  	#res = (get_num_pats(lnc, canc, exp_cut))
+  	#print(res)
   }
   return(dtt)
 }
@@ -360,13 +360,13 @@ run_cv = function(dtt){
 }#end function run_cv
 
 
-#all_cancers_results = llply(setup_data, run_cv, .progress="text")
-
-saveRDS(all_cancers_results, file="lncRNAs_100_internal_CVs_individual_cands_june19.rds")
+all_cancers_results = llply(setup_data, run_cv, .progress="text")
+saveRDS(all_cancers_results, file="lncRNAs_RANDOM_100_internal_CVs_individual_cands_june19.rds")
+print("DONE SIR, all good WOO")
 
 #get average and median c-index for each lncRNA clincial variabels per cancer type
 
-r = readRDS("lncRNAs_100_internal_CVs_individual_cands_june19.rds")
+r = readRDS("lncRNAs_RANDOM_100_internal_CVs_individual_cands_june19.rds")
 r = ldply(r)
 r = as.data.table(r)
 z = which(r$type == "lncRNA&clin")
@@ -392,6 +392,7 @@ lists = ldply(lists)
 lists = as.data.table(lists)
 z= which(str_detect(lists$lncRNA, "ENSG"))
 lists = lists[z,]
+
 
 
 

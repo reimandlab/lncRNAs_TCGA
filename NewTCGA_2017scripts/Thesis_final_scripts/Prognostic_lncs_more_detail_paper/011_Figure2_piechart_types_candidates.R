@@ -65,14 +65,17 @@ cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 z = which(duplicated(allCands$gene))
 allCands = allCands[-z,]
 
+order = c("lncRNA_antisense", "lncRNA_divergent", "lncRNA_intergenic", "lncRNA_sense_intronic")
+
 t = as.data.table(table(allCands$CAT_geneClass))
+t$V1 = factor(t$V1, levels = order)
 
 # Barplot
 bp<- ggplot(t, aes(x="", y=N, fill=V1))+
 geom_bar(width = 1, stat = "identity")
 
 pie <- bp + coord_polar("y", start=0)
-pie + scale_fill_manual(values=sample(mypal, 4)) +
+pie + scale_fill_manual(values = c("blue", "dimgrey", "red", "purple")) +
   theme(axis.text.x=element_blank())
 
 dev.off()

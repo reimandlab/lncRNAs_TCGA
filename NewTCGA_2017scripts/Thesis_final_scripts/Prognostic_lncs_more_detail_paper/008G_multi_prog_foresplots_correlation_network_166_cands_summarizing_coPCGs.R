@@ -344,14 +344,21 @@ prog_pcgs$cor[prog_pcgs$rho_fdr > 0.05] = "NS"
 prog_pcgs$rho_fdr[prog_pcgs$rho_fdr <0.0000000001] = 0.000001
 prog_pcgs$lnc_pcg = paste(prog_pcgs$lnc, prog_pcgs$pcg, prog_pcgs$type, sep="/")
 
+#add what kind of lncRNA it is
+prog_pcgs$type_lnc = ""
+for(i in 1:nrow(prog_pcgs)){
+  lnc = prog_pcgs$combo[i]
+  lnc_type = allCands$CAT_geneClass[which(allCands$combo == lnc)]
+  prog_pcgs$type_lnc[i] = lnc_type
+}
+
 
 pdf("figure2E_summary_lncs_pcgs_antisense.pdf", width=9,height=4)
 g = ggplot(prog_pcgs, aes(pcgConcordance, lncConcordance, label=lnc_pcg)) +
- geom_point(aes(color=cor, size=rho))+
- scale_size(range = c(0, 3))+
-    scale_colour_manual(values = c("blue", "dimgrey", "red")) + 
+ geom_point(aes(color=type_lnc, size=2))+
+    scale_colour_manual(values = c("blue", "dimgrey", "red", "purple")) + 
     xlab("Neighbour PCG Concordance") + ylab("lncRNA Concordance") + theme_bw() +
-    theme(legend.box = "horizontal", axis.text = element_text(size=12), 
+    theme(legend.box = "horizontal", axis.text = element_text(size=13), 
       legend.text=element_text(size=10), legend.title=element_text(size=10))+
      xlim(0.45,0.75) + ylim(0.45,0.75) + geom_abline(intercept=0) 
      
