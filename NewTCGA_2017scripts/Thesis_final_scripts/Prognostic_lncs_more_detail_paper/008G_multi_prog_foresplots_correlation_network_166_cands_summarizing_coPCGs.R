@@ -355,7 +355,7 @@ for(i in 1:nrow(prog_pcgs)){
 
 pdf("figure2E_summary_lncs_pcgs_antisense.pdf", width=9,height=4)
 g = ggplot(prog_pcgs, aes(pcgConcordance, lncConcordance, label=lnc_pcg)) +
- geom_point(aes(color=type_lnc, size=2))+
+ geom_point(aes(color=type_lnc, alpha=0.5))+
     scale_colour_manual(values = c("blue", "dimgrey", "red", "purple")) + 
     xlab("Neighbour PCG Concordance") + ylab("lncRNA Concordance") + theme_bw() +
     theme(legend.box = "horizontal", axis.text = element_text(size=13), 

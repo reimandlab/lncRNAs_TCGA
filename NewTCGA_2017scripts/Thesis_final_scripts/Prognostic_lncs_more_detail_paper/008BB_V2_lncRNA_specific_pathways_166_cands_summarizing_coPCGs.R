@@ -491,10 +491,11 @@ z = which(rownames(heat) %in% census$Gene.Symbol)
 rownames(heat)[z] = paste(rownames(heat)[z], "*")
 M<-cor(heat)
 library(corrplot)
+res1 <- cor.mtest(heat, conf.level = .95)
 corrplot(M, method="circle")
 col<- colorRampPalette(c("blue", "white", "red"))(20)
 pdf("liver_gluconeogenesis_pathway.pdf", width=11, height=5)
-corrplot(M, type="upper", order="hclust", col=col, tl.col="black", tl.srt=90, tl.cex=0.5)
+corrplot(M, type="upper", order="hclust", col=col, tl.col="black", tl.srt=90, tl.cex=0.5, p.mat = res1$p, insig = "blank")
 dev.off()
 
 

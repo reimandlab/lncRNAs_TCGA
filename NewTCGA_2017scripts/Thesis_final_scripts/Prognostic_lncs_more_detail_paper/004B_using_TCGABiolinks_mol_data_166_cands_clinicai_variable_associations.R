@@ -688,15 +688,15 @@ g = ggplot(clinsig_cause_lnc, aes(lnc_concordance, concordance_combo_model, labe
 g
 dev.off()
 
-pdf("summary_clinical_concordances_vs_lnc_scatterplot_oct11.pdf", width=7, height=6)
+pdf("summary_clinical_concordances_vs_lnc_scatterplot_oct11.pdf", width=6, height=6)
 g = ggplot(clinsig_cause_lnc, aes(clin_concordance, concordance_combo_model, label=combo_clin)) +
- geom_point(aes(color=type), size=4)+
+ geom_point(aes(color=type))+
  #scale_size(range = c(0, 3))+
-    #scale_colour_manual(values = mypal[c(1,2,3,4,5,7)]) + 
+    scale_colour_manual(values = sample(mypal, length(unique(clinsig_cause_lnc$type)))) + 
     xlab("Clinical Concordance") + ylab("lncRNA & Clinical Combined Concordance") + theme_bw() +
     theme(legend.position = "top", axis.text = element_text(size=12), 
       legend.text=element_text(size=10), legend.title=element_text(size=10)) +
-     xlim(0.5,1) + ylim(0.5,1) + geom_abline(intercept=0) + 
+     xlim(0.5,0.9) + ylim(0.5,0.9) + geom_abline(intercept=0) + 
      
      geom_text_repel(data = subset(clinsig_cause_lnc, combo_clin == "HOXB-AS2 LGG TERT.promoter.status"), size=2, nudge_y = 0.1,
       direction = "x",segment.color = "grey50",
