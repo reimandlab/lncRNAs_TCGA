@@ -410,23 +410,23 @@ get_clin_lnc_cors = function(dtt){
 } #end get_clin_lnc_cors
 
 #clin_data_lncs_cors = llply(clin_data_lncs, get_clin_lnc_cors)
-d1 = get_clin_lnc_cors(clin_data_lncs[[1]])
-d2 = get_clin_lnc_cors(clin_data_lncs[[2]])
-d3 = get_clin_lnc_cors(clin_data_lncs[[3]])
-d4 = get_clin_lnc_cors(clin_data_lncs[[4]])
-d5 = get_clin_lnc_cors(clin_data_lncs[[5]])
-d6 = get_clin_lnc_cors(clin_data_lncs[[6]])
-d7 = get_clin_lnc_cors(clin_data_lncs[[7]])
-d8 = get_clin_lnc_cors(clin_data_lncs[[8]])
-d9 = get_clin_lnc_cors(clin_data_lncs[[9]])
-d10 = get_clin_lnc_cors(clin_data_lncs[[10]]) #<------ this one didn't work
-d11 = get_clin_lnc_cors(clin_data_lncs[[11]])
-d12 = get_clin_lnc_cors(clin_data_lncs[[12]])
-d13 = get_clin_lnc_cors(clin_data_lncs[[13]])
-d14 = get_clin_lnc_cors(clin_data_lncs[[14]])
+#d1 = get_clin_lnc_cors(clin_data_lncs[[1]])
+#d2 = get_clin_lnc_cors(clin_data_lncs[[2]])
+#d3 = get_clin_lnc_cors(clin_data_lncs[[3]])
+#d4 = get_clin_lnc_cors(clin_data_lncs[[4]])
+#d5 = get_clin_lnc_cors(clin_data_lncs[[5]])
+#d6 = get_clin_lnc_cors(clin_data_lncs[[6]])
+#d7 = get_clin_lnc_cors(clin_data_lncs[[7]])
+#d8 = get_clin_lnc_cors(clin_data_lncs[[8]])
+#d9 = get_clin_lnc_cors(clin_data_lncs[[9]])
+#d10 = get_clin_lnc_cors(clin_data_lncs[[10]]) #<------ this one didn't work
+#d11 = get_clin_lnc_cors(clin_data_lncs[[11]])
+#d12 = get_clin_lnc_cors(clin_data_lncs[[12]])
+#d13 = get_clin_lnc_cors(clin_data_lncs[[13]])
+#d14 = get_clin_lnc_cors(clin_data_lncs[[14]])
 
-all_clin = list(d1, d2,d3,d4,d5,d6,d7,d8,d9,d11,d12,d13,d14)
-saveRDS(all_clin, file="13_data_sets_biolinks_results.rds")
+#all_clin = list(d1, d2,d3,d4,d5,d6,d7,d8,d9,d11,d12,d13,d14)
+#saveRDS(all_clin, file="13_data_sets_biolinks_results.rds")
 
 #--------FDR & Summarize Results-------------------------------------
 all_clin = readRDS("13_data_sets_biolinks_results.rds")
@@ -710,25 +710,58 @@ clinsig_cause_lnc = clinsig_cause_lnc[order(-better_than_clin,-imp_concord )]
 
 #make KM plot for TERT promoter status
 lgg = clin_data_lncs[[13]]
-lgg = lgg[,which(colnames(lgg) %in% c("patient", "ENSG00000239552", "OS", "OS.time", "TERT.promoter.status"))]
-med = median(lgg$ENSG00000239552)
+lgg = clin_data_lncs[[1]] #gbm
+
+lgg = lgg[,which(colnames(lgg) %in% c("patient", "ENSG00000240889", "OS", "OS.time", "IDH.status"))]
+med = median(lgg$ENSG00000240889)
 #median = 0
+if(med==0){
 lgg$med = ""
-lgg$med[which(lgg$ENSG00000239552 > 0)] = "High"
-lgg$med[which(lgg$ENSG00000239552 == 0)] = "Low"
+lgg$med[which(lgg$ENSG00000240889 > 0)] = "High"
+lgg$med[which(lgg$ENSG00000240889 == 0)] = "Low"
+}
+if(!(med==0)){
+lgg$med = ""
+lgg$med[which(lgg$ENSG00000240889 >= med)] = "High"
+lgg$med[which(lgg$ENSG00000240889 < med)] = "Low"
+}
 
-z = which(is.na(lgg$TERT.promoter.status))
-lgg = lgg[-z,]
+z = which(is.na(lgg$Original.Subtype))
+if(!(length(z)==0)){
+lgg = lgg[-z,]}
 
-pdf("lgg_tert_vs_HOXBAS2_km_plots.pdf", width=9)
+pdf("lgg_idh_status_vs_HOXBAS2_km_plots.pdf", width=9)
 
-lgg$OS = as.numeric(lgg$OS)
+  lgg$OS = as.numeric(lgg$OS)
   lgg$OS.time = as.numeric(lgg$OS.time)
   lgg$OS.time = lgg$OS.time/365
   lgg$med = factor(lgg$med, levels = c("Low","High"))
+
+    ####
+    #anova between two survival models 
+    ####
+
+    #lnc model
+    lnc_model = coxph(Surv(OS.time, OS) ~ med, data = lgg)
+    hr_lnc = round(summary(lnc_model)$coefficients[2], digits=3)
+
+    #idh model
+    idh_model = coxph(Surv(OS.time, OS) ~ IDH.status, data = lgg)
+    hr_idh = round(summary(idh_model)$coefficients[2], digits=3)
+
+    #lnc + idh model
+    both = coxph(Surv(OS.time, OS) ~ med + IDH.status, data = lgg)
+
+    #lnc vs both
+    lnc_vs_both = anova(lnc_model, both)[2,4]
+
+    #idh vs both
+    idh_vs_both = anova(idh_model, both)[2,4]
+
   fit <- survfit(Surv(OS.time, OS) ~ med, data = lgg)
           s <- ggsurvplot(
           fit, 
+          title = paste("Hazard Ratio =", hr_lnc),
           xlab = "Time (Years)", 
           surv.median.line = "hv",
           font.main = c(16, "bold", "black"),
@@ -756,9 +789,10 @@ lgg$OS = as.numeric(lgg$OS)
           )
           print(s)
 
-  fit <- survfit(Surv(OS.time, OS) ~ TERT.promoter.status, data = lgg)
+  fit <- survfit(Surv(OS.time, OS) ~ IDH.status, data = lgg)
           s <- ggsurvplot(
           fit, 
+          title = paste("Hazard Ratio =", hr_idh),
           xlab = "Time (Years)", 
           surv.median.line = "hv",
           font.main = c(16, "bold", "black"),
@@ -785,6 +819,63 @@ lgg$OS = as.numeric(lgg$OS)
                             # in legend of risk table
           )
           print(s)
+
+   fit <- survfit(Surv(OS.time, OS) ~ med + IDH.status, data = lgg)
+          s <- ggsurvplot(
+          fit, 
+          title=paste("anova, IDH model vs IDH + lncRNA model = " , idh_vs_both), 
+          xlab = "Time (Years)", 
+          surv.median.line = "hv",
+          font.main = c(16, "bold", "black"),
+          font.x = c(14, "plain", "black"),
+          font.y = c(14, "plain", "black"),
+          font.tickslab = c(14, "plain", "black"),
+          font.legend = 8,
+          risk.table.fontsize = 5, 
+          #legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
+          data = lgg,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,10),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          palette = mypal[c(4,1,2,3)],
+          ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          print(s)
+
+
+    ####
+    #fisher's test
+    ####
+
+    t = table(lgg$med, lgg$IDH.status)
+    fishers_pval = fisher.test(t)$p.value  
+
+    ####
+    #boxplot showing difference in expression between
+    #high exp - IDH WT, high exp - IDH mut, low exp - IDH WT, low exp - IDH mut 
+    ####
+    lgg$ENSG00000253187 = log1p(lgg$ENSG00000253187)
+    lgg$combo = paste(lgg$med, lgg$IDH.status, sep="_")
+    lgg$combo = factor(lgg$combo, levels = c("Low_Mutant", "Low_WT", "High_Mutant", "High_WT"))
+          p <- ggboxplot(lgg, x = "combo", y = "ENSG00000239552",
+          color = "combo", title = paste("fisher's p-val = ", fishers_pval),
+          add = "jitter", ylab = "lncRNA exp log1p(FPKM-UQ)",  ggtheme = theme_bw()) +
+          stat_compare_means() + geom_hline(yintercept=med, linetype="dashed", color = "red") + 
+          stat_n_text(size=5)
+
+        p = ggpar(p,
+          font.xtickslab = c(14,"plain", "black"),font.tickslab=c(14,"plain", "black"), 
+          xtickslab.rt = 55, legend="none")
+        print(p)
 
 
 dev.off()

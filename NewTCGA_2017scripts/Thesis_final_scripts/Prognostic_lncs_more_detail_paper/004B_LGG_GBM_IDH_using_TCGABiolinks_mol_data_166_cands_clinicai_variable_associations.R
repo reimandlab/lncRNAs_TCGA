@@ -15,8 +15,6 @@ lgg = as.data.table(filter(lgg, colname == col))
 #add name 
 lgg$name = unlist(llply(lgg$lnc, get_name))
 
-
-
 #get IDH variables - GBM
 
 z = unique(gbm$colname[which(str_detect(gbm$colname, 'IDH'))])
