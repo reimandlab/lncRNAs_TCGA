@@ -69,7 +69,7 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June1
 t = as.data.table(filter(allCands, data == "TCGA"))
 p = as.data.table(filter(allCands, data == "PCAWG"))
 p$num_risk = as.numeric(p$num_risk)
-p = as.data.table(filter(p, num_risk >= 5)) #--> 57
+p = as.data.table(filter(p, num_risk >= 5)) #--> 44 (LUSC excluded bc was actually all patients in pcawg)
 
 allCands = rbind(t,p)
 
@@ -85,7 +85,7 @@ p$perc_type[(p$perc_risk==0.5)] = "bal"
 colnames(p)[23] = "pcawg_perc_type"
 colnames(p)[3] = "pcawg_hr"
 
-p = as.data.table(filter(p, pval <= 0.25))
+#p = as.data.table(filter(p, pval <= 0.25))
 
 t = as.data.table(filter(t, combo %in% p$combo))
 t$perc_risk = as.numeric(t$perc_risk)
@@ -116,16 +116,20 @@ mypal = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
 "#DE8D54" ,"#DF4FA6")
 
 
-pdf("summary_PCAWG_TCGA_HR_correlation_all_p<0.5.pdf", height=5, width=6)
+pdf("summary_PCAWG_TCGA_HR_correlation_all_p_all_44_lncs.pdf", height=5, width=6)
 g = ggscatter(tp, x = "HR", y = "pcawg_hr", 
-   color = "black", shape = 21, size = 2, # Points color, shape and size
+   color = "black", fill="type", shape = 21, size = 2, # Points color, shape and size
    add = "reg.line",  # Add regressin line
    add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
-   conf.int = TRUE, # Add confidence interval
+   #conf.int = TRUE, # Add confidence interval
    cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
-   cor.coeff.args = list(method = "spearman", label.sep = "\n")
-   ) + geom_label_repel(aes(label=CAT_geneName, color=type), size=2) 
-ggpar(g, legend="bottom") + xlab("TCGA Hazard Ratio") + ylab("PCAWG Hazard Ratio")
+   cor.coeff.args = list(method = "pearson", label.sep = "\n")
+   ) + geom_label_repel(data=subset(tp, pval.y <= 0.05), aes(label=CAT_geneName), size=2)+
+   scale_fill_manual(values = sample(mypal, 10)) 
+ggpar(g, legend="bottom") + xlab("TCGA Hazard Ratio") + ylab("PCAWG Hazard Ratio")+
+geom_hline(yintercept=0, linetype="dashed", color = "black")+
+geom_vline(xintercept=0, linetype="dashed", color = "black")
+
 
 dev.off()
 

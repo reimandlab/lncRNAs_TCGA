@@ -107,6 +107,20 @@ g = ggplot(exp_data, aes(x=ENSG00000189298, y=ENSG00000141510, color=SMTS)) +
 ggpar(g, legend.title="Tissue")
 dev.off()
 
+pdf("tp53_zkscan3_all_gtex_samples_point_rast.pdf")
+g = ggplot(exp_data, aes(x=ENSG00000141510, y=ENSG00000189298, color=SMTS)) +
+  #geom_point(alpha=0.5, size=2, shape=21) + 
+  geom_point_rast(alpha=0.5, size=2, shape=21)+
+  geom_smooth(method=lm, se=FALSE)+
+   scale_color_manual(values = cc2color) + 
+   scale_x_continuous("TP53 expression (log)") +
+        scale_y_continuous("ZKSCAN3 expression (log)") + theme_bw() +
+        ggtitle(paste0("Correlated expression of TP53 and ZKSCAN3\n",
+                        "p_lm=", "< 2e-16", "; coef_lm=", signif(tidy(lm_model1)[2,2])))
+
+ggpar(g, legend.title="Tissue")
+dev.off()
+
 
 ###-------Correlation plot NEAT1 and MALAT1 all tissues combined-------------
 

@@ -99,13 +99,14 @@ for(i in 1:length(unique(results$Cancer))){
 	#add labels = median increase in c-index 
 	clinc_median = median(canc_data$cindex[canc_data$lncRNA %in%"Clinical"])
 	#lncRNAs meds
-	meds$diff = round(((meds$Median/clinc_median)-1)*100, digits=2)
+	#meds$diff = round(((meds$Median/clinc_median)-1)*100, digits=2)
+	meds$diff = meds$Median - clinc_median
 	row = c("Clinical", clinc_median, round(clinc_median, digits=2))
 	names(row) = c("lncRNA", "Median", "diff")
 	row = t(as.data.frame(row))
 	#meds = as.data.frame(meds)
 	meds = rbind(row, meds)
-	meds$Median = as.numeric(meds$Median)
+	meds$Median = round(as.numeric(meds$Median), digits=3)
 
 	canc_data = merge(canc_data, meds, by="lncRNA")
 	#meds = unique(canc_data$diff)
@@ -168,7 +169,7 @@ head(all_meds)
 all_meds = all_meds[-1,]
 all_meds = as.data.table(all_meds)
 all_meds$diff = as.numeric(all_meds$diff)
-all_meds = filter(all_meds, diff >=5)
+#all_meds = filter(all_meds, diff >=5)
 
 #how many of these significant in multivaraite models
 all_meds = as.data.table(all_meds)
