@@ -5,6 +5,7 @@
 ###---------------------------------------------------------------
 
 source("source_file.R")
+library(ggrastr)
 
 ###---------------------------------------------------------------
 ###Load Data 
@@ -81,25 +82,28 @@ lm_model1 = lm(exp_data$ENSG00000141510 ~  exp_data$ENSG00000189298 + exp_data$S
 anova(lm_model1, lm_model1)
 
 pdf("zkscan3_tp53_all_gtex_samples_juris_code.pdf")
-ggplot(exp_data, aes(ENSG00000189298, ENSG00000141510, fill=SMTS)) +
+ggplot(exp_data, aes(ENSG00000189298, ENSG00000141510, fill=SMTS, color=SMTS)) +
         geom_smooth(method='lm', aes(color=SMTS), se=F) +
-        geom_point(alpha=0.5, size=2, shape=21) +
+        #geom_point(alpha=0.5, size=2, shape=21) +
         scale_x_continuous("ZKSCAN3 expression (log)") +
         scale_y_continuous("TP53 expression (log)") +
         ggtitle(paste0("Correlated expression of ZKSCAN3 and TP53\n",
                         "p_lm=", "< 2e-16", "; coef_lm=", signif(tidy(lm_model1)[2,2]))) +
-        theme_bw()
+        theme_bw()+
+        geom_point_rast(alpha=0.5)
 dev.off()
 
-pdf("zkscan3_tp53_all_gtex_samples.pdf")
+pdf("zkscan3_tp53_all_gtex_samples_point_rast.pdf")
 g = ggplot(exp_data, aes(x=ENSG00000189298, y=ENSG00000141510, color=SMTS)) +
-  geom_point(alpha=0.5, size=2, shape=21) + 
+  #geom_point(alpha=0.5, size=2, shape=21) + 
+  geom_point_rast(alpha=0.5, size=2, shape=21)+
   geom_smooth(method=lm, se=FALSE)+
    scale_color_manual(values = cc2color) + 
    scale_x_continuous("ZKSCAN3 expression (log)") +
         scale_y_continuous("TP53 expression (log)") + theme_bw() +
         ggtitle(paste0("Correlated expression of ZKSCAN3 and TP53\n",
                         "p_lm=", "< 2e-16", "; coef_lm=", signif(tidy(lm_model1)[2,2])))
+
 ggpar(g, legend.title="Tissue")
 dev.off()
 
@@ -133,9 +137,10 @@ ggplot(exp_data, aes(ENSG00000245532, ENSG00000251562, fill=SMTS)) +
         theme_bw()
 dev.off()
 
-pdf("neat1_malat1_all_gtex_samples.pdf")
+pdf("neat1_malat1_all_gtex_samples_point_rast.pdf")
 g = ggplot(exp_data, aes(x=ENSG00000245532, y=ENSG00000251562, color=SMTS)) +
-  geom_point(alpha=0.5, size=2, shape=21) + 
+  #geom_point(alpha=0.5, size=2, shape=21) + 
+  geom_point_rast(alpha=0.5, size=2, shape=21)+
   geom_smooth(method=lm, se=FALSE)+
   scale_color_manual(values = cc2color) + 
    scale_x_continuous("NEAT1 expression (log)") +

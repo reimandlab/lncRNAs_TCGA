@@ -85,7 +85,7 @@ p$perc_type[(p$perc_risk==0.5)] = "bal"
 colnames(p)[23] = "pcawg_perc_type"
 colnames(p)[3] = "pcawg_hr"
 
-p = as.data.table(filter(p, pval <= 0.5))
+p = as.data.table(filter(p, pval <= 0.25))
 
 t = as.data.table(filter(t, combo %in% p$combo))
 t$perc_risk = as.numeric(t$perc_risk)
