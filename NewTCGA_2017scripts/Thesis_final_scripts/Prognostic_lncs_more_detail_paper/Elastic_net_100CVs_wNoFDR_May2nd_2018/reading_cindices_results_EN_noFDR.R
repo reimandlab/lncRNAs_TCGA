@@ -135,7 +135,10 @@ wil = ldply(wil)
 wil = as.data.table(wil)
 colnames(wil)[2] = "pval"
 wil = wil[order(pval, -med_lnc)]
-wil_sig = filter(wil, pval <= 0.05)
+
+#wil_sig = filter(wil, pval <= 0.05)
+wil_sig = wil
+
 wil_sig$imp = round(wil_sig$imp, digits=2)
 wil_sig = as.data.table(wil_sig)
 wil_sig = wil_sig[order(med_lnc)]
@@ -173,7 +176,10 @@ res = res[-which(res$TYPE %in% canc_rm),]
 
 #-----------final plot figure 2D-------------------------------------------------------------------------------------- 
 
-pdf("cindices_results_elastic_net_100CVs_No_FDR_cancers_Sept28_nofacet_horizontal_boxplots.pdf", width=7, height=7)
+#pdf("cindices_results_elastic_net_100CVs_No_FDR_cancers_Sept28_nofacet_horizontal_boxplots.pdf", width=7, height=7)
+
+pdf("all_100_CV_cindicies_vs_clinical_elastic_net.pdf", width=7, height=9)
+
 g = ggplot(res, aes(TYPE, cindex)) + 
 geom_boxplot(aes(fill = type), color="black", outlier.size = 0.01) + theme_bw() + xlab("Cancer Type") + ylab("C-index") +
 stat_compare_means(aes(group = type), label = "p.signif") + 

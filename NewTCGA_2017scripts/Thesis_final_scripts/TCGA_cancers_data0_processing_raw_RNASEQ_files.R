@@ -21,6 +21,9 @@ ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
 
 #2. TCGA Tumour Codes Table
 tss_codes = read.csv(" TCGA_TissueSourceSite_Codes2017 .csv"     )
+tss_codes$TSS.Code[tss_codes$TSS.Code == "2"] = "02"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "6"] = "06"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "8"] = "08"
 
 #3. TCGA new clinical file - downloaded previously 
 #clin = read.csv("all_clin_XML_tcgaSept2017.csv")
@@ -129,9 +132,12 @@ normals_keep[,4] = apply(normals_keep, 1, clean_tcga_id)
 #remove those patients already used in PCAWG
 ids_remove = unique(clin$bcr_patient_barcode[which(clin$bcr_patient_barcode %in% ids_remove$bcr_patient_barcode)]) 
 z = which(cancers_keep$id %in% ids_remove)
+external_dataset = cancers_keep[z,]
 cancers_keep = cancers_keep[-z,]
+
 z = which(normals_keep$id %in% ids_remove)
 normals_keep = normals_keep[-z,]
+
 z = which(metastatic_keep$id %in% ids_remove)
 metastatic_keep = metastatic_keep[-z,]
 
@@ -141,15 +147,21 @@ z <- which(cancers_keep$id %in% dups$id)
 cancers_keep = cancers_keep[-z,] #7564 unique TCGA tumour IDs 
 z <- which(normals_keep$id %in% dups$id)
 normals_keep = normals_keep[-z,] #563 unique TCGA normal IDs 
+z = which(external_dataset$id %in% dups$id)
 
 table(cancers_keep$Cancer)
+table(external_dataset$Cancer)
 
 z = which(cancers_keep$Cancer == "") #remove those patients with no cancer type
 cancers_keep = cancers_keep[-z,] #7501 samples in total with both RNA_Sequencing and clinical data 
 
+z = which(external_dataset$Cancer == "") #remove those patients with no cancer type
+external_dataset = external_dataset[-z,] #7501 samples in total with both RNA_Sequencing and clinical data 
+
 saveRDS(cancers_keep, file="tcga_id_cancer_type_conversion.txt")
 saveRDS(normals_keep, file="tcga_id_NORMAL_samples_type_conversion.txt")
 saveRDS(metastatic_keep, file="tcga_id_Metastatic_samples_type_conversion.txt")
+saveRDS(external_dataset, file="tcga_id_external_samples_type_conversion.txt")
 
 #3. Subset RNA file 
 z <- which(colnames(rna) %in% normals_keep$TCGA_id)
@@ -159,6 +171,9 @@ norm = norm[,c(z,ncol(norm))]
 z <- which(colnames(rna) %in% metastatic_keep$TCGA_id)
 rna = as.data.frame(rna)
 met = rna[,c(z,ncol(rna))]
+
+z <- which(colnames(rna) %in% external_dataset$TCGA_id)
+external_data = rna[,c(z,ncol(rna))]
 
 z <- which(colnames(rna) %in% cancers_keep$TCGA_id)
 rna = rna[,c(z,ncol(rna))]
@@ -175,6 +190,8 @@ saveRDS(pcg_rna, "54564_PCGs_all_tumours_7501_tissues_TCGAnew.rds")
 #4. normal patients --> lncRNA and pcg data 
 saveRDS(norm, "all_genes_563_matched_normal_samples_TCGA_April11.rds")
 saveRDS(met, "all_genes_354_matched_metastatic_tumours_TCGA_april.rds")
+
+saveRDS(external_data, "external_data_set_pcawg_patients_all_tumours_7501_tissues_TCGAnew.rds")
 
 
 

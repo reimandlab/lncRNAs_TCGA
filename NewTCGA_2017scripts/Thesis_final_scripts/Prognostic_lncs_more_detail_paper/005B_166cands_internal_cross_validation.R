@@ -146,11 +146,11 @@ cisums_results$combo = paste(cisums_results$lncRNA, cisums_results$Cancer, sep="
 
 #112 unique combos that are robust 
 #109 unique lncRNAs 
-saveRDS(cisums_results, file="112_combos_robust_internal_validation_survival_lncRNAs_aug8.rds")
+saveRDS(cisums_results, file="173_combos_robust_internal_validation_survival_lncRNAs_aug8.rds")
 
 #all cindices for all robust lncRNAs
 all_canc_data_robust = all_canc_data_robust[-1,]
-saveRDS(all_canc_data_robust, file="112_cindicies_combos_robust_internal_validation_survival_lncRNAs_aug8.rds")
+saveRDS(all_canc_data_robust, file="173_cindicies_combos_robust_internal_validation_survival_lncRNAs_aug8.rds")
 
 #summary
 results_lncs = results_lncs[-1,]
@@ -163,7 +163,7 @@ results_lncs = results_lncs[order(NumHigherthan5percent)]
 #how many of the lncRNAs with greater c-index also remain significant when fitting multivariate models
 multi = readRDS("TCGA_results_multivariate_results_June22.rds")
 multi = as.data.table(multi)
-multi = filter(multi, fdr_pval <0.05)
+#multi = filter(multi, fdr_pval <0.05)
 
 head(all_meds)
 all_meds = all_meds[-1,]
@@ -178,7 +178,8 @@ all_meds$combo = paste(all_meds$lncRNA, all_meds$Cancer, sep="_")
 #merge confidence interval and % median c-index increase 
 all_meds = merge(all_meds, cisums_results, by=c("lncRNA", "Cancer", "combo")
 all_meds = as.data.table(all_meds)
-saveRDS(all_meds, file="148_combos_robust_5perc_increase_internal_validation_survival_lncRNAs_aug9.rds")
+all_meds = all_meds[order(-diff)]
+saveRDS(all_meds, file="173_combos_robust_5perc_increase_internal_validation_survival_lncRNAs_aug9.rds")
 
 
 
