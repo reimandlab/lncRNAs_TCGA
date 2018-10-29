@@ -9,6 +9,110 @@ col = "IDH.status"
 
 lgg = as.data.table(filter(lgg, colname == col))
 
+#hox genes 
+ g=subset(allCands, cancer== "Glioblastoma multiforme")
+ g=g[1,1]
+
+#plot their expression in gbm 
+library(TCGAbiolinks)
+gbm_subtype <- TCGAquery_subtype(tumor = "lgg")
+
+pdf("lncRNA_cands_fromGBM_inLGG.pdf")
+for(i in 1:length(g$gene)){
+    gene=g[i]
+    gene=unlist(gene)
+    exp = which(colnames(all) %in% c(gene, "type", "patient", "OS", "OS.time", "age_at_initial_pathologic_diagnosis.y", "gender.y"))
+    exp = all[,exp]
+    exp = subset(exp, type=="LGG")
+    #which have IDH mutation 
+    z = which(exp$patient %in% gbm_subtype$patient)
+    exp = exp[z,]
+    z = which(str_detect(colnames(gbm_subtype), "IDH.status"))
+    z1=which(colnames(gbm_subtype) %in% "patient")
+    gbm_subtype = gbm_subtype[,c(z,z1)]
+    exp=merge(exp, gbm_subtype, by = "patient")
+    med = median(exp[,5])
+    z=which(exp[,5] >= med)
+    exp$tag = ""
+    exp$tag[z] = "High"
+    exp$tag[-z] = "Low"
+    colnames(exp)[5] = "gene_exp"
+    exp[,5] = log1p(exp[,5]) 
+    exp$combo = paste(exp$tag, exp$IDH.status, sep="_")
+    exp$combo = factor(exp$combo, levels = c("Low_Mutant", "Low_WT", "High_Mutant", "High_WT"))
+    z = which(is.na(exp$IDH.status))
+    if(!(length(z)==0)){
+        exp = exp[-z,]
+    }
+
+    p <- ggboxplot(exp, x = "combo", y = "gene_exp",
+          color = "combo", title = paste(get_name(gene), "Expression in LGG"),
+          add = "jitter", ylab = "lncRNA exp log1p(FPKM-UQ)",  ggtheme = theme_bw()) +
+          stat_compare_means() + geom_hline(yintercept=log1p(med), linetype="dashed", color = "red") + 
+          stat_n_text(size=5)
+
+        p = ggpar(p,
+          font.xtickslab = c(14,"plain", "black"),font.tickslab=c(14,"plain", "black"), 
+          xtickslab.rt = 55, legend="none")
+        print(p)
+    
+    exp$OS = as.numeric(exp$OS)
+    exp$OS.time = as.numeric(exp$OS.time)
+    exp$OS.time = exp$OS.time/365
+    exp$tag = factor(exp$tag, levels = c("Low","High"))
+    
+    #lnc model
+    lnc_model = coxph(Surv(OS.time, OS) ~ tag, data = exp)
+    hr_lnc = round(summary(lnc_model)$coefficients[2], digits=3)
+
+    #idh model
+    idh_model = coxph(Surv(OS.time, OS) ~ IDH.status, data = exp)
+    hr_idh = round(summary(idh_model)$coefficients[2], digits=3)
+
+    #lnc + idh model
+    both = coxph(Surv(OS.time, OS) ~ tag + IDH.status, data = exp)
+
+    #lnc vs both
+    lnc_vs_both = anova(lnc_model, both)[2,4]
+
+    #idh vs both
+    idh_vs_both = anova(idh_model, both)[2,4]
+
+
+    fit <- survfit(Surv(OS.time, OS) ~ tag + IDH.status, data = exp)
+          s <- ggsurvplot(
+          fit, 
+          title=paste(get_name(gene), "Expression in LGG"), 
+          xlab = "Time (Years)", 
+          surv.median.line = "hv",
+          font.main = c(16, "bold", "black"),
+          font.x = c(14, "plain", "black"),
+          font.y = c(14, "plain", "black"),
+          font.tickslab = c(14, "plain", "black"),
+          font.legend = 8,
+          risk.table.fontsize = 5, 
+          #legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
+          data = exp,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,10),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          palette = mypal[c(4,1,2,3)],
+          ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          print(s)
+}
+dev.off()
+
+
 #all 9 lncRNAs are associated with IDH status and the model with both predictors
 #is stronger than either one alone 
 
@@ -21,7 +125,6 @@ z = unique(gbm$colname[which(str_detect(gbm$colname, 'IDH'))])
 col = "IDH.specific.DNA.Methylation.Cluster"
 
 gbm = as.data.table(filter(gbm, colname == col))
-
 
 dtt = clin_data_lncs[[13]]
 

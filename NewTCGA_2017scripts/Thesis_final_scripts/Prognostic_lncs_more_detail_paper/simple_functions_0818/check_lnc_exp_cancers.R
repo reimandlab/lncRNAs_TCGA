@@ -25,6 +25,7 @@ library(patchwork)
 library(caret)  
 library(Rtsne)
 library(data.table)
+library(mixtools)
 
 #------DATA---------------------------------------------------------
 #UCSC gene info
@@ -75,6 +76,13 @@ pcg_lnc$lnc_stat = ""
 pcg_lnc$lnc_stat[which(pcg_lnc$HR < 0)] = "Favourable"
 pcg_lnc$lnc_stat[which(pcg_lnc$HR > 0)] = "Unfavourable"
 
+mypal5 = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
+  "#72A93B", "#74DAE3" ,"#49B98D" ,"#D97B8F" ,"#70A2A4", "#64709B" ,"#DFBF38" ,"#61EA4F" ,
+  "#C7CBE7", "#786DDA",
+"#CFA0E0" ,"#67E9D0" ,"#7C9BE1", "#D94753" ,
+"#AAE6B0", "#D13BDF" ,"#DEAEC7" ,"#BBE6DF" ,"#B2B47A" ,"#E6ECBA", "#C86ED7",
+ "#7BEE95" ,"#6F46E6" ,"#65B9E0", "#C0EC3E",
+"#DE8D54" ,"#DF4FA6")
 
 #------FUNCTIONS----------------------------------------------------
 
@@ -86,14 +94,30 @@ pcg_lnc$lnc_stat[which(pcg_lnc$HR > 0)] = "Unfavourable"
 #input: GeneName
 #output: GeneID 
 
+get_name_pcg = function(pcg){
+	z = which(ucsc$hg19.ensGene.name2 == pcg)
+  if(length(z)>1){
+    z = z[1]
+  }
+	return(ucsc$hg19.ensemblToGeneName.value[z])
+}
+
+get_ensg_pcg = function(pcg){
+  z = which(ucsc$hg19.ensemblToGeneName.value == pcg)
+  if(length(z)>1){
+    z = z[1]
+  }
+  return(ucsc$hg19.ensGene.name2[z])
+}
+
 get_ensg = function(lnc){
-	z = which(fantom$CAT_geneName == lnc)
-	return(fantom$CAT_geneID[z])
+  z = which(fantom$CAT_geneName == lnc)
+  return(fantom$CAT_geneID[z])
 }
 
 get_name = function(ensg){
-    z = which(ucsc$hg19.ensGene.name2 == ensg)
-    return(ucsc$hg19.ensemblToGeneName.value[z][1])
+    z = which(fantom$CAT_geneID == ensg)
+    return(fantom$CAT_geneName[z][1])
 }
 
 #######
@@ -105,6 +129,7 @@ get_name = function(ensg){
 #output: boxplot of expression across cancer types
 
 #test case: pca3 - ENSG00000225937
+#mypal = readRDS("best_pal.rds")
 
 get_exp_plots = function(lnc){
 	dat = rna[,which(colnames(rna) %in% c("type", lnc))]
@@ -115,52 +140,144 @@ get_exp_plots = function(lnc){
 
 	#get order of cancer types by median 
 	sum = as.data.table(dat %>% dplyr::group_by(type) %>% 
-		dplyr::summarize(median=median(lncRNAExp)))
+		dplyr::summarize(median=quantile(lncRNAExp, 0.75)))
 	sum = sum[order(median)]
 
 	dat$type = factor(dat$type, levels=unique(sum$type))
 	#p = ggboxplot(dat, x="type", y = "lncRNAExp", title=lnc, error.plot = "linerange")+
 	#rotate_x_text(45)
 	
-	#try density
-	p = ggdensity(dat, x = "lncRNAExp", title=paste(lnc, get_name(lnc)), color="type")+
+	#try density plot
+	p = ggdensity(dat, x = "lncRNAExp", title=paste(lnc, get_name(lnc)), color="type", palette=mypal5)+
   xlab("log1p(FPKM)")
 	print(p)
 	print("done plot")
+
+}
+
+
+get_num_peaks_den = function(lnc){
+  dat = rna[,which(colnames(rna) %in% c("type", lnc))]
+  colnames(dat)[1] = "lncRNAExp"
+  dat$lncRNAExp = log1p(dat$lncRN)
+  dat = as.data.table(dat)
+  dat = dat[order(lncRNAExp)]
+
+  #get order of cancer types by median 
+  sum = as.data.table(dat %>% dplyr::group_by(type) %>% 
+    dplyr::summarize(median=median(lncRNAExp)))
+  sum = sum[order(median)]
+
+  dat$type = factor(dat$type, levels=unique(sum$type))
+  #p = ggboxplot(dat, x="type", y = "lncRNAExp", title=lnc, error.plot = "linerange")+
+  #rotate_x_text(45)
+  
+  #how many peaks within each cancer?
+  types = as.character(unique(dat$type))
+  get_peaks = function(canc){
+     D = dat$lncRNAExp[dat$type == canc]
+     
+     firstquantile = summary(D)[2]
+     thirdquantile = summary(D)[5]
+     med = median(D)
+
+     #some data
+     d <- density(D)
+
+     #make it a time series
+     ts_y<-ts(d$y)
+
+     #calculate turning points (extrema)
+     require(pastecs)
+     tp<-turnpoints(ts_y)
+     print(canc)
+     row = c(lnc, canc, firstquantile, med, thirdquantile, length(d$x[tp$tppos]))
+     names(row) = c("lnc", "cancer", "firstQ", "median", "thirdQ", "numPeaks")
+     return(row)
+  }
+  canc_peaks = llply(types, get_peaks)
+  canc_peaks = ldply(canc_peaks)
+  canc_peaks = as.data.table(canc_peaks)
+  canc_peaks$firstQ = as.numeric(canc_peaks$firstQ)
+  canc_peaks$median = as.numeric(canc_peaks$median)
+  canc_peaks$thirdQ = as.numeric(canc_peaks$thirdQ)
+  canc_peaks = canc_peaks[order(-firstQ, -median, -thirdQ)]
+  canc_peaks$med_count[canc_peaks$median == 0] = 0
+  canc_peaks$med_count[canc_peaks$median > 0] = 1
+  canc_peaks$firstQ_count[canc_peaks$firstQ == 0] = 0
+  canc_peaks$firstQ_count[canc_peaks$firstQ > 0] = 1
+  canc_peaks$thirdQ_count[canc_peaks$thirdQ == 0] = 0
+  canc_peaks$thirdQ_count[canc_peaks$thirdQ > 0] = 1
+  s = as.data.table(table(canc_peaks$firstQ_count, canc_peaks$med_count, canc_peaks$thirdQ_count))
+  s = as.data.table(filter(s, N >0))
+  if(dim(s)[1] > 1){
+    lnc_type = "bimodal"
+  }
+   if(dim(s)[1] == 1){
+    lnc_type = "unimodal"
+  }
+  return(c(lnc, lnc_type))
 }
 
 pdf("pca3_expression_across_cancers.pdf")
 get_exp_plots("ENSG00000225937")
+get_num_peaks_den("ENSG00000225937")
 dev.off()
 
 lnc = get_ensg("MALAT1")
 pdf("malat1_expression_across_cancers.pdf")
 get_exp_plots(lnc)
+get_num_peaks_den(lnc)
 dev.off()
 
 lnc = get_ensg("NEAT1")
 pdf("neat1_expression_across_cancers.pdf")
 get_exp_plots(lnc)
+get_num_peaks_den(lnc)
 dev.off()
 
 lnc = get_ensg("HOTAIR")
 pdf("hotair_expression_across_cancers.pdf")
 get_exp_plots(lnc)
+get_num_peaks_den(lnc)
 dev.off()
 
 lnc = get_ensg("TINCR")
 pdf("tincr_expression_across_cancers.pdf")
 get_exp_plots(lnc)
+get_num_peaks_den(lnc)
 dev.off()
 
 lnc = get_ensg("XIST")
 pdf("xist_expression_across_cancers.pdf")
 get_exp_plots(lnc)
+get_num_peaks_den(lnc)
+dev.off()
+
+lnc = get_ensg("LINC00518")
+pdf("LINC00518_expression_across_cancers.pdf")
+get_exp_plots(lnc)
+get_num_peaks_den(lnc)
 dev.off()
 
 lnc = get_ensg("RP5-1158E12.3")
 pdf("RP5-1158E12.3_expression_across_cancers.pdf")
 get_exp_plots(lnc)
+get_num_peaks_den(lnc)
+dev.off()
+
+#some prostate speicifc ones from gtex
+
+pdf("LHFPL3-AS1_expression_across_cancers.pdf")
+get_exp_plots("ENSG00000226869")
+dev.off()
+
+pdf("ENSG00000183674_expression_across_cancers.pdf")
+get_exp_plots("ENSG00000183674")
+dev.off()
+
+pdf("ENSG00000272457_expression_across_cancers.pdf")
+get_exp_plots("ENSG00000272457")
 dev.off()
 
 #plot all lncRNAs 
@@ -168,9 +285,25 @@ lncs = unique(colnames(rna))
 z = which(str_detect(lncs, "ENSG"))
 lncs = lncs[z]
 
-#pdf("all_lncs_dist_plots.pdf")
+#pdf("all_lncs_cands_dist_plots.pdf")
+#lncs = unique(allCands$gene)
 #llply(lncs, get_exp_plots, .progress="text")
 #dev.off()
+
+#lnc_types = llply(lncs, get_num_peaks_den, .progress="text")
+
+
+#######
+##[x]##-------------------------------------------------------------
+#######
+
+#identify which lncRNAs are bimodal and which ones are 
+#highly expressed in all cancers 
+
+#get peaks 
+#density(data$V2)$x[which.max(density(data$V2)$y)]
+
+
 
 #######
 ##[3]##-------------------------------------------------------------
@@ -238,15 +371,10 @@ get_pcg_enrich = function(lnc, pcg, canc){
 
    mean_diff = round(as.numeric(coexp$mean_diff[which(coexp$combo2 == paste(lnc, canc, pcg, sep="_"))]), digits=4)
    dat$pcgExp = log1p(dat$pcgExp)
-   g = ggboxplot(dat, x = "lnc_median", y="pcgExp", title=paste(lnc, pcg, mean_diff)) +
+   g = ggboxplot(dat, x = "lnc_median", y="pcgExp", title=paste(lnc, pcg, mean_diff), fill="lnc_median") +
    	stat_compare_means()
    print(g)
 }
-
-pdf("pcg_diff_exp_example.pdf")
-get_pcg_enrich(get_ensg("MAPT-AS1"), get_ensg("MAPT"), "Breast invasive carcinoma")
-dev.off()
-
 
 #######
 ##[5]##-------------------------------------------------------------
@@ -257,6 +385,8 @@ cancer = "PAAD"
 
 ###EASY WAY TO MAKE KM PLOT
 get_km_plot = function(gene, cancer){
+  all_g = all
+  all_g = as.data.frame(all_g)
   dat = all[,c(which(colnames(all) %in% c("type", gene, "OS", "OS.time")))]
   z = which(str_detect(colnames(dat), "ENSG"))
   if(!(length(z)==0)){
@@ -284,9 +414,16 @@ get_km_plot = function(gene, cancer){
   dat$OS.time = as.numeric(dat$OS.time)
   dat$OS.time = dat$OS.time/365
   dat$gene = factor(dat$gene, levels = c(0,1))
+  gene_name = get_name(gene)
+  if(is.na(gene_name)){
+    gene_name = get_name_pcg(gene)
+  }
+  cox_mod = coxph(Surv(OS.time, OS) ~ gene, data = dat)
+  print(glance(cox_mod)$concordance)
+  conc = round(glance(cox_mod)$concordance, digits=2)
   fit <- survfit(Surv(OS.time, OS) ~ gene, data = dat)
           s <- ggsurvplot(
-          title = paste(get_name(gene), dat$type[1]),
+          title = paste(gene_name, dat$type[1], "\nConcordance=", conc),
           fit, 
           xlab = "Time (Years)", 
           surv.median.line = "hv",
@@ -316,36 +453,6 @@ get_km_plot = function(gene, cancer){
           print(s)
 }
 }	
-
-pdf("pca3_km_plot_prad.pdf")
-get_km_plot("ENSG00000225937", "PRAD")
-dev.off()
-
-pdf("hotair_km_plot_prad.pdf")
-gene = get_ensg("HOTAIR")
-get_km_plot(gene, "BRCA")
-dev.off()
-
-pdf("malat1_esca_km_plot_prad.pdf")
-gene = get_ensg("MALAT1")
-get_km_plot(gene, "ESCA")
-dev.off()
-
-pdf("malat1_stad_km_plot_prad.pdf")
-gene = get_ensg("MALAT1")
-get_km_plot(gene, "STAD")
-dev.off()
-
-pdf("malat1_ov_km_plot_prad.pdf")
-gene = get_ensg("MALAT1")
-get_km_plot(gene, "OV")
-dev.off()
-
-pdf("xist_brca_km_plot_prad.pdf")
-gene = get_ensg("XIST")
-get_km_plot(gene, "BRCA")
-dev.off()
-
 
 #######
 ##[7]##-------------------------------------------------------------
@@ -393,36 +500,6 @@ get_forest_plot = function(gene, cancer){
 ##[7]##-------------------------------------------------------------
 #######
 
-###EAST WAY TO BUILD AND TEST MULTIVARIATE MODELS
-
-#*****
-ggstatsplot::ggcoefstats(x = stats::lm(formula = mpg ~ am * cyl,
-                                       data = datasets::mtcars)) 
-
-
-ggstatsplot::ggcoefstats(
-  x = stats::lm(formula = mpg ~ am * cyl,
-                data = datasets::mtcars),
-  point.color = "red",
-  vline.color = "#CC79A7",
-  vline.linetype = "dotdash",
-  stats.label.size = 3.5,
-  stats.label.color = c("#0072B2", "#D55E00", "darkgreen"),
-  title = "Car performance predicted by transmission and cylinder count",
-  subtitle = "Source: 1974 Motor Trend US magazine"
-) +                                    
-  # further modification with the ggplot2 commands
-  # note the order in which the labels are entered
-  ggplot2::scale_y_discrete(labels = c("transmission", "cylinders", "interaction")) +
-  ggplot2::labs(x = "regression coefficient",
-                y = NULL)
-
-  
-
-
-get_surv_model = function(){
-
-}
 
 #model with how many features would have the best performance? 
 

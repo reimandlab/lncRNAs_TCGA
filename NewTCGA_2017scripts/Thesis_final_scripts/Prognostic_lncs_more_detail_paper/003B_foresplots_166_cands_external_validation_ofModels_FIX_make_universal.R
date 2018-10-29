@@ -24,7 +24,6 @@ cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.r
 #cands$Cancer = NULL
 all_cands = cands
 
-
 #--------This script ------------------------------------------------
 
 #for each cancer type 
@@ -120,8 +119,8 @@ get_survival_models = function(dtt){
 
   #how to summarize this 
   model <- coxph( Surv(OS.time, OS) ~ ., data = dat)
-
-  print(ggforest(model, main = paste(rna$type[which(rna$Cancer %in% dtt$Cancer[1])], "Forest Plot")))
+  print(colnames(dat)[1])
+  print(ggforest(model, main = paste(rna$type[which(rna$Cancer %in% dtt$Cancer[1])], "Forest Plot")[1]))
 
 return(results_cox1)
 

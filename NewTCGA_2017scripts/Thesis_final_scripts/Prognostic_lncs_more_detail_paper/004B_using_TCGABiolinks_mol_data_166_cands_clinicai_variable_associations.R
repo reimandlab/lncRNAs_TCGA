@@ -595,13 +595,13 @@ t = t[order(-N)]
 clin_results$combo = factor(clin_results$combo, levels = t$V1)
 clin_results$concordance_combo_model = as.numeric(clin_results$concordance_combo_model)
 clin_results$anova_both_vs_lnc = as.numeric(clin_results$anova_both_vs_lnc)
-z = which((clin_results$concordance_combo_model > clin_results$lnc_concordance) & (clin_results$anova_both_vs_lnc < 0.05))
+z = which((clin_results$concordance_combo_model > clin_results$clin_concordance) & (clin_results$anova_both_vs_lnc < 0.05))
 clin_results$better[z] = "V"
 
 pdf("summary_biolinks_subtypes_lncRNA_exp_Sept28.pdf", height=6, width=12)
 #make geom_tile plot
 ggplot(clin_results, aes(combo, colname)) +
-  geom_tile(aes(fill = concordance_combo_model), colour = "grey50") +
+  geom_tile(aes(fill = -log10(fdr)), colour = "grey50") +
   theme_bw() + geom_text(aes(label = better), size=2.5) + 
   theme(legend.title=element_blank(), legend.position="bottom", axis.title.x=element_blank(), 
     axis.text.x = element_text(angle = 45, hjust = 1, size=7)) +
@@ -609,7 +609,6 @@ ggplot(clin_results, aes(combo, colname)) +
     #+ scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
 
 dev.off()
-
 
 
 write.csv(clin_results, file="cleaned_clinical_variables_associations_data_sept28_post_cleanup_final_figure_data.csv", quote=F, row.names=F)
@@ -667,7 +666,6 @@ dev.off()
 
 #try scatter plot
 
-
 pdf("summary_clinical_concordances_scatterplot_oct11.pdf",width=6, height=6)
 g = ggplot(clinsig_cause_lnc, aes(lnc_concordance, concordance_combo_model, label=combo_clin)) +
  geom_point(aes(color=type, size=-log10(anova_both_vs_lnc)))+
@@ -688,29 +686,41 @@ g = ggplot(clinsig_cause_lnc, aes(lnc_concordance, concordance_combo_model, labe
 g
 dev.off()
 
-pdf("summary_clinical_concordances_vs_lnc_scatterplot_oct11.pdf", width=6, height=6)
+
+#only look at ones where clinical variable is signiicant 
+clinsig_cause_lnc = as.data.table(filter(clinsig_cause_lnc, clin_pval < 0.05))
+#109 assoications that are also significant 
+table(clinsig_cause_lnc$better_than_clin)
+#106/109 are significantly better than clinical models alone 
+
+z = which(duplicated(clinsig_cause_lnc$combo_clin))
+clinsig_cause_lnc = clinsig_cause_lnc[-z,]
+
+pdf("summary_clinical_concordances_vs_lnc_scatterplot_oct11.pdf", width=5, height=5)
 g = ggplot(clinsig_cause_lnc, aes(clin_concordance, concordance_combo_model, label=combo_clin)) +
  geom_point(aes(color=type))+
  #scale_size(range = c(0, 3))+
-    scale_colour_manual(values = sample(mypal, length(unique(clinsig_cause_lnc$type)))) + 
-    xlab("Clinical Concordance") + ylab("lncRNA & Clinical Combined Concordance") + theme_bw() +
+    scale_colour_manual(values = mypal[c(2:5, 9,8)]) + 
+    xlab("Clinical Concordance") + ylab("lncRNA & Clinical Combined Concordance") + theme_classic() +
     theme(legend.position = "top", axis.text = element_text(size=12), 
       legend.text=element_text(size=10), legend.title=element_text(size=10)) +
      xlim(0.5,0.9) + ylim(0.5,0.9) + geom_abline(intercept=0) + 
-     
-     geom_text_repel(data = subset(clinsig_cause_lnc, combo_clin == "HOXB-AS2 LGG TERT.promoter.status"), size=2, nudge_y = 0.1,
+     geom_text_repel(data = subset(clinsig_cause_lnc, combo_clin %in% c("HOXA-AS4 LGG IDH.status", "HOXB-AS2 LGG IDH.status")), size=2, nudge_y = 0.3,
       direction = "x",segment.color = "grey50",
-      segment.size = 1)
+      segment.size = 0.3)
 g
 dev.off()
 
 clinsig_cause_lnc$imp_concord = (clinsig_cause_lnc$concordance_combo_model - clinsig_cause_lnc$clin_concordance)
 clinsig_cause_lnc = clinsig_cause_lnc[order(-better_than_clin,-imp_concord )]
 
-
 #make KM plot for TERT promoter status
 lgg = clin_data_lncs[[13]]
-lgg = clin_data_lncs[[1]] #gbm
+#lgg = clin_data_lncs[[1]] #gbm
+
+g=subset(allCands, cancer== "Brain Lower Grade Glioma")
+g=g[1:2,1]
+
 
 lgg = lgg[,which(colnames(lgg) %in% c("patient", "ENSG00000240889", "OS", "OS.time", "IDH.status"))]
 med = median(lgg$ENSG00000240889)
@@ -729,6 +739,7 @@ lgg$med[which(lgg$ENSG00000240889 < med)] = "Low"
 z = which(is.na(lgg$Original.Subtype))
 if(!(length(z)==0)){
 lgg = lgg[-z,]}
+
 
 pdf("lgg_idh_status_vs_HOXBAS2_km_plots.pdf", width=9)
 

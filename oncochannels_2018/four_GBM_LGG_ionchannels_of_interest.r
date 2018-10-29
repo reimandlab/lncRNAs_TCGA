@@ -106,7 +106,6 @@ dev.off()
 
 
 
-
 #get gbm
 gbm = subset(ext, type=="GBM")
 
