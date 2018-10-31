@@ -71,6 +71,11 @@ nonrisk = as.data.table(filter(pcgs_risks_both, V2 == "NonRisk"))
 all_de_results = readRDS("coexpression_results_processed_july24.rds")
 all_de_results = as.data.table(all_de_results)
 
+#using count data
+all_de_results = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
+all_de_results = as.data.table(all_de_results)
+
+
 #------make matrix of lncRNA candidates within each cancer type
 #and their associated PCGs
 

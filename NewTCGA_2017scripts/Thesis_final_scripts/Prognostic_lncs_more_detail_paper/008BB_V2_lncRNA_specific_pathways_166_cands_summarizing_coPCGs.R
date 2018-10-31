@@ -76,6 +76,9 @@ nonrisk = as.data.table(filter(pcgs_risks_both, V2 == "NonRisk"))
 all_de_results = readRDS("coexpression_results_processed_july24.rds")
 all_de_results = as.data.table(all_de_results)
 
+all_de_results = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
+all_de_results = as.data.table(all_de_results)
+
 #------make matrix of lncRNA candidates within each cancer type
 #and their associated PCGs
 
@@ -96,7 +99,7 @@ make_matrix_for_ap = function(canc){
 	dat_all_matrix = acast(dat_all, ID~lnc, value.var="P.Value")
 	dat_all_matrix[is.na(dat_all_matrix)] = 1
 
-	file = paste("Aug22_DE_genes_fActivePathways/", canc, "all_up_down_genes_fActivepathways_Sep14.rds", sep="_")
+	file = paste("Aug22_DE_genes_fActivePathways/", canc, "all_up_down_genes_fActivepathways_Oct30.rds", sep="_")
 	saveRDS(dat_all_matrix, file)
 
 	lncs = unique(dat$lnc)
@@ -110,7 +113,7 @@ make_matrix_for_ap = function(canc){
 
 		if(!(length(upreg_gene_list)==0)){
 		#pathways 
-		combined_paths <- gprofiler(upreg_gene_list, organism = "hsapiens", exclude_iea=TRUE, ordered_query= TRUE, min_set_size=5, max_set_size = 500, min_isect_size=5, correction_method="fdr")
+		combined_paths <- gprofiler(upreg_gene_list, organism = "hsapiens", exclude_iea=TRUE, ordered_query= TRUE, min_set_size=10, max_set_size = 250, min_isect_size=5, correction_method="fdr")
 		print(dim(combined_paths)[1])
 
 		if(!(dim(combined_paths)[1]==0)){
@@ -149,9 +152,9 @@ make_matrix_for_ap = function(canc){
 
 ###---------------Summary figure-------------------------------###
 
-#saveRDS(all_lnc_pathways_df, file="pathways_for_each_lncRNA_Sept14.rds")
+#saveRDS(all_lnc_pathways_df, file="pathways_for_each_lncRNA_Oct30.rds")
 
-all_lnc_pathways_df = readRDS("pathways_for_each_lncRNA_Sept14.rds")
+all_lnc_pathways_df = readRDS("pathways_for_each_lncRNA_Oct30.rds")
 
 #number of PCGs/lncRNA vs number of Pathways/lncRNAs 
 

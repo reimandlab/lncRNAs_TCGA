@@ -12,7 +12,6 @@ library(plyr)
 library(dplyr)
 library(patchwork)
 
-
 #Data---------------------------------------------------
 
 #[5] all patients in cohort
@@ -49,7 +48,7 @@ res = as.data.table(k.frame)
 
 res = readRDS("233_translocations_wexp.rds")
 res = as.data.table(filter(res, p.value < 0.1))
-res = res[,c("p.value", "method", "fc", "canc", "pat", "pcg", "fc")]
+res = res[,c("p.value", "method", "fc", "canc", "pat", "pcg", "fc", "fmre")]
 res = unique(res)
 
 #subset to genes 
@@ -73,6 +72,7 @@ get_fc = function(row){
 	canc = row[[4]]
 	#subset to PCG
 	pcg = row[[6]]
+	fmre = row[[8]]
 
 	#get ensembl id
 	ens = ucsc$hg19.ensGene.name2[ucsc$hg19.ensemblToGeneName.value == pcg][1]
@@ -107,7 +107,7 @@ get_fc = function(row){
 	}
 
 	#fmre = row[[6]]
-	fmre = pat
+	#fmre = pat
 	dat = as.data.frame(matrix(ncol = 10))
 	dat[1,] = c(pat, canc, pcg, ens, pat_exp, else_ppl, fc, pval, newpval, fmre)
 	return(dat)
