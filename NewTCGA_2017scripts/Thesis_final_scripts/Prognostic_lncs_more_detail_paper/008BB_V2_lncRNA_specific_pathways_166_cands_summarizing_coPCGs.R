@@ -159,7 +159,9 @@ all_lnc_pathways_df = readRDS("pathways_for_each_lncRNA_Oct30.rds")
 #number of PCGs/lncRNA vs number of Pathways/lncRNAs 
 
 #1. DE PCGs/lncRNA
-sig_des = as.data.table(filter(all_de_results, adj.P.Val <= 0.05))
+t = as.data.table(filter(all_de_results, adj.P.Val <= 0.05))
+sig_des=t
+sig_des$combo = paste(sig_des$lnc, sig_des$canc, sep="_")
 sig_des_sum = as.data.table(table(sig_des$combo))
 sig_des_sum = sig_des_sum[order(N)]
 
@@ -169,7 +171,7 @@ colnames(sig_des_sum) = c("combo", "num_sig_des")
 
 #2. pathways/lncRNA
 all_lnc_pathways_df$combo = paste(all_lnc_pathways_df$lnc, all_lnc_pathways_df$canc, sep="_")
-all_lnc_pathways_df = as.data.table(filter(all_lnc_pathways_df, FDR <= 0.05))
+all_lnc_pathways_df = as.data.table(filter(all_lnc_pathways_df, FDR <= 0.01))
 sig_paths_sum = as.data.table(table(all_lnc_pathways_df$combo))
 sig_paths_sum = sig_paths_sum[order(N)]
 
@@ -184,13 +186,13 @@ sig_paths_sum$canc = sapply(sig_paths_sum$combo, function(x){unlist(strsplit(x, 
 
 canc_conv = rna[,c("type", "Cancer")]
 canc_conv = unique(canc_conv)
-colnames(canc_conv)[2] = "canc"
+colnames(canc_conv)[1] = "canc"
 sig_paths_sum = merge(sig_paths_sum, canc_conv, by="canc")
 
 
 pdf("summary_#DE_pcgs_vs_pathways_pathways_figure_sep14.pdf", width=9, height=5)
 g = ggscatter(sig_paths_sum, x = "num_sig_des", y = "num_sig_pathways",
-   fill = "type", shape = 21, size = 3, # Points color, shape and size
+   fill = "canc", shape = 21, size = 3, # Points color, shape and size
    add = "reg.line",  # Add regressin line
    add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
    cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
@@ -199,7 +201,7 @@ ggpar(g, legend="right")
 dev.off()
 
 
-t = as.data.table(table(sig_paths_sum$type))
+t = as.data.table(table(sig_paths_sum$canc))
 t=t[order(N)]
 
 ggbarplot(t, "V1", "N",
@@ -207,9 +209,9 @@ ggbarplot(t, "V1", "N",
 dev.off()
 
 
-paths = sig_paths_sum[,c("canc", "combo", "num_sig_pathways", "type")]
+paths = sig_paths_sum[,c("canc", "combo", "num_sig_pathways", "Cancer")]
 paths$type = "pathways"
-genes = sig_paths_sum[,c("canc", "combo", "num_sig_des", "type")]
+genes = sig_paths_sum[,c("canc", "combo", "num_sig_des", "Cancer")]
 genes$type = "genes"
 
 colnames(paths)[3] = "num_sig_des"
@@ -228,9 +230,9 @@ print(g)
 dev.off()
 
 #add cancer covariate 
-all_res = merge(all_res, canc_conv, by="canc")
-colnames(all_res)[4:5] = c("type", "canc_name")
-all_res$canc_name = factor(all_res$canc_name, levels=unique(sig_paths_sum$type))
+#all_res = merge(all_res, canc_conv, by="canc")
+colnames(all_res)[c(1, 4)] = c("type", "canc_name")
+all_res$canc_name = factor(all_res$canc_name, levels=unique(sig_paths_sum$Cancer))
 
 library(patchwork)
 
@@ -242,7 +244,7 @@ pall =  c("#72E1E0" ,"#7CE147", "#73E590", "#E180E3" ,"#D39794", "#D4DC8D", "#A6
 pdf("summary_barplot_w_covariate_#DE_pcgs_vs_pathways_pathways_figure_sep14.pdf", width=16, height=5)
 
 #covariate for cancer
-cov = ggplot(all_res, aes(combo, 1)) + geom_tile(aes(fill = canc_name)) +
+cov = ggplot(all_res, aes(combo, 1)) + geom_tile(aes(fill = type)) +
 theme_void() + theme(legend.position="none")+
 scale_fill_manual(values=pall)
 
@@ -250,7 +252,7 @@ g + cov + plot_layout(ncol = 1, heights = c(15,1))
 dev.off()
 
 pdf("canc_cov_legend.pdf")
-ggplot(all_res, aes(combo, 1)) + geom_tile(aes(fill = canc_name)) +
+ggplot(all_res, aes(combo, 1)) + geom_tile(aes(fill = type)) +
 theme_void() + coord_flip() + 
 scale_fill_manual(values=pall)
 dev.off()
@@ -265,28 +267,34 @@ get_name = function(ensg){
 }
 
 all_res$genename = unlist(llply(all_res$gene, get_name))
-all_res$combo2 = paste(all_res$genename, all_res$canc_name, sep=" ")
+colnames(all_res)[1] = "canc"
+all_res$combo2 = paste(all_res$genename, all_res$canc, sep=" ")
 
 sig_paths_sum$gene = ""
 sig_paths_sum$gene = sig_paths_sum$combo
 sig_paths_sum$gene = sapply(sig_paths_sum$gene, function(x){unlist(strsplit(x, "_"))[1]})
 sig_paths_sum$genename = unlist(llply(sig_paths_sum$gene, get_name))
-sig_paths_sum$combo2 = paste(sig_paths_sum$genename, sig_paths_sum$type, sep=" ")
+sig_paths_sum$combo2 = paste(sig_paths_sum$genename, sig_paths_sum$canc, sep=" ")
 sig_paths_sum = sig_paths_sum[order(-num_sig_des)]
 
 all_res$combo2 = factor(all_res$combo2, levels = unique(sig_paths_sum$combo2))
 all_res$font_col = ""
-all_res$font_col[all_res$canc_name == "LIHC"] = "1"
+
+all_res$font_col[all_res$canc == "LGG"] = "1"
 
 sig_paths_sum$font_col = ""
-sig_paths_sum$font_col[sig_paths_sum$type == "LIHC"] = "1"
+sig_paths_sum$font_col[sig_paths_sum$canc == "LGG"] = "1"
 a <- ifelse(sig_paths_sum$font_col == 1, "red", "black")
 
-pdf("summary_barplot_genenames_#DE_pcgs_vs_pathways_pathways_figure_sep14.pdf", width=16, height=5)
+all_res = as.data.table(filter(all_res, num_sig_des >=75))
+
+#117 unique lncRNA-cancer pairs 
+#114 unique lncRNAs 
+pdf("summary_barplot_genenames_#DE_pcgs_vs_pathways_pathways_figure_sep14.pdf", width=12, height=4)
 g = ggplot(all_res, aes(combo2, num_sig_des, group=type)) + theme_classic() + 
-   geom_col(position = "dodge", aes(fill=type), color="grey29")+xlab("lncRNA-cancer pair") + ylab("Number of significant \ngenes/pathways")+
+   geom_col(position = "dodge", aes(fill=type), color="grey29")+xlab("lncRNA-cancer pair") + ylab("Number of sig genes/pathways")+
    theme(legend.title=element_blank(), legend.position="top", axis.title.x=element_blank(), 
-   	axis.text.x = element_text(angle = 45, hjust = 1, colour = a, size=7)) + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
+   	axis.text.x = element_text(angle = 65, hjust = 1, colour = a, size=6)) + scale_fill_manual(values=c("snow3", "#E69F00", "#56B4E9"))
 #ggpar(g,
 # font.tickslab = c(6,"plain", "black"),
 # xtickslab.rt = 45)
@@ -297,21 +305,19 @@ dev.off()
 ###---------------Make heatmap-------------------------------###
 
 #liver gluco related pathways 
-liver_paths = c("monosaccharide metabolic process", "carbohydrate metabolic process", "gluconeogenesis",
-	"monosaccharide biosynthetic process", "hexose biosynthetic process", "hexose metabolic process", "glucose metabolic process", 
-  "carbohydrate biosynthetic process")
 
-load("_Liver_hepatocellular_carcinoma_all_up_down_genes_fActivepathways_Sep14.rds.2018-10-01.rdata")
+load("_LGG_all_up_down_genes_.2018-10-31.rdata")
 colnames(res)
-liver = subset(res, res$term.name %in% liver_paths)
+canc = subset(res, res$term.name %in% canc_paths_paths)
+canc_paths_paths = res[which(str_detect(res$term.name, "brain")),]$term.name
 
 #1. get all PCGs that are in these pathways 
-pcgs_brain = unique(unlist(liver$overlap)) #152 unique PCGs
-lncs_brain = unique(unlist(liver$evidence)) #6 unique lncRNAs to be used as covariates high vs low 
+pcgs_brain = unique(unlist(canc$overlap)) #185 unique PCGs
+lncs_brain = unique(unlist(canc$evidence)) #8 unique lncRNAs to be used as covariates high vs low 
 
 ##2-----------------label patients by risk------------------------------
 
-dat = subset(all, Cancer=="Liver hepatocellular carcinoma")
+dat = subset(all, Cancer=="Brain Lower Grade Glioma")
 
   dat_keep = dat[,which(colnames(dat) %in% c("patient", lncs_brain, pcgs_brain))]
   rownames(dat_keep) = dat_keep$patient
@@ -345,24 +351,29 @@ dat = subset(all, Cancer=="Liver hepatocellular carcinoma")
   heat = dat_keep[,z]
   heat = log1p(heat)
 
-
   library(ComplexHeatmap)
 
   #tags <- dat_keep$risk
   #color.map <- function(tags) { if (tags=="RISK") "#FF0000" else "#0000FF" }
   #patientcolors <- unlist(lapply(tags, color.map))
 
-  df2 = dat_keep[,1:2] #lncRNA data
+  df2 = dat_keep[,c(2,7)] #lncRNA data
 
   col = list(
-    ENSG00000263400 = c("1" = "red", "0" = "blue"),
-    ENSG00000230432 = c("1" = "red", "0" = "blue"))
+    ENSG00000254635 = c("1" = "red", "0" = "blue"),
+    ENSG00000253187 = c("1" = "red", "0" = "blue"),
+    ENSG00000256482 = c("1" = "red", "0" = "blue"),
+    ENSG00000224950 = c("1" = "red", "0" = "blue"),
+    ENSG00000255020 = c("1" = "red", "0" = "blue"),
+    ENSG00000257261 = c("1" = "red", "0" = "blue"),
+    ENSG00000239552 = c("1" = "red", "0" = "blue"),
+    ENSG00000250360 = c("1" = "red", "0" = "blue"))
 
   # Create the heatmap annotation
   #ha <- HeatmapAnnotation(df2, col = col, annotation_height = unit.c(unit(0.25, "cm"), unit(0.25, "cm"), unit(0.25, "cm"), unit(0.25, "cm"),
   #	unit(0.25, "cm"), unit(0.25, "cm")))
 
-  ha <- HeatmapAnnotation(df2, col = col, annotation_height = unit.c(unit(0.25, "cm"), unit(0.25, "cm")))
+  ha <- HeatmapAnnotation(df2, col = col, annotation_height = unit.c(unit(2, "cm"), unit(2, "cm")))
 
   # cluster on correlation
   heat = scale(heat)
@@ -376,36 +387,59 @@ dat = subset(all, Cancer=="Liver hepatocellular carcinoma")
   }
 
   library(circlize)
+  z = which(is.na(rownames(heat)))
+  if(!(length(z)==0)){
+    heat=heat[-z,]
+  }
 
   #which genes are cancer gene census genes?
   pcgs = unique(rownames(heat))
-#COSMIC cancer gene census
-census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
-#get ensg
-get_census_ensg = function(genes){
-  glist = unlist(strsplit(genes, ","))
-  z = which(str_detect(glist, "ENSG"))
-  ensg = glist[z]
-  return(ensg)
-}
-census$ensg = sapply(census$Synonyms, get_census_ensg)
+  #COSMIC cancer gene census
+  census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
+  #get ensg
+  get_census_ensg = function(genes){
+    glist = unlist(strsplit(genes, ","))
+    z = which(str_detect(glist, "ENSG"))
+    ensg = glist[z]
+    return(ensg)
+  }
+  census$ensg = sapply(census$Synonyms, get_census_ensg)
 
-hox_genes = which(str_detect(rownames(heat), "HOX"))
-random_genes = which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4", "SLC2A2", "DHDH", "IGF2", "G6PD"))
-z = which(rownames(heat) %in% census$Gene.Symbol)
-rownames(heat)[z] = paste(rownames(heat)[z], "*")
+  hox_genes = which(str_detect(rownames(heat), "HOX"))
+  random_genes = c()#which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4", "SLC2A2", "DHDH", "IGF2", "G6PD"))
+  z = which(rownames(heat) %in% census$Gene.Symbol)
+  rownames(heat)[z] = paste(rownames(heat)[z], "*")
 
-subset = unique(c(hox_genes, random_genes, z))
-labels = rownames(heat)[subset]
-#labels = rownames(heat)
+  subset = unique(c(hox_genes, random_genes, z))
+  labels = rownames(heat)[subset]
+  #labels = rownames(heat)
+
+
+  #geom_tile plot 
+  #show high vs low exp for each lncRNA
+  #row --> patients 
+  #column --> lncRNA high vs low 
+  df2 = as.data.frame(df2)
+  df2$patient = rownames(df2)
+  df2 = as.data.table(melt(df2)) 
+  df2$value = factor(df2$value, levels=c(0,1))
+  df2 = df2[order(value, variable)]
+  df2$variable = factor(df2$variable, levels=unique(df2$variable))
+
+  pdf("lgg_brain_development_eight_lncRNAs.pdf", height=4, width=8)
+  ggplot(df2, aes(variable, patient)) + geom_tile(aes(fill = value)) +
+  #theme_void() + theme(legend.position="none")+
+  scale_fill_manual(values=c("blue", "orange")) + coord_flip()
+  dev.off()
+
 
   #pdf("heatmap_brain_development_pathway_LGG_sep19.pdf", width=12, height=4)
-  pdf("heatmap_liver_gluconeogensis_pathway_LIHC_oct1.pdf", width=12, height=4)
+  pdf("heatmap_liver_brain_development_oct31.pdf", width=11, height=20)
 
   Heatmap(heat, clustering_distance_columns = "pearson", show_row_names = FALSE, 
   clustering_distance_rows = "pearson", col = colorRamp2(c(-3, 0, 3), c("steelblue1", "white", "orange")), 
   cluster_rows = TRUE, cluster_columns = TRUE, 
-  top_annotation = ha, clustering_method_rows = "centroid", 
+  clustering_method_rows = "complete", top_annotation = ha, 
   clustering_method_columns = "complete",show_column_names = FALSE, row_names_gp = gpar(fontsize = 1))+
   rowAnnotation(link = row_anno_link(at = subset, labels = labels),
   width = unit(0.75, "cm") + max_text_width(labels))
@@ -414,7 +448,8 @@ labels = rownames(heat)[subset]
 
 #try another plot 
 
-z = which(colnames(dat_keep) %in% c(pcgs_brain, "patient", "ENSG00000263400", "ENSG00000230432"))
+z = which(colnames(dat_keep) %in% c(pcgs_brain, "patient", lncs_brain))
+
 #heatmap 
 heat = dat_keep[,z]
 heat = log1p(heat)
@@ -428,6 +463,11 @@ heat = t(heat)
     newname = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == pcg)][1]
     rownames(heat)[i] = newname
   }
+  
+  z = which(is.na(rownames(heat)))
+  if(!(length(z)==0)){
+    heat=heat[-z,]
+  }
 
 #which genes are cancer gene census genes?
 pcgs = unique(rownames(heat))
@@ -443,12 +483,12 @@ get_census_ensg = function(genes){
 census$ensg = sapply(census$Synonyms, get_census_ensg)
 
 hox_genes = which(str_detect(rownames(heat), "HOX"))
-random_genes = which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4", "SLC2A2", "DHDH", "IGF2", "G6PD"))
+random_genes = c()#which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4", "SLC2A2", "DHDH", "IGF2", "G6PD"))
 z = which(rownames(heat) %in% census$Gene.Symbol)
 rownames(heat)[z] = paste(rownames(heat)[z], "*")
 
 
-pdf("liver_gluconeogenesis_pathway.pdf", width=11, height=7)
+pdf("brain_development_pathways.pdf", width=11, height=7)
 res.dist <- get_dist(heat, stand = TRUE, method = "pearson")
 fviz_dist(res.dist, 
    gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
@@ -456,8 +496,7 @@ dev.off()
 
 
 #try corrplot
-
-z = which(colnames(dat_keep) %in% c(pcgs_brain, "patient", "ENSG00000263400", "ENSG00000230432"))
+z = which(colnames(dat_keep) %in% c(pcgs_brain, "patient", lncs_brain))
 #heatmap 
 heat = dat_keep[,z]
 heat = log1p(heat)
@@ -470,6 +509,10 @@ heat = t(heat)
     pcg = rownames(heat)[i]
     newname = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == pcg)][1]
     rownames(heat)[i] = newname
+  }
+ z = which(is.na(rownames(heat)))
+  if(!(length(z)==0)){
+    heat=heat[-z,]
   }
 
 #which genes are cancer gene census genes?
@@ -487,18 +530,22 @@ census$ensg = sapply(census$Synonyms, get_census_ensg)
 
 heat = t(heat)
 
+hox_genes = colnames(heat)[which(str_detect(colnames(heat), "HOX"))]
+random_genes = c()#which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4", "SLC2A2", "DHDH", "IGF2", "G6PD"))
+z1 = which(colnames(heat) %in% c(census$Gene.Symbol))
+z2 = which(colnames(heat) %in% ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 %in% lncs_brain)])
+colnames(heat)[z1] = paste(colnames(heat)[z1], "*")
+z3 = which(colnames(heat) %in% hox_genes)
+heat=heat[,unique(c(z1,z2, z3))]
 
-hox_genes = which(str_detect(rownames(heat), "HOX"))
-random_genes = which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4", "SLC2A2", "DHDH", "IGF2", "G6PD"))
-z = which(rownames(heat) %in% census$Gene.Symbol)
-rownames(heat)[z] = paste(rownames(heat)[z], "*")
 M<-cor(heat)
 library(corrplot)
 res1 <- cor.mtest(heat, conf.level = .95)
 corrplot(M, method="circle")
+dev.off()
 col<- colorRampPalette(c("blue", "white", "red"))(20)
-pdf("liver_gluconeogenesis_pathway.pdf", width=11, height=5)
-corrplot(M, type="upper", order="hclust", col=col, tl.col="black", tl.srt=90, tl.cex=0.5, p.mat = res1$p, insig = "blank")
+pdf("brain_development_pathway.pdf", width=8, height=8)
+corrplot(M, type="upper", order="hclust", col=col, tl.col="black", tl.srt=90, tl.cex=0.9, p.mat = res1$p, insig = "blank")
 dev.off()
 
 
