@@ -18,6 +18,12 @@ library(Rtsne)
 library("FactoMineR")
 
 
+#TO-DO:
+#clutser all 6,000 lncRNAs in each cancer type
+#then look if those selected by elastic net meaningfully represnent 
+#clusters 
+
+
 #------FEATURES-----------------------------------------------------
 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")

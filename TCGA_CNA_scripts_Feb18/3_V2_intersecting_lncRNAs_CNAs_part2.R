@@ -113,7 +113,7 @@ get_data = function(lnc){
   dat = dplyr::filter(lncswcnas, canc == cancer, gene == cands$gene[which(cands$combo == lnc)][1])
 	dat$canc = NULL
 
-  if((dim(dat)[1]) > 30){
+  if((dim(dat)[1]) > 20){
 
 	exp_data = subset(rna, type == cancer)
 	#assign high or low to each patient in expression file
@@ -373,13 +373,15 @@ get_data = function(lnc){
 }
 }
 }
-pdf("candidate_lncRNAs_CNA_versus_Expression_Sept27_new_plots.pdf")
+pdf("candidate_lncRNAs_CNA_versus_Expression_Nov1_new_plots.pdf")
 lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
 dev.off()
 
 lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
 lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
 saveRDS(lnc_cna_cancer_data2, file="new_results_CNAs_Sept27.rds")
+
+lnc_cna_cancer_data2 = readRDS("new_results_CNAs_Sept27.rds")
 
 #---------PROCESS RESULTS-----------------------------------------------------------------------------------------------------
 

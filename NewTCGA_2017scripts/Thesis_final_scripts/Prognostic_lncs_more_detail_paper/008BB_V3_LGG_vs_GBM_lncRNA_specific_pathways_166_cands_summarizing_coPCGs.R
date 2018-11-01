@@ -322,71 +322,19 @@ dat = subset(all, Cancer=="Brain Lower Grade Glioma")
   dat_keep = dat[,which(colnames(dat) %in% c("patient", lncs_brain, pcgs_brain))]
   rownames(dat_keep) = dat_keep$patient
   dat_keep$patient = NULL
-  #figure out which patients are high risk and which patients low risk
-  for(i in 1:length(lncs_brain)){	
 
-  	   z = which(colnames(dat_keep) %in% lncs_brain[i])
-  	   median2 <- quantile(as.numeric(dat_keep[,z]), 0.5)
-
-       if(median2 ==0){
-        #if median = 0 then anyone greater than zero is 1 
-        l1 = which(dat_keep[,z] > 0)
-        l2 = which(dat_keep[,z] ==0)
-        dat_keep[l1,z] = 1
-        dat_keep[l2,z] = 0
-        }
-
-       if(!(median2 ==0)){
-        l1 = which(dat_keep[,z] >= median2)
-        l2 = which(dat_keep[,z] < median2)
-        dat_keep[l1,z] = 1
-        dat_keep[l2,z] = 0
-        }
-  }
-
-  #subset gene expression to those pcgs
-  #label patients by either high/low lncRNA expression 
-  z = which(colnames(dat_keep) %in% c(pcgs_brain, "patient"))
   #heatmap 
-  heat = dat_keep[,z]
+  heat = dat_keep
   heat = log1p(heat)
-
-  library(ComplexHeatmap)
-
-  #tags <- dat_keep$risk
-  #color.map <- function(tags) { if (tags=="RISK") "#FF0000" else "#0000FF" }
-  #patientcolors <- unlist(lapply(tags, color.map))
-
-  df2 = dat_keep[,c(2,7)] #lncRNA data
-
-  col = list(
-    ENSG00000254635 = c("1" = "red", "0" = "blue"),
-    ENSG00000253187 = c("1" = "red", "0" = "blue"),
-    ENSG00000256482 = c("1" = "red", "0" = "blue"),
-    ENSG00000224950 = c("1" = "red", "0" = "blue"),
-    ENSG00000255020 = c("1" = "red", "0" = "blue"),
-    ENSG00000257261 = c("1" = "red", "0" = "blue"),
-    ENSG00000239552 = c("1" = "red", "0" = "blue"),
-    ENSG00000250360 = c("1" = "red", "0" = "blue"))
-
-  # Create the heatmap annotation
-  #ha <- HeatmapAnnotation(df2, col = col, annotation_height = unit.c(unit(0.25, "cm"), unit(0.25, "cm"), unit(0.25, "cm"), unit(0.25, "cm"),
-  #	unit(0.25, "cm"), unit(0.25, "cm")))
-
-  ha <- HeatmapAnnotation(df2, col = col, annotation_height = unit.c(unit(2, "cm"), unit(2, "cm")))
-
-  # cluster on correlation
-  heat = scale(heat)
   heat = t(heat)
 
   #change pcg names
   for(i in 1:nrow(heat)){
+    print(i)
     pcg = rownames(heat)[i]
     newname = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == pcg)][1]
     rownames(heat)[i] = newname
   }
-
-  library(circlize)
   z = which(is.na(rownames(heat)))
   if(!(length(z)==0)){
     heat=heat[-z,]
@@ -398,135 +346,12 @@ dat = subset(all, Cancer=="Brain Lower Grade Glioma")
   census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
   #get ensg
   get_census_ensg = function(genes){
-    glist = unlist(strsplit(genes, ","))
-    z = which(str_detect(glist, "ENSG"))
-    ensg = glist[z]
-    return(ensg)
+  glist = unlist(strsplit(genes, ","))
+  z = which(str_detect(glist, "ENSG"))
+  ensg = glist[z]
+  return(ensg)
   }
   census$ensg = sapply(census$Synonyms, get_census_ensg)
-
-  hox_genes = which(str_detect(rownames(heat), "HOX"))
-  random_genes = c()#which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4", "SLC2A2", "DHDH", "IGF2", "G6PD"))
-  z = which(rownames(heat) %in% census$Gene.Symbol)
-  rownames(heat)[z] = paste(rownames(heat)[z], "*")
-
-  subset = unique(c(hox_genes, random_genes, z))
-  labels = rownames(heat)[subset]
-  #labels = rownames(heat)
-
-
-  #geom_tile plot 
-  #show high vs low exp for each lncRNA
-  #row --> patients 
-  #column --> lncRNA high vs low 
-  df2 = as.data.frame(df2)
-  df2$patient = rownames(df2)
-  df2 = as.data.table(melt(df2)) 
-  df2$value = factor(df2$value, levels=c(0,1))
-  df2 = df2[order(value, variable)]
-  df2$variable = factor(df2$variable, levels=unique(df2$variable))
-
-  pdf("lgg_brain_development_eight_lncRNAs.pdf", height=4, width=8)
-  ggplot(df2, aes(variable, patient)) + geom_tile(aes(fill = value)) +
-  #theme_void() + theme(legend.position="none")+
-  scale_fill_manual(values=c("blue", "orange")) + coord_flip()
-  dev.off()
-
-
-  #pdf("heatmap_brain_development_pathway_LGG_sep19.pdf", width=12, height=4)
-  pdf("heatmap_liver_brain_development_oct31.pdf", width=11, height=20)
-
-  Heatmap(heat, clustering_distance_columns = "pearson", show_row_names = FALSE, 
-  clustering_distance_rows = "pearson", col = colorRamp2(c(-3, 0, 3), c("steelblue1", "white", "orange")), 
-  cluster_rows = TRUE, cluster_columns = TRUE, 
-  clustering_method_rows = "complete", top_annotation = ha, 
-  clustering_method_columns = "complete",show_column_names = FALSE, row_names_gp = gpar(fontsize = 1))+
-  rowAnnotation(link = row_anno_link(at = subset, labels = labels),
-  width = unit(0.75, "cm") + max_text_width(labels))
-	
-  dev.off()
-
-#try another plot 
-
-z = which(colnames(dat_keep) %in% c(pcgs_brain, "patient", lncs_brain))
-
-#heatmap 
-heat = dat_keep[,z]
-heat = log1p(heat)
-heat = scale(heat)
-heat = t(heat)
-
-#change pcg names
-  for(i in 1:nrow(heat)){
-    print(i)
-    pcg = rownames(heat)[i]
-    newname = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == pcg)][1]
-    rownames(heat)[i] = newname
-  }
-  
-  z = which(is.na(rownames(heat)))
-  if(!(length(z)==0)){
-    heat=heat[-z,]
-  }
-
-#which genes are cancer gene census genes?
-pcgs = unique(rownames(heat))
-#COSMIC cancer gene census
-census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
-#get ensg
-get_census_ensg = function(genes){
-  glist = unlist(strsplit(genes, ","))
-  z = which(str_detect(glist, "ENSG"))
-  ensg = glist[z]
-  return(ensg)
-}
-census$ensg = sapply(census$Synonyms, get_census_ensg)
-
-hox_genes = which(str_detect(rownames(heat), "HOX"))
-random_genes = c()#which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4", "SLC2A2", "DHDH", "IGF2", "G6PD"))
-z = which(rownames(heat) %in% census$Gene.Symbol)
-rownames(heat)[z] = paste(rownames(heat)[z], "*")
-
-
-pdf("brain_development_pathways.pdf", width=11, height=7)
-res.dist <- get_dist(heat, stand = TRUE, method = "pearson")
-fviz_dist(res.dist, 
-   gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
-dev.off()
-
-
-#try corrplot
-z = which(colnames(dat_keep) %in% c(pcgs_brain, "patient", lncs_brain))
-#heatmap 
-heat = dat_keep[,z]
-heat = log1p(heat)
-#heat = scale(heat)
-heat = t(heat)
-
-#change pcg names
-  for(i in 1:nrow(heat)){
-    print(i)
-    pcg = rownames(heat)[i]
-    newname = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == pcg)][1]
-    rownames(heat)[i] = newname
-  }
- z = which(is.na(rownames(heat)))
-  if(!(length(z)==0)){
-    heat=heat[-z,]
-  }
-
-#which genes are cancer gene census genes?
-pcgs = unique(rownames(heat))
-#COSMIC cancer gene census
-census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
-#get ensg
-get_census_ensg = function(genes){
-  glist = unlist(strsplit(genes, ","))
-  z = which(str_detect(glist, "ENSG"))
-  ensg = glist[z]
-  return(ensg)
-}
-census$ensg = sapply(census$Synonyms, get_census_ensg)
 
 heat = t(heat)
 
@@ -534,63 +359,73 @@ hox_genes = colnames(heat)[which(str_detect(colnames(heat), "HOX"))]
 random_genes = c()#which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4", "SLC2A2", "DHDH", "IGF2", "G6PD"))
 z1 = which(colnames(heat) %in% c(census$Gene.Symbol))
 z2 = which(colnames(heat) %in% ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 %in% lncs_brain)])
-colnames(heat)[z1] = paste(colnames(heat)[z1], "*")
 z3 = which(colnames(heat) %in% hox_genes)
-heat=heat[,unique(c(z1,z2, z3))]
-
-M<-cor(heat)
-library(corrplot)
-res1 <- cor.mtest(heat, conf.level = .95)
-corrplot(M, method="circle")
-dev.off()
-col<- colorRampPalette(c("blue", "white", "red"))(20)
-pdf("brain_development_pathway.pdf", width=8, height=8)
-corrplot(M, type="upper", order="hclust", col=col, tl.col="black", tl.srt=90, tl.cex=0.9, p.mat = res1$p, insig = "blank")
-dev.off()
-
+heat = heat[,unique(c(z1,z2,z3))]
 
 #get expression of these genes and compare between low lGG, high LGG and GBM 
 
 #1. get list of genes 
+development_genes = colnames(heat)
+get_ensg_pcg = function(pcg){
+  z = which(ucsc$hg19.ensemblToGeneName.value == pcg)
+  if(length(z)>1){
+    z = z[1]
+  }
+  return(ucsc$hg19.ensGene.name2[z])
+}
+
+development_genes = sapply(development_genes, get_ensg_pcg)
 
 #2. get LGG 
+lgg = heat 
+lgg = as.data.frame(lgg)
+rownames(lgg) = paste(rownames(lgg), "lgg")
 
 #3. get GBM 
+z = which(all$type == "GBM")
+gbm = all[z,]
+z = which(colnames(gbm) %in% c("patient", development_genes))
+gbm = gbm[,z]
+rownames(gbm) = gbm$patient
+gbm$patient = NULL
+gbm = t(gbm)
+
+#change pcg names
+  for(i in 1:nrow(gbm)){
+    print(i)
+    pcg = rownames(gbm)[i]
+    newname = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == pcg)][1]
+    rownames(gbm)[i] = newname
+  }
+  z = which(is.na(rownames(gbm)))
+  if(!(length(z)==0)){
+    gbm=gbm[-z,]
+  }
+gbm = t(gbm)
+gbm = log1p(gbm)
+gbm = as.data.frame(gbm)
+rownames(gbm) = paste(rownames(gbm), "gbm")
+
+#compare expression of these genes between LGG and GBM
+gbm <- gbm[names(lgg)]
+gbm$type = "gbm"
+lgg$type = "lgg"
+all_canc = rbind(lgg, gbm)
+
+mat = all_canc[,c(which(!(colnames(all_canc) == "type")))]
+mat = scale(mat)
+mat=t(mat)
+
+df = as.data.frame(all_canc[,c(which((colnames(all_canc) == "type")))])
+colnames(df) = "type"
+ha = HeatmapAnnotation(df =df , col = list(type = c("lgg" = "orange", "gbm" = "purple")))
+
+pdf("developmental_genes_lgg_gbm.pdf", width=12, height=8)
+Heatmap(mat, column_names_gp = gpar(fontsize = 1.5), km = 7, top_annotation = ha, show_column_names = FALSE)
+dev.off()
 
 
 
-
-
-
-
-
-
-
-
-#get PCA
-pca_dat = heat
-
-res.pca = prcomp(pca_dat, scale=TRUE)
-pca_dat = as.data.frame(pca_dat)
-pca_dat$lnc_combo = ""
-
-get_mean = function(row){
-  means = sum(as.numeric(row[[1]], row[[2]]))
-  return(means)
-}
-pca_dat$lnc_combo = apply(pca_dat, 1, get_mean)
-pca_dat = as.data.table(pca_dat)
-pca_dat = pca_dat[order(lnc_combo)]
-
-groups <- as.factor(dat$risk)
-
-print(fviz_pca_ind(res.pca,
-             #col.ind = groups, # color by groups
-             #palette = c("#00AFBB",  "#FC4E07"),
-             addEllipses = TRUE, # Concentration ellipses
-             #legend.title = "Groups",
-             repel = TRUE, label="none", ellipse.level=0.5
-             ) #+ labs(title = paste("PCA", lnc, canc)))
 
 
 
