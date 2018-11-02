@@ -81,6 +81,9 @@ lm_model0 = lm(exp_data$ENSG00000141510 ~ exp_data$SMTS, data = exp_data)
 lm_model1 = lm(exp_data$ENSG00000141510 ~  exp_data$ENSG00000189298 + exp_data$SMTS, data = exp_data)
 anova(lm_model1, lm_model1)
 
+cor.test(exp_data$ENSG00000141510 ~  exp_data$ENSG00000189298,method="spearman")$p.value
+
+
 pdf("zkscan3_tp53_all_gtex_samples_juris_code.pdf")
 ggplot(exp_data, aes(ENSG00000189298, ENSG00000141510, fill=SMTS, color=SMTS)) +
         geom_smooth(method='lm', aes(color=SMTS), se=F) +

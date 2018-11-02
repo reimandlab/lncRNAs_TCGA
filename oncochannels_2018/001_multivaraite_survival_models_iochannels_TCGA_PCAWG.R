@@ -139,6 +139,7 @@ add_tags = function(dtt){
 }
 
 filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
+saveRDS(filtered_data_tagged, file="28cancers_tagged_by_ion_channels.rds")
 
 #3. Fit survival models and plot Kaplan Meier plot 
 

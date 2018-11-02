@@ -224,66 +224,6 @@ get_exp_plots("ENSG00000225937")
 get_num_peaks_den("ENSG00000225937")
 dev.off()
 
-lnc = get_ensg("MALAT1")
-pdf("malat1_expression_across_cancers.pdf")
-get_exp_plots(lnc)
-get_num_peaks_den(lnc)
-dev.off()
-
-lnc = get_ensg("NEAT1")
-pdf("neat1_expression_across_cancers.pdf")
-get_exp_plots(lnc)
-get_num_peaks_den(lnc)
-dev.off()
-
-lnc = get_ensg("HOTAIR")
-pdf("hotair_expression_across_cancers.pdf")
-get_exp_plots(lnc)
-get_num_peaks_den(lnc)
-dev.off()
-
-lnc = get_ensg("TINCR")
-pdf("tincr_expression_across_cancers.pdf")
-get_exp_plots(lnc)
-get_num_peaks_den(lnc)
-dev.off()
-
-lnc = get_ensg("XIST")
-pdf("xist_expression_across_cancers.pdf")
-get_exp_plots(lnc)
-get_num_peaks_den(lnc)
-dev.off()
-
-lnc = get_ensg("LINC00518")
-pdf("LINC00518_expression_across_cancers.pdf")
-get_exp_plots(lnc)
-get_num_peaks_den(lnc)
-dev.off()
-
-lnc = get_ensg("RP5-1158E12.3")
-pdf("RP5-1158E12.3_expression_across_cancers.pdf")
-get_exp_plots(lnc)
-get_num_peaks_den(lnc)
-dev.off()
-
-#some prostate speicifc ones from gtex
-
-pdf("LHFPL3-AS1_expression_across_cancers.pdf")
-get_exp_plots("ENSG00000226869")
-dev.off()
-
-pdf("ENSG00000183674_expression_across_cancers.pdf")
-get_exp_plots("ENSG00000183674")
-dev.off()
-
-pdf("ENSG00000272457_expression_across_cancers.pdf")
-get_exp_plots("ENSG00000272457")
-dev.off()
-
-#plot all lncRNAs 
-lncs = unique(colnames(rna))
-z = which(str_detect(lncs, "ENSG"))
-lncs = lncs[z]
 
 #pdf("all_lncs_cands_dist_plots.pdf")
 #lncs = unique(allCands$gene)

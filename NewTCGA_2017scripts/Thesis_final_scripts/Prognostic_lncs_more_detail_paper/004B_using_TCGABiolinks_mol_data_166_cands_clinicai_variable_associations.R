@@ -495,8 +495,8 @@ ggplot(clean_up, aes(type, colname)) +
           axis.text.y = element_text(size=5))
 dev.off()
 
-saveRDS(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolinks.rds")
-write.table(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolnks.txt", row.names=F, quote=F)
+#saveRDS(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolinks.rds")
+#write.table(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolnks.txt", row.names=F, quote=F)
 
 #-------PLOT summary results-------------------------------------------
 
