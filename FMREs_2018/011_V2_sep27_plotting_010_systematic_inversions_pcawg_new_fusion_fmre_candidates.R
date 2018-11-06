@@ -43,12 +43,15 @@ ucsc = fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt")
 #------read in results-------------------------------------------------------------------------------
 pcg_rna = as.data.frame(pcg_rna)
 
-load("merged_translocation_frame.rsav")
-res = as.data.table(k.frame)
+#load("merged_translocation_frame.rsav")
+#res = as.data.table(k.frame)
 
 res = readRDS("233_translocations_wexp.rds")
-res = as.data.table(filter(res, p.value < 0.1))
-res = res[,c("p.value", "method", "fc", "canc", "pat", "pcg", "fc", "fmre")]
+#res = as.data.table(filter(res, p.value < 0.1))
+#try to subset res by z-score instead of p-value 
+res = as.data.table(filter(res, abs(zscore_pat) >= 4))
+
+res = res[,c("p.value", "method", "fc", "canc", "pat", "pcg", "fc", "fmre", "zscore_pat")]
 res = unique(res)
 
 #subset to genes 
@@ -66,6 +69,12 @@ if(!(length(z)==0)){
 	res = res[-z,]
 }
 
+#save
+fmre_sv = res
+fmre_sv = fmre_sv[,-7]
+write.table(fmre_sv, file="figure_3c_data_table_KI_nov5_zscore4.txt", quote=F, row.names=F, sep="\t")
+
+
 get_fc = function(row){
 
 	pat = row[[5]]
@@ -73,6 +82,7 @@ get_fc = function(row){
 	#subset to PCG
 	pcg = row[[6]]
 	fmre = row[[8]]
+	zscore = row[[9]]
 
 	#get ensembl id
 	ens = ucsc$hg19.ensGene.name2[ucsc$hg19.ensemblToGeneName.value == pcg][1]
@@ -108,15 +118,15 @@ get_fc = function(row){
 
 	#fmre = row[[6]]
 	#fmre = pat
-	dat = as.data.frame(matrix(ncol = 10))
-	dat[1,] = c(pat, canc, pcg, ens, pat_exp, else_ppl, fc, pval, newpval, fmre)
+	dat = as.data.frame(matrix(ncol = 11))
+	dat[1,] = c(pat, canc, pcg, ens, pat_exp, else_ppl, fc, pval, newpval, fmre, zscore)
 	return(dat)
 
 }
 
 plotting_dat = apply(res, 1, get_fc)
 plotting_dat = ldply(plotting_dat)
-colnames(plotting_dat) = c("patient", "cancer", "name", "ens", "pat_exp", "mean_others", "fc", "pval", "newpval", "fmre")
+colnames(plotting_dat) = c("patient", "cancer", "name", "ens", "pat_exp", "mean_others", "fc", "pval", "newpval", "fmre", "zscore")
 plotting_dat$fc = as.numeric(plotting_dat$fc)
 z = which(duplicated(plotting_dat$name))
 plotting_dat$name[z] = paste(plotting_dat$name[z], ".")
@@ -225,6 +235,9 @@ cancers = ggpar(cancers, legend = "bottom") + theme(axis.title.x=element_blank()
 
 #####3 USE--------------------
 
+plotting_dat$zscore = floor(as.numeric(plotting_dat$zscore))
+labels = paste("Z = ", plotting_dat$zscore)
+
 barplot = ggbarplot(plotting_dat, x="name", y="fc", lab.size = 6, label = labels, lab.vjust=-0.1, fill="expression") +
  	xlab("Translocation") + ylab("Fold Change") + theme_bw() +
  	scale_fill_manual(values=c("#E69F00", "#56B4E9")) #+ coord_trans(y="log10")
@@ -234,25 +247,28 @@ barplot = ggpar(barplot, yscale = "log2",
  xtickslab.rt = 45) #+ 
 #scale_y_continuous(breaks = round(seq(-3, 11 , by = 1),1)) 
 
-pdf("summary_mean_barplot_translocation_exp_fc_version_3_oct1.pdf", width=10, height=7)
+pdf("summary_mean_barplot_translocation_exp_fc_version_4_nov5_zscore3.pdf", width=10, height=7)
 barplot + pats + cancers + plot_layout(ncol = 1, heights = c(10, 1, 1))
 dev.off()
 
 write.table(plotting_dat, file="data_table_SV_exp_barplot_KI_sept21.txt", quote=F, row.names=F, sep="\t")
 
 #re-order up to down 
-plotting_dat = plotting_dat[order(-fc)]
+plotting_dat = plotting_dat[order(fc)]
+plotting_dat$combo = paste(plotting_dat$fmre, plotting_dat$name)
+labels = paste("Z = ", plotting_dat$zscore)
 
-barplot = ggbarplot(plotting_dat, x="name", y="fc", lab.size = 6, fill="expression") +
+barplot = ggbarplot(plotting_dat, x="combo", y="fc", lab.size = 6, fill="expression",label = labels, lab.pos="out") +
  	xlab("Translocation") + ylab("Fold Change") + theme_bw() +
  	scale_fill_manual(values=c("#E69F00", "#56B4E9")) #+ coord_trans(y="log10")
  
-barplot = ggpar(barplot,  yticks.by=log2(100), yscale = "log2", legend="none",
- tickslab=FALSE, ticks=F, xlab = FALSE, ylab = FALSE, font.legend = c(12, "plain", "black")) +
- coord_flip()#+ 
+barplot = ggpar(barplot,  yticks.by=log2(100), yscale = "log2", legend="none",xlab = FALSE, ylab = FALSE, font.legend = c(12, "plain", "black"))+
+  coord_flip()#+ 
+
+ #tickslab=FALSE, ticks=F,  +
 #scale_y_continuous(breaks = round(seq(-3, 11 , by = 1),1)) 
 
-pdf("summary_mean_barplot_translocation_exp_fc_version_3_oct4.pdf", width=9, height=6)
+pdf("summary_mean_barplot_translocation_exp_fc_version_3_oct4.pdf", width=10, height=6)
 barplot 
 dev.off()
 

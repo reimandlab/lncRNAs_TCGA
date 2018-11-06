@@ -565,22 +565,55 @@ clean_up$clin_pval = p.adjust(clean_up$clin_pval, method="fdr")
 clean_up$sig_tag[clean_up$clin_pval < 0.05] = "V"
 clean_up$sig_tag[clean_up$clin_pval > 0.05] = ""
 
-write.csv(clean_up, file="cleaned_clinical_variables_associations_data_sept28_post_cleanup.csv", quote=F, row.names=F)
+#write.csv(clean_up, file="cleaned_clinical_variables_associations_data_sept28_post_cleanup.csv", quote=F, row.names=F)
+
+
+############## POST MANUAL CLEANUP ###################################################################################
 
 #post manual cleanup of variables 
 clin_results = read.csv("cleaned_clinical_variables_associations_data_sept28_post_cleanup.csv")
-
 clin_results = as.data.table(clin_results)
+
+#keep only those with significant chisq associations 
+clin_results = as.data.table(filter(clin_results, chisq < 0.05, kw_pval < 0.05)) #136 left 
+
+clin_results$canc_lnc_clin = paste(clin_results$combo, clin_results$colname)
+dups = unique(clin_results$canc_lnc_clin[which(duplicated(clin_results$canc_lnc_clin))])
+
+new_dat = as.data.table(filter(clin_results, !(canc_lnc_clin %in% dups)))
+
+for(i in 1:length(dups)){
+  dup = dups[i]
+  dupdat = as.data.table(filter(clin_results, canc_lnc_clin == dup))
+  dupdat = dupdat[order(-lnc_concordance, -concordance_combo_model, clin_vs_combo_anova)]
+  keep = dupdat[1,]
+  new_dat = rbind(new_dat, keep)
+}
+
+#new_dat = 113 unique canc-lncRNA-clinical associations that are significant 
+#17 unique colnames 
+#unique(new_dat$colname)
+# [1] "X1p.19q.codeletion"             "tumor_grade"                   
+# [3] "treatment_outcome_first_course" "TERT.promoter.status"          
+# [5] "TERT.expression.status"         "Spread to Lymph nodes"         
+# [7] "Ethnicity "                     "PR.Status"                     
+# [9] "PAM50.mRNA"                     "Original.Subtype"              
+#[11] "MGMT.promoter.status"           "IDH.status"                    
+#[13] "HER2.Final.Status"              "Sex"                           
+#[15] "ER.Status"                      "clinical_stage"                
+#[17] "Chr.7.gain.Chr.10.loss"         "Chr.19.20.co.gain"       
+
+#10 cancer types 
+length(which(new_dat$clin_pval < 0.05)) #101 also significnatly associated with survival 
+clin_results = new_dat
 
 #which combos are better once lncRNA is used
 #look at only those where clinical variable also associated with survival
-clinsig = as.data.table(filter(clin_results, sig_tag == "V"))
-clinsig_cause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova < 0.05)) #121/125
-clinsig_notcause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova > 0.05)) #4/125
+clinsig = as.data.table(filter(clin_results, sig_tag == "V")) #clin also sig
+clinsig_cause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova < 0.05)) #97/101
+clinsig_notcause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova > 0.05)) #4/101
 
-#36 unique lncRNA-cancer combos 
-
-#get order 
+#get order - 113 unique combos
 t = as.data.table(table(clin_results$colname))
 t = as.data.table(filter(t, N > 0))
 t = t[order(-N)]
@@ -597,8 +630,11 @@ clin_results$concordance_combo_model = as.numeric(clin_results$concordance_combo
 clin_results$anova_both_vs_lnc = as.numeric(clin_results$anova_both_vs_lnc)
 z = which((clin_results$concordance_combo_model > clin_results$clin_concordance) & (clin_results$anova_both_vs_lnc < 0.05))
 clin_results$better[z] = "V"
+#mark the clinical variables that are also associated with survival 
+z = which(clin_results$clin_pval < 0.05)
+clin_results$clin_sig[z] = "V"
 
-pdf("summary_biolinks_subtypes_lncRNA_exp_Sept28.pdf", height=6, width=12)
+pdf("summary_biolinks_subtypes_lncRNA_exp_Sept28.pdf", height=6, width=10)
 #make geom_tile plot
 ggplot(clin_results, aes(combo, colname)) +
   geom_tile(aes(fill = -log10(fdr)), colour = "grey50") +

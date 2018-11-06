@@ -287,6 +287,11 @@ sig_paths_sum$font_col[sig_paths_sum$canc == "LGG"] = "1"
 a <- ifelse(sig_paths_sum$font_col == 1, "red", "black")
 
 all_res = as.data.table(filter(all_res, num_sig_des >=75))
+z = which(!(duplicated(all_res$combo2)))
+add = all_res[z,]
+add$type = "pathways"
+add$num_sig_des = 0
+all_res = rbind(all_res, add)
 
 #117 unique lncRNA-cancer pairs 
 #114 unique lncRNAs 

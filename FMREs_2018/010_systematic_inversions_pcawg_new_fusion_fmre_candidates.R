@@ -75,12 +75,13 @@ check_exp = function(row) {
 
 	#get ensembl id
 	ens = ucsc$hg19.ensGene.name2[ucsc$hg19.ensemblToGeneName.value == pcg][1]
-	z = which(colnames(pcg_rna) == ens)
-	if(!(length(z)==0)){
+	if(!(is.na(ens))){
 
 	#expression of patient
 	p = which(canc_exp$patient == pat)
 	
+	z = which(colnames(canc_exp) == ens)
+
 	if(!(length(p) ==0)){
 		pat_exp = canc_exp[which(canc_exp$patient == pat),z]
 
@@ -102,6 +103,13 @@ check_exp = function(row) {
 	w$flank = row[[14]]
 	w$fc = fc
 	w$fmre = row[[10]]
+	#zscore all 
+	zg = which(str_detect(colnames(canc_exp), "ENSG"))
+	canc_exp[,zg] = scale(canc_exp[,zg])
+	z = which(colnames(canc_exp) == ens)
+	pat_exp_scaled = canc_exp[which(canc_exp$patient == pat),z]
+	print(pat_exp_scaled)
+	w$zscore_pat = pat_exp_scaled
 	print(pcg)
     return(w)
 }

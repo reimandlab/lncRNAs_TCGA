@@ -316,7 +316,7 @@ get_data = function(lnc){
     xlab("lncRNA CNA status") +
     ylab("log1p(FPKM-UQ)") + stat_compare_means()+
     geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15))+
-    colScale +
+    scale_colour_manual(values=c("royalblue1", "gainsboro", "brown3")) +
     annotate("text", x = 1.3, y =ycord , label = text_add)
 
       #print(sp1)
@@ -512,15 +512,15 @@ barplot = rbind(barplot_1, barplot_2, barplot_3)
 
 barplot = barplot[order(type)]
 barplot$combo = paste(barplot$CAT_geneName, barplot$canc)
-barplot$type = factor(barplot$type, levels = c("risk_cna", "nonrisk_cna", "other"))
+barplot$type = factor(barplot$type, levels = c("other", "nonrisk_cna", "risk_cna"))
 barplot$combo = factor(barplot$combo, levels=sig_diff$combo)
 
-pdf("final_cna_figure_partA.pdf", width=9, height=7)
+pdf("final_cna_figure_partA.pdf", width=9, height=6)
 g <- ggplot(barplot, aes(combo, cna_counts))
 # Number of cars in each class:
-g + geom_col(aes(fill = type)) + scale_fill_manual(values=mypal[c(1,4,3)], name="CNA Type",
-                       breaks=c("risk_cna", "nonrisk_cna", "other"),
-                       labels=c("Risk wCNA", "Non-Risk wCNA", "Other"))+
+g + geom_col(aes(fill = type)) + scale_fill_manual(values=c("gainsboro", "royalblue1", "brown3"), name="CNA Type",
+                       breaks=c("other", "nonrisk_cna", "risk_cna"),
+                       labels=c("Other", "Non-Risk wCNA", "Risk wCNA"))+
 theme_bw()+
 theme(axis.text.x = element_text(size=10, angle=45, hjust=1),
           axis.text.y = element_text(size=14), legend.position="top") + xlab("lncRNA-cancer") + ylab("% of patients")
