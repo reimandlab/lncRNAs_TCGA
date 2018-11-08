@@ -77,7 +77,7 @@ check_exp = function(row) {
 	ens = ucsc$hg19.ensGene.name2[ucsc$hg19.ensemblToGeneName.value == pcg][1]
 	if(!(is.na(ens))){
 
-	#expression of patient
+	#expression of patientf
 	p = which(canc_exp$patient == pat)
 	
 	z = which(colnames(canc_exp) == ens)
