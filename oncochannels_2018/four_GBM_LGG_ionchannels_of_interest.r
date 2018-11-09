@@ -104,8 +104,6 @@ for(i in 1:length(unique(allCands$combo))){
 
 dev.off()
 
-
-
 #get gbm
 gbm = subset(ext, type=="GBM")
 
@@ -122,7 +120,105 @@ r = rbind(all, gbm)
 all=r
 
 
-pdf("four_GBM_LGG_ionchannels_of_interest.pdf")
+###EASY WAY TO MAKE KM PLOT
+get_km_plot = function(gene, cancer){
+  #all_g = ext
+  dat = all[,c(which(colnames(all) %in% c("type", gene, "OS", "OS.time")))]
+  z = which(str_detect(colnames(dat), "ENSG"))
+  if(!(length(z)==0)){
+  colnames(dat)[z] = "gene"
+  dat = subset(dat, type == cancer)
+  #split patients 
+  dat$geneexp = dat$gene
+  med = median(dat$gene)
+  #add high low tag
+    if(med ==0){
+    #if median = 0 then anyone greater than zero is 1 
+    l1 = which(dat[,z] > 0)
+    l2 = which(dat[,z] ==0)
+    dat[l1,z] = 1
+    dat[l2, z] = 0
+    }
+
+    if(!(med ==0)){
+    l1 = which(dat[,z] >= med)
+    l2 = which(dat[,z] < med)
+    dat[l1,z] = 1
+    dat[l2, z] = 0
+    }
+
+  dat$OS = as.numeric(dat$OS)
+  dat$OS.time = as.numeric(dat$OS.time)
+  dat$OS.time = dat$OS.time/365
+  dat$gene = factor(dat$gene, levels = c(0,1))
+  gene_name = get_name(gene)
+  if(is.na(gene_name)){
+    gene_name = get_name_pcg(gene)
+  }
+  
+  #balance check
+  bal_check = (table(dat[,4])[1] >= 5) & (table(dat[,4])[2] >= 5)
+  if(bal_check){
+
+      dat$gene = factor(dat$gene, levels=c(0,1))
+      p <- ggboxplot(dat, x = "gene", y = "geneexp",
+          color = "gene",
+         palette = mypal[c(4,1)], title = paste(gene_name, "Expression", cancer , sep=" "), 
+          add = "jitter", ylab = "FPKM-UQ",  ggtheme = theme_bw())
+        # Change method
+      p = p + stat_compare_means(method = "wilcox.test")
+
+      print(p)
+      dat$geneexp = log1p(dat$geneexp)
+      p <- ggboxplot(dat, x = "gene", y = "geneexp",
+          color = "gene",
+         palette = mypal[c(4,1)], title = paste(gene_name, "Expression", cancer , sep=" "), 
+          add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_bw())
+        # Change method
+      p = p + stat_compare_means(method = "wilcox.test")
+
+      print(p)
+
+  cox_mod = coxph(Surv(OS.time, OS) ~ gene, data = dat)
+  print(glance(cox_mod)$concordance)
+  conc = round(glance(cox_mod)$concordance, digits=2)
+  fit <- survfit(Surv(OS.time, OS) ~ gene, data = dat)
+          s <- ggsurvplot(
+          title = paste(gene_name, dat$type[1], "\nConcordance=", conc),
+          fit, 
+          xlab = "Time (Years)", 
+          surv.median.line = "hv",
+          font.main = c(16, "bold", "black"),
+          font.x = c(14, "plain", "black"),
+          font.y = c(14, "plain", "black"),
+          font.tickslab = c(14, "plain", "black"),
+          font.legend = 12,
+          risk.table.fontsize = 5, 
+          legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
+          data = dat,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,5),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          palette = mypal[c(4,1)],
+          ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          #print(s)
+
+}
+} 
+}
+
+
+pdf("four_GBM_LGG_ionchannels_of_interest_boxplots.pdf", width=4, height=4)
 
 get_km_plot(get_ensg_pcg("CATSPER1"), "GBM")
 get_km_plot(get_ensg_pcg("CATSPER1"), "LGG")
@@ -133,10 +229,24 @@ get_km_plot(get_ensg_pcg("SCN9A"), "LGG")
 get_km_plot(get_ensg_pcg("AQP9"), "GBM")
 get_km_plot(get_ensg_pcg("AQP9"), "LGG")
 
-get_km_plot(get_ensg_pcg("KCNN4"), "GBM")
-get_km_plot(get_ensg_pcg("KCNN4"), "LGG")
+#get_km_plot(get_ensg_pcg("KCNN4"), "GBM")
+#get_km_plot(get_ensg_pcg("KCNN4"), "LGG")
 
 get_km_plot(get_ensg_pcg("GJB2"), "GBM")
 get_km_plot(get_ensg_pcg("GJB2"), "LGG")
 
 dev.off()
+
+
+#make barplot 
+t = as.data.table(table(all$type))
+t = t[order(N)]
+pdf("28_TCGA_tumour_Types_summary.pdf", width=10, height=7)
+g = ggbarplot(t, "V1", "N",
+ fill = "steelblue", color = "steelblue", lab.size=2, 
+ label = TRUE, lab.pos = "in", lab.col = "white", xlab="Tumour Type", ylab="Samples")
+ggpar(g, xtickslab.rt = 45,  font.tickslab = c(12,"plain", "black"))
+dev.off()
+
+
+
