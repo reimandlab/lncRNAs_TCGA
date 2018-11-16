@@ -88,9 +88,54 @@ logged_rna[,z1] = log1p(logged_rna[,z1])
 
 #try t-SNE 
 library(Rtsne)
-iris_unique <- unique(iris) # Remove duplicates
-iris_matrix <- as.matrix(iris_unique[,1:4])
+#iris_unique <- unique(iris) # Remove duplicates
+#iris_matrix <- as.matrix(iris_unique[,1:4])
 set.seed(42) # Set a seed if you want reproducible results
+
+library(fastcluster)
+
+# your code, no labels    
+hc <- hclust(dist(logged_rna[,1:5785]))
+
+plot(hc)
+hc$labels
+
+# add labels, plot and check labels
+hc$labels <- logged_rna$type
+plot(hc)
+
+## labels in the order plotted
+clusters= hc
+clusters$labels[clusters$order]
+
+dend <- as.dendrogram(clusters)
+# Like: 
+# dend <- USArrests[1:5,] %>% dist %>% hclust %>% as.dendrogram
+
+# By default, the dend has no colors to the labels
+library(dendextend)
+
+labels_colors(dend)
+## NULL
+# let's add some color:
+labels_colors(dend) <- 1:28
+# Now each state has a color
+labels_colors(dend) 
+##   Arkansas    Arizona California    Alabama     Alaska 
+##          1          2          3          4          5
+plot(dend, main = "A color for every state")
+
+# Plot the obtained dendrogram
+
+pdf("hiararchila_clustering_28_cancer_types_TCGA.pdf")
+plot(hc1, cex = 0.6, hang = -1)
+dev.off()
+
+
+
+
+
+
 tsne_out <- Rtsne(logged_rna[,z1]) # Run TSNE
 saveRDS(tsne_out, file="tsne_out_28_cancers_Oct1.rds")
 

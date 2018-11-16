@@ -84,10 +84,12 @@ add_tags = function(dtt){
 }
 
 filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
+saveRDS(filtered_data_tagged, file="22_cancer_types_with_lncRNA_candidates_labelled_high_low.rds")
 
 get_survival_models = function(dtt){
-  results_cox1 <- as.data.frame(matrix(ncol=18)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
-    "lnc_test_ph", 'global_test_ph', "num_risk", "perc_risk", "power", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero", "multi_model_concordance", "lnc_only_concordance")
+  results_cox1 <- as.data.frame(matrix(ncol=21)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
+    "lnc_test_ph", 'global_test_ph', "num_risk", "perc_risk", "power", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero", "multi_model_concordance", 
+    "lnc_only_concordance", "clinical_only_concordance", "num_events", "perc_wevents")
 
   dat = dtt
   dat$Cancer = NULL
@@ -108,6 +110,9 @@ get_survival_models = function(dtt){
   dat$OS = as.numeric(dat$OS)
   dat$OS.time = as.numeric(dat$OS.time)
   dat$age_at_initial_pathologic_diagnosis = as.numeric(dat$age_at_initial_pathologic_diagnosis)
+  #num events
+  num_events = length(which(dat$OS == 1))
+  perc_events = num_events/nrow(dtt)
 
   for(i in 1:length(num_genes)){
   gene = num_genes[i]  
@@ -124,6 +129,11 @@ get_survival_models = function(dtt){
   cmulti = as.numeric(glance(lncs)[11])
   lnc_only = coxph(Surv(OS.time, OS)  ~ newdat[,1], data = newdat)
   clnconly = as.numeric(glance(lnc_only)[11])
+  
+  z = which(str_detect(colnames(newdat), "ENSG"))
+  clin_only = newdat[,-z]
+  clinical_only = coxph(Surv(OS.time, OS)  ~ ., data = clin_only)
+  clinical_only = as.numeric(glance(clinical_only)[11])
 
   #calculate power
   #k is ratio of participants in group E (experimental group) compared to group C (controlgroup).
@@ -209,10 +219,12 @@ get_survival_models = function(dtt){
     lnc_test_ph, global, risk_num, perc, power, median_nonzero,
     sd_nonzero,
     min_nonzero,
-    max_nonzero, cmulti, clnconly)
+    max_nonzero, cmulti, clnconly, clinical_only, num_events, perc_events)
 
    names(row) <- names(results_cox1) 
    results_cox1 = rbind(results_cox1, row)
+   print(row)
+
 
    #make density plot using FPKM-UQ values and logged values
    #visualize bimodality 
@@ -230,7 +242,7 @@ get_survival_models = function(dtt){
   
    gg <- ggplot(exp_data)
    gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
-   gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" "))
+   gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" ")) + labs(y="log1p(FPKM-UQ)")
    print(gg)
 
    p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
@@ -263,6 +275,11 @@ tcga_results1 = ldply(tcga_results, data.frame)
 tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
 tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
 tcga_results1$fdr_pval = as.numeric(tcga_results1$fdr_pval)
+tcga_results1$perc_wevents = as.numeric(tcga_results1$perc_wevents)
+tcga_results1$num_events = as.numeric(tcga_results1$num_events)
+tcga_results1$lnc_better = ""
+z= which(tcga_results1$lnc_only_concordance >= tcga_results1$clinical_only_concordance)
+
 tcga_results1 = as.data.table(tcga_results1)
 tcga_results1 = tcga_results1[order(fdr_pval)]
 
@@ -305,6 +322,10 @@ dev.off()
 tcga_results1 = readRDS("TCGA_results_multivariate_results_Oct3.rds")
 tcga_results1$data = "TCGA"
 tcga_results1$combo = paste(tcga_results1$gene, tcga_results1$cancer, sep="_")
+tcga_results1$clinical_only_concordance = NULL
+tcga_results1$num_events = NULL
+tcga_results1$perc_wevents = NULL
+
 #z = which(tcga_results1$combo %in% robust$combo)
 #tcga_results1 = tcga_results1[z,]
 
@@ -742,6 +763,10 @@ all_results_orig$fdr_pval = round(all_results_orig$fdr_pval, digits=4)
 
 all_results_orig$combo = paste(all_results_orig$gene, all_results_orig$cancer, sep="_")
 
+#add info on number of events and % of events in each cancer type
+tcga = readRDS("TCGA_results_multivariate_results_Oct3.rds")
+tcga = unique(tcga[,c("cancer", "perc_wevents", "num_events")])
+all_results_orig = merge(all_results_orig, tcga, by="cancer")
 write.csv(all_results_orig, file="173_lncRNA_cancers_combos_22_cancer_types_oct3.csv", quote=F, row.names=F)
 #write.csv(all_results_orig, file="112_lncRNA_cancers_combos_22_cancer_types_aug8.csv", quote=F, row.names=F)
 saveRDS(all_results_orig, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")

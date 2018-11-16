@@ -65,8 +65,14 @@ allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #1
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 #Co-expression results of PCGs 
-coexp = readRDS("coexpression_results_processed_july24.rds")
-coexp$combo2 = paste(coexp$lnc, coexp$canc, coexp$pcg, sep="_")
+#coexp = readRDS("coexpression_results_processed_july24.rds")
+#coexp$combo2 = paste(coexp$lnc, coexp$canc, coexp$pcg, sep="_")
+
+#-most recent differential expression analysis results from running LIMMA
+#using counts and VOOM 
+
+all_de_results = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
+all_de_results = as.data.table(all_de_results)
 
 #PCG lncRNA results
 pcg_lnc = readRDS("summary_pcg_analysis_wHRs_jul2y24.rds") #all these have at least 1, 50-pcg signature 

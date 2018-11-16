@@ -346,21 +346,33 @@ random_lncs_vs_cand1$diff_meds_lnc_random = as.numeric(random_lncs_vs_cand1$diff
 random_lncs_vs_cand1 = random_lncs_vs_cand1[order(wp_lnc_clinical, diff_meds_lnc_clinical, wp_lnc_clinical,wp_lnc_random, diff_meds_lnc_random)]
 random_lncs_vs_cand1$type = factor(random_lncs_vs_cand1$type, levels=unique(random_lncs_vs_cand1$type))
 
-#part a
+#add gene name 
+allCands$name = unlist(llply(allCands$gene, get_name))
 
-pdf("figure2_e_lncRNA_cands_vs_clinical_variables.pdf", width=8, height=6)
-ggplot(random_lncs_vs_cand1, aes(x=diff_meds_lnc_clinical, y=wp_lnc_clinical_fdr)) + geom_point(aes(colour=type))+
-geom_hline(yintercept=-log10(0.05), linetype="dashed", color = "black")+theme_bw() +
-labs(x="median lncRNA candidate c-index - median clinical variables c-index", y="-log10(adjusted p-val")+
-scale_colour_manual(values = mypal5[1:22]) + theme(legend.position="bottom", text = element_text(size=15))
+#known lncRNAs 
+known_lncs = c("TINCR", "U3", "CAHM", "MAPT-AS1", "UCHL1-AS1")
+
+#part a
+pdf("figure2_e_lncRNA_cands_vs_clinical_variables.pdf", width=6, height=6)
+ggplot(random_lncs_vs_cand1, aes(x=diff_meds_lnc_clinical, y=wp_lnc_clinical_fdr, label=lncRNA)) + geom_point(aes(colour=type))+
+geom_hline(yintercept=-log10(0.05), linetype="dashed", color = "black")+
+geom_vline(xintercept=0, linetype="dashed", color = "black")+
+theme_bw() +
+labs(x="(median lncRNA candidate c-index) - (median clinical variables c-index)", y="-log10(adjusted p-val)")+
+scale_colour_manual(values = mypal5[1:22]) + theme(legend.position="bottom", text = element_text(size=12))+
+geom_text_repel(data = subset(random_lncs_vs_cand1, lncRNA %in% known_lncs), size=3, nudge_y = 2,
+      direction = "x",segment.color = "grey50",
+      segment.size = 0.5)
 dev.off()
 
 #part b 
-pdf("figure2_e_lncRNA_cands_vs_random_lncs_variables.pdf", width=8, height=6)
+pdf("figure2_e_lncRNA_cands_vs_random_lncs_variables.pdf", width=6, height=6)
 ggplot(random_lncs_vs_cand1, aes(x=diff_meds_lnc_random, y=wp_lnc_random_fdr)) + geom_point(aes(colour=type))+
-geom_hline(yintercept=-log10(0.05), linetype="dashed", color = "black")+theme_bw() +
-labs(x="median lncRNA candidate c-index - median random lncRNAs c-index", y="-log10(adjusted p-val")+
-scale_colour_manual(values = mypal5[1:22]) + theme(legend.position="bottom", text = element_text(size=15))
+geom_hline(yintercept=-log10(0.05), linetype="dashed", color = "black") +
+geom_vline(xintercept=0, linetype="dashed", color = "black")+
+theme_bw() +
+labs(x="(median lncRNA candidate c-index) - (median random lncRNAs c-index)", y="-log10(adjusted p-val)")+
+scale_colour_manual(values = mypal5[1:22]) + theme(legend.position="bottom", text = element_text(size=12))
 dev.off()
 
 

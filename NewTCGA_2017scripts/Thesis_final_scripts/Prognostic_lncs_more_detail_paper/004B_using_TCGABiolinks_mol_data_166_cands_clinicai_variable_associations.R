@@ -607,6 +607,8 @@ for(i in 1:length(dups)){
 length(which(new_dat$clin_pval < 0.05)) #101 also significnatly associated with survival 
 clin_results = new_dat
 
+#113 unique associations between a lncRNA and a clinical variable 
+
 #which combos are better once lncRNA is used
 #look at only those where clinical variable also associated with survival
 clinsig = as.data.table(filter(clin_results, sig_tag == "V")) #clin also sig
@@ -656,7 +658,7 @@ write.csv(clin_results, file="cleaned_clinical_variables_associations_data_sept2
 #fill bars by lncRNA only/clinical only/combined 
 #clinsig = as.data.table(filter(clin_results, sig_tag == "V"))
 clinsig = clin_results
-clinsig_cause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova < 0.05)) #121/125
+clinsig_cause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova < 0.05)) #106/113
 clinsig_cause_lnc = clinsig
 clinsig_cause_lnc$combo_clin = paste(clinsig_cause_lnc$combo, clinsig_cause_lnc$colname)
 clinsig_cause_lnc$anova_both_vs_lnc = as.numeric(clinsig_cause_lnc$anova_both_vs_lnc)
@@ -664,12 +666,13 @@ clinsig_cause_lnc$better_than_clin = ""
 z = which((clinsig_cause_lnc$concordance_combo_model > clinsig_cause_lnc$clin_concordance) & (clinsig_cause_lnc$clin_vs_combo_anova < 0.05))
 clinsig_cause_lnc$better_than_clin[z] = "V"
 
-z = which(clinsig_cause_lnc$colname %in% c("Spread to Lymph nodes", "treatment_outcome_first_course"))
+z = which(clinsig_cause_lnc$colname %in% c("treatment_outcome_first_course"))
 clinsig_cause_lnc = clinsig_cause_lnc[-z,]
 #z = which(clinsig_cause_lnc$lnc_concordance > 0.5)
 #clinsig_cause_lnc= clinsig_cause_lnc[z,]
 
-clinsig_cause_lnc = clinsig_cause_lnc[order(-concordance_combo_model)]
+clinsig_cause_lnc = clinsig_cause_lnc[order(-concordance_combo_model)] #103 associations remain 
+#97 of them are still better survival models that with clinical variale alone 
 
 lnc_conc = clinsig_cause_lnc[,c("combo", "combo_clin", "lnc_concordance")]
 colnames(lnc_conc)[ncol(lnc_conc)] = "Concordance"
@@ -724,13 +727,14 @@ dev.off()
 
 
 #only look at ones where clinical variable is signiicant 
-clinsig_cause_lnc = as.data.table(filter(clinsig_cause_lnc, clin_pval < 0.05))
-#109 assoications that are also significant 
+clinsig_cause_lnc = as.data.table(filter(clinsig_cause_lnc, clin_pval < 0.05)) #of the 103, 91 are on their
+#own also associated with survival 
+
 table(clinsig_cause_lnc$better_than_clin)
-#106/109 are significantly better than clinical models alone 
+#88/103 are significantly better than clinical models alone 
 
 z = which(duplicated(clinsig_cause_lnc$combo_clin))
-clinsig_cause_lnc = clinsig_cause_lnc[-z,]
+#clinsig_cause_lnc = clinsig_cause_lnc[-z,]
 
 pdf("summary_clinical_concordances_vs_lnc_scatterplot_oct11.pdf", width=5, height=5)
 g = ggplot(clinsig_cause_lnc, aes(clin_concordance, concordance_combo_model, label=combo_clin)) +
@@ -741,7 +745,7 @@ g = ggplot(clinsig_cause_lnc, aes(clin_concordance, concordance_combo_model, lab
     theme(legend.position = "top", axis.text = element_text(size=12), 
       legend.text=element_text(size=10), legend.title=element_text(size=10)) +
      xlim(0.5,0.9) + ylim(0.5,0.9) + geom_abline(intercept=0) + 
-     geom_text_repel(data = subset(clinsig_cause_lnc, combo_clin %in% c("HOXA-AS4 LGG IDH.status", "HOXB-AS2 LGG IDH.status")), size=2, nudge_y = 0.3,
+     geom_text_repel(data = subset(clinsig_cause_lnc, combo_clin %in% c("HOXA-AS4 LGG IDH.status")), size=2, nudge_y = 0.3,
       direction = "x",segment.color = "grey50",
       segment.size = 0.3)
 g

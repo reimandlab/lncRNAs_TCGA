@@ -308,8 +308,9 @@ dev.off()
 
 load("_LGG_all_up_down_genes_.2018-10-31.rdata")
 colnames(res)
-canc = subset(res, res$term.name %in% canc_paths_paths)
+#canc = subset(res, res$term.name %in% canc_paths_paths)
 canc_paths_paths = res[which(str_detect(res$term.name, "brain")),]$term.name
+canc = subset(res, term.name %in% canc_paths_paths)
 
 #1. get all PCGs that are in these pathways 
 pcgs_brain = unique(unlist(canc$overlap)) #185 unique PCGs
@@ -412,20 +413,125 @@ gbm$type = "gbm"
 lgg$type = "lgg"
 all_canc = rbind(lgg, gbm)
 
+get_ensg = function(lnc){
+  z = which(fantom$CAT_geneName == lnc)
+  return(fantom$CAT_geneID[z])
+}
+z = which(colnames(all_canc) %in% (sapply(lncs_brain, get_name)))
+for(i in 1:length(z)){
+  colnames(all_canc)[z[i]] = get_ensg(colnames(all_canc)[z[i]])
+}
+z = which(colnames(all_canc) == "HOXA10-AS")
+colnames(all_canc)[z] = "ENSG00000253187"
+
 mat = all_canc[,c(which(!(colnames(all_canc) == "type")))]
 mat = scale(mat)
 mat=t(mat)
 
-df = as.data.frame(all_canc[,c(which((colnames(all_canc) == "type")))])
-colnames(df) = "type"
-ha = HeatmapAnnotation(df =df , col = list(type = c("lgg" = "orange", "gbm" = "purple")))
+df = as.data.frame(all_canc[,c(which(colnames(all_canc) %in% c("type","ENSG00000239552", "ENSG00000224950", 
+  "ENSG00000250360", "ENSG00000253187", "ENSG00000254635", "ENSG00000255020", "ENSG00000256482", "ENSG00000257261")))])
+df$patient = rownames(df)
+
+lnc_med = median(df$ENSG00000254635[df$type=="lgg"])
+z1=which(df$ENSG00000254635[df$type=="lgg"] > lnc_med)
+z2=which(df$ENSG00000254635[df$type=="lgg"] <= lnc_med)
+df$ENSG00000254635[z1] = 1
+df$ENSG00000254635[z2] = 0
+
+lnc_med = median(df$ENSG00000253187[df$type=="lgg"])
+z1=which(df$ENSG00000253187[df$type=="lgg"] > lnc_med)
+z2=which(df$ENSG00000253187[df$type=="lgg"] <= lnc_med)
+df$ENSG00000253187[z1] = 1
+df$ENSG00000253187[z2] = 0
+
+lnc_med = median(df$ENSG00000256482[df$type=="lgg"])
+z1=which(df$ENSG00000256482[df$type=="lgg"] > lnc_med)
+z2=which(df$ENSG00000256482[df$type=="lgg"] <= lnc_med)
+df$ENSG00000256482[z1] = 1
+df$ENSG00000256482[z2] = 0
+
+lnc_med = median(df$ENSG00000224950[df$type=="lgg"])
+z1=which(df$ENSG00000224950[df$type=="lgg"] > lnc_med)
+z2=which(df$ENSG00000224950[df$type=="lgg"] <= lnc_med)
+df$ENSG00000224950[z1] = 1
+df$ENSG00000224950[z2] = 0
+
+lnc_med = median(df$ENSG00000255020[df$type=="lgg"])
+z1=which(df$ENSG00000255020[df$type=="lgg"] > lnc_med)
+z2=which(df$ENSG00000255020[df$type=="lgg"] <= lnc_med)
+df$ENSG00000255020[z1] = 1
+df$ENSG00000255020[z2] = 0
+
+lnc_med = median(df$ENSG00000257261[df$type=="lgg"])
+z1=which(df$ENSG00000257261[df$type=="lgg"] > lnc_med)
+z2=which(df$ENSG00000257261[df$type=="lgg"] <= lnc_med)
+df$ENSG00000257261[z1] = 1
+df$ENSG00000257261[z2] = 0
+
+lnc_med = median(df$ENSG00000239552[df$type=="lgg"])
+z1=which(df$ENSG00000239552[df$type=="lgg"] > lnc_med)
+z2=which(df$ENSG00000239552[df$type=="lgg"] <= lnc_med)
+df$ENSG00000239552[z1] = 1
+df$ENSG00000239552[z2] = 0
+
+lnc_med = median(df$ENSG00000250360[df$type=="lgg"])
+z1=which(df$ENSG00000250360[df$type=="lgg"] > lnc_med)
+z2=which(df$ENSG00000250360[df$type=="lgg"] <= lnc_med)
+df$ENSG00000250360[z1] = 1
+df$ENSG00000250360[z2] = 0
+
+df$ENSG00000254635[df$type=="gbm"]=NA
+df$ENSG00000253187[df$type=="gbm"]=NA
+df$ENSG00000256482[df$type=="gbm"]=NA
+df$ENSG00000224950[df$type=="gbm"]=NA
+df$ENSG00000255020[df$type=="gbm"]=NA
+df$ENSG00000257261[df$type=="gbm"]=NA
+df$ENSG00000239552[df$type=="gbm"]=NA
+df$ENSG00000250360[df$type=="gbm"]=NA
+
+df$patient = NULL
+ha = HeatmapAnnotation(df = df , col = list(type = c("lgg" = "orange", "gbm" = "purple"), 
+  ENSG00000254635 = c("1" = "red", "0" ="blue"),
+  ENSG00000253187 = c("1" = "red", "0"="blue"), 
+ENSG00000256482 = c("1" = "red", "0"="blue"), 
+ENSG00000224950 = c("1" = "red", "0"="blue"), 
+ENSG00000255020 = c("1" = "red", "0"="blue"), 
+ENSG00000257261 = c("1" = "red", "0"="blue"), 
+ENSG00000239552 = c("1" = "red", "0"="blue"), 
+ENSG00000250360 = c("1" = "red", "0"="blue")), 
+na_col = "azure")
+
+#another version of ha
+
+df = as.data.frame(all_canc[,c(which(colnames(all_canc) %in% c("type","ENSG00000239552", "ENSG00000224950", 
+  "ENSG00000250360", "ENSG00000253187", "ENSG00000254635", "ENSG00000255020", "ENSG00000256482", "ENSG00000257261")))])
+df$patient = rownames(df)
+df_c = df[,c("type", "patient")]
+df = df[,-which(colnames(df) %in% c("type", "patient"))]
+#df = t(df)
+z = which(str_detect(rownames(df) ,"lgg"))
+df[z,] = apply(df[z,], 2, scale)
+z = which(str_detect(rownames(df) ,"gbm"))
+df[z,] = 0
+df = cbind(df, df_c)
+df$patient = NULL
+
+ha = HeatmapAnnotation(df = df , col = list(type = c("lgg" = "orange", "gbm" = "purple"), 
+  ENSG00000254635 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
+    ENSG00000253187 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
+ENSG00000256482 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
+ENSG00000224950 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
+ENSG00000255020 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
+ENSG00000257261 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
+ENSG00000239552 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
+ENSG00000250360 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4"))))
+
 
 pdf("developmental_genes_lgg_gbm.pdf", width=12, height=8)
-Heatmap(mat, column_names_gp = gpar(fontsize = 1.5), km = 7, top_annotation = ha, show_column_names = FALSE)
+Heatmap(mat, column_names_gp = gpar(fontsize = 1.5), top_annotation = ha, show_column_names = FALSE,
+  heatmap_legend_param = list(legend_height = unit(3, "cm"), legend_width = unit(3, "cm")),
+  top_annotation_height = unit(3, "cm"))
 dev.off()
-
-
-
 
 
 
