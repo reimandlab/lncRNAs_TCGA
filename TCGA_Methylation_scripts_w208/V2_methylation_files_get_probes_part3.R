@@ -821,7 +821,7 @@ lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #255 lncRNA-probe pairs evalu
 lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer)
 saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Nov1.rds")
 #73 unique lncRNA-cancer pairs evaluated 
-
+lnc_meth_cancer_data2 = readRDS("new_results_methylation_Nov1.rds")
 #---------PROCESS RESULTS-----------------------------------------------------------------------------------------------------
 lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer, sep="_") #73 combos evaluated 
 lnc_meth_cancer_data2$wilcoxon_pval = as.numeric(as.character(lnc_meth_cancer_data2$wilcoxon_pval))
@@ -902,6 +902,8 @@ sig_diff = sig_diff[order(stat, -(abs(stat_exp_cor)))]
 sig_diff$CAT_geneName = factor(sig_diff$CAT_geneName, levels=unique(sig_diff$CAT_geneName))
 sig_diff$canc = factor(sig_diff$canc, levels=unique(sig_diff$canc))
 sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
+sig_diff = as.data.table(filter(sig_diff, stat_exp_pval < 0.05))
+write.csv(sig_diff, file="29_lncRNAs_wmethylation_relationship.csv", quote=F, row.names=F)
 
 pdf("Methylation_figure_partB_sep27.pdf", width=10, height=8)
 

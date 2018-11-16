@@ -213,16 +213,16 @@ compare_exp_boxplots = function(lnc){
 		stat_compare_means(label = "p.signif", 
                      ref.group = "GTEx") + stat_n_text() + theme_classic()
 		g = ggpar(g, font.tickslab = c(14, "plain", "black"), legend="none")
-		print(g)
+		#print(g)
 
 		return(res)
 
 }
 
 #DO NOT RUN - ALREADY DONE
-pdf("lncRNA_expression_tumours_GTEX_matched_normals_cancds_August27.pdf")
+#pdf("lncRNA_expression_tumours_GTEX_matched_normals_cancds_August27.pdf")
 results = llply(lncs, compare_exp_boxplots, .progress="text")
-dev.off()
+#dev.off()
 
 #-----------SUMMARIZE---------------------------------------------------------
 
@@ -238,8 +238,8 @@ results2$fdr_sig[results2$fdr > 0.05] = "NotFDRsig"
 
 #check if median difference matches type of risk
 results2$match = ""
-results2$match[(results2$risk == "High_exp") & (results2$median_diff >= 0.25)] = "OG"
-results2$match[(results2$risk == "Low_exp") & (results2$median_diff <= -0.25)] = "TS"
+results2$match[(results2$risk == "High_exp") & (results2$median_diff >= 0.1)] = "OG"
+results2$match[(results2$risk == "Low_exp") & (results2$median_diff <= -0.1)] = "TS"
 
 #get lnc names
 get_name = function(ensg){
@@ -253,19 +253,22 @@ library(ggrepel)
 #get cancer type 
 canc_conv = readRDS("cancers_conv_july23.rds")
 results2 = merge(results2, canc_conv, by="canc")
+results2 = as.data.table(results2)
+results2[,11]=as.character(results2[,11])
+saveRDS(results2, file="110_lncRNAs_wgtex_data_nov16.rds")
+write.csv(results2, file="110_lncRNAs_wgtex_data_nov16.csv", quote=F,row.names=F)
 
 #keep only sig
-results2 = as.data.table(filter(results2, fdr_sig == "FDRsig"))
+#results2 = as.data.table(filter(results2, fdr_sig == "FDRsig"))
 
-pdf("new_figure5A_aug24.pdf", width=9, height=7)
+pdf("new_figure5A_aug24.pdf", width=7, height=5)
 ggplot(results2, aes(x=status, y=median_diff)) +
-  geom_point() + geom_hline(yintercept=0.25, linetype="dashed", color = "red") +
+  geom_point() + 
   geom_hline(yintercept=0, linetype="dashed", color = "grey")+
-  geom_hline(yintercept=-0.25, linetype="dashed", color = "red") + 
   scale_color_gradient2(low="grey",
                      high="blue", space ="Lab" ) + xlab("lncRNA expression type") + ylab("Median rank difference \nRisk Group - GTEx") +
-  geom_label_repel(data=filter(results2, median_diff >= 0.25, fdr <= 0.05, status == "Unfavourable"), aes(label=name, fill=type), size=5) +
-  geom_label_repel(data=filter(results2, median_diff <= -0.2, fdr <= 0.05, status == "Favourable"), aes(label=name, fill=type), size=5) +
+  geom_label_repel(data=filter(results2, median_diff >= 0.2, fdr <= 0.05, status == "Unfavourable"), aes(label=name, fill=type), size=1.5) +
+  geom_label_repel(data=filter(results2, median_diff <= -0.2, fdr <= 0.05, status == "Favourable"), aes(label=name, fill=type), size=1.5) +
   scale_fill_brewer(palette="Paired")
 dev.off()
 

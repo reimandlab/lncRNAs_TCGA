@@ -85,7 +85,9 @@ coexp$combo2 = paste(coexp$pcg, coexp$lnc, sep="_")
 
 prog_pcgs = readRDS("mRNAs_Survival_Results_prognostic_pcgs_July19.rds")
 prog_pcgs = as.data.table(prog_pcgs)
-cis_pcgs = readRDS("lncRNA_cands_wPCGs_that_are_in_cis_aug8.rds")
+#cis_pcgs = readRDS("lncRNA_cands_wPCGs_that_are_in_cis_aug8.rds")
+
+cis_pcgs  =readRDS("lncRNA_cands_wPCGs_that_are_in_cis_10kb_nov16.rds")
 #convert to ensgs
 get_ensg = function(name){
   z = which(ucsc$hg19.ensemblToGeneName.value == name)
@@ -266,9 +268,9 @@ check_cis_pcg = function(combo){
 }#end function
 
 
-#pdf("all_cis_antisense_lnc_pairs_survival_results_aug20.pdf", width=10)
+pdf("all_cis_antisense_lnc_pairs_survival_results_10kb_nov16.pdf", width=10)
 results = llply(combos, check_cis_pcg, .progress="text")
-#dev.off()
+dev.off()
 
 results2 = ldply(results)
 results2$fdr_res = p.adjust(results2$res, method="fdr")
@@ -278,17 +280,19 @@ results2$rho_fdr = p.adjust(results2$rho_p, method="fdr")
 results2 = as.data.table(results2)
 results2 = results2[order(fdr_res)]
 
-length(which(results2$res <= 0.05))
-length(which(results2$fdr_res <= 0.05))
-length(which(results2$fdr_res2 <= 0.05))
+length(which(results2$res <= 0.05)) #in 16/127 pairs , the lncRNA benefits from the signal from its neigboring gene 
+length(which(results2$fdr_res <= 0.05)) #2/127 pairs, the lncRNA beneifts from signal from neighboring gene when accounting for multiple testing correction
+length(which(results2$fdr_res2 <= 0.05)) #even after multiple testing correction, 124/127 pairs improve from adding lncRNA expression to PCG expression 
+
 
 #saveRDS(results2, file="110_cis_antisense_pairs_survival_results_aug28.rds")
-
+saveRDS(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.rds")
+write.csv(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.csv", quote=F, row.names=F)
 
 ###START HERE###-----------------------------------------------------------------
 
 #which of these are candidates? 
-r = readRDS("110_cis_antisense_pairs_survival_results_aug28.rds")
+r = readRDS("127_cis_antisense_pairs_survival_results_10kb_nov16.rds")
 cancs = rna[,c("type", "Cancer")]
 cancs = unique(cancs)
 colnames(cancs) = c("canc", "Cancer")
@@ -353,15 +357,15 @@ for(i in 1:nrow(prog_pcgs)){
 }
 
 
-pdf("figure2E_summary_lncs_pcgs_antisense.pdf", width=9,height=4)
+pdf("figure2E_summary_lncs_pcgs_antisense_10kb_nov16.pdf", width=9,height=4)
 g = ggplot(prog_pcgs, aes(pcgConcordance, lncConcordance, label=lnc_pcg)) +
  geom_point(aes(color=type_lnc, alpha=0.5))+
     scale_colour_manual(values = c("blue", "dimgrey", "red", "purple")) + 
     xlab("Neighbour PCG Concordance") + ylab("lncRNA Concordance") + theme_bw() +
     theme(legend.box = "horizontal", axis.text = element_text(size=13), 
       legend.text=element_text(size=10), legend.title=element_text(size=10))+
-     xlim(0.45,0.75) + ylim(0.45,0.75) + geom_abline(intercept=0) 
-     
+     xlim(0.45,0.75) + ylim(0.45,0.75) + geom_abline(intercept=0) +
+     geom_vline(xintercept=0.5, linetype="dashed", color = "red")
 
      #geom_text_repel(data = subset(prog_pcgs, lncConcordance > 0.7 | pcgConcordance > 0.65), size=2, nudge_y = 0.1,
       #direction = "x",segment.color = "grey50",
@@ -371,7 +375,8 @@ g
 dev.off()
 
 
-saveRDS(prog_pcgs, file="final_set_110_lncRNAPCG_pairs_Sept14.rds")
+saveRDS(prog_pcgs, file="final_set_126_lncRNAPCG_pairs_nov16.rds")
+write.csv(prog_pcgs, file="126_cis_antisense_pairs_survival_results_10kb_nov16.csv", quote=F, row.names=F)
 
 
 

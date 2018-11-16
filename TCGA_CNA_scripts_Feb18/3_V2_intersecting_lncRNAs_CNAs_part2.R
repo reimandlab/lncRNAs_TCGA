@@ -162,7 +162,7 @@ get_data = function(lnc){
     test1 = table(df$median)[1]
     test2 = table(df$median)[2]
 
-    if((test1 > 10) & (test2 > 10)){
+    if((test1 >=10) & (test2 >= 10)){
 
     HR = summary(coxph(Surv(OS.time, OS) ~ median, data = df))$coefficients[2]
     
@@ -381,7 +381,7 @@ lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
 lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
 saveRDS(lnc_cna_cancer_data2, file="new_results_CNAs_Sept27.rds")
 
-lnc_cna_cancer_data2 = readRDS("new_results_CNAs_Sept27.rds")
+lnc_cna_cancer_data2 = readRDS("new_results_CNAs_Sept27.rds") #evaluated 107 lncRNA-cancer combos
 
 #---------PROCESS RESULTS-----------------------------------------------------------------------------------------------------
 
@@ -411,6 +411,9 @@ lnc_cna_cancer_data2 = ldply(lnc_cna_cancer_data2)
 sig_diff = as.data.table(filter(lnc_cna_cancer_data2, fdr <=0.05))
 #positive correlation
 sig_diff = as.data.table(filter(sig_diff, stat_exp_cor > 0))
+
+#keep only ones with sig correlation
+sig_diff = as.data.table(filter(sig_diff, stat_exp_pval < 0.05)) #17 sig positive correlation and fdr sig difference in dist
 
 saveRDS(sig_diff, file="sig_diff_CNAs_sept27.rds")
 
@@ -448,6 +451,7 @@ sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
 
 sig_diff$cor[sig_diff$stat_exp_cor < 0] = "Negative" 
 sig_diff$cor[sig_diff$stat_exp_cor > 0] = "Positive" 
+sig_diff = as.data.table(filter(sig_diff, stat_exp_pval < 0.05)) #17 sig positive correlation and fdr sig difference in dist
 
 #x-axis = cancer
 #y-axis = lncRNA 

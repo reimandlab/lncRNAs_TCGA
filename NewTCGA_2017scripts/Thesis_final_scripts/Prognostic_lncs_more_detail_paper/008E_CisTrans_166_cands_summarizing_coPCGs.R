@@ -138,7 +138,9 @@ bedtools merge -i lncs_cords_166_cands_aug8.sorted.bed -c 4 -o collapse -delim "
 bedtools merge -i pcgs_cords_allPCGs_aug8.sorted.bed -c 4 -o collapse -delim "|" > pcgs_cords_allPCGs_aug8.sorted.merged.bed
 
 #3. get file of lncRNA-cis interactions 
-bedtools window -a lncs_cords_166_cands_aug8.sorted.bed -b pcgs_cords_allPCGs_aug8.sorted.bed -w 5000 > lncs_candidates_pcgs_intersected.bed
+#bedtools window -a lncs_cords_166_cands_aug8.sorted.bed -b pcgs_cords_allPCGs_aug8.sorted.bed -w 5000 > lncs_candidates_pcgs_intersected.bed
+
+bedtools window -a lncs_cords_166_cands_aug8.sorted.bed -b pcgs_cords_allPCGs_aug8.sorted.bed -w 10000 > lncs_candidates_pcgs_intersected_10_kb.bed
 
 #get file of lncRNA-trans interactions 
 
@@ -146,7 +148,8 @@ bedtools window -a lncs_cords_166_cands_aug8.sorted.bed -b pcgs_cords_allPCGs_au
 ###in R 
 ##--------------------------------------------------------------------
 
-cis_ints = read.table("lncs_candidates_pcgs_intersected.bed")
+#cis_ints = read.table("lncs_candidates_pcgs_intersected.bed")
+cis_ints = read.table("lncs_candidates_pcgs_intersected_10_kb.bed")
 colnames(cis_ints) = c("lnc_chr", "lnc_start", "lnc_end", "lnc", "lnc_strand", "lnc_type", "pcg_chr", 
   "pcg_start", "pcg_end", "pcg", "pcg_strand", "protein_type")
 cis_ints$pair = paste(cis_ints$lnc, cis_ints$pcg, sep="_")
@@ -156,7 +159,7 @@ z = which(duplicated(cis_ints$pair))
 cis_ints = cis_ints[-z,]
 
 #80/166 lncRNAs have at least 1 nearby PCG
-saveRDS(cis_ints, file="lncRNA_cands_wPCGs_that_are_in_cis_aug8.rds")
+saveRDS(cis_ints, file="lncRNA_cands_wPCGs_that_are_in_cis_10kb_nov16.rds")
 
 #all the lncRNA candidates that are not in the above ^ file are "trans lncRNAs"
 

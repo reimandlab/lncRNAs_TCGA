@@ -219,6 +219,8 @@ all_res = rbind(paths, genes)
 sig_paths_sum = sig_paths_sum[order(-num_sig_des)]
 all_res$combo = factor(all_res$combo, levels=unique(sig_paths_sum$combo))
 
+write.csv(sig_paths_sum, file="summary_num_diff_exp_genes_pathways_nov16.csv", quote=F, row.names=F)
+
 #network part A 
 pdf("summary_barplot_#DE_pcgs_vs_pathways_pathways_figure_sep14.pdf", width=16, height=5)
 g = ggplot(all_res, aes(combo, num_sig_des, group=type)) + theme_classic() + 
@@ -319,6 +321,33 @@ lncs_brain = unique(unlist(canc$evidence)) #8 unique lncRNAs to be used as covar
 ##2-----------------label patients by risk------------------------------
 
 dat = subset(all, Cancer=="Brain Lower Grade Glioma")
+lgg_nearby_genes = readRDS("lgg_nearby_genes.rds")
+
+res_all_brain = res[,c("term.id", "term.name", "adjusted.p.val", "overlap", "evidence")]
+#get count for overlap and for evidence 
+for(i in 1:nrow(res_all_brain)){
+  over = length(unique(unlist(res_all_brain$overlap[i])))
+  res_all_brain$overlap[i] = over
+  evidence = length(unique(unlist(res_all_brain$evidence[i])))
+  if(evidence>=3){
+    res_all_brain$evidence[i] = evidence
+  }
+}
+res_all_brain$overlap = as.character(res_all_brain$overlap)
+res_all_brain$evidence = as.character(res_all_brain$evidence)
+
+write.csv(res_all_brain, file="all_brain_pathways_lgg_nov16.csv", quote=F, row.names=F)
+
+#get counts of pathway per lcnRNA
+res_all_brain = res[,c("term.id", "term.name", "adjusted.p.val", "overlap", "evidence")]
+for(i in 1:nrow(res_all_brain)){
+  over = length(unique(unlist(res_all_brain$overlap[i])))
+  res_all_brain$overlap[i] = over
+  evidence = length(unique(unlist(res_all_brain$evidence[i])))
+  res_all_brain$evidence[i] = evidence
+}
+res_all_brain$overlap = as.character(res_all_brain$overlap)
+res_all_brain$evidence = as.character(res_all_brain$evidence)
 
   dat_keep = dat[,which(colnames(dat) %in% c("patient", lncs_brain, pcgs_brain))]
   rownames(dat_keep) = dat_keep$patient
@@ -489,48 +518,69 @@ df$ENSG00000257261[df$type=="gbm"]=NA
 df$ENSG00000239552[df$type=="gbm"]=NA
 df$ENSG00000250360[df$type=="gbm"]=NA
 
-df$patient = NULL
-ha = HeatmapAnnotation(df = df , col = list(type = c("lgg" = "orange", "gbm" = "purple"), 
-  ENSG00000254635 = c("1" = "red", "0" ="blue"),
-  ENSG00000253187 = c("1" = "red", "0"="blue"), 
-ENSG00000256482 = c("1" = "red", "0"="blue"), 
-ENSG00000224950 = c("1" = "red", "0"="blue"), 
-ENSG00000255020 = c("1" = "red", "0"="blue"), 
-ENSG00000257261 = c("1" = "red", "0"="blue"), 
-ENSG00000239552 = c("1" = "red", "0"="blue"), 
-ENSG00000250360 = c("1" = "red", "0"="blue")), 
-na_col = "azure")
+#which are favourable lncs? (for those ones flip 0s and 1s)
+cands_lncs = as.data.table(filter(allCands, cancer== "Brain Lower Grade Glioma"))
+cands_lncs = as.data.table(filter(cands_lncs, HR <1))
+cands_lncs = cands_lncs$gene
 
+z = which(colnames(df) %in% cands_lncs)
+for(i in 1:length(z)){
+  k = which(df[,z[i]] == 0)
+  df[k,z[i]] = 1
+  df[-k,z[i]] = 0
+}
+
+df$risk = apply(df[,1:8], 1, sum)
+
+#df$patient = NULL
 #another version of ha
 
-df = as.data.frame(all_canc[,c(which(colnames(all_canc) %in% c("type","ENSG00000239552", "ENSG00000224950", 
-  "ENSG00000250360", "ENSG00000253187", "ENSG00000254635", "ENSG00000255020", "ENSG00000256482", "ENSG00000257261")))])
-df$patient = rownames(df)
-df_c = df[,c("type", "patient")]
-df = df[,-which(colnames(df) %in% c("type", "patient"))]
+#df = as.data.frame(all_canc[,c(which(colnames(all_canc) %in% c("type","ENSG00000239552", "ENSG00000224950", 
+#  "ENSG00000250360", "ENSG00000253187", "ENSG00000254635", "ENSG00000255020", "ENSG00000256482", "ENSG00000257261")))])
+#df$patient = rownames(df)
+#df_c = df[,c("type", "patient")]
+#df = df[,-which(colnames(df) %in% c("type", "patient"))]
 #df = t(df)
-z = which(str_detect(rownames(df) ,"lgg"))
-df[z,] = apply(df[z,], 2, scale)
-z = which(str_detect(rownames(df) ,"gbm"))
-df[z,] = 0
-df = cbind(df, df_c)
+#z = which(str_detect(rownames(df) ,"lgg"))
+#df[z,] = apply(df[z,], 2, scale)
+#z = which(str_detect(rownames(df) ,"gbm"))
+#df[z,] = 0
+#df = cbind(df, df_c)
+#df$patient = NULL
+
+#ha = HeatmapAnnotation(df = df , col = list(type = c("lgg" = "orange", "gbm" = "purple"), 
+#  ENSG00000254635 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
+#    ENSG00000253187 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
+#ENSG00000256482 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
+#ENSG00000224950 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
+#ENSG00000255020 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
+#ENSG00000257261 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
+#ENSG00000239552 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
+#ENSG00000250360 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4"))))
+
+#make sure order of patients in df matches order of patients in amtrix
+df = df[,c("patient", "risk", "type")]
 df$patient = NULL
+identical(rownames(df), colnames(mat))
 
-ha = HeatmapAnnotation(df = df , col = list(type = c("lgg" = "orange", "gbm" = "purple"), 
-  ENSG00000254635 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
-    ENSG00000253187 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
-ENSG00000256482 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
-ENSG00000224950 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
-ENSG00000255020 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
-ENSG00000257261 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
-ENSG00000239552 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4")),
-ENSG00000250360 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4"))))
+order = colnames(mat)
+library(ComplexHeatmap)
+library(circlize)
+values = df$risk
+df$risk = NULL
+typevals = df$type
 
+ha = HeatmapAnnotation(points = anno_points(values, gp = gpar(size=1), axis = TRUE),
+  type = typevals, 
+  col = list(type = c("lgg" = "orange", "gbm" = "purple")), 
+    show_annotation_name = TRUE,
+    annotation_name_offset = unit(2, "mm"),
+    annotation_name_rot = c(0, 0, 90))
 
 pdf("developmental_genes_lgg_gbm.pdf", width=12, height=8)
 Heatmap(mat, column_names_gp = gpar(fontsize = 1.5), top_annotation = ha, show_column_names = FALSE,
   heatmap_legend_param = list(legend_height = unit(3, "cm"), legend_width = unit(3, "cm")),
-  top_annotation_height = unit(3, "cm"))
+  top_annotation_height = unit(3, "cm"), clustering_distance_rows = "pearson")
 dev.off()
 
 

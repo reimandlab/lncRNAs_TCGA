@@ -607,6 +607,11 @@ for(i in 1:length(dups)){
 length(which(new_dat$clin_pval < 0.05)) #101 also significnatly associated with survival 
 clin_results = new_dat
 
+
+write.csv(clin_results)
+
+
+
 #113 unique associations between a lncRNA and a clinical variable 
 
 #which combos are better once lncRNA is used

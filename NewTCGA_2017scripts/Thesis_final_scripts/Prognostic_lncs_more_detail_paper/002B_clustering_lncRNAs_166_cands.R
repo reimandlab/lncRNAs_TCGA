@@ -94,6 +94,42 @@ set.seed(42) # Set a seed if you want reproducible results
 
 library(fastcluster)
 
+#cluster based on cancer type 
+#get median lncRNA expression for each cancer type 
+
+#get median lncRNA expression for each cancer types
+cancers = unique(logged_rna$type)
+
+get_med = function(canc){
+	dat = as.data.table(filter(logged_rna, type == canc))
+	dat$type = NULL
+	meds = apply(dat, 2, median)
+	meds=as.data.frame(meds)
+	meds$lncRNA = rownames(meds)
+	meds$type = canc
+	return(meds)
+}
+
+all_canc_meds = llply(cancers, get_med)
+all_canc_meds = ldply(all_canc_meds)
+all_canc_meds = as.data.table(all_canc_meds)
+library(reshape2)
+d=acast(all_canc_meds, type~lncRNA , value.var="meds")
+labels <- rownames(d)
+
+d_dst <- dist(d, method="manhattan") # method="man" # is a bit better
+hc <- hclust(d_dst, method = "ward.D2")
+
+library(dendextend)
+dend <- as.dendrogram(hc)
+# order it the closest we can to the order of the observations:
+dend <- rotate(dend, 1:28)
+pdf("28_cancers_hierarchial_clustering_complete.pdf", width=9, height=5)
+plot(dend)
+dev.off()
+
+
+
 # your code, no labels    
 hc <- hclust(dist(logged_rna[,1:5785]))
 
