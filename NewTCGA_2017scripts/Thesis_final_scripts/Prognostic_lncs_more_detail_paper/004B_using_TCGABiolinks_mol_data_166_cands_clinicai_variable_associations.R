@@ -610,8 +610,6 @@ clin_results = new_dat
 
 write.csv(clin_results)
 
-
-
 #113 unique associations between a lncRNA and a clinical variable 
 
 #which combos are better once lncRNA is used
@@ -634,8 +632,10 @@ t = t[order(-N)]
 
 clin_results$combo = factor(clin_results$combo, levels = t$V1)
 clin_results$concordance_combo_model = as.numeric(clin_results$concordance_combo_model)
-clin_results$anova_both_vs_lnc = as.numeric(clin_results$anova_both_vs_lnc)
-z = which((clin_results$concordance_combo_model > clin_results$clin_concordance) & (clin_results$anova_both_vs_lnc < 0.05))
+clin_results$clin_concordance = as.numeric(clin_results$clin_concordance)
+
+clin_results$clin_vs_combo_anova = as.numeric(clin_results$clin_vs_combo_anova)
+z = which((clin_results$concordance_combo_model > clin_results$clin_concordance) & (clin_results$clin_vs_combo_anova < 0.05))
 clin_results$better[z] = "V"
 #mark the clinical variables that are also associated with survival 
 z = which(clin_results$clin_pval < 0.05)
