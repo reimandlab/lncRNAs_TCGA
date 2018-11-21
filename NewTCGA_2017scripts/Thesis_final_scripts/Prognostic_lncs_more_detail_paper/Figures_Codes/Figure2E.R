@@ -122,6 +122,21 @@ lncs_random_lists = lists[z,]
 lncs_random_cindices = r
 #---------------------------------------------------------------------------------
 
+################################################################################
+#cindices from 100 combined models lncRNA + clinical
+lnc_rand = readRDS("lncRNAs_100_internal_CVs_individual_cands_june19.rds")
+r = ldply(lnc_rand)
+r = as.data.table(r)
+z = which(r$type == "lncRNA&clin")
+r = r[z,]
+list_r = split(r, by = "Cancer")
+lists = llply(list_r, get_sum)
+lists = ldply(lists)
+lists = as.data.table(lists)
+z= which(str_detect(lists$lncRNA, "ENSG"))
+lncsclinccombo_random_lists = lists[z,]
+lncsclinccombo_random_cindices = r
+#---------------------------------------------------------------------------------
 
 
 ################################################################################

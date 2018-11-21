@@ -64,6 +64,9 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June1
 allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
+#cindices
+r = readRDS("lncs_cross_validations_Results_nov20.rds")
+
 #Co-expression results of PCGs 
 #coexp = readRDS("coexpression_results_processed_july24.rds")
 #coexp$combo2 = paste(coexp$lnc, coexp$canc, coexp$pcg, sep="_")
