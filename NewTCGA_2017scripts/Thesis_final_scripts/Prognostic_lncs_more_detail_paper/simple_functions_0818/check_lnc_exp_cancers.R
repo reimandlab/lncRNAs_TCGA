@@ -460,6 +460,75 @@ get_forest_plot = function(gene, cancer){
 #https://datascienceplus.com/time-dependent-roc-for-survival-prediction-models-in-r/
 
 
+#Compare expression of lncRNAs to mRNAs 
+rownames(rna) = rna$patient
+#keep cancer type 
+rna = rna[,c(2:5786)]
+#rna = as.data.frame(rna)
+rna = t(rna)
+rna = as.data.frame(rna)
+
+#get median for each gene 
+rna$median = apply(rna[,1:8503], 1, median)
+rna$CAT_geneID = rownames(rna)
+
+rnaa = merge(rna, fantom, by="CAT_geneID")
+
+
+
+#Compare expression of lncRNAs to mRNAs 
+rownames(pcg) = pcg$patient
+#keep cancer type 
+pcg = pcg[,c(2:19351)]
+#rna = as.data.frame(rna)
+pcg = t(pcg)
+pcg = as.data.frame(pcg)
+
+#get median for each gene 
+pcg$median = apply(pcg, 1, median)
+pcg$hg19.ensGene.name2 = rownames(pcg)
+pcga = merge(pcg, ucsc, by="hg19.ensGene.name2")
+
+#what i need 
+#gene type and median and gene name 
+
+rnaa = rnaa[,c("CAT_geneID", "median", "CAT_geneClass")]
+pcga = pcga[,c("hg19.ensGene.name2", "median", "hg19.ensemblSource.source")]
+
+colnames(rnaa) = c("gene", "median", "type")
+rnaa$typesec = "lncRNA"
+colnames(pcga) = c("gene", "median", "type")
+pcga = subset(pcga, type == "protein_coding")
+pcga$typesec = "pcg" #17196 genes 
+
+
+all = rbind(pcga, rnaa) #22981 genes in total
+all$medlog = log1p(all$median)
+
+all$type = factor(all$type, levels = c("lncRNA_intergenic", "lncRNA_sense_intronic", "lncRNA_antisense", 
+  "lncRNA_divergent", "protein_coding"))
+
+all = as.data.table(all)
+all = all[order(medlog)]
+all$rank = 1:nrow(all)
+all$score = all$rank/nrow(all)
+
+pdf("all_genes_plot_median_exp_all_cancers.pdf")
+
+#boxplot
+p = ggplot(all, aes(type, medlog))
+p + geom_boxplot(outlier.alpha = 0.1) + stat_n_text()
+
+
+dev.off()
+
+
+
+
+
+
+
+
 
 
 

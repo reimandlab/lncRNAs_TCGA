@@ -133,6 +133,17 @@ clin_data_lncs = Filter(Negate(is.null), clin_data_lncs)
 #saved file --- below
 #saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
 
+clin = readRDS("clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
+gbm = clin[[1]]
+z = which(str_detect(colnames(gbm), "ENSG"))
+gbm = gbm[,-z]
+lgg = clin[[13]]
+z = which(str_detect(colnames(lgg), "ENSG"))
+lgg = lgg[,-z]
+saveRDS(lgg, file="TCGA_lgg_wsubtype_info_biolinks.rds")
+saveRDS(gbm, file="TCGA_gbm_wsubtype_info_biolinks.rds")
+
+
 #--------LOOK AT ASSOCIATIONS BETWEEN EXPRESSION-------------------------------
 
 #For each clinical variable -> xaxis is the clinical variable
@@ -573,6 +584,7 @@ clean_up$sig_tag[clean_up$clin_pval > 0.05] = ""
 #post manual cleanup of variables 
 clin_results = read.csv("cleaned_clinical_variables_associations_data_sept28_post_cleanup.csv")
 clin_results = as.data.table(clin_results)
+clin_results$clin_vs_combo_anova_fdr = p.adjust(clin_results$clin_vs_combo_anova, method="fdr")
 
 #keep only those with significant chisq associations 
 clin_results = as.data.table(filter(clin_results, chisq < 0.05, kw_pval < 0.05)) #136 left 
@@ -939,8 +951,28 @@ dev.off()
 
 
 
+load("_LGG_all_up_down_genes_.2018-10-31.rdata")
+colnames(res)
+#canc = subset(res, res$term.name %in% canc_paths_paths)
+canc_paths_paths = res[which(str_detect(res$term.name, "brain")),]$term.name
+canc = subset(res, term.name %in% canc_paths_paths)
+
+#1. get all PCGs that are in these pathways 
+pcgs_brain = unique(unlist(canc$overlap)) #185 unique PCGs
+lncs_brain = unique(unlist(canc$evidence)) #8 unique lncRNAs to be used as covariates high vs low 
 
 
+allgenes = colnames(pcg)[2:19351]
+censusgenes = unlist(unique(census$ensg))
+braindev_genes = pcgs_brain
 
+fisher.test(allgenes %in% censusgenes, allgenes %in% braindev_genes)
 
+#which of these pcgs_brain are in cesnsus 
+median(replicate(10000, 
+  length(intersect(
+    sample(allgenes, 185), 
+    sample(allgenes, length(censusgenes))
+  ))
+))
 

@@ -385,6 +385,8 @@ res_all_brain$evidence = as.character(res_all_brain$evidence)
 
 heat = t(heat)
 
+full_heat = heat 
+
 hox_genes = colnames(heat)[which(str_detect(colnames(heat), "HOX"))]
 random_genes = c()#which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4", "SLC2A2", "DHDH", "IGF2", "G6PD"))
 z1 = which(colnames(heat) %in% c(census$Gene.Symbol))
@@ -395,7 +397,7 @@ heat = heat[,unique(c(z1,z2,z3))]
 #get expression of these genes and compare between low lGG, high LGG and GBM 
 
 #1. get list of genes 
-development_genes = colnames(heat)
+development_genes = colnames(full_heat)
 get_ensg_pcg = function(pcg){
   z = which(ucsc$hg19.ensemblToGeneName.value == pcg)
   if(length(z)>1){
@@ -407,7 +409,7 @@ get_ensg_pcg = function(pcg){
 development_genes = sapply(development_genes, get_ensg_pcg)
 
 #2. get LGG 
-lgg = heat 
+lgg = full_heat 
 lgg = as.data.frame(lgg)
 rownames(lgg) = paste(rownames(lgg), "lgg")
 
@@ -415,6 +417,7 @@ rownames(lgg) = paste(rownames(lgg), "lgg")
 z = which(all$type == "GBM")
 gbm = all[z,]
 z = which(colnames(gbm) %in% c("patient", development_genes))
+
 gbm = gbm[,z]
 rownames(gbm) = gbm$patient
 gbm$patient = NULL
@@ -577,8 +580,8 @@ ha = HeatmapAnnotation(points = anno_points(values, gp = gpar(size=1), axis = TR
     annotation_name_offset = unit(2, "mm"),
     annotation_name_rot = c(0, 0, 90))
 
-pdf("developmental_genes_lgg_gbm.pdf", width=12, height=8)
-Heatmap(mat, column_names_gp = gpar(fontsize = 1.5), top_annotation = ha, show_column_names = FALSE,
+pdf("developmental_genes_lgg_gbm_all_192_genes.pdf", width=12, height=10)
+Heatmap(mat, column_names_gp = gpar(fontsize = 1), top_annotation = ha, show_column_names = FALSE,
   heatmap_legend_param = list(legend_height = unit(3, "cm"), legend_width = unit(3, "cm")),
   top_annotation_height = unit(3, "cm"), clustering_distance_rows = "pearson")
 dev.off()

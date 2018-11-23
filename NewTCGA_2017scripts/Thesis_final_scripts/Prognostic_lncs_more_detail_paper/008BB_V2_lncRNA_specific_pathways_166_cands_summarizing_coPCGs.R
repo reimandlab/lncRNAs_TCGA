@@ -20,6 +20,16 @@ library(Rtsne)
 library(data.table)
 library(reshape2)
 
+census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
+  #get ensg
+  get_census_ensg = function(genes){
+  glist = unlist(strsplit(genes, ","))
+  z = which(str_detect(glist, "ENSG"))
+  ensg = glist[z]
+  return(ensg)
+  }
+census$ensg = sapply(census$Synonyms, get_census_ensg)
+
 #------DATA---------------------------------------------------------
 #UCSC gene info
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
@@ -78,6 +88,11 @@ all_de_results = as.data.table(all_de_results)
 
 all_de_results = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
 all_de_results = as.data.table(all_de_results)
+
+#which diff exp genes in CGC?
+all_de_results = as.data.table(filter(all_de_results, adj.P.Val < 0.05, abs(logFC) >=1))
+z = which(census$Gene.Symbol %in% all_de_results$gene_name)
+length(unique(census$Gene.Symbol[z]))
 
 #------make matrix of lncRNA candidates within each cancer type
 #and their associated PCGs
