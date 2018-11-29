@@ -397,7 +397,7 @@ heat = heat[,unique(c(z1,z2,z3))]
 #get expression of these genes and compare between low lGG, high LGG and GBM 
 
 #1. get list of genes 
-development_genes = colnames(full_heat)
+development_genes = colnames(heat)
 get_ensg_pcg = function(pcg){
   z = which(ucsc$hg19.ensemblToGeneName.value == pcg)
   if(length(z)>1){
@@ -409,7 +409,7 @@ get_ensg_pcg = function(pcg){
 development_genes = sapply(development_genes, get_ensg_pcg)
 
 #2. get LGG 
-lgg = full_heat 
+lgg = heat 
 lgg = as.data.frame(lgg)
 rownames(lgg) = paste(rownames(lgg), "lgg")
 
@@ -445,6 +445,23 @@ gbm$type = "gbm"
 lgg$type = "lgg"
 all_canc = rbind(lgg, gbm)
 
+all_canc$patient = rownames(all_canc)
+all_canc$patient = sapply(all_canc$patient, function(x){unlist(strsplit(x, " "))[1]})
+all_canc$full_patient = rownames(all_canc)
+
+#lgg info 
+lgg_idh = readRDS("TCGA_lgg_wsubtype_info_biolinks.rds")
+lgg_idh = lgg_idh[,c("IDH.status", "patient")]
+
+gb_idh = readRDS("TCGA_gbm_wsubtype_info_biolinks.rds")
+gb_idh = gb_idh[,c("IDH.status", "patient")]
+all_brain = rbind(lgg_idh, gb_idh)
+
+all_canc = merge(all_canc, all_brain, by="patient")
+rownames(all_canc) = all_canc$full_patient
+all_canc$full_patient = NULL
+all_canc$patient = NULL
+
 get_ensg = function(lnc){
   z = which(fantom$CAT_geneName == lnc)
   return(fantom$CAT_geneID[z])
@@ -456,59 +473,59 @@ for(i in 1:length(z)){
 z = which(colnames(all_canc) == "HOXA10-AS")
 colnames(all_canc)[z] = "ENSG00000253187"
 
-mat = all_canc[,c(which(!(colnames(all_canc) == "type")))]
+mat = all_canc[,c(which(!(colnames(all_canc) %in% c("type", "IDH.status"))))]
 mat = scale(mat)
 mat=t(mat)
 
-df = as.data.frame(all_canc[,c(which(colnames(all_canc) %in% c("type","ENSG00000239552", "ENSG00000224950", 
+df = as.data.frame(all_canc[,c(which(colnames(all_canc) %in% c("type", "IDH.status", "ENSG00000239552", "ENSG00000224950", 
   "ENSG00000250360", "ENSG00000253187", "ENSG00000254635", "ENSG00000255020", "ENSG00000256482", "ENSG00000257261")))])
 df$patient = rownames(df)
 
 lnc_med = median(df$ENSG00000254635[df$type=="lgg"])
-z1=which(df$ENSG00000254635[df$type=="lgg"] > lnc_med)
-z2=which(df$ENSG00000254635[df$type=="lgg"] <= lnc_med)
+z1=which((df$ENSG00000254635 >= lnc_med) & (df$type=="lgg"))
+z2=which((df$ENSG00000254635 < lnc_med) & (df$type=="lgg"))
 df$ENSG00000254635[z1] = 1
 df$ENSG00000254635[z2] = 0
 
 lnc_med = median(df$ENSG00000253187[df$type=="lgg"])
-z1=which(df$ENSG00000253187[df$type=="lgg"] > lnc_med)
-z2=which(df$ENSG00000253187[df$type=="lgg"] <= lnc_med)
+z1=which((df$ENSG00000253187 > lnc_med) & (df$type=="lgg"))
+z2=which((df$ENSG00000253187 <= lnc_med) & (df$type=="lgg"))
 df$ENSG00000253187[z1] = 1
 df$ENSG00000253187[z2] = 0
 
 lnc_med = median(df$ENSG00000256482[df$type=="lgg"])
-z1=which(df$ENSG00000256482[df$type=="lgg"] > lnc_med)
-z2=which(df$ENSG00000256482[df$type=="lgg"] <= lnc_med)
+z1=which((df$ENSG00000256482 > lnc_med) & (df$type=="lgg"))
+z2=which((df$ENSG00000256482 <= lnc_med) & (df$type=="lgg"))
 df$ENSG00000256482[z1] = 1
 df$ENSG00000256482[z2] = 0
 
 lnc_med = median(df$ENSG00000224950[df$type=="lgg"])
-z1=which(df$ENSG00000224950[df$type=="lgg"] > lnc_med)
-z2=which(df$ENSG00000224950[df$type=="lgg"] <= lnc_med)
+z1=which((df$ENSG00000224950 >= lnc_med) & (df$type=="lgg"))
+z2=which((df$ENSG00000224950 < lnc_med) & (df$type=="lgg"))
 df$ENSG00000224950[z1] = 1
 df$ENSG00000224950[z2] = 0
 
 lnc_med = median(df$ENSG00000255020[df$type=="lgg"])
-z1=which(df$ENSG00000255020[df$type=="lgg"] > lnc_med)
-z2=which(df$ENSG00000255020[df$type=="lgg"] <= lnc_med)
+z1=which((df$ENSG00000255020 >= lnc_med) & (df$type=="lgg"))
+z2=which((df$ENSG00000255020 < lnc_med) & (df$type=="lgg"))
 df$ENSG00000255020[z1] = 1
 df$ENSG00000255020[z2] = 0
 
 lnc_med = median(df$ENSG00000257261[df$type=="lgg"])
-z1=which(df$ENSG00000257261[df$type=="lgg"] > lnc_med)
-z2=which(df$ENSG00000257261[df$type=="lgg"] <= lnc_med)
+z1=which((df$ENSG00000257261 >= lnc_med) & (df$type=="lgg"))
+z2=which((df$ENSG00000257261 < lnc_med) & (df$type=="lgg"))
 df$ENSG00000257261[z1] = 1
 df$ENSG00000257261[z2] = 0
 
 lnc_med = median(df$ENSG00000239552[df$type=="lgg"])
-z1=which(df$ENSG00000239552[df$type=="lgg"] > lnc_med)
-z2=which(df$ENSG00000239552[df$type=="lgg"] <= lnc_med)
+z1=which((df$ENSG00000239552 > lnc_med) & (df$type=="lgg"))
+z2=which((df$ENSG00000239552 <= lnc_med) & (df$type=="lgg"))
 df$ENSG00000239552[z1] = 1
 df$ENSG00000239552[z2] = 0
 
 lnc_med = median(df$ENSG00000250360[df$type=="lgg"])
-z1=which(df$ENSG00000250360[df$type=="lgg"] > lnc_med)
-z2=which(df$ENSG00000250360[df$type=="lgg"] <= lnc_med)
+z1=which((df$ENSG00000250360 > lnc_med) & (df$type=="lgg"))
+z2=which((df$ENSG00000250360 <= lnc_med) & (df$type=="lgg"))
 df$ENSG00000250360[z1] = 1
 df$ENSG00000250360[z2] = 0
 
@@ -562,7 +579,7 @@ df$risk = apply(df[,1:8], 1, sum)
 #ENSG00000250360 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4"))))
 
 #make sure order of patients in df matches order of patients in amtrix
-df = df[,c("patient", "risk", "type")]
+df = df[,c("patient", "risk", "type", "IDH.status")]
 df$patient = NULL
 identical(rownames(df), colnames(mat))
 
@@ -572,23 +589,20 @@ library(circlize)
 values = df$risk
 df$risk = NULL
 typevals = df$type
+idh = as.character(df$IDH.status)
 
-ha = HeatmapAnnotation(points = anno_points(values, gp = gpar(size=1), axis = TRUE),
-  type = typevals, 
-  col = list(type = c("lgg" = "orange", "gbm" = "purple")), 
+ha = HeatmapAnnotation(points = anno_points(values, gp = gpar(size=0.6), axis = TRUE),
+  type = typevals, idh_m = idh,
+  col = list(type = c("lgg" = "orange", "gbm" = "purple"), idh_m = c("Mutant" = "black", "WT" = "white")),
     show_annotation_name = TRUE,
     annotation_name_offset = unit(2, "mm"),
     annotation_name_rot = c(0, 0, 90))
 
-pdf("developmental_genes_lgg_gbm_all_192_genes.pdf", width=12, height=10)
+pdf("developmental_genes_lgg_gbm_all_small_version_genes_new.pdf", width=12, height=10)
 Heatmap(mat, column_names_gp = gpar(fontsize = 1), top_annotation = ha, show_column_names = FALSE,
   heatmap_legend_param = list(legend_height = unit(3, "cm"), legend_width = unit(3, "cm")),
   top_annotation_height = unit(3, "cm"), clustering_distance_rows = "pearson")
 dev.off()
-
-
-
-
 
 
 

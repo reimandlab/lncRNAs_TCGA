@@ -502,21 +502,21 @@ pcga = subset(pcga, type == "protein_coding")
 pcga$typesec = "pcg" #17196 genes 
 
 
-all = rbind(pcga, rnaa) #22981 genes in total
-all$medlog = log1p(all$median)
+all_exp = rbind(pcga, rnaa) #22981 genes in total
+all_exp$medlog = log1p(all$median)
 
-all$type = factor(all$type, levels = c("lncRNA_intergenic", "lncRNA_sense_intronic", "lncRNA_antisense", 
+all_exp$type = factor(all_exp$type, levels = c("lncRNA_intergenic", "lncRNA_sense_intronic", "lncRNA_antisense", 
   "lncRNA_divergent", "protein_coding"))
 
-all = as.data.table(all)
-all = all[order(medlog)]
-all$rank = 1:nrow(all)
-all$score = all$rank/nrow(all)
+all_exp = as.data.table(all_exp)
+all_exp = all_exp[order(medlog)]
+all_exp$rank = 1:nrow(all_exp)
+all_exp$score = all_exp$rank/nrow(all_exp)
 
 pdf("all_genes_plot_median_exp_all_cancers.pdf")
 
 #boxplot
-p = ggplot(all, aes(type, medlog))
+p = ggplot(all_exp, aes(type, medlog))
 p + geom_boxplot(outlier.alpha = 0.1) + stat_n_text()
 
 

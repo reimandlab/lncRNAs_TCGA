@@ -49,8 +49,8 @@ library(TCGAbiolinks)
 #write function that adds tag to whole data group 
 #and does survival analysis on whole group
 
-z = which(cancers %in% allCands$cancer)
-cancer_data = canc_datas[z] #cancers list and canc_datas list should be the same 
+#z = which(cancers %in% allCands$type)
+cancer_data = canc_datas #cancers list and canc_datas list should be the same 
 
 get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates 
@@ -975,4 +975,173 @@ median(replicate(10000,
     sample(allgenes, length(censusgenes))
   ))
 ))
+
+
+
+
+#KM plot for BRCA
+#make KM plot for TERT promoter status
+lgg = clin[[6]]
+#lgg = clin_data_lncs[[1]] #gbm
+
+g=subset(allCands, cancer== "Breast invasive carcinoma")
+g=g[3,]
+
+
+lgg = lgg[,which(colnames(lgg) %in% c("patient", "ENSG00000264589", "OS", "OS.time", "ER.Status"))]
+med = median(lgg$ENSG00000264589)
+#median = 0
+if(med==0){
+lgg$med = ""
+lgg$med[which(lgg$ENSG00000264589 > 0)] = "High"
+lgg$med[which(lgg$ENSG00000264589 == 0)] = "Low"
+}
+if(!(med==0)){
+lgg$med = ""
+lgg$med[which(lgg$ENSG00000264589 >= med)] = "High"
+lgg$med[which(lgg$ENSG00000264589 < med)] = "Low"
+}
+
+z = which(is.na(lgg$ER.Status))
+if(!(length(z)==0)){
+lgg = lgg[-z,]}
+
+z = which(lgg$ER.Status %in% c("Performed but Not Available Not Performed", "Indeterminate"))
+lgg = lgg[-z,]
+
+lgg$ER.Status = as.character(lgg$ER.Status)
+z = which(lgg$ER.Status %in% c("Performed but Not Available", "Not Performed"))
+lgg = lgg[-z,]
+
+
+pdf("brca_pam50_status_vs_maptas1_km_plots.pdf", width=9)
+
+  lgg$OS = as.numeric(lgg$OS)
+  lgg$OS.time = as.numeric(lgg$OS.time)
+  lgg$med = factor(lgg$med, levels = c("Low","High"))
+  #z = which(lgg$PAM50.mRNA == "Normal-like")
+  #lgg = lgg[-z,]
+    ####
+    #anova between two survival models 
+    ####
+
+    #lnc model
+    lnc_model = coxph(Surv(OS.time, OS) ~ med, data = lgg)
+    hr_lnc = round(summary(lnc_model)$coefficients[2], digits=3)
+
+    #idh model
+    idh_model = coxph(Surv(OS.time, OS) ~ ER.Status, data = lgg)
+    hr_idh = round(summary(idh_model)$coefficients[2], digits=3)
+
+    #lnc + idh model
+    both = coxph(Surv(OS.time, OS) ~ med + ER.Status, data = lgg)
+
+    #lnc vs both
+    lnc_vs_both = anova(lnc_model, both)[2,4]
+
+    #idh vs both
+    idh_vs_both = anova(idh_model, both)[2,4]
+  lgg$OS.time = lgg$OS.time/365
+
+  fit <- survfit(Surv(OS.time, OS) ~ ER.Status, data = lgg)
+          s <- ggsurvplot(
+          fit, 
+          title = paste("Hazard Ratio =", hr_idh),
+          xlab = "Time (Years)", 
+          surv.median.line = "hv",
+          font.main = c(16, "bold", "black"),
+          font.x = c(14, "plain", "black"),
+          font.y = c(14, "plain", "black"),
+          font.tickslab = c(14, "plain", "black"),
+          font.legend = 12,
+          risk.table.fontsize = 5, 
+          #legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
+          data = lgg,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,10),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          palette = mypal,
+          ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          print(s)
+
+fit <- survfit(Surv(OS.time, OS) ~ PAM50.mRNA+med, data = lgg)
+          s <- ggsurvplot(
+          fit, 
+          title = paste("Anova both versus clinical alone", idh_vs_both),
+          xlab = "Time (Years)", 
+          surv.median.line = "hv",
+          font.main = c(16, "bold", "black"),
+          font.x = c(14, "plain", "black"),
+          font.y = c(14, "plain", "black"),
+          font.tickslab = c(14, "plain", "black"),
+          font.legend = 12,
+          risk.table.fontsize = 5, 
+          #legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
+          data = lgg,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,10),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          #palette = mypal,
+          ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          print(s)
+dev.off()
+
+#check if those with time dependent curves 
+nonprop = as.data.table(filter(allCands, lnc_test_ph < 0.05))
+
+for(i in 1:nrow(nonprop)){
+  gene = nonprop$gene[i]
+  canc = nonprop$cancer[i]
+  dat = as.data.table(filter(rna, Cancer == canc))
+  z = which(colnames(dat) %in% c(gene, "OS", "OS.time", "Cancer", "type"))
+  dat = as.data.frame(dat)
+  dat = dat[,z]
+  dat[,1] = as.numeric(dat[,1])
+  dat$OS = as.numeric(dat$OS)
+  dat$OS.time = as.numeric(dat$OS.time)
+  med = median(dat[,1])
+  if(med == 0){
+    z1 = which(dat[,1] > 0)
+    z2 = which(dat[,1] == 0)
+    dat$med_tag = ""
+    dat$med_tag[z1] = 1
+    dat$med_tag[z2] = 0
+  }
+  if(!(med==0)){
+    z1 = which(dat[,1] >= med)
+    z2 = which(dat[,1] < med)
+    dat$med_tag = ""
+    dat$med_tag[z1] = 1
+    dat$med_tag[z2] = 0
+  }
+
+  cox_mod = coxph(Surv(OS.time, OS) ~ med_tag*OS.time, data = dat)
+  print(glance(cox_mod)$concordance)
+
+}
+
+
+
+
+
 
