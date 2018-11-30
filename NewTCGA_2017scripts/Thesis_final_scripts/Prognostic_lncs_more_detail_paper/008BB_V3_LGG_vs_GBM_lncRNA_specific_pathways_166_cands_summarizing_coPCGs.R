@@ -79,6 +79,9 @@ all_de_results = as.data.table(all_de_results)
 all_de_results = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
 all_de_results = as.data.table(all_de_results)
 
+all_de_results = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_lgg_nov30.rds")
+all_de_results = as.data.table(all_de_results)
+
 #------make matrix of lncRNA candidates within each cancer type
 #and their associated PCGs
 
@@ -145,8 +148,8 @@ make_matrix_for_ap = function(canc){
 	}
 }
 
-#all_lnc_pathways = llply(cancers, make_matrix_for_ap, .progress="text")
-#all_lnc_pathways_df = ldply(all_lnc_pathways)
+all_lnc_pathways = llply(cancers, make_matrix_for_ap, .progress="text")
+all_lnc_pathways_df = ldply(all_lnc_pathways)
 #done gave Marta matriced produced by this code for ActivePathways 
 
 
@@ -154,7 +157,7 @@ make_matrix_for_ap = function(canc){
 
 #saveRDS(all_lnc_pathways_df, file="pathways_for_each_lncRNA_Oct30.rds")
 
-all_lnc_pathways_df = readRDS("pathways_for_each_lncRNA_Oct30.rds")
+#all_lnc_pathways_df = readRDS("pathways_for_each_lncRNA_Oct30.rds")
 
 #number of PCGs/lncRNA vs number of Pathways/lncRNAs 
 

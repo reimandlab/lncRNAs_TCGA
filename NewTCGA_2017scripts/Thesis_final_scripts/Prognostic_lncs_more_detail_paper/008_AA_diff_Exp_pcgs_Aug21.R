@@ -72,6 +72,9 @@ canc_conv = unique(rna[,c("type", "Cancer")])
 #for each lnc-cancer, label patient as lncRNA-risk or non-risk 
 #---------------------------------------------------------
 
+z = which(str_detect(combos, "Brain Lower Grade Glioma")) 
+combos = combos[z]
+
 get_lnc_canc = function(comb){
 	lnc = unlist(strsplit(comb, "_"))[1]
 	canc = unlist(strsplit(comb, "_"))[2]
@@ -133,7 +136,7 @@ get_lnc_canc = function(comb){
   	return(canc_data)	
 	}#end function evaluate_each_lnc
 
-all_canc_lnc_data = mclapply(combos, get_lnc_canc, mc.cores = 3L)
+all_canc_lnc_data = llply(combos, get_lnc_canc, .progress="text")
 
 #---------------------------------------------------------
 #Function 2
@@ -141,10 +144,28 @@ all_canc_lnc_data = mclapply(combos, get_lnc_canc, mc.cores = 3L)
 #calculate for each lncRNAs differentially expressed PCGs
 #---------------------------------------------------------
 
+
+#for lgg add IDH mutation 
+lgg_dat = readRDS("TCGA_lgg_wsubtype_info_biolinks.rds")
+
+
 diffE <- function(d){
 	
+	if(d$type[1] == "LGG"){
+		d = merge(d, lgg_dat, by="patient")
+		d$IDH.status = as.character(d$IDH.status)
+		z = which(is.na(d$IDH.status))
+		d = d[-z,]
+		design <- model.matrix(~ 0 + factor(d$lnc_tag) + factor(d$IDH.status))
+	}
+
 	z = which(str_detect(colnames(d), "ENSG"))	
 	rownames(d) = d$patient
+
+	#design <- model.matrix(~ 0 + factor(d$lnc_tag))
+	colnames(design) <- c("high", "low", "IDH_WT")
+	rownames(d) <- d$patient
+
 	expression <- t(d[,z])
 
 	# Obtain CPMs
@@ -181,10 +202,6 @@ diffE <- function(d){
 	#TMM normalization to eliminate composition biases between libraries 
 	# Apply normalisation to DGEList object
 	y <- calcNormFactors(y)
-
-	design <- model.matrix(~ 0 + factor(d$lnc_tag))
-	colnames(design) <- c("high", "low")
-	rownames(d) <- d$patient
 
 	#apply voom normalization 
 	v <- voom(y,design,plot = TRUE)
@@ -237,12 +254,13 @@ diffE <- function(d){
 
 #pdf("volcano_plots_diffE_lncRNA_risks.pdf")
 #diffEresults = llply(all_canc_lnc_data, diffE, .progress="text")
-diffEresults = mclapply(all_canc_lnc_data, diffE, mc.cores = 3L)
+diffEresults = llply(all_canc_lnc_data, diffE, .progress="text")
 #dev.off()
 
 diffEresults1 = ldply(diffEresults, data.frame)
 diffEresults1 = as.data.table(diffEresults1)
-saveRDS(diffEresults1, file="diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
+#saveRDS(diffEresults1, file="diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
+saveRDS(diffEresults1, file="diff_expressed_PCGs_lncRNA_risk_groups_lgg_nov30.rds")
 
 ##########
 ###DONE###
