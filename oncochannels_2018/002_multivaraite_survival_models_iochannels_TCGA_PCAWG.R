@@ -71,6 +71,21 @@ all <- merge(rna, pcg, by = com)
 cands = read.csv("ION_CHANNELS_targets_and_families.csv")
 cands = merge(cands, ucsc, by = "HGNC.symbol")
 
+#outlier gene exp 
+load("expr_discr_cc.rsav")
+gbm = expr_discr_cc[[1]]
+lgg = expr_discr_cc[[27]]
+
+
+#add surv info 
+genes_test = c("CATSPER1", "SCN9A", "AQP9", "KCNN4")
+
+
+
+#add IDH mutation status 
+
+
+
 #-------------------------------------------------------------------
 #------SUMMARY------------------------------------------------------
 #-------------------------------------------------------------------
