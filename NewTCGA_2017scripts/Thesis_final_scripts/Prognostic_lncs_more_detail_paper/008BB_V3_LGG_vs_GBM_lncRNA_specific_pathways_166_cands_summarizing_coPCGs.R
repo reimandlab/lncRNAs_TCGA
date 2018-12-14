@@ -78,9 +78,12 @@ all_de_results = as.data.table(all_de_results)
 
 all_de_results = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
 all_de_results = as.data.table(all_de_results)
+z = which(all_de_results$cancer == "LGG")
+all_de_results = all_de_results[-z,]
 
-all_de_results = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_lgg_nov30.rds")
-all_de_results = as.data.table(all_de_results)
+all_de_results_lgg = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_lgg_nov30.rds")
+all_de_results_lgg = as.data.table(all_de_results_lgg)
+all_de_results = rbind(all_de_results, all_de_results_lgg)
 
 #------make matrix of lncRNA candidates within each cancer type
 #and their associated PCGs
@@ -99,10 +102,17 @@ make_matrix_for_ap = function(canc){
 
 	#upregulated genes 
 	dat_all = dat
-	dat_all_matrix = acast(dat_all, ID~lnc, value.var="P.Value")
+	
+  #keep only those with logFC > 1 or logFC < 1
+  z1 = which(dat_all$logFC >=1)
+  z2 = which(dat_all$logFC <=-1)
+
+  dat_all = dat_all[c(z1,z2),]
+
+  dat_all_matrix = acast(dat_all, ID~lnc, value.var="P.Value")
 	dat_all_matrix[is.na(dat_all_matrix)] = 1
 
-	file = paste("Aug22_DE_genes_fActivePathways/", canc, "all_up_down_genes_fActivepathways_Oct30.rds", sep="_")
+	file = paste("Aug22_DE_genes_fActivePathways/", canc, "all_up_down_genes_fActivepathways_Dec13_updFC.rds", sep="_")
 	saveRDS(dat_all_matrix, file)
 
 	lncs = unique(dat$lnc)
@@ -167,6 +177,7 @@ sig_des=t
 sig_des$combo = paste(sig_des$lnc, sig_des$canc, sep="_")
 sig_des_sum = as.data.table(table(sig_des$combo))
 sig_des_sum = sig_des_sum[order(N)]
+
 
 #keep those wtih at least 20pcgs
 #sig_des_sum = as.data.table(filter(sig_des_sum, N > 20))
