@@ -138,8 +138,8 @@ order= means$Group.1
 new_results$fold_change_sign = ""
 
 #label lncRNA whether it is significantly up or downregulated in Cancer 
-new_results$fold_change_sign[new_results$median_difference >=0.15] = "Up in Cancer"
-new_results$fold_change_sign[new_results$median_difference <= -0.15] = "Up in Normal \nTissue"
+new_results$fold_change_sign[new_results$median_difference >=0.1] = "Up in Cancer"
+new_results$fold_change_sign[new_results$median_difference <= -0.1] = "Up in Normal \nTissue"
 
 #add gene name 
 get_name = function(gene){
@@ -154,6 +154,7 @@ new_results = as.data.frame(new_results)
 #Label top 5 genes in each cancer type if there is enough space
 #if not label top 3 
 types = unique(new_results$type)
+
 get_best_lncs = function(tis){
 	dat = new_results[which(new_results$type == tis),]
 	dat$lnc_tag = ""
@@ -277,7 +278,7 @@ dev.off()
 new_results = merge(new_results, num_times, by = c("name", "fold_change_sign"))
 
 #check prostate
-pros = as.data.table(filter(new_results, type=="PRAD"))
+pros = as.data.table(filter(new_results, type=="LGG"))
 #318 in total (that are only either UP or DOWN regulated not both across cancers)
 pros_spef = as.data.table(filter(pros, freq ==1))
 #122 specific lncRNAs 
@@ -375,7 +376,6 @@ geom_vline(xintercept=-0.25, linetype="dashed", color = "red") +
   geom_label_repel(data=filter(cands_gtex, median_difference <= -0.25, fdr > -log10(0.05), HR < 0), aes(label=CAT_geneName, fill=type), size=2) +
   scale_fill_brewer(palette="Paired")
 dev.off()
-
 
 
 pdf("final_figure_5A_aug22_using_fold_change.pdf")

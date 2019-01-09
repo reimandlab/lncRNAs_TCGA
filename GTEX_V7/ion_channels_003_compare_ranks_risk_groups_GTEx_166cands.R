@@ -57,61 +57,39 @@ tis_match = tis_match[-1,]
 #expression data 
 rna = readRDS("TCGA_rna_expression_Data_forgtex_analysis.rds")
 
-#tcga gtex comparison 
-ranked_comp = readRDS("TCGA_GTEX_lncRNAs_ranked_wDifferences_July23_noFDR.rds")
+#tcga gtex comparison - MAIN FILE 
+ranked_comp = readRDS("TCGA_GTEX_ionchannels_ranked_wDifferences_Dec30_noFDR.rds")
 
 #########compare ranks-------------------------------------------------------------------
 
 #which of the candidates are differentially expressed? 
 
-allCands$combo = paste(allCands$gene, allCands$cancer, sep="_")
-ranked_comp$combo = paste(ranked_comp$gene, ranked_comp$canc, sep="_")
+allCands$combo = allCands$hg19.ensGene.name2
+ranked_comp$combo = ranked_comp$gene
 
-results_cands = as.data.frame(matrix(ncol=ncol(ranked_comp)))
-colnames(results_cands) = colnames(ranked_comp)
-
-for(i in 1:nrow(allCands)){
-	lnc = as.character(allCands$gene[i])
-	canc = allCands$cancer[i]
-	z = which(ranked_comp$combo %in% allCands$combo[i])
-	print(z)
-	row = ranked_comp[z,]
-	names(row) = colnames(results_cands)
-	results_cands = rbind(results_cands, row)
-}
-
-results_cands = results_cands[-1,]
-
-#22 lncRNAs from candidates coming from cancer types that have available 
-#matched gtex tissues are significantly differetnially expressed 
-#across 9 cancer types 
-
-colnames(allCands)[c(1, 5)] = c("lnc", "Cancer")
-allCands$combo = paste(allCands$lnc, allCands$Cancer, sep="_")
-colnames(results_cands)[c(1, 5)] = c("lnc", "Cancer")
-allCands = merge(allCands, results_cands, by="combo")
+results_cands = ranked_comp
 
 #check if biological match 
 #if HR > 1 & significantly upregulated in cancer --> potential OG? 
 #if HR < 1 & significantly downregulated in cacner --> potential TS? 
 
-allCands$reg[allCands$median_difference >=0.25] = "Upregulated_Cancer"
-allCands$reg[allCands$median_difference <=-0.25] = "Downregulated_Cancer"
+results_cands$reg[results_cands$median_difference >=0.15] = "Upregulated_Cancer"
+results_cands$reg[results_cands$median_difference <=-0.15] = "Downregulated_Cancer"
 
-allCands$biological_match = ""
-z = which((allCands$HR >1) & (allCands$reg == "Upregulated_Cancer"))
-allCands$biological_match[z] = "PredictedOG"
+results_cands$biological_match = ""
+z = which((results_cands$HR >1) & (results_cands$reg == "Upregulated_Cancer"))
+results_cands$biological_match[z] = "PredictedOG"
 
-z = which((allCands$HR <1) & (allCands$reg == "Downregulated_Cancer"))
-allCands$biological_match[z] = "PredictedTS"
-saveRDS(allCands, file="lncRNA_cands_with_GTEx_results_August21.rds")
+z = which((results_cands$HR <1) & (results_cands$reg == "Downregulated_Cancer"))
+results_cands$biological_match[z] = "PredictedTS"
+saveRDS(results_cands, file="lncRNA_cands_with_GTEx_results_August21.rds")
 
-lncs = as.list(as.character(unique(allCands$combo)))
+lncs = as.list(as.character(unique(results_cands$combo)))
 
 compare_exp_boxplots = function(lnc){
 
 	#get tumour expression and seperate by high and low expression
-	z = which(allCands$combo == lnc)
+	z = which(results_cands$combo == lnc)
 	canc = unlist(strsplit(lnc, "_"))[2]
 	lnc = unlist(strsplit(lnc, "_"))[1]
 	#subset tumour exp
@@ -132,7 +110,7 @@ compare_exp_boxplots = function(lnc){
 	}
 
 	#risk 
-	risk = allCands$HR[allCands$lnc.x == lnc]
+	risk = results_cands$HR[results_cands$lnc.x == lnc]
 	if(as.numeric(risk) > 1){
 		risk_exp = "High_exp"
 	}
