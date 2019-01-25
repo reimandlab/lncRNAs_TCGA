@@ -72,7 +72,6 @@ cands = read.csv("ION_CHANNELS_targets_and_families.csv")
 cands = merge(cands, ucsc, by = "HGNC.symbol")
 
 #outlier gene exp 
-
 load("expr_discr_cc.rsav")
 gbm = expr_discr_cc[[1]]
 lgg = expr_discr_cc[[27]]

@@ -8,7 +8,7 @@ library(VennDiagram)
 
 
 ###Data
-gtex = readRDS("allGTEX_ionchannels_scored_Dec30.rds")
+gtex = readRDS("allGTEX_ionchannels_scored_Jan23.rds")
 tcga = readRDS("TCGA_all_ionchannels_cancers_scored_byindexDec30.rds")
 
 #summary of lncRNAs detected in each cancer 
@@ -21,17 +21,17 @@ tcga = readRDS("TCGA_all_ionchannels_cancers_scored_byindexDec30.rds")
 
 #1. Divide data into matching tissues, one dataframe wtih both GTEx and TCGA 
 #for one tissue
-
 tcga_canc = unique(tcga$tis)
 
-gtex$tis = str_sub(gtex$tis, 1, 4)
+gtex$simp_tis = gtex$tis
+gtex$simp_tis = str_sub(gtex$simp_tis, 1, 4)
 gtex_canc = unique(gtex$tis)
 
 tis_match = as.data.frame(matrix(ncol=2)) ; 
 colnames(tis_match) = c("cancer", "tis")
 
 for(i in 1:length(gtex_canc)){
-	 z = (which(str_detect(tcga_canc, gtex_canc[[i]])))
+	 z = (which(str_detect(tcga_canc, gtex$simp_tis[which(gtex$tis == gtex_canc[[i]])][1])))
 	 if(!(length(z)==0)){
 	 	if(length(z)==1){
 		 	canc = tcga_canc[z]
@@ -56,7 +56,18 @@ for(i in 1:length(gtex_canc)){
 tis_match = tis_match[-1,]
 
 #2. type of cancers with tissues available -> seperate into dataframes
-cancers = unique(tis_match$cancer)
+cancers = as.data.frame(unique(tis_match$cancer))
+colnames(cancers)[1] = "canc"
+canc_conv = readRDS("cancers_conv_july23.rds")
+cancers = merge(cancers, canc_conv, by="canc")
+
+#remove cancer types with less than 50 patients
+z = which(cancers$type %in% c("KICH", "CHOL", "DLBC", "UCS"))
+cancers = cancers[-z,]
+cancers = cancers$canc
+cancers = tis_match$tis
+tis_match$combo = paste(tis_match$cancer, tis_match$tis, sep = "_")
+cancers = tis_match$combo
 
 ###Results
 results = readRDS("results_analysis_July24.rds")

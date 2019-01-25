@@ -5,9 +5,8 @@
 source("source_file.R")
 library(stringr)
 
-
 ###Data
-gtex = readRDS("allGTEX_ionchannels_scored_Dec30.rds")
+gtex = readRDS("allGTEX_ionchannels_scored_Jan23.rds")
 tcga = readRDS("TCGA_all_ionchannels_cancers_scored_byindexDec30.rds")
 
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
@@ -48,14 +47,15 @@ fantom <- fantom[-z,]
 
 tcga_canc = unique(tcga$tis)
 
-gtex$tis = str_sub(gtex$tis, 1, 4)
+gtex$simp_tis = gtex$tis
+gtex$simp_tis = str_sub(gtex$simp_tis, 1, 4)
 gtex_canc = unique(gtex$tis)
 
 tis_match = as.data.frame(matrix(ncol=2)) ; 
 colnames(tis_match) = c("cancer", "tis")
 
 for(i in 1:length(gtex_canc)){
-	 z = (which(str_detect(tcga_canc, gtex_canc[[i]])))
+	 z = (which(str_detect(tcga_canc, gtex$simp_tis[which(gtex$tis == gtex_canc[[i]])][1])))
 	 if(!(length(z)==0)){
 	 	if(length(z)==1){
 		 	canc = tcga_canc[z]
@@ -89,13 +89,24 @@ cancers = merge(cancers, canc_conv, by="canc")
 z = which(cancers$type %in% c("KICH", "CHOL", "DLBC", "UCS"))
 cancers = cancers[-z,]
 cancers = cancers$canc
+cancers = tis_match$tis
+tis_match$combo = paste(tis_match$cancer, tis_match$tis, sep = "_")
+cancers = tis_match$combo
 
 get_data = function(cancer){
-	z = which(tcga$tis == cancer)
-	dat_canc = tcga[z,]
-	t = tis_match$tis[which(tis_match$cancer ==cancer)]
-	z = which(gtex$tis == t)
+	
+	print(cancer)
+	tis = unlist(strsplit(cancer, "_"))[2]
+	canc = unlist(strsplit(cancer, "_"))[1]
+
+	z = which(gtex$tis == tis)
 	dat_gt = gtex[z,]
+
+	z = which(tcga$tis == canc)
+	dat_canc = tcga[z,]
+	dat_canc$simp_tis = dat_canc$tis
+	dat_canc = dat_canc[,c("exp", "gene", "score", "patient", "data", "tis", "simp_tis")]
+
 	all = rbind(dat_canc, dat_gt) #fix order of columns 
 	return(all)
 }
@@ -126,8 +137,8 @@ get_fc = function(dataframee){
 		fc = mean(x)/mean(y)
 		med_diff = median(x)-median(y)
 		canc = dataframee$tis[dataframee$data=="TCGA"][1]
-		row = c(gene, fc, p, med_diff, canc) #cancer/gtex
-		names(row) = c("gene", "fc_mean", "pval_wilcoxon", "median_difference", "canc")
+		row = c(gene, fc, p, med_diff, canc, dataframee$tis[dataframee$data=="GTEX"][1]) #cancer/gtex
+		names(row) = c("gene", "fc_mean", "pval_wilcoxon", "median_difference", "canc", "tis")
 		return(row)
 	}
 	#genes=genes[1:10]
@@ -142,7 +153,7 @@ get_fc = function(dataframee){
 	all_genes_results2$fdrtag[all_genes_results2$fdr>0.05] = "NotFDRsig"
 	#subest to only those with 25% difference in corresponding median gene ranks
 	#all_genes_results2 = all_genes_results2[which(abs(as.numeric(all_genes_results2$median_difference)) >=0.1),]
-	all_genes_results2$pval_wilcoxon = -log10(as.numeric(all_genes_results2$pval_wilcoxon))
+	#all_genes_results2$pval_wilcoxon = -log10(as.numeric(all_genes_results2$pval_wilcoxon))
 	#print(ggdensity(dataframee, x = "score",
   	#		 color = "data", palette = c("#00AFBB", "#E7B800"), title=dataframee$tis[1]))
 

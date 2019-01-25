@@ -50,14 +50,15 @@ fantom <- fantom[-z,]
 
 tcga_canc = unique(tcga$tis)
 
-gtex$tis = str_sub(gtex$tis, 1, 4)
+gtex$simp_tis = gtex$tis
+gtex$simp_tis = str_sub(gtex$simp_tis, 1, 4)
 gtex_canc = unique(gtex$tis)
 
 tis_match = as.data.frame(matrix(ncol=2)) ; 
 colnames(tis_match) = c("cancer", "tis")
 
 for(i in 1:length(gtex_canc)){
-	 z = (which(str_detect(tcga_canc, gtex_canc[[i]])))
+	 z = (which(str_detect(tcga_canc, gtex$simp_tis[which(gtex$tis == gtex_canc[[i]])][1])))
 	 if(!(length(z)==0)){
 	 	if(length(z)==1){
 		 	canc = tcga_canc[z]
@@ -81,6 +82,7 @@ for(i in 1:length(gtex_canc)){
 
 tis_match = tis_match[-1,]
 
+
 #2. type of cancers with tissues available -> seperate into dataframes
 cancers = as.data.frame(unique(tis_match$cancer))
 colnames(cancers)[1] = "canc"
@@ -97,13 +99,10 @@ cancers = cancers$canc
 ###Results
 results = readRDS("results_analysis_Dec30.rds")
 
-new_results = as.data.frame(matrix(ncol=8)) ; colnames(new_results) = c("gene", "fc_mean", "pval_wilcoxon", 
-	"median_difference", "canc", "fdr", "fdrtag", "tis")
+new_results = as.data.frame(matrix(ncol=8)) ; colnames(new_results) = colnames(results[[1]])
 
 for(i in 1:length(results)){
 	df = results[[i]]
-	canc = df$canc[1]
-	df$tis = tis_match$tis[which(tis_match$cancer %in% canc)]
 	new_results = rbind(new_results, df)
 }
 

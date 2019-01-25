@@ -19,18 +19,20 @@ allCands = read.csv("ION_CHANNELS_targets_and_families.csv")
 allCands = merge(allCands, ucsc, by = "HGNC.symbol")
 
 ###Data
-gtex = readRDS("allGTEX_ionchannels_scored_Dec30.rds")
+gtex = readRDS("allGTEX_ionchannels_scored_Jan23.rds")
 tcga = readRDS("TCGA_all_ionchannels_cancers_scored_byindexDec30.rds")
+
 tcga_canc = unique(tcga$tis)
 
-gtex$tis = str_sub(gtex$tis, 1, 4)
+gtex$simp_tis = gtex$tis
+gtex$simp_tis = str_sub(gtex$simp_tis, 1, 4)
 gtex_canc = unique(gtex$tis)
 
 tis_match = as.data.frame(matrix(ncol=2)) ; 
 colnames(tis_match) = c("cancer", "tis")
 
 for(i in 1:length(gtex_canc)){
-	 z = (which(str_detect(tcga_canc, gtex_canc[[i]])))
+	 z = (which(str_detect(tcga_canc, gtex$simp_tis[which(gtex$tis == gtex_canc[[i]])][1])))
 	 if(!(length(z)==0)){
 	 	if(length(z)==1){
 		 	canc = tcga_canc[z]
@@ -54,8 +56,22 @@ for(i in 1:length(gtex_canc)){
 
 tis_match = tis_match[-1,]
 
+#2. type of cancers with tissues available -> seperate into dataframes
+cancers = as.data.frame(unique(tis_match$cancer))
+colnames(cancers)[1] = "canc"
+canc_conv = readRDS("cancers_conv_july23.rds")
+cancers = merge(cancers, canc_conv, by="canc")
+
+#remove cancer types with less than 50 patients
+z = which(cancers$type %in% c("KICH", "CHOL", "DLBC", "UCS"))
+cancers = cancers[-z,]
+cancers = cancers$canc
+cancers = tis_match$tis
+tis_match$combo = paste(tis_match$cancer, tis_match$tis, sep = "_")
+cancers = tis_match$combo
+
 #expression data 
-rna = readRDS("TCGA_rna_expression_Data_forgtex_analysis.rds")
+rna = readRDS("19438_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
 
 #tcga gtex comparison - MAIN FILE 
 ranked_comp = readRDS("TCGA_GTEX_ionchannels_ranked_wDifferences_Dec30_noFDR.rds")
@@ -76,25 +92,43 @@ results_cands = ranked_comp
 results_cands$reg[results_cands$median_difference >=0.15] = "Upregulated_Cancer"
 results_cands$reg[results_cands$median_difference <=-0.15] = "Downregulated_Cancer"
 
-results_cands$biological_match = ""
-z = which((results_cands$HR >1) & (results_cands$reg == "Upregulated_Cancer"))
-results_cands$biological_match[z] = "PredictedOG"
+surv_results = readRDS("TCGA_ION_CHANNEL_results_Sept21.rds")
+surv_results$combo = paste(surv_results$gene, surv_results$cancer, sep="_")
+results_cands$combo = paste(results_cands$gene, results_cands$canc, sep="_")
 
-z = which((results_cands$HR <1) & (results_cands$reg == "Downregulated_Cancer"))
-results_cands$biological_match[z] = "PredictedTS"
-saveRDS(results_cands, file="lncRNA_cands_with_GTEx_results_August21.rds")
+combined = merge(surv_results, results_cands, by="combo")
+combined$gene.y = NULL
+colnames(combined)[2] = "gene"
+combined$HR = as.numeric(combined$HR)
 
-lncs = as.list(as.character(unique(results_cands$combo)))
+combined$biological_match = ""
+z = which((combined$HR >1) & (combined$reg == "Upregulated_Cancer"))
+combined$biological_match[z] = "PredictedOG"
+
+z = which((combined$HR <1) & (combined$reg == "Downregulated_Cancer"))
+combined$biological_match[z] = "PredictedTS"
+saveRDS(combined, file="ION_CHANNELS_cands_with_GTEx_results_Jan23.rds")
+
+combined$comboo = paste(combined$gene, combined$canc, combined$tis, sep="_")
+
+#lets look only at the ones that have some significnat prognostic signal 
+combined = as.data.table(filter(combined, pval < 0.05))
+
+lncs = as.list(as.character(unique(combined$comboo)))
+saveRDS(combined, file="ICs_wSurvival_GTEx_info_Jan24.rds")
 
 compare_exp_boxplots = function(lnc){
-
+	print(lnc)
+	combo = lnc
 	#get tumour expression and seperate by high and low expression
-	z = which(results_cands$combo == lnc)
-	canc = unlist(strsplit(lnc, "_"))[2]
+	z = which(combined$combo == lnc)
+	cance = unlist(strsplit(lnc, "_"))[2]
 	lnc = unlist(strsplit(lnc, "_"))[1]
+	tiss = unlist(strsplit(combo, "_"))[3]
 	#subset tumour exp
-	canc_exp = subset(rna, Cancer==canc)
-	canc_exp = canc_exp[,which(colnames(canc_exp) %in% c(lnc, "Cancer", "patient"))]
+	cancc = canc_conv$type[canc_conv$canc == cance]
+	canc_exp = subset(rna, type==cancc)
+	canc_exp = canc_exp[,which(colnames(canc_exp) %in% c(lnc, "type", "patient"))]
 	#sep by median
 	median2 = median(as.numeric(canc_exp[,2]))
 	canc_exp$Group = ""
@@ -110,7 +144,7 @@ compare_exp_boxplots = function(lnc){
 	}
 
 	#risk 
-	risk = results_cands$HR[results_cands$lnc.x == lnc]
+	risk = combined$HR[combined$combo == paste(lnc, cance, sep="_")]
 	if(as.numeric(risk) > 1){
 		risk_exp = "High_exp"
 	}
@@ -122,25 +156,29 @@ compare_exp_boxplots = function(lnc){
 	canc_exp$exp_type = "Tumour"
 
 	#subset tcga to just lncrna
-	tcga_lnc = subset(tcga, gene == lnc)
+	tcga$combo = paste(tcga$gene, tcga$tis, sep="_")
+	tcga_lnc = subset(tcga, combo == paste(lnc, cance, sep="_"))
 
 	#get ranks for patients and compare to ranks of lncRNA in GTEx 
 	canc_exp = merge(tcga_lnc, canc_exp, by=c("patient"))	
 
-	#get gtex ranks for same tissue
-	tis = tis_match$tis[tis_match$cancer %in% canc_exp$Cancer]
+	#get gtex ranks for same tissue (make sure it's the specific one)###***** <-------
+	tis = tiss
+	print(tis)
 
-	canc_exp = canc_exp[,c(1:6, 9:11)]
-
+	#canc_exp = canc_exp[,c(1:6, 9:11)]
 	z = which(gtex$tis == tis)
 	norm_exp = gtex[z,]
 	norm_exp = subset(norm_exp, gene == lnc)
 
-	norm_exp = norm_exp[,c(4, 1, 2, 3, 6, 5)]
+	#norm_exp = norm_exp[,c(4, 1, 2, 3, 6, 5)]
 	norm_exp$Group = "GTEx"
 	norm_exp$risk_type = "norm"
 	norm_exp$exp_type = "norm"
 	norm_exp = as.data.frame(norm_exp)
+
+	canc_exp = canc_exp[,c("patient", "gene", "exp", "score", "tis", "data", "Group", "risk_type", "exp_type")]
+	norm_exp = norm_exp[,c("patient", "gene", "exp", "score", "tis", "data", "Group", "risk_type", "exp_type")]
 
 	#all expression data needed for boxplot
 	all_exp = rbind(norm_exp, canc_exp)
@@ -164,27 +202,27 @@ compare_exp_boxplots = function(lnc){
 		fc = mean(x)/mean(y)
 		med_diff = median(x)-median(y)
 
-		res = c(lnc, canc, risk, med_diff, fc, p)
-		names(res) = c("lnc", "canc", "risk", "median_diff", "fc", "wilcox_p")
+		res = c(lnc, canc, risk, med_diff, fc, p, tiss)
+		names(res) = c("lnc", "canc", "risk", "median_diff", "fc", "wilcox_p", "tissue")
 		all_exp_for_plot$Group = factor(all_exp_for_plot$Group, levels = c("GTEx", "High_exp", "Low_exp"))
 
 		#boxplot
 		g = ggboxplot(all_exp_for_plot, ylab="lncRNA Score", x="Group", y="lncRNA_score", palette = mypal[c(3,1,2)], add = "jitter", fill = "Group", 
 		order=c("GTEx", "High_exp", "Low_exp"), 
-		title= paste(lnc, canc, "risk=", risk))+ 
+		title= paste(lnc, tiss, cancc, "\nrisk=", risk))+ 
 		stat_compare_means(label = "p.signif", 
                      ref.group = "GTEx") + stat_n_text() + theme_classic()
 		g = ggpar(g, font.tickslab = c(14, "plain", "black"), legend="none")
-		#print(g)
+		print(g)
 
 		return(res)
 
 }
 
 #DO NOT RUN - ALREADY DONE
-#pdf("lncRNA_expression_tumours_GTEX_matched_normals_cancds_August27.pdf")
+pdf("IonChannels_expression_tumours_GTEX_matched_normals_cancds_Jan23.pdf")
 results = llply(lncs, compare_exp_boxplots, .progress="text")
-#dev.off()
+dev.off()
 
 #-----------SUMMARIZE---------------------------------------------------------
 

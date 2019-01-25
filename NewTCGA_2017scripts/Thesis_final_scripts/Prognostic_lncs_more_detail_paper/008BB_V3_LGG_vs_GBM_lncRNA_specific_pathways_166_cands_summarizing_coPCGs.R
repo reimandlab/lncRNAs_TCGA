@@ -173,11 +173,12 @@ all_lnc_pathways_df = ldply(all_lnc_pathways)
 
 #1. DE PCGs/lncRNA
 t = as.data.table(filter(all_de_results, adj.P.Val <= 0.05))
+#keep only those with fc >1/<-1
+t = as.data.table(filter(t, (logFC >= 1) | (logFC < -1)))
 sig_des=t
 sig_des$combo = paste(sig_des$lnc, sig_des$canc, sep="_")
 sig_des_sum = as.data.table(table(sig_des$combo))
 sig_des_sum = sig_des_sum[order(N)]
-
 
 #keep those wtih at least 20pcgs
 #sig_des_sum = as.data.table(filter(sig_des_sum, N > 20))
@@ -204,7 +205,7 @@ colnames(canc_conv)[1] = "canc"
 sig_paths_sum = merge(sig_paths_sum, canc_conv, by="canc")
 
 
-pdf("summary_#DE_pcgs_vs_pathways_pathways_figure_sep14.pdf", width=9, height=5)
+pdf("summary_#DE_pcgs_vs_pathways_pathways_figure_jdan2519.pdf", width=9, height=5)
 g = ggscatter(sig_paths_sum, x = "num_sig_des", y = "num_sig_pathways",
    fill = "canc", shape = 21, size = 3, # Points color, shape and size
    add = "reg.line",  # Add regressin line
@@ -233,10 +234,10 @@ all_res = rbind(paths, genes)
 sig_paths_sum = sig_paths_sum[order(-num_sig_des)]
 all_res$combo = factor(all_res$combo, levels=unique(sig_paths_sum$combo))
 
-write.csv(sig_paths_sum, file="summary_num_diff_exp_genes_pathways_nov16.csv", quote=F, row.names=F)
+write.csv(sig_paths_sum, file="summary_num_diff_exp_genes_pathways_jan2519.csv", quote=F, row.names=F)
 
 #network part A 
-pdf("summary_barplot_#DE_pcgs_vs_pathways_pathways_figure_sep14.pdf", width=16, height=5)
+pdf("summary_barplot_#DE_pcgs_vs_pathways_pathways_figure_jan2519.pdf", width=16, height=5)
 g = ggplot(all_res, aes(combo, num_sig_des, group=type)) + theme_classic() + 
    geom_col(position = "dodge", aes(fill=type), color="grey29")+xlab("lncRNA-cancer pair") + ylab("Number of significant \ngenes/pathways")+
    theme(legend.title=element_blank(), legend.position="top", axis.title.x=element_blank(),
@@ -257,7 +258,7 @@ pall =  c("#72E1E0" ,"#7CE147", "#73E590", "#E180E3" ,"#D39794", "#D4DC8D", "#A6
  "#DC5FA5" ,"#D8DB50" ,"#6891DB" ,"#633CE1" ,"#DDDDCF" ,"#DAAADA" ,"#D849DE",
 "#7C9F6A" ,"#E6565F" ,"#8C68D2" ,"#63859B" ,"#DD9955")
 
-pdf("summary_barplot_w_covariate_#DE_pcgs_vs_pathways_pathways_figure_sep14.pdf", width=16, height=5)
+pdf("summary_barplot_w_covariate_#DE_pcgs_vs_pathways_pathways_figure_jan2519.pdf", width=16, height=5)
 
 #covariate for cancer
 cov = ggplot(all_res, aes(combo, 1)) + geom_tile(aes(fill = type)) +
@@ -306,7 +307,7 @@ all_res = as.data.table(filter(all_res, num_sig_des >=75))
 
 #117 unique lncRNA-cancer pairs 
 #114 unique lncRNAs 
-pdf("summary_barplot_genenames_#DE_pcgs_vs_pathways_pathways_figure_sep14.pdf", width=12, height=4)
+pdf("summary_barplot_genenames_#DE_pcgs_vs_pathways_pathways_figure_jan2519.pdf", width=12, height=4)
 g = ggplot(all_res, aes(combo2, num_sig_des, group=type)) + theme_classic() + 
    geom_col(position = "dodge", aes(fill=type), color="grey29")+xlab("lncRNA-cancer pair") + ylab("Number of sig genes/pathways")+
    theme(legend.title=element_blank(), legend.position="top", axis.title.x=element_blank(), 

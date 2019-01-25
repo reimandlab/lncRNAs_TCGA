@@ -106,14 +106,14 @@ rna = t(rna)
 rna = log1p(rna)
 
 #2. Get lncRNA - median within each tissue type
-tissues <- unique(atts$SMTS)
-tissues = tissues[c(1, 5, 6, 8, 9, 11, 12, 13, 14, 16, 26, 17, 27, 28, 30, 21)]
+tissues <- unique(atts$SMTSD)
+#tissues = tissues[c(1, 5, 6, 8, 9, 11, 12, 13, 14, 16, 26, 17, 27, 28, 30, 21)]
 
 #Function 1
 #input: tissue 
 #output: list of dataframes by tissue
 get_tissue_specific <- function(tissue){
-	z = which(atts$SMTS == tissue)
+	z = which(atts$SMTSD == tissue)
 	pats = atts$SAMPID[z]
 	z = which(rownames(rna) %in% pats)
 	tis = rna[z,]
@@ -176,8 +176,9 @@ all_tissues_scored <-  rbindlist(scored)
 all_tissues_scored$exp = as.numeric(all_tissues_scored$exp)
 
 #saveRDS(all_tissues_scored, "allGTEX_lncRNAs_scored_May23.rds")
-saveRDS(all_tissues_scored, "allGTEX_ionchannels_scored_Dec30.rds")
+#saveRDS(all_tissues_scored, "allGTEX_ionchannels_scored_Dec30.rds")
 
+saveRDS(all_tissues_scored, "allGTEX_ionchannels_scored_Jan23.rds")
 
 
 

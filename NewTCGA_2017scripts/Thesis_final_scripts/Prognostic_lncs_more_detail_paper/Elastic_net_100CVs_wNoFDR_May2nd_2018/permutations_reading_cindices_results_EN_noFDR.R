@@ -48,7 +48,7 @@ res$type = as.factor(res$type)
 order = c("cinds_justlncs", "cinds_clin", "cinds_combined")
 res$type = factor(res$type, levels = order)
 
-saveRDS(res, file="permutations_elastic_net_all_cancers_dec11.rds")
+saveRDS(res, file="permutations_elastic_net_all_cancers_Jan22.rds")
 
 #for each cancer type plot the distribution of cindices 
 plots = res %>% dplyr::group_by(canc, type) %>% do(plots=ggplot(data=.) +
@@ -93,7 +93,7 @@ summ = summ[order(cindex)]
 
 mypal = wes_palette("FantasticFox")
 
-pdf("permutations_cindices_results_elastic_net_100CVs_No_FDR_cancers_July11_nofacet_horizontal_boxplots.pdf", width=11, height=10)
+pdf("permutations_cindices_results_elastic_net_100CVs_No_FDR_cancers_Jan22_nofacet_horizontal_boxplots.pdf", width=11, height=10)
 
 g = ggboxplot(res, "TYPE", "cindex", orientation = "horizontal", fill="type", color="black", palette=mypal, notch = TRUE)
 g =  g + stat_compare_means(aes(group = type), label = "p.signif") + theme_minimal()
@@ -177,7 +177,7 @@ res = res[-which(res$TYPE %in% canc_rm),]
 
 #pdf("cindices_results_elastic_net_100CVs_No_FDR_cancers_Sept28_nofacet_horizontal_boxplots.pdf", width=7, height=7)
 
-pdf("permutations_all_100_CV_cindicies_vs_clinical_elastic_net.pdf", width=7, height=9)
+pdf("permutations_all_100_CV_cindicies_vs_clinical_elastic_net_jan22.pdf", width=7, height=9)
 
 g = ggplot(res, aes(TYPE, cindex)) + 
 geom_boxplot(aes(fill = type), color="black", outlier.size = 0.01) + theme_bw() + xlab("Cancer Type") + ylab("C-index") +
@@ -191,7 +191,7 @@ dev.off()
 
 #----------------------------------------------------------------------------------------------------------------------
 
-pdf("permutations_cindices_results_elastic_net_100CVs_No_FDR_cancers_May2nd_nofacet.pdf", width=5, height=5)
+pdf("permutations_cindices_results_elastic_net_100CVs_No_FDR_cancers_Jan22_nofacet.pdf", width=5, height=5)
 
   for(i in 1:length(unique(res$canc))){
       newres = subset(res, canc %in% unique(res$canc)[i])
@@ -282,7 +282,7 @@ genes_keep = rbind(genes_keep, genes_list)
 genes_keep = genes_keep[-1,]
 genes_keep = as.data.table(genes_keep)
 all_genes = genes_keep
-write.csv(all_genes, file="permutations_all_genes_selected_by_elastic_net_final_run_aug7.csv", quote=F, row.names=F)
+write.csv(all_genes, file="permutations_all_genes_selected_by_elastic_net_final_run_jan22.csv", quote=F, row.names=F)
 genes_keep = filter(genes_keep, NumtimesChosen >=50)
 
 dups = unique(genes_keep$GeneName[which(duplicated(genes_keep$GeneName))])
@@ -305,7 +305,7 @@ t = t[order(N)]
 canc_order = t$V1
 genes_keep$Cancer = factor(genes_keep$Cancer, levels = canc_order)
 
-pdf("permutations_summary_of_final_lncRNA_candidates_elastic_net_100CVs_No_FDR_cancers_May2nd.pdf", width=12, height=8)
+pdf("permutations_summary_of_final_lncRNA_candidates_elastic_net_100CVs_No_FDR_cancers_Jan22nd.pdf", width=12, height=8)
 
 overg = ggbarplot(t, x = "V1", y = "N",
           fill = "grey",               # change fill color by cyl
@@ -350,7 +350,7 @@ gg +overg + plot_layout(ncol = 1, heights = c(3, 1))
 
 dev.off()
 
-saveRDS(genes_keep, file="permutations_genes_keep_100CV_No_FDR_May2nd2018.rds")
+saveRDS(genes_keep, file="permutations_genes_keep_100CV_No_FDR_Jan22nd2018.rds")
 
 colnames(t) = c("TYPE", "Nun_lncRNAs")
 cancers_conv = rna[,which(colnames(rna) %in% c("type", "Cancer"))]
@@ -359,7 +359,7 @@ colnames(cancers_conv)[2] = "TYPE"
 summary = merge(t, cancers_conv, by="TYPE")
 summary = summary[order(Nun_lncRNAs)]
 
-pdf("permutations_barplot_summary_lncs_selected_100CVs_elastic_net_july13.pdf", width=8, height=5)
+pdf("permutations_barplot_summary_lncs_selected_100CVs_elastic_net_jan22.pdf", width=8, height=5)
 overg = ggbarplot(summary, x = "type", y = "Nun_lncRNAs",
           fill = "grey",               # change fill color by cyl
           palette = "mypal2", 
@@ -379,7 +379,7 @@ dev.off()
 
 
 genes_keep_new = genes_keep
-genes_keep_old = readRDS("genes_keep_100CV_No_FDR_May2nd2018.rds")
+genes_keep_old = readRDS("genes_keep_100CV_No_FDR_Jan22_PERMUTATIONS.rds")
 
 genes_keep_old$combo = paste(genes_keep_old$Geneid, genes_keep_old$Cancer, sep="_")
 genes_keep_new$combo = paste(genes_keep_new$Geneid, genes_keep_new$Cancer, sep="_")
