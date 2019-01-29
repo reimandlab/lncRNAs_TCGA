@@ -1,5 +1,21 @@
-library(data.table)
 source("check_lnc_exp_cancers.R")
+
+source("permutation_universal_LASSO_survival_script.R")
+print("done source script")
+
+#need to combine randomly generated datasets back into an "all" file
+#matrix with all gene expression 
+
+#canc_datas #<-- into one matrix 
+
+#1. bind all randomly shuffled cancer datasets into one file 
+
+dff <- ldply(canc_datas, data.frame)
+dim(dff)
+
+all = dff
+all_permuted = all
+all = all_permuted
 
 #load elastic net cross-validation results 
 
@@ -112,6 +128,7 @@ get_km_plot = function(comb){
   if(!(length(z)==0)){
   colnames(dat)[z] = "gene"
   dat = subset(dat, type == cancer)
+  dat[,1] = as.numeric(dat[,1])
   #split patients 
   med = median(dat$gene)
   #add high low tag
@@ -194,28 +211,4 @@ perms_surv_results1$wald_p = as.numeric(perms_surv_results1$wald_p)
 sig = filter(perms_surv_results1, wald_p < 0.05)
 perms_surv_results1$fdr = p.adjust(perms_surv_results1$wald_p, method="fdr")
 fdr_sig = filter(perms_surv_results1, fdr < 0.05)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

@@ -318,6 +318,7 @@ g = ggplot(all_res, aes(combo2, num_sig_des, group=type)) + theme_classic() +
 print(g)
 dev.off()
 
+#stopped here Jan 25
 
 ###---------------Make heatmap-------------------------------###
 
