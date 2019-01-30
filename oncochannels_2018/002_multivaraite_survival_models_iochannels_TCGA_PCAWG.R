@@ -73,6 +73,12 @@ cands = merge(cands, ucsc, by = "HGNC.symbol")
 
 #outlier gene exp 
 load("expr_discr_cc.rsav")
+
+#run fisher's test to see if any ion channels within cancer types 
+#are signifcantly assoicated with each other
+
+
+
 gbm = expr_discr_cc[[1]]
 lgg = expr_discr_cc[[27]]
 
@@ -81,9 +87,7 @@ lgg = expr_discr_cc[[27]]
 genes_test = c("CATSPER1", "SCN9A", "AQP9", "KCNN4")
 
 
-
 #add IDH mutation status 
-
 
 
 #-------------------------------------------------------------------
