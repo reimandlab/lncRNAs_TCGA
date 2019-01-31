@@ -68,76 +68,93 @@ change_cols = function(dat){
 ic_cancs = llply(expr_discr_cc, change_cols)
 
 for(i in 1:length(ic_cancs)){
-  ic_cancs[[i]]$canc = names(expr_discr_cc)[[i]]
+  dff = ic_cancs[[i]]
+  dff = t(dff)
+  dff = as.data.frame(dff)
+  dff$canc = ""
+  dff$canc = names(expr_discr_cc)[[i]]
+  ic_cancs[[i]] = dff
 }
 
 
-unique_cds = unique(names(mutations_in_cds)) #48
-unique_fmre = unique(names(mutations_in_crms)) #30
+###MAIN FUNCTION#####################################################
 
-results_pairs = as.data.frame(matrix(ncol=6)) ; colnames(results_pairs) = c("CDS_mut", "FMRE_mut", "fishers_pval", "fishers_OR", "num_overlap", "canc_overlapping_pats")
+get_fishers = function(canc_dat){
+  
+  cancer = canc_dat$canc[1]
+  canc_dat$canc = NULL
+  
+  #keep only ion channels 
+  z = which(colnames(canc_dat) %in% cands$HGNC.symbol)
+  canc_dat = canc_dat[,z]
 
-#for each cds/fmre combo
-for(i in 1:length(unique_cds)){
-  for(y in 1:length(unique_fmre)){
-    pair = c(unique_cds[i], unique_fmre[y])
+  ics1 = colnames(canc_dat)
+
+  pairs = combn(ics1, 2)
+  pairs = t(pairs)
+  pairs = as.data.table(pairs)
+  colnames(pairs) = c("IC1", "IC2")
+
+  results_pairs = as.data.frame(matrix(ncol=8)) ; colnames(results_pairs) = c("IC1", "IC2", "fishers_pval", "fishers_OR", "num_overlap", "IC1_high", "IC2_high", "cancer")
+
+  #for each cds/fmre combo
+  for(i in 1:nrow(pairs)){
+    print(i)
+
+    pair = pairs[i,]
+    
     #get patients that have either of these mutations or both 
-    #FMRE
-    z1 = which(names(mutations_in_crms) %in% pair)
-    pats_crms = as.data.frame(mutations_in_crms[z1])
-    pats_crms = as.data.frame(pats_crms[!duplicated(pats_crms), ])
-    pats_crms$mut = "FMRE"
-    colnames(pats_crms)[1] = "patient"
-    #CDS
-    z2 = which(names(mutations_in_cds) %in% pair)
-    pats_cds = as.data.frame(mutations_in_cds[z2])
-    pats_cds = as.data.frame(pats_cds[!duplicated(pats_cds), ])
-    pats_cds$mut = "CDS"
-    colnames(pats_cds)[1] = "patient"
-    #combine 
-    patients_wmuts = rbind(pats_crms, pats_cds)
-    patients_wmuts = patients_wmuts[!duplicated(patients_wmuts), ]
-    
-    #set up contigency table
-    #number of pats with both muts, #fmre only, #cds only, #no muts
-    #both 
-    both = as.data.table(table(patients_wmuts$patient))
-    both = filter(both, N ==2)
-    both_pats = both$V1
-    both = dim(both)[1]
-    #overlap
-    num_overlap = both
-    
-    #test only if have at least 1 patient in common 
-    if(!(length(both_pats)==0)){
-      canc_both_pats = paste(unique(patient_table$V2[patient_table$V1 %in% both_pats]), collapse="_")
-      
-      #fmre only
-      fmre = unique(as.character(patients_wmuts$patient[patients_wmuts$mut == "FMRE"]))
-      fmre = fmre[-(which(fmre %in% both_pats))]
-      FMRE_yes = length(unique(fmre))
-      
-      #cds only
-      cds = unique(patients_wmuts$patient[patients_wmuts$mut == "CDS"])
-      cds = cds[-which(cds %in% both_pats)]
-      CDS_yes = length(unique(cds))
-      
-      #none 
-      none = length(which(!(patient_table$V1 %in% unique(patients_wmuts$patient))))
-      
-      #contigency table 
-      cont_table = matrix(c(both, CDS_yes,FMRE_yes , none), nrow=2, byrow=T)
-      colnames(cont_table) = c("FMRE_yes", "FMRE_no")
-      rownames(cont_table) = c("CDS_yes", "CDS__no")
-      #p <-tableGrob(cont_table)
-      #print(grid.arrange(top=paste(pair[1], pair[2]), p))
-      f = fisher.test(cont_table, alt = "greater")
-      row = c(pair, f$p.value, f$estimate, num_overlap, canc_both_pats)
-      names(row) = colnames(results_pairs)
-      results_pairs = rbind(results_pairs, row)
-    }
-  }
+    z = which(colnames(canc_dat) %in% pair)
+    pair_dat = canc_dat[,z]  
+    cont_table = table(pair_dat)
+    if((dim(cont_table)[2] ==2) & (dim(cont_table)[1] ==2)){
+
+    f = fisher.test(cont_table, alt = "greater")
+    row = c(pair[[1]], pair[[2]], f$p.value, f$estimate, cont_table[4], cont_table[2], cont_table[3], cancer)
+    names(row) = colnames(results_pairs)
+    results_pairs = rbind(results_pairs, row)
+
+        }
+      }
+
+  results_pairs = as.data.table(results_pairs)
+  results_pairs = results_pairs[-1,]
+  results_pairs$fishers_pval = as.numeric(results_pairs$fishers_pval)
+  results_pairs$fdr = p.adjust(results_pairs$fishers_pval, method="fdr")
+  results_pairs = results_pairs[order(fdr)]
+  return(results_pairs)
 }
+
+
+all_fishers = llply(ic_cancs, get_fishers, .progress="text")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

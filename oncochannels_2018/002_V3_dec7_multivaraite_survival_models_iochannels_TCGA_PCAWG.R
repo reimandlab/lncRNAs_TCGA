@@ -32,6 +32,8 @@ library(patchwork)
 library(caret)  
 library(Rtsne)
 
+##look into subtype rather than IDH effect 
+
 #------DATA---------------------------------------------------------
 #UCSC gene info
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
@@ -113,6 +115,7 @@ lgg = lgg[,z]
 
 gbm$type = "GBM"
 lgg$type ="LGG"
+colnames(gbm)[colnames(gbm) == "Original.Subtype"] = "Transcriptome.Subtype"
 
 #-----Survival models----------------------------------------------------
 
@@ -174,14 +177,14 @@ get_surv = function(dat){
           print(s)
 
   #Full model with covariates
-  ic_idh_model = coxph(Surv(OS.time, OS) ~ IC + IDH.status, data = gene_dat)
+  ic_idh_model = coxph(Surv(OS.time, OS) ~ IC + Transcriptome.Subtype, data = gene_dat)
   ic_full_conc = glance(ic_idh_model)$concordance
   ic_full_hr = summary(ic_idh_model)$coefficients[1,2]
   ic_full_pval = summary(ic_idh_model)$coefficients[1,5]
   print(ic_idh_model)
 
   #KM plot with summary 
-  fit <- survfit(Surv(OS.time, OS) ~ IC + IDH.status, data = gene_dat)
+  fit <- survfit(Surv(OS.time, OS) ~ IC + Transcriptome.Subtype, data = gene_dat)
           s <- ggsurvplot(
           title = paste(gene, gene_dat$type[1], "\nConcordance=", round(ic_full_conc, digits=3), "\nHR=", round(ic_full_hr, digits=3)),
           fit, 
@@ -213,7 +216,7 @@ get_surv = function(dat){
           print(s)
 
     #compare full model to model without IDH 
-    idh_only_model = coxph(Surv(OS.time, OS) ~ IDH.status, data = gene_dat)
+    idh_only_model = coxph(Surv(OS.time, OS) ~ Transcriptome.Subtype, data = gene_dat)
 
     anov_ps = round(anova(idh_only_model, ic_idh_model)[2,4], digits=4)
     res = c(gene, gene_dat$type[1], ic_conc, ic_hr, ic_pval, ic_full_conc, ic_full_hr, ic_full_pval , anov_ps)
@@ -232,7 +235,7 @@ get_surv = function(dat){
 }
 
 
-pdf("lgg_gbm_ics_wIDH_km_plots.pdf", width=10, height=8)
+pdf("lgg_gbm_ics_wSubtypes_km_plots.pdf", width=15, height=10)
 results = llply(canc_dats, get_surv, .progress="text")
 dev.off()
 
@@ -254,7 +257,7 @@ results$ic_full_hr = round(results$ic_full_hr, digits=4)
 results$ic_full_pval = round(results$ic_full_pval, digits=4)
 
 
-write.csv(results, file="outlier_survival_4exp_ion_channels_results_310119.csv", quote=F, row.names=F)
+write.csv(results, file="outlier_survival_subtypes_4exp_ion_channels_results_310119.csv", quote=F, row.names=F)
 
 
 

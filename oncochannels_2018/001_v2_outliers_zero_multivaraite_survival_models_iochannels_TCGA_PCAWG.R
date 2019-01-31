@@ -34,43 +34,9 @@ library(Rtsne)
 source("check_lnc_exp_cancers.R")
 
 #------DATA---------------------------------------------------------
-#UCSC gene info
-ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
-#z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
-#ucsc <- ucsc[z,]
-z <- which(duplicated(ucsc[,8]))
-ucsc <- ucsc[-z,]
-colnames(ucsc)[8] = "HGNC.symbol"
-
-#fantom 
-fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
-extract3 <- function(row){
-  gene <- as.character(row[[1]])
-  ens <- gsub("\\..*","",gene)
-  return(ens)
-}
-fantom[,1] <- apply(fantom[,1:2], 1, extract3)
-#remove duplicate gene names (gene names with multiple ensembl ids)
-z <- which(duplicated(fantom$CAT_geneName))
-rm <- fantom$CAT_geneName[z]
-z <- which(fantom$CAT_geneName %in% rm)
-fantom <- fantom[-z,]
-
-#remove cancer types with less than 50 patients 
-pats_num = as.data.table(table(rna$Cancer))
-pats_num = filter(pats_num, N <50)
-canc_rm = pats_num$V1
-rna = rna[-which(rna$Cancer %in% canc_rm),]
-
-#Combined into one dataframe because need to get ranks 
-com = colnames(pcg)[which(colnames(pcg) %in% colnames(rna))]
-all <- merge(rna, pcg, by = com)
 
 #get full dataset of GBM patients 
 ext = readRDS("all_genes_external_tcga_all_cancers_March13_wclinical_data.rds")
-
-#canc_conv
-canc_conv = unique(rna[,c("type", "Cancer")])
 
 #check if cands are significant using data from ext 
 pats = as.data.table(table(ext$type))
@@ -97,7 +63,14 @@ all = r
 
 #cands -- ion channels 
 cands = read.csv("ION_CHANNELS_targets_and_families.csv")
+colnames(ucsc)[8] = "HGNC.symbol"
 cands = merge(cands, ucsc, by = "HGNC.symbol")
+z = which(duplicated(all$patient))
+if(!(length(z)==0)){
+  dups = all$patient[z]
+  k = which(all$patient %in% dups)
+  all = all[-k,]
+}
 
 #--------This script ------------------------------------------------
 
@@ -110,7 +83,6 @@ cands = merge(cands, ucsc, by = "HGNC.symbol")
 #--------------------------------------------------------------------
 
 #1. Get cancer data (gene expression and clinical for each cancer type)
-
 cancers = unique(all$type)
 get_canc_data = function(canc){
   sub = subset(all, type == canc)
@@ -119,7 +91,6 @@ get_canc_data = function(canc){
 cancer_data = llply(cancers, get_canc_data)
 
 #2. Subset data to ion channels and clinical variables 
-
 get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates 
   z = which(colnames(dtt) %in% c(cands$hg19.ensGene.name2, "age_at_initial_pathologic_diagnosis", 
@@ -132,6 +103,8 @@ get_canc_data_for_plot = function(dtt){
 filtered_data = llply(cancer_data, get_canc_data_for_plot)
 
 #3. Add tags to each ion channel to indicate High or Low expression 
+#if median zero --> zero based split
+#if not, outlier based split 
 
 add_tags = function(dtt){
   print(dtt$type[1])
@@ -146,6 +119,9 @@ add_tags = function(dtt){
     medians = median(dtt[,z])
   }
   #add high low tag
+  
+  rm = c()
+
   for(k in 1:length(medians)){
     med = medians[k]
     if(med ==0){
@@ -157,17 +133,35 @@ add_tags = function(dtt){
     }
 
     if(!(med ==0)){
-    l1 = which(dtt[,names(medians)[k]] >= med)
-    l2 = which(dtt[,names(medians)[k]] < med)
-    dtt[l1,names(medians)[k]] = 1
-    dtt[l2, names(medians)[k]] = 0
+    #use outlier to split them
+    iqr = 1.5 * (summary(dtt[,which(colnames(dtt) == names(medians[k]))])[5] - summary(dtt[,which(colnames(dtt) == names(medians[k]))])[2])
+    q3 = summary(dtt[,which(colnames(dtt) == names(medians[k]))])[5] + iqr
+
+    new_med = q3
+    l1 = which(dtt[,names(medians)[k]] >= new_med)
+    l2 = which(dtt[,names(medians)[k]] < new_med)
+    
+    if((length(l1) >= 10) & (length(l2) >=10)){
+      dtt[l1,names(medians)[k]] = 1
+      dtt[l2, names(medians)[k]] = 0
     }
-  }  
+  
+   if(!((length(l1) >= 10) & (length(l2) >=10))){
+      rm = c(rm, names(medians)[k])
+    }
+
+  }
+  }
+
+  z = which(colnames(dtt) %in% rm)
+  if(!(length(z)==0)){
+  dtt = dtt[,-z]}
+
   return(dtt)
 }
 
 filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
-saveRDS(filtered_data_tagged, file="28cancers_tagged_by_ion_channels.rds")
+saveRDS(filtered_data_tagged, file="28_cancers_tagged_by_ion_channels_zeromed_outliers.rds")
 
 #3. Fit survival models and plot Kaplan Meier plot 
 
@@ -198,7 +192,7 @@ get_survival_models = function(dtt){
 
   dat$OS = as.numeric(dat$OS)
   dat$OS.time = as.numeric(dat$OS.time)
-  dat$age_at_initial_pathologic_diagnosis = as.numeric(dat$age_at_initial_pathologic_diagnosis)
+  #dat$age_at_initial_pathologic_diagnosis = as.numeric(dat$age_at_initial_pathologic_diagnosis)
   num_genes = which(str_detect(colnames(dat), "ENSG"))
 
   #save KM plots for each lncRNA for each cancer type sepereatley 
@@ -231,7 +225,7 @@ get_survival_models = function(dtt){
     perc = risk_num/nrow(newdat)
   }
 
-  row <- c(colnames(newdat)[1], summary(ionchannel_model)$coefficients[1,c(1,2,5)],  summary(ionchannel_model)$conf.int[1,c(3,4)], dtt$Cancer[1], 
+  row <- c(colnames(newdat)[1], summary(ionchannel_model)$coefficients[1,c(1,2,5)],  summary(ionchannel_model)$conf.int[1,c(3,4)], dtt$type[1], 
     ic_test_ph, global, risk_num, perc)
 
   names(row) <- names(results_cox1) 
@@ -283,11 +277,11 @@ get_survival_models = function(dtt){
    p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
           color = "gene",
          palette = mypal[c(4,1)], title = paste(gene, "Expression", dtt$Cancer[1] , sep=" "), 
-          add = "jitter", ylab = "FPKM",  ggtheme = theme_bw())
+          add = "jitter", ylab = "FPKM",  ggtheme = theme_bw()) + stat_n_text()
         # Change method
-  p = p + stat_compare_means(method = "wilcox.test")
+  p = p + stat_compare_means(method = "wilcox.test") 
   print(p)
-  print(dat$type[1])
+  print(dtt$type[1])
 }
 }
 dev.off()
@@ -303,7 +297,8 @@ return(results_cox1)
 
 library(parallel)
 
-tcga_results = mclapply(filtered_data_tagged, get_survival_models, mc.cores = 4) 
+#tcga_results = mclapply(filtered_data_tagged, get_survival_models, mc.cores = 4) 
+tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)

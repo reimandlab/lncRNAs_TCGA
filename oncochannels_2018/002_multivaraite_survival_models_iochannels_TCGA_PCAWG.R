@@ -77,8 +77,6 @@ load("expr_discr_cc.rsav")
 #run fisher's test to see if any ion channels within cancer types 
 #are signifcantly assoicated with each other
 
-
-
 gbm = expr_discr_cc[[1]]
 lgg = expr_discr_cc[[27]]
 
