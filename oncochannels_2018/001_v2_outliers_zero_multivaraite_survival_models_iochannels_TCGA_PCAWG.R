@@ -297,7 +297,7 @@ return(results_cox1)
 
 library(parallel)
 
-#tcga_results = mclapply(filtered_data_tagged, get_survival_models, mc.cores = 4) 
+#tcga_results = mclapply(filtered_data_tagged, get_survival_models, mc.cores = 3) 
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
@@ -308,8 +308,9 @@ tcga_results1$fdr_pval = as.numeric(tcga_results1$fdr_pval)
 tcga_results1 = as.data.table(tcga_results1)
 tcga_results1 = tcga_results1[order(fdr_pval)]
 
-saveRDS(tcga_results1, file="TCGA_ION_CHANNEL_results_Sept21.rds")
+saveRDS(tcga_results1, file="TCGA_ION_CHANNEL_results_Jan3119.rds")
 
+tcga_results1 = readRDS("TCGA_ION_CHANNEL_results_Jan3119.rds")
 #check which models violate the PH assumption
 #to those models add age * survival time interaction 
 which(tcga_results1$global_test_ph <= 0.05)
@@ -317,19 +318,80 @@ tcga_results1$num_risk = as.numeric(tcga_results1$num_risk)
 tcga_results1[tcga_results1$num_risk <15,]
 
 #plot sig KM plots
-sig_fdr = as.data.table(filter(tcga_results1, fdr_pval <= 0.05))
-source("check_lnc_exp_cancers.R")
+sig_fdr = as.data.table(filter(tcga_results1, fdr_pval <= 0.1))
+ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
+#z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
+#ucsc <- ucsc[z,]
+z <- which(duplicated(ucsc[,8]))
+ucsc <- ucsc[-z,]
+genes_test = c("CATSPER1", "SCN9A", "AQP9", "GJB2")
+ens_genes = unlist(llply(genes_test, get_ensg_pcg))
+sig_fdr = sig_fdr[order(fdr_pval)]
+
+#compare to median based results
+med_res = readRDS("TCGA_ION_CHANNEL_results_Sept21.rds")
+
+med_res$HR = as.numeric(med_res$HR)
+med_res$HR = log2(med_res$HR)
+
+lgg_med = as.data.table(filter(med_res, cancer == "Brain Lower Grade Glioma"))
+lgg_med = lgg_med[order((-abs(HR)), fdr_pval)]
+lgg_med$rank = 1:nrow(lgg_med)
+lgg_med$gene_name = unlist(llply(lgg_med$gene, get_name_pcg))
+lgg_med$type = "med_split"
+lgg_med$cancer = "LGG"
+
+gbm_med = as.data.table(filter(med_res, cancer == "Glioblastoma multiforme"))
+gbm_med = gbm_med[order((-abs(HR)), fdr_pval)]
+gbm_med$rank = 1:nrow(gbm_med)
+gbm_med$gene_name = unlist(llply(gbm_med$gene, get_name_pcg))
+gbm_med$type = "med_split"
+gbm_med$cancer = "GBM"
+
+tcga_results1$HR = as.numeric(tcga_results1$HR)
+tcga_results1$HR = log2(tcga_results1$HR)
+
+lgg = as.data.table(filter(tcga_results1, cancer == "LGG"))
+lgg = lgg[order((-abs(HR)), fdr_pval)]
+lgg$rank = 1:nrow(lgg)
+lgg$gene_name = unlist(llply(lgg$gene, get_name_pcg))
+lgg$type = "outlier_split"
+
+gbm = as.data.table(filter(tcga_results1, cancer == "GBM"))
+gbm = gbm[order((-abs(HR)), fdr_pval)]
+gbm$rank = 1:nrow(gbm)
+gbm$gene_name = unlist(llply(gbm$gene, get_name_pcg))
+gbm$type = "outlier_split"
+
+all_brain = rbind(lgg_med, gbm_med, lgg, gbm)
+
+g = all_brain[,c("gene", "gene_name", "cancer", "rank", "type")]
+k = (all_brain[,c("coef", "HR", "pval", "low95", "upper95", "ic_test_ph", "global_test_ph", "perc_risk", "fdr_pval")])
+k = apply(k, 2, as.numeric)
+all_brain = cbind(g, k)
+#all_brain$HR = log2(all_brain$HR)
+
+cands = as.data.table(filter(all_brain, gene %in% ens_genes))
+cands = cands[order(-(abs(HR)), pval)]
+cands$sig = ""
+cands$sig[cands$pval < 0.05] = "sig"
+write.csv(cands, file="top4_cands_brain_cancers_results.csv", quote=F, row.names=F)
+
+
+#source("check_lnc_exp_cancers.R")
 
 #convert back to cancer codes
-canc_conv = rna[,c("type", "Cancer")]
-canc_conv = unique(canc_conv)
-colnames(canc_conv)[2] = "cancer"
-sig_fdr = merge(sig_fdr, canc_conv, by="cancer")
-sig_fdr = sig_fdr[order(fdr_pval)]
-write.csv(sig_fdr, file="231_sig_IonChannels_survival_fdr_corrected_Sept21.csv", quote=F, row.names=F)
+#canc_conv = rna[,c("type", "Cancer")]
+#canc_conv = unique(canc_conv)
+#colnames(canc_conv)[2] = "cancer"
+#sig_fdr = merge(sig_fdr, canc_conv, by="cancer")
+#sig_fdr = sig_fdr[order(fdr_pval)]
+#write.csv(sig_fdr, file="231_sig_IonChannels_survival_fdr_corrected_Sept21.csv", quote=F, row.names=F)
 
-genes = sig_fdr$gene
-cancs = sig_fdr$type
+outlier_based = as.data.table(filter(cands, type == "outlier_split"))
+
+genes = outlier_based$gene
+cancs = outlier_based$cancer
 
 get_km_plot = function(gene, cancer){
   all_g = all
@@ -341,20 +403,32 @@ get_km_plot = function(gene, cancer){
   dat = subset(dat, type == cancer)
   #split patients 
   med = median(dat$gene)
+  rm=c()
   #add high low tag
-    if(med ==0){
+   if(med ==0){
     #if median = 0 then anyone greater than zero is 1 
-    l1 = which(dat[,z] > 0)
-    l2 = which(dat[,z] ==0)
-    dat[l1,z] = 1
-    dat[l2, z] = 0
+    l1 = which(dat[,4] > 0)
+    l2 = which(dat[,4] ==0)
+    dat[l1,4] = 1
+    dat[l2, 4] = 0
     }
 
     if(!(med ==0)){
-    l1 = which(dat[,z] >= med)
-    l2 = which(dat[,z] < med)
-    dat[l1,z] = 1
-    dat[l2, z] = 0
+    #use outlier to split them
+    iqr = 1.5 * (summary(dat[,4])[5] - summary(dat[,4])[2])
+    q3 = summary(dat[,4])[5] + iqr
+
+    new_med = q3
+    l1 = which(dat[,4] >= new_med)
+    l2 = which(dat[,4] < new_med)
+    
+    if((length(l1) >= 10) & (length(l2) >=10)){
+      dat[l1,4] = 1
+      dat[l2,4] = 0
+    }
+  
+    if(!((length(l1) >= 10) & (length(l2) >=10))){
+      rm = c(rm, gene)
     }
 
   dat$OS = as.numeric(dat$OS)
@@ -392,9 +466,10 @@ get_km_plot = function(gene, cancer){
           )
           print(s)
 }
+}
 } 
 
-pdf("fdr_sig_ion_channels_km_plots_sept21.pdf")
+pdf("ion_channels_cands_outlier_based_km_plots.pdf")
 mapply(get_km_plot, genes, cancs)
 dev.off()
 

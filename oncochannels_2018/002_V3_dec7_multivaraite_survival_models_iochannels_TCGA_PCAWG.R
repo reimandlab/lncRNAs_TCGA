@@ -86,6 +86,9 @@ gbm = t(gbm)
 lgg = t(lgg)
 
 genes_test = c("CATSPER1", "SCN9A", "AQP9", "GJB2")
+ens_genes = unlist(llply(genes_test, get_ensg_pcg))
+
+
 z = which(colnames(gbm) %in% genes_test)
 gbm = gbm[,z]
 z = which(colnames(lgg) %in% genes_test)
