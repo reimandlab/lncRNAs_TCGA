@@ -98,18 +98,42 @@ get_km_plot_microarray = function(gene){
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          print(s)
+          #print(s)
     print("part 4")
+    row = c(gene, summary(cox_mod)$coefficients[2], glance(cox_mod)[8], conc)
+    row = unlist(row)
+    names(row) = c("gene", "HR", "pval", "conc")
+    print(row)
+    return(row)
 }
 }	
 }
 
 #make plots for just the 4 candidates 
-cands = as.list(c("AQP9", "CATSPER1", "GJB2", "SCN9A"))
+#cands = as.list(c("AQP9", "CATSPER1", "GJB2", "SCN9A"))
 
-pdf("gbm_microarray_ionchannels_4_cands_exp_nov8.pdf")
-llply(cands, get_km_plot_microarray)
-dev.off()
+#all ics
+genes = microarray$gene
+
+#pdf("gbm_microarray_ionchannels_4_cands_exp_nov8.pdf")
+res = llply(genes, get_km_plot_microarray, .progress="text")
+#dev.off()
+res = ldply(res)
+res$HR = as.numeric(res$HR)
+res$pval = as.numeric(res$pval)
+res$conc = as.numeric(res$conc)
+res$fdr = p.adjust(res$pval, method="fdr")
+res = as.data.table(res)
+res = res[order(fdr)]
+colnames(res)[2:ncol(res)] = paste(colnames(res)[2:ncol(res)], "microarray", sep="_")
+saveRDS(res, file="GBM_ics_microarray_results_feb9.rds")
+
+
+
+
+
+
+
 
 #order all LGG ion channels 
 r = readRDS("TCGA_ION_CHANNEL_results_Sept21.rds")
