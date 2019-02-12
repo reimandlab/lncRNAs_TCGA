@@ -172,7 +172,7 @@ get_survival_models = function(dtt){
   z = which(colnames(dat) == "age_at_initial_pathologic_diagnosis")
   if(length(z)==1){  
     dat$age_at_initial_pathologic_diagnosis = as.numeric(dat$age_at_initial_pathologic_diagnosis)}
-    
+
   num_genes = which(str_detect(colnames(dat), "ENSG"))
 
   #save KM plots for each lncRNA for each cancer type sepereatley 
@@ -205,7 +205,7 @@ get_survival_models = function(dtt){
     perc = risk_num/nrow(newdat)
   }
 
-  row <- c(colnames(newdat)[1], summary(ionchannel_model)$coefficients[1,c(1,2,5)],  summary(ionchannel_model)$conf.int[1,c(3,4)], dtt$Cancer[1], 
+  row <- c(colnames(newdat)[1], summary(ionchannel_model)$coefficients[1,c(1,2,5)],  summary(ionchannel_model)$conf.int[1,c(3,4)], dtt$type[1], 
     ic_test_ph, global, risk_num, perc)
 
   names(row) <- names(results_cox1) 
@@ -287,17 +287,22 @@ gbm_tagged = filtered_data_tagged[[1]]
 
 tcga_results = get_survival_models(gbm_tagged)
 
-
-
-
-
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
+tcga_results1 = tcga_results
 tcga_results1$ic_test_ph = as.numeric(tcga_results1$ic_test_ph)
 tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
 tcga_results1$fdr_pval = as.numeric(tcga_results1$fdr_pval)
 tcga_results1 = as.data.table(tcga_results1)
 tcga_results1 = tcga_results1[order(fdr_pval)]
+
+ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
+#z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
+#ucsc <- ucsc[z,]
+z <- which(duplicated(ucsc[,6]))
+ucsc <- ucsc[-z,]
+
+tcga_results1$name = sapply(tcga_results1$gene, get_name_pcg)
 
 #saveRDS(tcga_results1, file="TCGA_ION_CHANNEL_results_Sept21.rds")
 saveRDS(tcga_results1, file="GBM_median_splits_IonCHannels.rds")
