@@ -1,7 +1,71 @@
 ###now have methylation files for each cancer 
 ###with probes that overlap any of the lncRNA candidates (might not be the cancer specific candidate)
 
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#author: Karina Isaev, karin.isaev@gmail.com 
+#date updated: Sept 21, 2018
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+#-------------------------------------------------------------------
+#this script uses data from TCGA (gene expression and clinical) to evaluate 
+#the prognositc value of ion channels across different cancer types 
+#working directory (source files, data files)
+#/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ
+
+#------Load libraries and scripts-----------------------------------
+
+library(survAUC)
+#source("source_code_Cox_MonteCarlo_CV_Mar13.R")
+require(caTools)
+#check if this person is in my analysis: TCGA-61-2095
+library(glmnet)
+library(survcomp)
+library(caret)
+library(stringr)
+
+#this script below prepares the RNA and clinical files for analysis 
+source("universal_LASSO_survival_script.R")
+
+library(ggpubr)
+library(ggrepel)
+library(viridis)
+library(patchwork)
+library(caret)  
+library(Rtsne)
+
 source("check_lnc_exp_cancers.R")
+
+#------DATA---------------------------------------------------------
+
+#get full dataset of GBM patients 
+ext = readRDS("all_genes_external_tcga_all_cancers_March13_wclinical_data.rds")
+
+#check if cands are significant using data from ext 
+pats = as.data.table(table(ext$type))
+pats = as.data.table(filter(pats, N >= 15))
+colnames(pats)[1] = "type"
+pats = merge(pats, canc_conv, by="type")
+
+#get gbm
+gbm = subset(ext, type=="GBM")
+
+z = which(colnames(all) %in% colnames(gbm))
+cols = colnames(all)[z]
+all = all[,z]
+
+z = which(colnames(gbm) %in% colnames(all))
+cols = colnames(gbm)[z]
+gbm = gbm[,z]
+
+r = rbind(all, gbm)
+
+all = r
+gbm = as.data.table(filter(all, type == "GBM"))
+dup = gbm$patient[which(duplicated(gbm$patient))]
+z = which(gbm$patient %in% dup)
+gbm = gbm[-z,]
+
+#-------------------------------------------------------------------------
 
 microarray = read.csv("IC_ONLY_TCGA_Affymetrix_RMA.csv")
 surv = microarray[1:3,]
@@ -9,6 +73,12 @@ surv = t(surv)
 colnames(surv) = surv[1,]
 surv=surv[-1,]
 surv = as.data.table(surv)
+colnames(surv)[1:2] = c("OS", "OS.time")
+gbm_surv = gbm[,c("OS", "OS.time", "patient")]
+gbm_surv = gbm_surv[which(gbm_surv$patient %in% surv$patient),]
+rm = which(surv$patient %in% gbm_surv$patient)
+surv = surv[-rm, ]
+surv = rbind(surv, gbm_surv)
 
 microarray = microarray[3:nrow(microarray),]
 colnames(microarray) = as.character(unlist(microarray[1,]))
@@ -56,20 +126,20 @@ get_km_plot_microarray = function(gene){
 
   print("part 2")
 
-  exp$os_status = as.numeric(exp$os_status)
-  exp$os_time = as.numeric(exp$os_time)
-  exp$os_time = exp$os_time/365
+  exp$OS = as.numeric(exp$OS)
+  exp$OS.time = as.numeric(exp$OS.time)
+  exp$OS.time = exp$OS.time/365
   colnames(exp)[2] = "gene"
   exp$gene = factor(exp$gene, levels = c(0,1))
   
   #balance check
   bal_check = (table(exp[,2])[1] >= 5) & (table(exp[,2])[2] >= 5)
   if(bal_check){
-  cox_mod = coxph(Surv(os_time, os_status) ~ gene, data = exp)
+  cox_mod = coxph(Surv(OS.time, OS) ~ gene, data = exp)
   print(glance(cox_mod)$concordance)
   conc = round(glance(cox_mod)$concordance, digits=2)
   print("part 3")
-  fit <- survfit(Surv(os_time, os_status) ~ gene, data = exp)
+  fit <- survfit(Surv(OS.time, OS) ~ gene, data = exp)
           s <- ggsurvplot(
           title = paste(gene, "GBM Microarray", "\nConcordance=", conc),
           fit, 

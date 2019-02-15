@@ -228,7 +228,6 @@ files = list.files(pattern = "lncRNAs_selected_1000CV_1000_no_fdr_ELASTICNET.rds
 genes_keep = as.data.frame(matrix(ncol = 4)) ; colnames(genes_keep) = c("Geneid", "NumtimesChosen" , "Cancer", "GeneName")
 all_genes = as.data.frame(matrix(ncol = 4)) ; colnames(genes_keep) = c("Geneid", "NumtimesChosen" , "Cancer", "GeneName")
 
-
 #DO NOT RUN
 #pdf("summary_of_genes_results_elastic_net_100CVs_No_FDR_cancers_May2nd.pdf", width= 7, height=5)
 

@@ -84,18 +84,39 @@ ics_unfav$cancer = factor(ics_unfav$cancer, levels= orderr)
 ttt = ttt[order(-N)]
 orderr = ttt$gene
 ics_unfav$gene_name = factor(ics_unfav$gene_name, levels= orderr)
+ics_unfav$fdr = ""
+ics_unfav$fdr[ics_unfav$fdr_pval < 0.05] = "*"
 
-file = paste("/.mounts/labs/reimandlab/private/users/kisaev/SUBID/gbm_ic/KI_plots", "Figure1Sup.png", sep="_")
+#file = paste("/.mounts/labs/reimandlab/private/users/kisaev/SUBID/gbm_ic/KI_plots", "Figure1Sup.png", sep="_")
 
-png(file, width = 3000, height = 2000, res = 350)
+#png(file, width = 3750, height = 2000, res = 450)
+
+file = paste("/.mounts/labs/reimandlab/private/users/kisaev/SUBID/gbm_ic/KI_plots", "Figure1Sup.pdf", sep="_")
+
+pdf(file, width = 14, height = 7)
+
 g = ggplot(ics_unfav, aes(gene_name, cancer)) + theme_bw()+
-  geom_tile(aes(fill = HR, colour = -log10(fdr_pval))) + scale_colour_gradient(low="white", high="black", na.value = 'transparent') +
+  geom_tile(aes(fill = HR)) + 
+	geom_text(aes(label = fdr), size=2) +
   scale_fill_gradient(low="burlywood1", high="red", na.value = 'transparent') + labs(x = "Cancer", y="Ion channel")
 
-ggpar(g, xtickslab.rt = 90, font.xtickslab = c(5,"plain", "black"), font.ytickslab = c(9,"plain", "black"))+
-theme(legend.position="bottom")
+g = ggpar(g, xtickslab.rt = 90, font.xtickslab = c(6,"plain", "black"), font.ytickslab = c(9,"plain", "black"))+
+theme(legend.position="none")
+
+xplot = ggplot(ics_unfav, aes(gene_name)) + geom_bar(fill = "#0073C2FF") + theme_bw()+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+yplot = ggplot(ics_unfav, aes(cancer)) + geom_bar(fill = "#0073C2FF") + theme_bw()+
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) + coord_flip()
+
+ggarrange(xplot, NULL, g, yplot, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(3, 1), heights = c(1, 3),
+          common.legend = FALSE)
+
 dev.off()
-
-
-
 
