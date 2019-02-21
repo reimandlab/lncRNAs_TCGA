@@ -30,6 +30,25 @@ cands = readRDS("genes_keep_100CV_No_FDR_May2nd2018.rds")
 #make them KM plots as well 
 #just get list of genes that are significant in both data sets
 #also check Cox PH assumptions within each data-set
+#fantom 
+
+fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
+extract3 <- function(row){
+  gene <- as.character(row[[1]])
+  ens <- gsub("\\..*","",gene)
+  return(ens)
+}
+fantom[,1] <- apply(fantom[,1:2], 1, extract3)
+#remove duplicate gene names (gene names with multiple ensembl ids)
+z <- which(duplicated(fantom$CAT_geneName))
+rm <- fantom$CAT_geneName[z]
+z <- which(fantom$CAT_geneName %in% rm)
+fantom <- fantom[-z,]
+
+get_name = function(ensg){
+    z = which(fantom$CAT_geneID == ensg)
+    return(fantom$CAT_geneName[z][1])
+}
 
 #--------------------------------------------------------------------
 
@@ -223,8 +242,6 @@ get_survival_models = function(dtt){
 
    names(row) <- names(results_cox1) 
    results_cox1 = rbind(results_cox1, row)
-   print(row)
-
 
    #make density plot using FPKM-UQ values and logged values
    #visualize bimodality 
@@ -283,8 +300,6 @@ z= which(tcga_results1$lnc_only_concordance >= tcga_results1$clinical_only_conco
 tcga_results1 = as.data.table(tcga_results1)
 tcga_results1 = tcga_results1[order(fdr_pval)]
 
-saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
-
 #check which models violate the PH assumption
 #to those models add age * survival time interaction 
 which(tcga_results1$global_test_ph <= 0.05)
@@ -312,8 +327,9 @@ pdf("Dist_perc_risk_patients_per_lncRNA.pdf", width=10)
 riskplot
 dev.off()
 
-
-#tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
+tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
+tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
+saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
 
 #-------------------------------------------------------------------
 #------PCAWG DATA---------------------------------------------------
@@ -325,6 +341,7 @@ tcga_results1$combo = paste(tcga_results1$gene, tcga_results1$cancer, sep="_")
 tcga_results1$clinical_only_concordance = NULL
 tcga_results1$num_events = NULL
 tcga_results1$perc_wevents = NULL
+tcga_results1 = as.data.table(tcga_results1)
 
 #z = which(tcga_results1$combo %in% robust$combo)
 #tcga_results1 = tcga_results1[z,]
@@ -609,7 +626,7 @@ pcawg_results1 = filter(pcawg_results1, num_risk >=5)
 
 pcawg_results1$combo = paste(pcawg_results1$gene, pcawg_results1$cancer, sep="_")
 
-saveRDS(pcawg_results1, file="PCAWG_external_validation_lncCands_oct3.rds")
+saveRDS(pcawg_results1, file="PCAWG_external_validation_lncCands_feb19.rds")
 
 #plot power versus Hazard Ratio 
 pcawg_results1$pval = as.numeric(pcawg_results1$pval)
@@ -630,6 +647,9 @@ dev.off()
 #tcga_results1$lnc_test_ph =NULL
 #tcga_results1$global_test_ph = NULL
 tcga_results1$groupy = NULL
+tcga_results1$gene_name = NULL
+tcga_results1$lnc_better = NULL
+
 all_results = as.data.table(rbind(tcga_results1, pcawg_results1))
 all_results = all_results[order(gene, cancer)]
 
@@ -714,7 +734,6 @@ matches = merge(matches, ucsc, by=c("gene"))
 #remove weird KIRC one (already did above by filtering)
 #z = which(matches$gene == "ENSG00000250360")
 #matches = matches[-z,]
-
 write.table(matches, file="5_unique_lncNRAs_validate_PCAWG.txt", quote=F, row.names=F, sep=";")
 
 #write.table(matches, file="4_unique_lncNRAs_validate_PCAWG.txt", quote=F, row.names=F, sep=";")
@@ -765,9 +784,9 @@ all_results_orig$combo = paste(all_results_orig$gene, all_results_orig$cancer, s
 
 #add info on number of events and % of events in each cancer type
 tcga = readRDS("TCGA_results_multivariate_results_Oct3.rds")
-tcga = unique(tcga[,c("cancer", "perc_wevents", "num_events")])
-all_results_orig = merge(all_results_orig, tcga, by="cancer")
-write.csv(all_results_orig, file="173_lncRNA_cancers_combos_22_cancer_types_oct3.csv", quote=F, row.names=F)
+#tcga = unique(tcga[,c("cancer", "perc_risk")])
+#all_results_orig = merge(all_results_orig, tcga, by="cancer")
+write.csv(all_results_orig, file="168_lncRNA_cancers_combos_22_cancer_types_feb19.csv", quote=F, row.names=F)
 #write.csv(all_results_orig, file="112_lncRNA_cancers_combos_22_cancer_types_aug8.csv", quote=F, row.names=F)
 saveRDS(all_results_orig, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 
