@@ -283,9 +283,9 @@ return(results_cox1)
 #DO NOT RUN
 #-----------------------------------------------------------------------------------------------------------
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_lifespan_May3rd.pdf")
-pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_oct3.pdf")
-tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
-dev.off()
+#pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_oct3.pdf")
+#tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
+#dev.off()
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
@@ -327,9 +327,9 @@ pdf("Dist_perc_risk_patients_per_lncRNA.pdf", width=10)
 riskplot
 dev.off()
 
-tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
-tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
-saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
+#tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
+#tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
+#saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
 
 #-------------------------------------------------------------------
 #------PCAWG DATA---------------------------------------------------
