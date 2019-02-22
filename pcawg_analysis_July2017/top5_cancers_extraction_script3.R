@@ -77,7 +77,7 @@ z <- which(fantom$CAT_geneName %in% rm)
 fantom <- fantom[-z,]
 
 #Clinical file 
-clin <- fread("pcawg_specimen_histology_August2016_v6.tsv", data.table=F)
+clin = fread("pcawg_specimen_histology_August2016_v9.tsv", data.table=F)
 conversion <- fread("pcawgConversion.tsv", data.table=F)
 
 #RNA-Seq file 
@@ -185,7 +185,7 @@ lnc_rna <- rna[-zz,]
 clin_top5 <- subset(clin, clin$icgc_donor_id %in% tum_pats)
 z <- which(duplicated(clin_top5$icgc_donor_id))
 clin_top5 <- clin_top5[-z,]
-clin_top5 <- subset(clin_top5, (clin_top5$histology_tier2 %in% tum_types$V1) & (clin_top5$histology_tier4 %in% tum_types$V2))
+#clin_top5 <- subset(clin_top5, (clin_top5$histology_tier2 %in% tum_types$V1) & (clin_top5$histology_tier4 %in% tum_types$V2))
 clin_top5$combined_tum_histo <- ""
 clin_top5$combined_tum_histo <- paste(clin_top5[,15], clin_top5[,17])
 
@@ -199,6 +199,7 @@ pcg_rna_top5 <- pcg_rna_top5[-z,] #20022
 pcg_rna_top5 <- t(pcg_rna_top5)
 pcg_rna_top5 <- as.data.frame(pcg_rna_top5)
 pcg_rna_top5$canc <- ""
+
 #add patient tum type
 for(i in 1:nrow(pcg_rna_top5)){
 	pat <- rownames(pcg_rna_top5)[i]
@@ -232,7 +233,6 @@ saveRDS(pcg_rna_top5, "20166_pcawg_PCGs_RNASeq_data.rds")
 
 
 #---add clinical data
-
 lnc_rna <- readRDS("6028_pcawg_lncRNAs_RNASeq_data.rds")
 lnc_rna <- as.data.frame(lnc_rna)
 lnc_rna$patient <- rownames(lnc_rna)
@@ -249,11 +249,13 @@ dups <- colnames(pcg_rna)[which(duplicated(colnames(pcg_rna)))]
 
 #Clinical file - available only for 485/497 patients 
 clin <- readRDS("Jan26_PCAWG_clinical")
+clin = fread("donor.all_projects.tsv")
+
 z <- which(clin$icgc_donor_id %in% rownames(lnc_rna))
 clin <- clin[z,]
 
-lnc_rna <- lnc_rna[which(rownames(lnc_rna) %in% clin$icgc_donor_id),] #485 patients remain
-pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #485 patients remain 
+lnc_rna <- lnc_rna[which(rownames(lnc_rna) %in% clin$icgc_donor_id),] #1266 patients remain
+pcg_rna <- pcg_rna[which(rownames(pcg_rna) %in% clin$icgc_donor_id),] #1266 patients remain 
 
 #only look at lncRNAs included in fantom
 #z = which(colnames(lnc_rna) %in% lincs$gene)
@@ -270,6 +272,18 @@ lnc_rna$time = ""
 lnc_rna$sex = ""
 lnc_rna$donor_age_at_diagnosis = ""
 
+clin <- fread("pcawg_specimen_histology_August2016_v6.tsv", data.table=F)
+clin = fread("pcawg_specimen_histology_August2016_v9.tsv", data.table=F)
+
+conversion <- fread("pcawgConversion.tsv", data.table=F)
+
+more_clin = readRDS("Jan26_PCAWG_clinical")
+more_clin = fread("donor.all_projects.tsv")
+
+merge_cols = colnames(more_clin)[which(colnames(more_clin) %in% colnames(clin))]
+
+clin = merge(clin, more_clin, by = merge_cols)
+
 
 #lncs
 for(i in 1:nrow(lnc_rna)){
@@ -284,7 +298,7 @@ for(i in 1:nrow(lnc_rna)){
   if(is.na(t)){
         t <- clin$donor_interval_of_last_followup[z]
         }
-        lnc_rna$time[i] <- t
+  lnc_rna$time[i] <- t
 }
 
 #pcgs
@@ -294,7 +308,6 @@ pcg_rna$status = ""
 pcg_rna$time = ""
 pcg_rna$sex = ""
 pcg_rna$donor_age_at_diagnosis = ""
-
 
 #lncs
 for(i in 1:nrow(pcg_rna)){

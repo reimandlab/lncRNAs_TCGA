@@ -367,6 +367,13 @@ pcawg_data$canc[pcawg_data$combo == "Kidney Adenocarcinoma, papillary type"] = "
 #pcawg_data$canc[pcawg_data$combo == "Lung Squamous cell carcinoma"] = "Lung squamous cell carcinoma"
 pcawg_data$canc[pcawg_data$combo == "Lung Adenocarcinoma, invasive"] = "Lung adenocarcinoma"
 
+
+pcawg_data$canc[pcawg_data$combo == "Lung Adenocarcinoma, invasive"] = "Stomach adenocarcinoma"
+pcawg_data$canc[pcawg_data$combo == "Lung Adenocarcinoma, invasive"] = "Lung adenocarcinoma"
+pcawg_data$canc[pcawg_data$combo == "Lung Adenocarcinoma, invasive"] = "Lung adenocarcinoma"
+
+#add more pcawg people
+
 cancers_tests = as.list(unique(tcga_results1$cancer[which(tcga_results1$cancer %in% pcawg_data$canc)]))
 
 get_matched_data = function(cancer){

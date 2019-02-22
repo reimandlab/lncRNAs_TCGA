@@ -69,6 +69,10 @@ fantom <- fantom[-z,]
 
 #Clinical file 
 clin <- fread("pcawg_specimen_histology_August2016_v6.tsv", data.table=F)
+clin = fread("pcawg_specimen_histology_August2016_v9.tsv", data.table=F)
+
+more_clin = fread("donor.all_projects.tsv")
+
 conversion <- fread("pcawgConversion.tsv", data.table=F)
 
 #RNA-Seq file 

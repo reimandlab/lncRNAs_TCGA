@@ -1,4 +1,4 @@
-setwd("/Users/kisaev/remote3/IC_exp_cands")
+setwd("/Users/kisaev/remote/IC_exp_cands")
 
 library(data.table)
 library(dplyr)
@@ -131,8 +131,13 @@ alldat = as.data.frame(alldat)
 alldat = as.data.table(alldat)
 alldat$method = NULL
 
-saveRDS(alldat, file="ion_channels_4_methods_survival_analysis_KI_Feb7.rds")
-write.csv(alldat, file="ion_channels_4_methods_survival_analysis_KI_Feb7.csv", quote=F, row.names=F)
+alldat$HR_match = ""
+z = which((alldat$HR_median >1) & (alldat$HR_outlier >1))
+alldat$HR_match[z] = "yes"
+alldat = alldat[z,]
+
+saveRDS(alldat, file="ion_channels_4_methods_survival_analysis_KI_Feb22.rds")
+write.csv(alldat, file="ion_channels_4_methods_survival_analysis_KI_Feb22.csv", quote=F, row.names=F)
 
 alldat = as.data.table(alldat)
 alldat = alldat[order(pval_outlier, subid_p, pval_median)]
@@ -140,8 +145,7 @@ alldat$rank = 1:nrow(alldat)
 
 cands = c("GJB2", "CATSPER1", "AQP9", "SCN9A")
 cands_dat = filter(alldat, gene %in% cands)
-write.csv(cands_dat, file="ion_channels_four_exo_cands_KI_Feb7.csv", quote=F, row.names=F)
-
+write.csv(cands_dat, file="ion_channels_four_exo_cands_KI_Feb22.csv", quote=F, row.names=F)
 
 ####################################################################################################
 #MAKE FIGURE FOR REPORT 
@@ -168,7 +172,15 @@ alldat$browns = browns
 
 #reorder
 alldat$gene = rownames(alldat)
+
+cols =  colnames(alldat)[1:5]
+alldat = alldat[,c("gene", cols)]
+
 alldat = as.data.table(alldat)
 alldat = alldat[order(browns)]
-write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_150219.csv", quote=F, row.names=F)
+z = which(alldat$gene %in% cands)
+alldat$cands = ""
+alldat$cands[z] = "yes"
+
+write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_220219.csv", quote=F, row.names=F)
 
