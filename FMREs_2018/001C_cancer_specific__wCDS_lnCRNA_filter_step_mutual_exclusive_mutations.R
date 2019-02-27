@@ -5,6 +5,7 @@ library(stringr)
 library(dplyr)
 library(gridExtra)
 library(grid)
+library(GenomicRanges)
 
 #Data---------------------------------------------------
 
@@ -39,15 +40,15 @@ coding_drivers = fread("july2_cds_drivers.txt")
 
 #new file June 12: 
 
-load("july2_encode_merge__patient_element_snv_list.rsav")
+load("july12_encode_merge__patient_element_snv_list.rsav")
 mutations_in_crms = (patient_element_snv_list)
 
 #crm mutations new june 12 
 #fmre mutations 
-fmres = fread("july2_fmre_drivers.txt")
+fmres = fread("july12_fmre_drivers.txt")
 
 #[4] mutations in all CDS, subset of these are CDS drivers
-load("july2_gc19_pc.cds__patient_element_snv_list.rsav")
+load("july12_gc19_pc.cds__patient_element_snv_list.rsav")
 cds_mutations = patient_element_snv_list
 
 #[5] all patients in cohort
@@ -55,6 +56,30 @@ load("patient2cancertype.rsav")
 head(patient2cancer_type) #1844 all together 
 
 patient_table = fread("patient_table.txt")
+pcg_rna = readRDS(file="all_rna_may8th.rds")
+z = which(patient_table$V1 %in% rownames(pcg_rna))
+patient_table = patient_table[z,]
+
+#[] cds_lnc_drivers
+
+#[] july12_gc19_pc.cds__coords.rsav
+load("july12_gc19_pc.cds__coords.rsav")
+coords = element_coords
+coords = as.data.table(coords)
+
+#[] july12_lncrna.ncrna__coords.rsav
+load("july12_lncrna.ncrna__coords.rsav")
+lnc_coords = element_coords
+lnc_coords = as.data.table(lnc_coords)
+
+#[] july12_encode_merge__coords.rsav
+load("july12_encode_merge__coords.rsav")
+element_coords = element_coords
+element_coords = as.data.table(element_coords)
+
+#[] july12_lncrna.ncrna__patient_element_snv_list.rsav
+load("july12_lncrna.ncrna__patient_element_snv_list.rsav")
+lncrna_mutations = patient_element_snv_list
 
 #[6] Clinical file 
 clin <- fread("pcawg_specimen_histology_August2016_v6.tsv", data.table=F)
@@ -85,23 +110,89 @@ pats[13]
 #[1] "DO28763" <--- supposingly has TP53 mutation but not in CDS file 
 tp53_fmre_muts[which(tp53_fmre_muts$Donor_ID == pats[13])]
 
+#add 5 lncRNAs to mutations in cds
+lncs = c("lncrna.ncrna::gencode::RN7SK::ENSG00000202198.1",
+"lncrna.ncrna::gencode::NEAT1::ENSG00000245532.4",
+"lncrna.ncrna::gencode::MALAT1::ENSG00000251562.3",
+"lncrna.ncrna::gencode::RPPH1::ENSG00000259001.2",
+"lncrna.ncrna::gencode::Z95704.4::ENSG00000248302.2")
+
+z = which(names(lncrna_mutations) %in% lncs)
+lncrna_mutations = lncrna_mutations[z]
+#bind it to the cds list
+mutations_in_cds = c(mutations_in_cds, lncrna_mutations)
 
 #Compare ratios------------------------------------------------
 
-unique_cds = unique(names(mutations_in_cds)) #48
+unique_cds = unique(names(mutations_in_cds)) #48 + 5 lncRNAs 
 unique_fmre = unique(names(mutations_in_crms)) #30
 
-results_pairs = as.data.frame(matrix(ncol=6)) ; colnames(results_pairs) = c("CDS_mut", "FMRE_mut", "fishers_pval", "fishers_OR", "num_overlap", "canc_overlapping_pats")
+mdm4_fmre = "ENCODEmerge::chr1:204475015-204476599::NA::NA"
+
+#Chcekc do we expect overlaps?
+all_lnc_cord = as.data.table(filter(lnc_coords, id %in% unique_cds))
+colnames(all_lnc_cord)[1:3] = c("Chr", "Start", "End")
+all_lnc_cord = makeGRangesFromDataFrame(all_lnc_cord)
+
+all_cds_cord = as.data.table(filter(coords, id %in% unique_cds))
+colnames(all_cds_cord)[1:3] = c("Chr", "Start", "End")
+all_cds_cord = makeGRangesFromDataFrame(all_cds_cord)
+
+all_fmre_cord = as.data.table(filter(element_coords, id %in% unique_fmre))
+colnames(all_fmre_cord)[1:3] = c("Chr", "Start", "End")
+all_fmre_cord = makeGRangesFromDataFrame(all_fmre_cord)
+
+findOverlaps(all_fmre_cord, all_cds_cord)
+findOverlaps(all_fmre_cord, all_lnc_cord) #so only overlaps between FMREs and lncRNAs 
+
+results_pairs = as.data.frame(matrix(ncol=7)) ; colnames(results_pairs) = c("CDS_mut", "FMRE_mut", "fishers_pval", "fishers_OR", "num_overlap", "canc_overlapping_pats", "cancer")
 
 #for each cds/fmre combo
+
+for(k in 1:length(unique(patient_table$V2))){
+
+print(k)
+canc = unique(patient_table$V2)[k]
+canc_pats = patient_table$V1[patient_table$V2 == canc]
+
 for(i in 1:length(unique_cds)){
 	for(y in 1:length(unique_fmre)){
 		pair = c(unique_cds[i], unique_fmre[y])
+		print(pair)
+		#first make sure that they don't overlap!
+		lnc = which(names(lncrna_mutations) %in% pair[1])
+		if(length(lnc) == 0){
+			cds_cord = as.data.table(filter(coords, id == pair[1]))
+			colnames(cds_cord)[1:3] = c("Chr", "Start", "End")
+			cds_cord = makeGRangesFromDataFrame(cds_cord)
+		}
+		if(!(length(lnc) == 0)){
+			cds_cord = as.data.table(filter(lnc_coords, id == pair[1]))
+			colnames(cds_cord)[1:3] = c("Chr", "Start", "End")
+			cds_cord = makeGRangesFromDataFrame(cds_cord)
+		}
+
+		fmre_cord = as.data.table(filter(element_coords, id == pair[2]))
+		colnames(fmre_cord)[1:3] = c("Chr", "Start", "End")
+		fmre_cord = makeGRangesFromDataFrame(fmre_cord)
+		check_overlap = findOverlaps(cds_cord, fmre_cord)
+		l_overlap = length(check_overlap)
+		print(paste("num_overlap =", l_overlap))
+
+		if(l_overlap == 0){
+
 		#get patients that have either of these mutations or both 
 		#FMRE
 		z1 = which(names(mutations_in_crms) %in% pair)
 		pats_crms = as.data.frame(mutations_in_crms[z1])
+		
+		#keep only cancer speicifc pats
 		pats_crms = as.data.frame(pats_crms[!duplicated(pats_crms), ])
+		colnames(pats_crms)[1] = "patient"
+		z = which(pats_crms$patient %in% canc_pats)
+
+		if(!(length(z)==0)){
+		pats_crms = as.data.frame(pats_crms[z,])
 		pats_crms$mut = "FMRE"
 		colnames(pats_crms)[1] = "patient"
 		#CDS
@@ -110,7 +201,11 @@ for(i in 1:length(unique_cds)){
 		pats_cds = as.data.frame(pats_cds[!duplicated(pats_cds), ])
 		pats_cds$mut = "CDS"
 		colnames(pats_cds)[1] = "patient"
+		z = which(pats_cds$patient %in% canc_pats)
+		
+		if(!(length(z)==0)){
 		#combine 
+		pats_cds = pats_cds[z,]
 		patients_wmuts = rbind(pats_crms, pats_cds)
  		patients_wmuts = patients_wmuts[!duplicated(patients_wmuts), ]
 		
@@ -148,11 +243,15 @@ for(i in 1:length(unique_cds)){
 			#p <-tableGrob(cont_table)
 			#print(grid.arrange(top=paste(pair[1], pair[2]), p))
 			f = fisher.test(cont_table, alt = "greater")
-			row = c(pair, f$p.value, f$estimate, num_overlap, canc_both_pats)
+			row = c(pair, f$p.value, f$estimate, num_overlap, canc_both_pats, canc)
 			names(row) = colnames(results_pairs)
 			results_pairs = rbind(results_pairs, row)
+			}
 		}
 	}
+	}
+	}
+}
 }
 
 results_pairs = results_pairs[-1,]
@@ -167,12 +266,18 @@ results_pairs$num_overlap = as.numeric(results_pairs$num_overlap)
 results_pairs = results_pairs[order(-num_overlap)]
 results_pairs = as.data.table(results_pairs)
 results_pairs = results_pairs[order(fishers_pval)]
-write.table(results_pairs, file= "732_fmre_cds_pairs_fishers_analysis_July2nd_KI.txt", sep="\t", quote=F, row.names=F)
+#write.table(results_pairs, file= "819_fmre_cds_pairs_fishers_analysis_with_lncRNAs_July12nd_KI.txt", sep="\t", quote=F, row.names=F)
 fdr_sig = filter(results_pairs, fdr <= 0.05)
-write.table(fdr_sig, file= "8_fdr_sig_fmre_cds_pairs_fishers_analysis_July2nd_KI.txt", sep="\t", quote=F, row.names=F)
+#write.table(fdr_sig, file= "8_fdr_sig_fmre_cds_pairs_fishers_analysis_with_lncRNAs_July12nd_KI.txt", sep="\t", quote=F, row.names=F)
 
 
-pdf("FMRE_CDS_pairs_fishers_analysis_results_July3rd.pdf", width=9, height=10)
+#-----------------------------------------------------------------------------------------
+#DON"T DO FOR NOQ DON"T NEED THIS RIGHT NOW
+#-----------------------------------------------------------------------------------------
+pdf("FMRE_CDS_pairs_fishers_analysis_results_w_lncRNAs_July12th.pdf", width=9, height=8)
+
+results_pairs = filter(results_pairs, fdr <0.1)
+
 for(i in 1:nrow(results_pairs)){
 		pair = c(results_pairs$CDS_mut[i], results_pairs$FMRE_mut[i])
 		#get patients that have either of these mutations or both 
@@ -276,7 +381,7 @@ for(i in 1:nrow(results_pairs)){
 #Essentially we need a series of fisher’s exact tests
 #for all pairs (CDS_driver_X, FMRE_driver_Y). 
 
-write.table(results_pairs, file= "1026_fmre_cds_fishers_analysis_May10th_KI_wcancers_coordinates.txt", sep="\t", quote=F, row.names=F)
+#write.table(results_pairs, file= "1026_fmre_cds_fishers_analysis_May10th_KI_wcancers_coordinates.txt", sep="\t", quote=F, row.names=F)
 
 
 ####Generate heatmap###----------------------------------------------------------------------------------------------------------------
@@ -288,7 +393,7 @@ write.table(results_pairs, file= "1026_fmre_cds_fishers_analysis_May10th_KI_wcan
 #> - color is -log10 FDR; FDR>0.1 is set as NA
 #> - number of shared patients printed on tile
 
-results_pairs = fread("732_fmre_cds_pairs_fishers_analysis_July2nd_KI.txt")
+results_pairs = fread("819_fmre_cds_pairs_fishers_analysis_with_lncRNAs_July12nd_KI.txt")
 
 library(plyr)
 library(dplyr)
@@ -324,7 +429,9 @@ order= as.character(fmres$id)
 results_pairs$FMRE_mut <- factor(results_pairs$FMRE_mut, levels = order)
 
 #relevel pcg order
-coding_drivers$id = llply(coding_drivers$id, clean_gene)
+lnc_coding_drivers = fread("july12_cds_lnc_drivers.txt")
+coding_drivers = lnc_coding_drivers
+coding_drivers$id = unlist(llply(coding_drivers$id, clean_gene))
 coding_drivers = as.data.table(coding_drivers)
 coding_drivers = coding_drivers[order(-fdr_element)]
 order = as.character(coding_drivers$id)
@@ -336,7 +443,6 @@ results_pairs$CDS_mut <- factor(results_pairs$CDS_mut, levels = order)
 
 #2. color is pvalue (fisher's pvalue) FDR -> -log10 FDR 
 #FDR > 0.1 is NA 
-
 results_pairs$fdr_plotting = -log10(results_pairs$fdr)
 results_pairs$fdr_plotting[results_pairs$fdr >0.1] = NA
 
@@ -376,7 +482,7 @@ fmres = fmres[order(fdr_element)]
 order= as.character(fmres$id)
 results_pairs$FMRE_mut <- factor(results_pairs$FMRE_mut, levels = order)
 
-pdf("732_pairs_heatmap-log10fdr.pdf", width=9)
+pdf("819_pairs_heatmap-log10fdr.pdf", width=9)
 
 g = ggplot(results_pairs, aes(FMRE_mut, CDS_mut)) +
   geom_tile(aes(fill = fdr_plotting)) +
@@ -389,7 +495,7 @@ ggpar(g,
 
 dev.off()
 
-pdf("732_pairs_heatmap_normal_fdr.pdf", width=9)
+pdf("819_pairs_heatmap_normal_fdr.pdf", width=9)
 
 g = ggplot(results_pairs, aes(FMRE_mut, CDS_mut)) +
   geom_tile(aes(fill = fdr)) +
@@ -438,7 +544,7 @@ remove = check_pcgs$cds[check_pcgs$match == "remove"]
 
 results_pairs_rm = results_pairs_rm[-which(results_pairs_rm$CDS_mut %in% remove),]
 
-pdf("732_pairs_heatmap-log10fdr_removed_unsig.pdf", width=9)
+pdf("819_pairs_heatmap-log10fdr_removed_unsig.pdf", width=9)
 
 g = ggplot(results_pairs_rm, aes(FMRE_mut, CDS_mut)) +
   geom_tile(aes(fill = fdr_plotting)) +
@@ -452,7 +558,7 @@ ggpar(g,
 dev.off()
 
 
-pdf("732_pairs_heatmap_normal_fdr_removed_unsig.pdf", width=9)
+pdf("819_pairs_heatmap_normal_fdr_removed_unsig.pdf", width=9)
 
 g = ggplot(results_pairs_rm, aes(FMRE_mut, CDS_mut)) +
   geom_tile(aes(fill = fdr)) +
@@ -464,4 +570,15 @@ ggpar(g,
  xtickslab.rt = 45, legend.title="Fisher's FDR")
 
 dev.off()
+
+
+fdr_targets = fread("FMRE_table.txt")
+
+
+
+
+
+
+
+
 

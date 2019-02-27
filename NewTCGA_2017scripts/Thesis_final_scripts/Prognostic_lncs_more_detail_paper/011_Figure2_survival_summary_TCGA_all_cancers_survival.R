@@ -55,24 +55,26 @@ fantom <- fantom[-z,]
 rna = readRDS("rna_lncRNAs_expression_data_june29.rds")
 pcg = readRDS("rna_pcg_expression_data_june29.rds")
 
+#summarize lncRNAs that we studied 
+lncs = colnames(rna)[which(str_detect(colnames(rna), "ENSG"))]
+z = which(fantom$CAT_geneID %in% lncs)
+fantom = fantom[z,]
+write.csv(fantom, file="5785_lncRNAs_used_in_study_table2.csv", quote=F, row.names=F)
+
+#summarize patients 
+pats = unique(rna[,c("type", "Cancer")])
+tt = as.data.table(table(rna$type))
+colnames(tt) = c("type", "num_patients")
+tt = merge(tt, pats, by="type")
+tt = tt[order(num_patients)]
+write.csv(tt, file="TCGA_cancer_types_used_in_study_table1.csv", quote=F, row.names=F)
+
 #------FEATURES-----------------------------------------------------
 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
-
-val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
-val_cands = as.data.table(val_cands)
-val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
-val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
-val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
-
-#start with only lncRNA_intergenic
-#lincs = subset(fantom, CAT_geneClass == "lncRNA_intergenic")
-#z = which(colnames(rna) %in% lincs$gene)
-#rna = as.data.frame(rna)
-#rna = rna[,c(z, (ncol(rna)-5):ncol(rna))]
 
 ###[2.] Data splitting 
 
@@ -162,27 +164,54 @@ canc_survival_genes = function(dato){
 	get_survival = function(gene){
 	  print(gene)
   	results_cox <- as.data.frame(matrix(ncol=8)) ; colnames(results_cox) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "risk_size", "num_patients")
-  	z = which(colnames(canc_data_genes_analyze) == gene)
-  	dat = canc_data_genes_analyze[,c(1,z,(ncol(canc_data_genes_analyze)-33):ncol(canc_data_genes_analyze))]
-  	dat$OS.time = as.numeric(dat$OS.time)
-  	dat$OS = as.numeric(dat$OS)
+
+    #keep gene expresion as well as clinical columns 
+    cols_keep = c(gene, "patient", "age_at_initial_pathologic_diagnosis", "gender", "race", "clinical_stage", "histological_grade", "OS", "OS.time")
+    dat = canc_data_genes_analyze[,cols_keep]
+    dat$age_at_initial_pathologic_diagnosis = as.numeric(dat$age_at_initial_pathologic_diagnosis)
+                
+              #remove columns with less than 2 contrasts 
+              check_contrasts = function(col){
+                check = dim(table(col))
+                if(check >1){
+                  return("keep")
+                }
+              }
+
+    keep = unlist(apply(dat, 2, check_contrasts))
+    z = which(colnames(dat) %in% names(keep))
+    dat = dat[,z]
+              
+    dat$OS = as.numeric(as.character(dat$OS))
+    dat$OS.time = as.numeric(as.character(dat$OS.time))
+
+    z = which(colnames(dat) %in% gene)
+    colnames(dat)[z] = "gene"
+    dat$gene = as.numeric(dat$gene)
+    
+    rownames(dat) = dat$patient
+    dat$patient = NULL
+
+    #split patients 
+    med = median(dat$gene)
+    
   	#remove NAs
   	z = which(is.na(dat$OS.time))
   	if(!(length(z) ==0)){
   	dat = dat[-z,]}
-	  med_gene = median(as.numeric(dat[,2]))  	
+	  med_gene = median(dat$gene)	
 	  dat$med = ""
 	  if(med_gene ==0){
         #if median = 0 then anyone greater than zero is 1 
-        l1 = which(dat[,2] > 0)
-        l2 = which(dat[,2] ==0)
+        l1 = which(dat$gene > 0)
+        l2 = which(dat$gene ==0)
         dat$med[l1] = 1
         dat$med[l2] = 0
         }
 
     if(!(med_gene ==0)){
-        l1 = which(dat[,2] >= med_gene)
-        l2 = which(dat[,2] < med_gene)
+        l1 = which(dat$gene >= med_gene)
+        l2 = which(dat$gene < med_gene)
         dat$med[l1] = 1
         dat$med[l2] = 0
     }
@@ -191,7 +220,9 @@ canc_survival_genes = function(dato){
     check2 = table(dat$med)[2] >= 10
     if(check1 & check2){
       if(dim(table(dat$med)) ==2){
-  	  res.cox <- coxph(Surv(OS.time, OS) ~ med, data = dat)
+  	  dat$gene = NULL
+      dat = dat[,c("med", colnames(dat)[2:ncol(dat)-1])]
+      res.cox <- coxph(Surv(OS.time, OS) ~ ., data = dat)
     	hr = summary(res.cox)$coefficients[1,c(2)]
       num_pat = nrow(dat)
       if(hr > 1){
@@ -219,20 +250,24 @@ canc_survival_genes = function(dato){
 
 #DO NOT RUN 
 
-#all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text")
-#all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
+all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text")
+all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
 
-#saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_for_plotting_HAzard_Ratios_Pvalues_July9.rds")
+saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_all_survival_results_feb27.rds")
 
 
 ##############RUN-----------------------------------------------------------------------------------
 
-all_cancers_genes_surv_comb = readRDS("lncRNAs_for_plotting_HAzard_Ratios_Pvalues_July9.rds")
+all_cancers_genes_surv_comb = readRDS("lncRNAs_all_survival_results_feb26.rds")
 canc_conv = rna[,which(colnames(rna) %in% c("Cancer", "type"))]
 canc_conv = canc_conv[!duplicated(canc_conv), ]
 colnames(canc_conv)[2] = "canc"
 all_cancers_genes_surv_comb = merge(all_cancers_genes_surv_comb, canc_conv, by="canc")
-write.csv(all_cancers_genes_surv_comb, file="ALL_lncRNAs_survival_august8.csv", quote=F, row.names=F)
+write.csv(all_cancers_genes_surv_comb, file="ALL_lncRNAs_survival_Feb262019.csv", quote=F, row.names=F)
+
+#all_cancers_genes_surv_comb = as.data.table(all_cancers_genes_surv_comb)
+all_cancers_genes_surv_comb[,c(3:10)] = apply(all_cancers_genes_surv_comb[,c(3:10)], 2, function(x){as.numeric(x)})
+all_cancers_genes_surv_comb = as.data.table(all_cancers_genes_surv_comb)
 
 ###-------------------------------------------------------------------------------------------------
 
