@@ -254,6 +254,7 @@ for(i in 1:length(unique_cds)){
 }
 }
 
+
 results_pairs = results_pairs[-1,]
 results_pairs$fishers_pval = as.numeric(results_pairs$fishers_pval)
 results_pairs$fdr = p.adjust(results_pairs$fishers_pval, method="fdr")
@@ -270,6 +271,12 @@ results_pairs = results_pairs[order(fishers_pval)]
 fdr_sig = filter(results_pairs, fdr <= 0.05)
 #write.table(fdr_sig, file= "8_fdr_sig_fmre_cds_pairs_fishers_analysis_with_lncRNAs_July12nd_KI.txt", sep="\t", quote=F, row.names=F)
 
+#save results 
+write.csv(results_pairs, file="all_CDS_FMRE_pairs_only_pateints_wRNASeq_data_Feb28.csv", quote=F, row.names=F)
+mdm4_tp43 = as.data.table(filter(results_pairs, FMRE_mut == mdm4_fmre))
+z = which(str_detect(mdm4_tp43$CDS_mut, "TP53"))
+mdm4_tp43 = mdm4_tp43[z,]
+write.csv(mdm4_tp43, file="MDM4_TP53_pairs_only_pateints_wRNASeq_data_Feb28.csv", quote=F, row.names=F)
 
 #-----------------------------------------------------------------------------------------
 #DON"T DO FOR NOQ DON"T NEED THIS RIGHT NOW

@@ -180,7 +180,7 @@ clean_fmre = function(fmre){
 }
 
 names(mutations_in_crms) = unlist(llply(as.character(names(mutations_in_crms)), clean_fmre))
-z = which(names(mutations_in_crms) == "ENCODEmerge::chr1:204475015")
+z = which(names(mutations_in_crms) == "chr1:204475015")
 
 #------patients with MDM4 FMRE mutation ----------------------------------------------------
 
@@ -269,13 +269,20 @@ check_zkscan_exp = function(canc){
 	ord = as.data.table(ord)
 	ord = ord[order(x)]
 
+	canc_exp$mut_code = factor(canc_exp$mut_code, levels =c("None", "FMRE", "CDS", "Both"))
+
+	#remove any groups made up of only 1 patient 
+	t = as.data.table(table(canc_exp$mut_code))
+	t = as.data.table(filter(t, N > 1))
+	canc_exp = as.data.table(filter(canc_exp, mut_code %in% t$V1))
+
 	#plot 1, y = TERT exp
 	
 	#-----------------------
 	#A, x = IDH1 mut yes/no
 	#-----------------------
 	a1 <- ggboxplot(canc_exp, x = "mut_code", y = "MDM4",
-         color = "mut_code", order = ord$Group.1, 
+         color = "mut_code", 
          palette = "jco", title = paste(canc, "MDM4 exp ~ mut"),  
           add = "jitter") + stat_n_text() + ylab("log2 expression (FPKM-UQ)")
 	# Change method
@@ -287,11 +294,9 @@ check_zkscan_exp = function(canc){
 	#-----------------------
 	#A, x = TERT mut yes/no
 	#-----------------------
-	ord = aggregate(canc_exp[, 2], list(canc_exp$mut_code), median)
-	ord = as.data.table(ord)
-	ord = ord[order(x)]
+
 	a1 <- ggboxplot(canc_exp, x = "mut_code", y = "TP53",
-         color = "mut_code", order = ord$Group.1, 
+         color = "mut_code", 
          palette = "jco", title = paste(canc, "TP53 exp ~ mut"), 
           add = "jitter") + stat_n_text() + ylab("log2 expression")
 	# Change method
@@ -301,7 +306,7 @@ check_zkscan_exp = function(canc){
 }
 }
 
-pdf("CDS_FMRE_comutation_summary_all_cancers_MDM4_TO53_feb27KI.pdf")
+pdf("CDS_FMRE_comutation_summary_all_cancers_MDM4_TO53_feb28KI.pdf")
 llply(cancers, check_zkscan_exp, .progress="text")
 dev.off()
 
