@@ -1,23 +1,15 @@
 #check GBM and LGG IDH status influence on lncRNA expression and clinical outcomes 
 
-clean_up = read.csv("cleaned_clinical_variables_associations_data_sept19.csv")
-
-lgg = as.data.table(filter(clean_up, canc == "Brain Lower Grade Glioma"))
-gbm = as.data.table(filter(clean_up, canc == "Glioblastoma multiforme"))
-
-#get IDH variables
-z = unique(lgg$colname[which(str_detect(lgg$colname, 'IDH'))])
-col = "IDH.status"
-
-lgg = as.data.table(filter(lgg, colname == col))
-
-#hox genes 
- g=subset(allCands, cancer== "Glioblastoma multiforme")
- g=g[1,1]
-
 #plot their expression in gbm 
 library(TCGAbiolinks)
-gbm_subtype <- TCGAquery_subtype(tumor = "lgg")
+lgg_subtype <- TCGAquery_subtype(tumor = "lgg")
+
+#HOXA10-AS
+cols = c("MGMT.promoter.status", "IDH.status", "X1p.19q.codeletion", "TERT.promoter.status", "TERT.expression.status",
+  "ATRX.status", "patient") 
+lgg_subtype = lgg_subtype[,cols]
+saveRDS(lgg_subtype, file="lgg_subtype_info_molecular.rds")
+
 
 pdf("lncRNA_cands_fromGBM_inLGG.pdf")
 for(i in 1:length(g$gene)){

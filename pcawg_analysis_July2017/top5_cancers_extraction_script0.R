@@ -78,6 +78,8 @@ conversion <- fread("pcawgConversion.tsv", data.table=F)
 #RNA-Seq file 
 rna <- fread("joint_fpkm_uq.tsv", data.table=F)
 
+#which PCAWG patients also have TCGA ids
+
 #---------------------------------------------------------
 #Processing
 #---------------------------------------------------------
@@ -105,6 +107,15 @@ norm_pats <- conversion$icgc_donor_id[z]
 ###"TUMOUR SAMPLES"
 z <- which(conversion$tumor_rna_seq_aliquot_id %in% colnames(rna))
 tum_pats <- conversion$icgc_donor_id[z]
+
+#which of these patients also have TCGA ids?
+pats_dets = subset(clin, icgc_donor_id %in% tum_pats)
+pats_dets = unique(pats_dets[,c("icgc_donor_id", "submitted_specimen_id")])
+library(stringr)
+z = which(str_detect(pats_dets$submitted_specimen_id, "TCGA"))
+tcga_pats = pats_dets[z,]
+saveRDS(tcga_pats, file="TCGA_IDs_usedinPCAWG.rds")
+
 
 ###161 tum-matched normal samples -- but what cancer types are they from?
 tum_match_norm <- tum_pats[which(tum_pats %in% norm_pats)]

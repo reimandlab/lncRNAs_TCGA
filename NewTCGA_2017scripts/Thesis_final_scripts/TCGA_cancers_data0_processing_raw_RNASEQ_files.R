@@ -17,7 +17,10 @@ source("source_file.R")
 ###---------------------------------------------------------------
 
 #1. List of TCGA IDs used in PCAWG - to remove
-ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
+#ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
+ids_remove = readRDS("TCGA_IDs_usedinPCAWG.rds")
+ids_remove[,2] = sapply(ids_remove[,2], function(x){paste(unlist(strsplit(x, "-"))[1:3], collapse="-")})
+ids_remove = unique(ids_remove[,2])
 
 #2. TCGA Tumour Codes Table
 tss_codes = read.csv(" TCGA_TissueSourceSite_Codes2017 .csv"     )
@@ -130,7 +133,7 @@ normals_keep$id = ""
 normals_keep[,4] = apply(normals_keep, 1, clean_tcga_id) 
 
 #remove those patients already used in PCAWG
-ids_remove = unique(clin$bcr_patient_barcode[which(clin$bcr_patient_barcode %in% ids_remove$bcr_patient_barcode)]) 
+ids_remove = unique(clin$bcr_patient_barcode[which(clin$bcr_patient_barcode %in% ids_remove)]) 
 z = which(cancers_keep$id %in% ids_remove)
 external_dataset = cancers_keep[z,]
 cancers_keep = cancers_keep[-z,]

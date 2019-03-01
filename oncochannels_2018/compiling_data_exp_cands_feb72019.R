@@ -184,3 +184,8 @@ alldat$cands[z] = "yes"
 
 write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_220219.csv", quote=F, row.names=F)
 
+#add fdr
+alldat$fdr = p.adjust(alldat$browns, method="fdr")
+
+write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_withFDR_010319.csv", quote=F, row.names=F)
+

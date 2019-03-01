@@ -121,7 +121,9 @@ clin_data_lncs = llply(filtered_data, add_clin_vars)
 #remove Nulls
 clin_data_lncs = Filter(Negate(is.null), clin_data_lncs)
 #save this file can work on at home 
-saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_June21.rds")
+#saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_June21.rds")
+
+clin_data_lncs = readRDS("clin_data_lncs_new_variables_June21.rds")
 
 #--------LOOK AT ASSOCIATIONS BETWEEN EXPRESSION-------------------------------
 
