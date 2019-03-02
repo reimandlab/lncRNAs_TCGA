@@ -64,8 +64,8 @@ all = r
 
 lgg_sub = readRDS("lgg_subtype_info_molecular.rds")
 lgg_gene_exp = as.data.table(filter(all, type == "LGG"))
-#hoxa10-as
-cols = c("ENSG00000253187", "patient", "OS", "OS.time")
+#hoxa10-as/ and other GBM one 
+cols = c("ENSG00000240889", "patient", "OS", "OS.time", "type")
 lgg_gene_exp = lgg_gene_exp[,..cols]
 
 #label 
@@ -105,42 +105,63 @@ lgg_gene_exp$subtype = paste(lgg_gene_exp$MGMT.promoter.status, lgg_gene_exp$IDH
 #--------------------------------------------------------------------
 
 
+#combine clinical variables 
+#first IDH splits people 
 
+lgg_gene_exp$subtype[lgg_gene_exp$IDH.status == "WT"] = "IDH_WT"
+lgg_gene_exp$subtype[lgg_gene_exp$IDH.status == "Mutant"] = "IDH_mut"
 
-  dat = list_dat[[i]]
-  dat$OS = as.numeric(dat$OS)
-  dat$OS.time = as.numeric(dat$OS.time)
-  dat$OS.time = dat$OS.time/365
-  fit <- survfit(Surv(OS.time, OS) ~ cluster, data = dat)
-          s <- ggsurvplot(
-          title = paste("Clusters", dat$type[1]),
-          fit, 
-          xlab = "Time (Years)", 
-          surv.median.line = "hv",
-          font.main = c(16, "bold", "black"),
-          font.x = c(14, "plain", "black"),
-          font.y = c(14, "plain", "black"),
-          font.tickslab = c(14, "plain", "black"),
-          font.legend = 12,
-          risk.table.fontsize = 5, 
-          #legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
-          data = dat,      # data used to fit survival curves. 
-          risk.table = TRUE,       # show risk table.
-          legend = "right", 
-          pval = TRUE,             # show p-value of log-rank test.
-          conf.int = FALSE,        # show confidence intervals for 
-                            # point estimaes of survival curves.
-          xlim = c(0,5),        # present narrower X axis, but not affect
-                            # survival estimates.
-          break.time.by = 1,     # break X axis in time intervals by 500.
-          #palette = colorRampPalette(mypal)(14), 
-          palette = c("blue", "red"),
-          ggtheme = theme_bw(), # customize plot and risk table with a theme.
-          risk.table.y.text.col = T, # colour risk table text annotations.
-          risk.table.y.text = FALSE # show bars instead of names in text annotations
-                            # in legend of risk table
-          )
-          print(s)
+lgg_gene_exp$subtype[lgg_gene_exp$IDH.status == "Mutant"] = "IDH_mut"
 
+#add codeletion
+z1 = which((lgg_gene_exp$subtype == "IDH_mut") & (lgg_gene_exp$X1p.19q.codeletion == "non-codel"))
+z2 = which((lgg_gene_exp$subtype == "IDH_mut") & (lgg_gene_exp$X1p.19q.codeletion == "codel"))
+lgg_gene_exp$subtype[z1] = "idh_mut_nocodel"
+lgg_gene_exp$subtype[z2] = "idh_mut_codel"
+
+colnames(lgg_gene_exp)[2] = "lncRNA"
+
+  #dat$OS = as.numeric(dat$OS)
+  #dat$OS.time = as.numeric(dat$OS.time)
+  #dat$OS.time = dat$OS.time/365
+
+#check anova model wtih lncRNA versus one without
+lnc = coxph(Surv(OS.time, OS) ~ subtype + lncRNA, data = lgg_gene_exp)
+nolnc = coxph(Surv(OS.time, OS) ~ subtype, data = lgg_gene_exp)
+
+anova(lnc, nolnc)
+
+pdf("NDUFB2-AS1_lncRNA_lgg_subtypes_KM_curve.pdf", width=11)
+    fit <- survfit(Surv(OS.time, OS) ~ subtype + lncRNA, data = lgg_gene_exp)
+            s <- ggsurvplot(
+            title = paste("LGG subtypes", lgg_gene_exp$type[1]),
+            fit, 
+            xlab = "Time (Years)", 
+            surv.median.line = "hv",
+            font.main = c(16, "bold", "black"),
+            font.x = c(14, "plain", "black"),
+            font.y = c(14, "plain", "black"),
+            font.tickslab = c(14, "plain", "black"),
+            font.legend = 7,
+            risk.table.fontsize = 5, 
+            #legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
+            data = lgg_gene_exp,      # data used to fit survival curves. 
+            risk.table = TRUE,       # show risk table.
+            legend = "right", 
+            pval = TRUE,             # show p-value of log-rank test.
+            conf.int = FALSE,        # show confidence intervals for 
+                              # point estimaes of survival curves.
+            #xlim = c(0,5),        # present narrower X axis, but not affect
+                              # survival estimates.
+            break.time.by = 1,     # break X axis in time intervals by 500.
+            #palette = colorRampPalette(mypal)(14), 
+            #palette = c("blue", "red"),
+            ggtheme = theme_bw(), # customize plot and risk table with a theme.
+            risk.table.y.text.col = T, # colour risk table text annotations.
+            risk.table.y.text = FALSE # show bars instead of names in text annotations
+                              # in legend of risk table
+            )
+            print(s)
+dev.off()
 
 
