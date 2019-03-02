@@ -305,7 +305,7 @@ all_cancers_genes_surv_comb$risk_perc_tag[all_cancers_genes_surv_comb$risk_perc 
 
 #figure 2B/C?
 sig_lncs = as.data.table(all_cancers_genes_surv_comb)
-sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, pval >= -log10(0.05)))
+sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, fdr >= -log10(0.05)))
 
 #sig_lncs = as.data.table(subset(sig_lncs, fdrsig == "FDRsig"))
 
@@ -650,6 +650,13 @@ colnames(canc_results) = c("cancer", "total_pairs", "sig_pairs", "perc")
 #how many matching correlated unfavourable/favourable
 #how many unfavourable or not matching
 
+
+#FDR sig gene survival results 
+g = as.data.table(filter(all_cancers_genes_surv_comb, fdr >= -log10(0.05))) 
+#^ use this file for making figure 1C/D
+saveRDS(g, file="fdr_sig_prognostic_lncRNAs_summary_march2.rds")
+all_cancers_genes_surv_comb = g
+
 get_pairs_results = function(cancer){
   print(cancer)
 
@@ -670,7 +677,7 @@ get_pairs_results = function(cancer){
     res2 = as.data.table(res2)
     res2 = res2[order(fdr)]
     tot_pairs = nrow(res2)
-    res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05))
+    #res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05))
     sig_pairs = nrow(res2)  
     #check if lncRNA-lncRNA correlations match HRs 
     check_dir = function(lnc1, lnc2){
@@ -697,12 +704,13 @@ get_pairs_results = function(cancer){
     #summarize how many of each kind
     t = table(res2$match, res2$cor_sum)
     t = as.data.table(tidy(t))
-    t = t[order(Freq)]
+    t = t[order(n)]
     t$total_sig_pairs = sig_pairs
     t$total_pairs = tot_pairs
-    t$perc = t$Freq/sig_pairs
+    t$perc = t$n/sig_pairs
     t$cancer = cancer
-    return(t)
+    res2$cancer = cancer
+    return(res2)
   }
 }
 
