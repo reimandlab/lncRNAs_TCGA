@@ -26,40 +26,31 @@ u = as.data.table(table(u))
 u = u[order(N)]
 colnames(u) = c("cancer", "num_runs_successful_outof100")
 
-all_res$fdr = p.adjust(all_res$wald_p, method="fdr")
-
 #do fdr wtihin cancer type 
 #calculate how many fdr sig in each one 
 
-get_split = function(canc){
+cancers = unique(all_res$cancer)
 
-  z = which(all_res$type == canc)
-  split = c()
+get_fdr = function(canc){
 
-  for(i in 1:(length(z)-1)){
-    new = z[i+1]
-    print(z[i])
-    print(new)
-    if(!(new-z[i] ==1)){
-      print("stop")
-      split = c(split, z[i+1])
-    }
-  }
-
-  for(i in 1:length(split)){
-    if(i ==1){
-      start = split[i]-(split[i]-1)
-      end = split[i]
-      all_res[start:end,] = paste("round", i, sep="_")
-    }
-  }
-
+  canc_dat = as.data.table(filter(all_res, cancer == canc))
+  canc_dat$fdr = p.adjust(canc_dat$wald_p, method="fdr")
+  rounds = length(unique(canc_dat$round))
+  genes = length(unique(canc_dat$gene))
+  fdrs = length(which(canc_dat$fdr < 0.05))
+  total = nrow(canc_dat)
+  row = c(canc, rounds, genes, fdrs, total)
+  names(row) = c("canc", "rounds", "genes", "fdrs_sig", "total")
+  print(row)
+  return(row)
 }
 
-
-
-
-
+l = llply(cancers, get_fdr)
+l = ldply(l)
+l = as.data.table(l)
+l=l[order(rounds)]
+write.csv(l, file="results_permutations_march4.csv", quote=F, row.names=F)
+write.csv(all_res,file="all_res_results_permutations.csv", quote=F, row.names=F)
 
 
 

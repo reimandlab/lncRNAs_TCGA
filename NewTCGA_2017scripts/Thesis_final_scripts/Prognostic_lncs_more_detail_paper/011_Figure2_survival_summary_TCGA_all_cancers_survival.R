@@ -305,7 +305,7 @@ all_cancers_genes_surv_comb$risk_perc_tag[all_cancers_genes_surv_comb$risk_perc 
 
 #figure 2B/C?
 sig_lncs = as.data.table(all_cancers_genes_surv_comb)
-sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, pval >= -log10(0.05)))
+sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, fdr >= -log10(0.05)))
 
 #sig_lncs = as.data.table(subset(sig_lncs, fdrsig == "FDRsig"))
 
@@ -367,6 +367,9 @@ edges = as.data.table(filter(edges, N > 20))
 write.table(nodes, file="nodes_overlap_surv_lncs_28cancers.txt", sep="\t", quote=F, row.names=F)
 write.table(edges, file="edges_overlap_surv_lncs_28cancers.txt", sep="\t", quote=F, row.names=F)
 
+#keep only FDR sig ones 
+
+all_cancers_genes_surv_comb = as.data.table(filter(all_cancers_genes_surv_comb, fdr >= -log10(0.05)))
 
 #order by most significant to least significant 
 order = as.data.table(dplyr::filter(as.data.table(table(all_cancers_genes_surv_comb$canc, all_cancers_genes_surv_comb$fdrsig)), V2 %in% c("FDRsig", "Significant")))
@@ -386,6 +389,10 @@ order_cols = c("NotSignificant", "Significant", "FDRsig")
 all_cancers_genes_surv_comb$fdrsig <- factor(all_cancers_genes_surv_comb$fdrsig, levels = order_cols)
 all_cancers_genes_surv_comb$risk[all_cancers_genes_surv_comb$HR > 1] = "Unfavourable"
 all_cancers_genes_surv_comb$risk[all_cancers_genes_surv_comb$HR < 1] = "Favourable"
+
+
+all_cancers_genes_surv_comb$combo = paste(all_cancers_genes_surv_comb$gene, all_cancers_genes_surv_comb$canc, sep="_")
+filter(allCands, combo %in% all_cancers_genes_surv_comb$combo)
 
 #Variation 1 of survival overview plot
 
@@ -442,7 +449,7 @@ pdf("fig1_summ_all_prognostic_lncs.pdf", width=9, height=7)
 part1 <- ggplot(data=summ, aes(x=Cancer, y=N, fill=Risk)) +
 geom_bar(stat="identity")+
   theme_bw() + coord_flip() +
-  scale_fill_manual(values=c('darkcyan','orange')) + ggtitle("Number of Univariate Significant lncRNAs, CoxPH p-val < 0.05")
+  scale_fill_manual(values=c('darkcyan','orange')) + ggtitle("Number of Univariate Significant lncRNAs, CoxPH adj p-val < 0.05")
 
 part1 = ggpar(part1, legend="none",
  font.xtickslab = c(8,"plain", "black"), ylab="Number of lncRNAs")
@@ -672,6 +679,8 @@ get_pairs_results = function(cancer){
     tot_pairs = nrow(res2)
     res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05))
     sig_pairs = nrow(res2)  
+    
+    if(!(sig_pairs ==0)){
     #check if lncRNA-lncRNA correlations match HRs 
     check_dir = function(lnc1, lnc2){
       hr_lnc1 = canc_genes$HR[canc_genes$gene == lnc1]
@@ -697,13 +706,14 @@ get_pairs_results = function(cancer){
     #summarize how many of each kind
     t = table(res2$match, res2$cor_sum)
     t = as.data.table(tidy(t))
-    t = t[order(Freq)]
+    t = t[order(n)]
     t$total_sig_pairs = sig_pairs
     t$total_pairs = tot_pairs
-    t$perc = t$Freq/sig_pairs
+    t$perc = t$n/sig_pairs
     t$cancer = cancer
     return(t)
   }
+}
 }
 
 canc_results_pairs_types = llply(cancers, get_pairs_results, .progress = "text")
@@ -720,6 +730,8 @@ canc_results_pairs_types2 = as.data.table(canc_results_pairs_types2[order(perc)]
 canc_results_pairs_types2$perc = round(as.numeric(canc_results_pairs_types2$perc), digits=4)
 colnames(canc_conv)[2] = "cancer"
 canc_results_pairs_types2 = merge(canc_results_pairs_types2, canc_conv, by="cancer")
+
+canc_results_pairs_types2 = as.data.table(filter(canc_results_pairs_types2, perc > 0))
 
 #Summarize figure 2 B - summary of correlated pairs across 
 #cancer types 
