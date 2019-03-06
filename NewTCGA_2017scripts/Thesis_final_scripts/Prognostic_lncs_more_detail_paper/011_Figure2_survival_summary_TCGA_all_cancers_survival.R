@@ -779,9 +779,51 @@ ggpar(g,
 
 dev.off()
 
+#make summary barplot
+#x-axis cancer
+#y-axis number of prognostic lncRNA pairs FDR sig correlation 
+
+canc_conv = unique(rna[,c("type", "Cancer")])
+#colnames(canc_results_pairs_types2)[1] = "Cancer"
+#canc_results_pairs_types2 = merge(canc_results_pairs_types2, canc_conv, by="Cancer")
+
+#get number of pairs that weren't sig
+get_pairs_insig = function(canc){
+
+  dat = as.data.table(filter(canc_results_pairs_types2, type == canc))
+  none = dat$total_pairs[1] - dat$total_sig_pairs[1]
+  dat = dat[1,]
+  dat$Exp_pair = "Insig"
+  dat$N = none
+  return(dat)
+}
+
+add_rows = as.data.table(ldply(llply(unique(canc_results_pairs_types2$type), get_pairs_insig)))
+canc_results_pairs_types2 = rbind(canc_results_pairs_types2, add_rows)
+
+canc_results_pairs_types2$N = log1p(canc_results_pairs_types2$N)
+canc_results_pairs_types2$Exp_pair = factor(canc_results_pairs_types2$Exp_pair, levels = c("Pos", "Neg", "Insig"))
 
 
+pdf("figure1d_march2019_correlations.pdf")
 
+g = ggbarplot(canc_results_pairs_types2, "type", "N",
+  fill = "Exp_pair", color = "Exp_pair", palette = "npg") + labs(y="log1p(N)")
+ggpar(g, x.text.angle =65)
+dev.off()
+
+pdf("Figure2B_summary_types_of_correlations_28_cancers_types.pdf", height=5, width=6)
+
+g = ggplot(canc_results_pairs_types2, aes(type, column_name)) +
+  geom_tile(aes(fill = perc), color="grey")  +
+    scale_fill_gradient2(low = "turquoise4", high = "tan1") +
+    xlab("Cancer") + ylab("lncRNA pairs Hazard Ratios") + theme_bw() +
+     labs(fill="% of Significant \nCorrelated Pairs", colour="Type of \ncorrelation")
+ggpar(g,
+ font.tickslab = c(6,"plain", "black"),
+ xtickslab.rt = 45)
+
+dev.off()
 
 
 
