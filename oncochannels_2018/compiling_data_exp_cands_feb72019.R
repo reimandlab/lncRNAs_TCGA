@@ -4,6 +4,7 @@ library(data.table)
 library(dplyr)
 library(stringr)
 library(metap)
+library(ggpubr)
 
 #merging p-value function
 merge_p_values <- function(scores, method=c("Fisher", "Brown", "logitp",
@@ -188,4 +189,8 @@ write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_220
 alldat$fdr = p.adjust(alldat$browns, method="fdr")
 
 write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_withFDR_010319.csv", quote=F, row.names=F)
+
+#make summary plot
+alldat$fdr_plot = -log10(alldat$fdr)
+
 
