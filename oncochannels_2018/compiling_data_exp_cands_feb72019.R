@@ -192,5 +192,13 @@ write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_wit
 
 #make summary plot
 alldat$fdr_plot = -log10(alldat$fdr)
-
+ggbarplot(alldat, x = "gene", y = "fdr_plot",
+          fill = "cands",               # change fill color by cyl
+          color = "white",            # Set bar border colors to white
+          palette = "jco",            # jco journal color palett. see ?ggpar
+          sort.val = "desc",          # Sort the value in dscending order
+          sort.by.groups = FALSE,     # Don't sort inside each group
+          x.text.angle = 90           # Rotate vertically x axis texts
+) + labs(x="Ion Channel", y="-log10(FDR)")+
+  geom_hline(yintercept=-log10(0.05), linetype="dashed", color = "red")
 
