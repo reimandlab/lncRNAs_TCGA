@@ -206,7 +206,7 @@ get_survival_models = function(dtt){
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          print(s)
+          #print(s)
 
    #generate boxplot 
    z = which(cancers == dtt$Cancer[1])
@@ -253,7 +253,7 @@ get_survival_models = function(dtt){
    gg <- ggplot(exp_data)
    gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
    gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" "))
-   print(gg)
+   #print(gg)
 
    exp_data$geneexp = log1p(exp_data$geneexp)
   
@@ -268,13 +268,13 @@ get_survival_models = function(dtt){
           add = "jitter", ylab = "FPKM",  ggtheme = theme_bw())
         # Change method
   p = p + stat_compare_means(method = "wilcox.test")
-  print(p)
+  #print(p)
 }
 
 results_cox1 = results_cox1[-1,]
 #fdr on p-values 
 results_cox1$pval = as.numeric(results_cox1$pval)
-results_cox1$fdr_pval = p.adjust(results_cox1$pval, method="fdr")
+results_cox1$fdr_pval = p.adjust(results_cox1$pval, method="bonferroni")
 
 return(results_cox1)
 
@@ -284,14 +284,16 @@ return(results_cox1)
 #-----------------------------------------------------------------------------------------------------------
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_lifespan_May3rd.pdf")
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_oct3.pdf")
-#tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
+tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
 #dev.off()
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
 tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
 tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
-tcga_results1$fdr_pval = as.numeric(tcga_results1$fdr_pval)
+
+tcga_results1$fdr_pval = p.adjust(as.numeric(tcga_results1$pval), method="fdr")
+
 tcga_results1$perc_wevents = as.numeric(tcga_results1$perc_wevents)
 tcga_results1$num_events = as.numeric(tcga_results1$num_events)
 tcga_results1$lnc_better = ""
