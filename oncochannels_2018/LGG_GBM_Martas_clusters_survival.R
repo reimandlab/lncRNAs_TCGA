@@ -40,9 +40,11 @@ pats = as.data.table(table(ext$type))
 pats = as.data.table(filter(pats, N >= 15))
 colnames(pats)[1] = "type"
 
-
 canc_conv = unique(rna[,c("type", "Cancer")])
 pats = merge(pats, canc_conv, by="type")
+
+cols = colnames(rna)[which(colnames(rna) %in% colnames(pcg))]
+all = merge(rna, pcg, by = cols)
 
 #get gbm
 gbm = subset(ext, type=="GBM")
@@ -60,8 +62,8 @@ r = rbind(all, gbm)
 all = r
 
 #Marta's clusters 
-lgg_clusters = fread("cluster_patients_info.Brain_Lower_Grade_Glioma.2019-02-25.txt")
-gbm_clusters = fread("cluster_patients_info.Glioblastoma_multiforme.2019-02-25.txt")
+lgg_clusters = fread("cluster_patients_info.Brain Lower Grade Glioma.2019-03-05.txt")
+gbm_clusters = fread("cluster_patients_info.Glioblastoma multiforme.2019-03-05.txt")
 
 #fix patient ids 
 lgg_clusters$patient = sapply(lgg_clusters$patient, function(x){paste(unlist(strsplit(x, "\\.")), collapse="-")})
@@ -86,7 +88,7 @@ gbm_clin = merge(gbm_clin, gbm_clusters, by="patient")
 #1. Get cancer data (gene expression and clinical for each cancer type)
 
 list_dat = list(lgg_clin, gbm_clin)
-pdf("LGG_GBM_ionChannel_clustesr_from_marta_march1.pdf", width=10)
+pdf("LGG_GBM_ionChannel_clustesr_from_marta_march8.pdf", width=10)
 for(i in 1:2){
   dat = list_dat[[i]]
   dat$OS = as.numeric(dat$OS)
