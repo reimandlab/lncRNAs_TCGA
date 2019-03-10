@@ -1,6 +1,25 @@
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ")
 
-source("permutation_universal_LASSO_survival_script.R")
+#source("permutation_universal_LASSO_survival_script.R")
+
+library(survAUC)
+#source("source_code_Cox_MonteCarlo_CV_Mar13.R")
+require(caTools)
+#check if this person is in my analysis: TCGA-61-2095
+library(glmnet)
+library(survcomp)
+library(caret)
+library(stringr)
+
+#this script below prepares the RNA and clinical files for analysis 
+source("universal_LASSO_survival_script.R")
+
+library(ggpubr)
+library(ggrepel)
+library(viridis)
+library(patchwork)
+library(caret)  
+library(Rtsne)
 
 print("done source script")
 
@@ -19,7 +38,7 @@ library(RCurl)
 
 #can we turn this into a function?
 
-#registerDoParallel(cores=5)
+registerDoParallel(cores=20)
 
 #Get cohort number as argument
 args = commandArgs(trailingOnly = TRUE)
@@ -31,8 +50,9 @@ date = Sys.Date()
 #[1] ----- get cancer info ----------------------------
 #---------generate random datasets---------------------
 
-get_canc = function(canc){
+get_canc = function(canc){ #updated this function from old script 
   canc_data = rna[which(rna$Cancer == canc),]
+  real = canc_data
   #mix labels up 
   #keep patient IDs and OS info in place
   #reshuffle all the lncRNA expression values
@@ -97,7 +117,7 @@ prepare_dat = function(dat){
 
 #[3] ----- elsatic net & splits ------------------------------------
 
-main_elastic_net = function(dat){
+main_elastic_net = function(dat){ #chaged one thing here after pass2 in for loop with ks and medians 
 
   #given random dataset, split into training and test set 
   smp_size <- floor(0.7 * nrow(dat))
@@ -310,7 +330,8 @@ main_elastic_net = function(dat){
             if(!(length(z)==0)){
               
               medians = medians[z]
-              testlncs = test[,c(1,which(colnames(test) %in% colnames(trainlncs)))]
+              z1 = which(colnames(test) == "patient")
+              testlncs = test[,c(z1, which(colnames(test) %in% colnames(trainlncs)))]
               rownames(testlncs) = testlncs$patient
               testlncs$patient = NULL
               #Add high/low tags to each gene 
@@ -539,7 +560,7 @@ random_permutations = function(canc){ #main permutation cross-validation functio
 
   genes_list = as.data.table(table(unlist(lncrnas)))
   genes_list = genes_list[order(N)]
-  genes_list = as.data.table(filter(genes_list, N >= 50)) #CHANGE after 
+  genes_list = as.data.table(filter(genes_list, N >= 1)) #CHANGE after 
   print(genes_list)
 
   if(!(dim(genes_list)[1]==0)){
@@ -628,9 +649,10 @@ random_permutations = function(canc){ #main permutation cross-validation functio
   perms_surv_results1 = as.data.table(ldply(surv_results)) 
   perms_surv_results1$wald_p = as.numeric(perms_surv_results1$wald_p)
   perms_surv_results1 = perms_surv_results1[order(wald_p)]
+  perms_surv_results1$fdr = p.adjust(perms_surv_results1$wald_p, method="fdr")
   print(paste("done", canc, "round of 100 cross-validations"))
   perms_surv_results1$round = paste(sample(1:5000000, 1), sample(1:5000000, 1), sample(1:5000000, 1), sep="_")
-  file = paste("march4_EN_perms/", cohort_index, "round", date, perms_surv_results1$round[1], ".rds", sep="_")
+  file = paste("full_gene_exp_perm/", cohort_index, canc, "round", date, perms_surv_results1$round[1], ".rds", sep="_")
   saveRDS(perms_surv_results1, file)
   print(head(perms_surv_results1))
   #return(perms_surv_results1)
