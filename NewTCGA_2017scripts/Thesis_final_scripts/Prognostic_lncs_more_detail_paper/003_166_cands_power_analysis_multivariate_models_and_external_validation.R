@@ -292,7 +292,7 @@ tcga_results1 = ldply(tcga_results, data.frame)
 tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
 tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
 
-tcga_results1$fdr_pval = p.adjust(as.numeric(tcga_results1$pval), method="fdr")
+tcga_results1$fdr_pval = p.adjust(as.numeric(tcga_results1$pval), method="holm")
 
 tcga_results1$perc_wevents = as.numeric(tcga_results1$perc_wevents)
 tcga_results1$num_events = as.numeric(tcga_results1$num_events)
@@ -329,9 +329,9 @@ pdf("Dist_perc_risk_patients_per_lncRNA.pdf", width=10)
 riskplot
 dev.off()
 
-#tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
-#tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
-#saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
+tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
+tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
+saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
 
 #-------------------------------------------------------------------
 #------PCAWG DATA---------------------------------------------------
@@ -366,16 +366,17 @@ pcawg_data$canc[pcawg_data$combo == "Ovary Serous cystadenocarcinoma"] = "Ovaria
 pcawg_data$canc[pcawg_data$combo == "Pancreas Pancreatic ductal carcinoma"] = "Pancreatic adenocarcinoma" 
 pcawg_data$canc[pcawg_data$combo == "Liver Hepatocellular carcinoma"] = "Liver hepatocellular carcinoma"
 pcawg_data$canc[pcawg_data$combo == "Kidney Adenocarcinoma, papillary type"] = "Kidney renal papillary cell carcinoma"
-#pcawg_data$canc[pcawg_data$combo == "Lung Squamous cell carcinoma"] = "Lung squamous cell carcinoma"
+pcawg_data$canc[pcawg_data$combo == "Lung Squamous cell carcinoma"] = "Lung squamous cell carcinoma"
 pcawg_data$canc[pcawg_data$combo == "Lung Adenocarcinoma, invasive"] = "Lung adenocarcinoma"
+pcawg_data$canc[pcawg_data$combo == "CNS Glioblastoma"] = "Glioblastoma multiforme "
+pcawg_data$canc[pcawg_data$combo == "Esophagus Adenocarcinoma"] = "Esophageal carcinoma "
+pcawg_data$canc[pcawg_data$canc == "Colon/Rectum"] = "Colon adenocarcinoma"
+pcawg_data$canc[pcawg_data$canc == "Stomach"] = "Stomach adenocarcinoma"
+pcawg_data$canc[pcawg_data$canc == "Head/Neck"] = "Head and Neck squamous cell carcinoma"
+pcawg_data$canc[pcawg_data$canc == "Cervix"] = "Cervical squamous cell carcinoma and endocervical adenocarcinoma"
 
-
-pcawg_data$canc[pcawg_data$combo == "Lung Adenocarcinoma, invasive"] = "Stomach adenocarcinoma"
-pcawg_data$canc[pcawg_data$combo == "Lung Adenocarcinoma, invasive"] = "Lung adenocarcinoma"
-pcawg_data$canc[pcawg_data$combo == "Lung Adenocarcinoma, invasive"] = "Lung adenocarcinoma"
 
 #add more pcawg people
-
 cancers_tests = as.list(unique(tcga_results1$cancer[which(tcga_results1$cancer %in% pcawg_data$canc)]))
 
 get_matched_data = function(cancer){
@@ -459,6 +460,7 @@ get_survival_models = function(dtt){
   lnc_test_ph = test.ph$table[1,3]
   global = test.ph$table[nrow(test.ph$table),3]
 
+  if(!(is.na(lnc_test_ph))){
 
   #mutlvariate concordance 
   cmulti = "not_avail"
@@ -607,6 +609,7 @@ get_survival_models = function(dtt){
         # Change method
        p = p + stat_compare_means(method = "wilcox.test")
        print(p)
+}
 }
 }
 }
