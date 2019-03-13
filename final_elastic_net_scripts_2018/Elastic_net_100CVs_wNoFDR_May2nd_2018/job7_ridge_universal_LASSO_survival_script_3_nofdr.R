@@ -11,6 +11,7 @@ for(p in 31:32){
 	cinds_clin = c()
 	cinds_justlncs = c()
 	cinds_combined = c()
+	
 	set.seed(101) 
 
 	stage = as.data.table(table(dat$clinical_stage))

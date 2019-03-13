@@ -1,7 +1,6 @@
-
 source("permutation_universal_LASSO_survival_script.R")
 
-files = list.files(pattern = "lncRNAs_selected_permutations_1000CV_1000_no_fdr_ELASTICNET.rds")
+files = list.files(pattern = "cindices_1000CV_1000_no_fdr_ELASTICNET.rds")
 
 res = as.data.frame(matrix(ncol=3)) ; colnames(res) = c("cindex", "canc", "type")
 
