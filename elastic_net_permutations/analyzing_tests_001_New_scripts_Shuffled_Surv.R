@@ -14,7 +14,7 @@ t = as.data.table(table(cands$cancer))
 t = t[order(N)]
 
 #read in all files 
-results = list.files(pattern="_.rds")
+results = list.files(pattern="genes_.rds")
 print(length(results))
 
 #break into cancer types 

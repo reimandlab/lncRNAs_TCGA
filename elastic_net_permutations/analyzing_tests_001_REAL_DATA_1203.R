@@ -1,4 +1,4 @@
-setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/real_elastic_net_runs")
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/real_elastic_net_runs/2019-03-14")
 
 library(data.table)
 library(dplyr)
@@ -43,10 +43,10 @@ all_res = as.data.table(all_res)
 new_res = as.data.table(all_res %>% gather(all_res, cindex, combined:clinical))
 
 #summary boxplots all cancers 
-
-pdf("cindices_real_march2019.pdf", width=10, height=10)
+pdf("cindices_real_march2019.pdf", width=20, height=10)
 g = ggboxplot(new_res, "canc", "cindex", fill="all_res", color="black", notch = TRUE)
 g =  g + stat_compare_means(aes(group = all_res), label = "p.signif") + theme_minimal()
+g = ggpar(g, x.text.angle = 90)
 print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red"))
 dev.off()
 
@@ -84,9 +84,7 @@ wil_sig = wil_sig[order(med_lnc)]
 #2. get genes 
 ########################################################################
 
-genes = list.files(pattern = "_.rds")
-z = which(str_detect(genes, "cindices_.rds"))
-genes = genes[-z]
+genes = list.files(pattern = "genes_.rds")
 
 #break into cancer types 
 get_canc = function(file){
@@ -98,6 +96,20 @@ all_res = llply(genes, get_canc)
 all_res = ldply(all_res)
 all_res = as.data.table(all_res)
 
-#get only those with sig inference post selective p-values 
-all_res$c = p.adjust(all_res$inference_pvals, method="fdr")
-all_res = as.data.table(filter(all_res, c < 0.05))
+rounds = unique(all_res$round)
+
+get_fdr = function(r){
+  canc = as.data.table(filter(all_res, round == r))
+  #get only those with sig inference post selective p-values 
+  canc$c = p.adjust(canc$inference_pvals, method="fdr")
+  canc = as.data.table(filter(canc, c < 0.05))
+  return(canc)
+}
+
+rounds = as.data.table(ldply(llply(rounds, get_fdr)))
+
+
+
+
+
+
