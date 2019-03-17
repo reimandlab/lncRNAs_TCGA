@@ -1,4 +1,4 @@
-setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/surv_shuffle")
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/surv_shuffle_0315")
 
 library(data.table)
 library(dplyr)
@@ -9,13 +9,8 @@ library(broom)
 library(ggplot2)
 library(stringr)
 
-real_file = readRDS("TCGA_results_multivariate_results_Oct3.rds")
-
-cands = read.csv("168_lncRNA_cancers_combos_22_cancer_types_feb19.csv")
-cands = as.data.table(cands)
-cands = as.data.table(filter(cands, data == "TCGA"))
-t = as.data.table(table(cands$cancer))
-t = t[order(N)]
+#read in real files 
+real_dat = readRDS("all_res_REAL_EN_runs_1203.rds")
 
 ########################################################################
 #1. evaluate c-indicies 
@@ -28,12 +23,17 @@ print(length(results))
 #break into cancer types 
 get_canc = function(file){
   dat = readRDS(file)
+  round = paste(unlist(strsplit(file, "_"))[6:8], collapse="-")
+  print(round)
+  dat$round = round
   return(dat)
 }
 
 all_res = llply(results, get_canc)
 all_res = ldply(all_res)
 all_res = as.data.table(all_res)
+
+fake_res = all_res
 
 #MAKE PLOT
 #X-axis: cancer type
@@ -42,13 +42,15 @@ all_res = as.data.table(all_res)
 new_res = as.data.table(all_res %>% gather(all_res, cindex, combined:clinical))
 
 #summary boxplots all cancers 
-
 pdf("cindices_real_march2019.pdf", width=20, height=10)
 g = ggboxplot(new_res, "canc", "cindex", fill="all_res", color="black", notch = TRUE)
 g =  g + stat_compare_means(aes(group = all_res), label = "p.signif") + theme_minimal()
 g = ggpar(g, x.text.angle = 90)
 print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red"))
 dev.off()
+
+#save and compare to random shuffled data
+
 
 #for each cancer type get boxplot 
 check_perform = function(cancer){
@@ -97,49 +99,58 @@ all_res = ldply(all_res)
 all_res = as.data.table(all_res)
 
 rounds = unique(all_res$round)
-cancers = unique(all_res$type)
-
-#summarize for each round how many selected how many are sig 
 
 get_fdr = function(r){
-  canc = as.data.table(filter(all_res, type == r))
+  canc = as.data.table(filter(all_res, round == r))
   #get only those with sig inference post selective p-values 
   canc$c = p.adjust(canc$inference_pvals, method="fdr")
   canc = as.data.table(filter(canc, c < 0.05))
-  #rounds 
-  rounds_l = unique(canc$round)
-  print(paste("#of rounds successfful =", length(rounds_l)))
-  p = canc %>% 
-    group_by(round) %>% 
-      tally() %>% 
-      ggplot(aes(x=n)) + geom_histogram() + ggtitle(r)
-  print(p)
   return(canc)
 }
 
-pdf("random_shuff_data_summary_cands.pdf")
-rounds = as.data.table(ldply(llply(cancers, get_fdr)))
-dev.off()
+rounds = as.data.table(ldply(llply(rounds, get_fdr)))
 
 
+########################################################################
+#3. COMPARE REAL TO SHUFFLED DATA  
+########################################################################
 
+dim(real_dat)
+dim(all_res)
 
+cancers = unique(real_dat$canc)
 
+get_comp = function(cancer){
+  real = as.data.table(filter(real_dat, canc == cancer))
+  fake = as.data.table(filter(fake_res, canc == cancer))
+  real$round = "real"
+  #need to get median cindex for real dat 
+  lncrna_med_real = median(real$lncRNAs)
+ 
+  #get median c-index for each round of permutations 
+  # median of groups
+  get_med = function(r){
+    med = median(as.data.table(filter(fake, round == r))$lncRNAs)
+    return(med)
+  }
+  rounds = unique(fake$round)
+  fake_meds = unlist(llply(rounds, get_med))
+  t = as.data.table(fake_meds)
 
+  pval = wilcox.test(fake$lncRNAs, real$lncRNAs)$p.value
 
+  p = ggplot(t, aes(x=fake_meds)) + 
+  geom_histogram() + 
+  geom_vline(xintercept=lncrna_med_real, linetype="dashed", color = "red")+
+  annotate("text", x = 0.5, y = 5, label = paste("P-val=",round(pval, digits=3)))+
+  ggtitle(cancer)
+  print(pval)
+  print(cancer)
+  #print(p)
 
+}
 
-
-
-
-
-
-
-
-
-
-
-
+llply(cancers, get_comp)
 
 
 

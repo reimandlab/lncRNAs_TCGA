@@ -1,4 +1,4 @@
-setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/real_elastic_net_runs/2019-03-14")
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/real_elastic_net_runs")
 
 library(data.table)
 library(dplyr)
@@ -8,15 +8,6 @@ library(tidyr)
 library(broom)
 library(ggplot2)
 library(stringr)
-
-real_file = readRDS("TCGA_results_multivariate_results_Oct3.rds")
-
-cands = read.csv("168_lncRNA_cancers_combos_22_cancer_types_feb19.csv")
-cands = as.data.table(cands)
-cands = as.data.table(filter(cands, data == "TCGA"))
-t = as.data.table(table(cands$cancer))
-t = t[order(N)]
-
 
 ########################################################################
 #1. evaluate c-indicies 
@@ -49,6 +40,9 @@ g =  g + stat_compare_means(aes(group = all_res), label = "p.signif") + theme_mi
 g = ggpar(g, x.text.angle = 90)
 print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red"))
 dev.off()
+
+#save and compare to random shuffled data
+
 
 #for each cancer type get boxplot 
 check_perform = function(cancer){
