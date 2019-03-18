@@ -34,6 +34,7 @@ all_res = ldply(all_res)
 all_res = as.data.table(all_res)
 
 fake_res = all_res
+all_res = as.data.table(subset(fake_res, canc %in% real_dat$canc))
 
 #MAKE PLOT
 #X-axis: cancer type
@@ -42,7 +43,7 @@ fake_res = all_res
 new_res = as.data.table(all_res %>% gather(all_res, cindex, combined:clinical))
 
 #summary boxplots all cancers 
-pdf("cindices_real_march2019.pdf", width=20, height=10)
+pdf("cindices_permutations_march2019.pdf", width=20, height=10)
 g = ggboxplot(new_res, "canc", "cindex", fill="all_res", color="black", notch = TRUE)
 g =  g + stat_compare_means(aes(group = all_res), label = "p.signif") + theme_minimal()
 g = ggpar(g, x.text.angle = 90)
@@ -50,7 +51,6 @@ print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red"))
 dev.off()
 
 #save and compare to random shuffled data
-
 
 #for each cancer type get boxplot 
 check_perform = function(cancer){
@@ -146,12 +146,13 @@ get_comp = function(cancer){
   ggtitle(cancer)
   print(pval)
   print(cancer)
-  #print(p)
+  print(p)
 
 }
 
+pdf("summary_perms_real_vs_fake.pdf")
 llply(cancers, get_comp)
-
+dev.off()
 
 
 
