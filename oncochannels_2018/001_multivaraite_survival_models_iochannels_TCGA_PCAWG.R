@@ -29,12 +29,14 @@ library(ggrepel)
 library(viridis)
 library(patchwork)
 library(caret)  
-source("check_lnc_exp_cancers.R")
+#source("check_lnc_exp_cancers.R")
 
 #------DATA---------------------------------------------------------
 
 #get full dataset of GBM patients 
 ext = readRDS("all_genes_external_tcga_all_cancers_March13_wclinical_data.rds")
+
+canc_conv = unique(rna[,c("type", "Cancer")])
 
 #check if cands are significant using data from ext 
 pats = as.data.table(table(ext$type))
@@ -45,13 +47,17 @@ pats = merge(pats, canc_conv, by="type")
 #get gbm
 gbm = subset(ext, type=="GBM")
 
+z = which(str_detect(colnames(all), "\\.y"))
+colnames(all)[z] = sapply(colnames(all)[z], function(x){unlist(strsplit(x, "\\."))[1]})
+
 z = which(colnames(all) %in% colnames(gbm))
-cols = colnames(all)[z]
 all = all[,z]
 
 z = which(colnames(gbm) %in% colnames(all))
 cols = colnames(gbm)[z]
 gbm = gbm[,z]
+
+all = all[,-c(25164, 25166, 25168)]
 
 r = rbind(all, gbm)
 
@@ -93,7 +99,7 @@ cancer_data = llply(cancers, get_canc_data)
 
 get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates 
-  z = which(colnames(dtt) %in% c(cands$hg19.ensGene.name2, "age_at_initial_pathologic_diagnosis", 
+  z = which(colnames(dtt) %in% c(cands$hg19.ensGene.name2[1:2], "age_at_initial_pathologic_diagnosis", 
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
     "new_tumor_event_type", "Cancer", "type"))
   dtt = dtt[,z]
@@ -138,7 +144,7 @@ add_tags = function(dtt){
 }
 
 filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
-saveRDS(filtered_data_tagged, file="28cancers_tagged_by_ion_channels.rds")
+saveRDS(filtered_data_tagged, file="28cancers_median_tagged_by_ion_channels.rds")
 
 #3. Fit survival models and plot Kaplan Meier plot 
 
@@ -260,7 +266,7 @@ get_survival_models = function(dtt){
           add = "jitter", ylab = "FPKM",  ggtheme = theme_bw())
         # Change method
   p = p + stat_compare_means(method = "wilcox.test")
-  print(p)
+  #print(p)
   print(dat$type[1])
 }
 }
@@ -275,17 +281,13 @@ return(results_cox1)
 
 }
 
-library(parallel)
-
-#tcga_results = mclapply(filtered_data_tagged, get_survival_models, mc.cores = 4) 
+tcga_results = llply(filtered_data_tagged[1:2], get_survival_models) 
 
 #for now just need GBM 
 #the other cancer types shouldn't be affected 
 #before i just didnt have the right number of patients 
-
-gbm_tagged = filtered_data_tagged[[1]]
-
-tcga_results = get_survival_models(gbm_tagged)
+#gbm_tagged = filtered_data_tagged[[1]]
+#tcga_results = get_survival_models(gbm_tagged)
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
@@ -304,99 +306,8 @@ ucsc <- ucsc[-z,]
 
 tcga_results1$name = sapply(tcga_results1$gene, get_name_pcg)
 
-#saveRDS(tcga_results1, file="TCGA_ION_CHANNEL_results_Sept21.rds")
-saveRDS(tcga_results1, file="GBM_median_splits_IonCHannels.rds")
-
-#check which models violate the PH assumption
-#to those models add age * survival time interaction 
-which(tcga_results1$global_test_ph <= 0.05)
-tcga_results1$num_risk = as.numeric(tcga_results1$num_risk)
-tcga_results1[tcga_results1$num_risk <15,]
-
-#plot sig KM plots
-sig_fdr = as.data.table(filter(tcga_results1, fdr_pval <= 0.05))
-source("check_lnc_exp_cancers.R")
-
-#convert back to cancer codes
-canc_conv = rna[,c("type", "Cancer")]
-canc_conv = unique(canc_conv)
-colnames(canc_conv)[2] = "cancer"
-sig_fdr = merge(sig_fdr, canc_conv, by="cancer")
-sig_fdr = sig_fdr[order(fdr_pval)]
-write.csv(sig_fdr, file="231_sig_IonChannels_survival_fdr_corrected_Sept21.csv", quote=F, row.names=F)
-
-genes = sig_fdr$gene
-cancs = sig_fdr$type
-
-get_km_plot = function(gene, cancer){
-  all_g = all
-  all_g = as.data.frame(all_g)
-  dat = all[,c(which(colnames(all) %in% c("type", gene, "OS", "OS.time")))]
-  z = which(str_detect(colnames(dat), "ENSG"))
-  if(!(length(z)==0)){
-  colnames(dat)[z] = "gene"
-  dat = subset(dat, type == cancer)
-  #split patients 
-  med = median(dat$gene)
-  #add high low tag
-    if(med ==0){
-    #if median = 0 then anyone greater than zero is 1 
-    l1 = which(dat[,z] > 0)
-    l2 = which(dat[,z] ==0)
-    dat[l1,z] = 1
-    dat[l2, z] = 0
-    }
-
-    if(!(med ==0)){
-    l1 = which(dat[,z] >= med)
-    l2 = which(dat[,z] < med)
-    dat[l1,z] = 1
-    dat[l2, z] = 0
-    }
-
-  dat$OS = as.numeric(dat$OS)
-  dat$OS.time = as.numeric(dat$OS.time)
-  dat$OS.time = dat$OS.time/365
-  dat$gene = factor(dat$gene, levels = c(0,1))
-  fit <- survfit(Surv(OS.time, OS) ~ gene, data = dat)
-          s <- ggsurvplot(
-          title = paste(get_name_pcg(gene), dat$type[1]),
-          fit, 
-          xlab = "Time (Years)", 
-          surv.median.line = "hv",
-          font.main = c(16, "bold", "black"),
-          font.x = c(14, "plain", "black"),
-          font.y = c(14, "plain", "black"),
-          font.tickslab = c(14, "plain", "black"),
-          font.legend = 12,
-          risk.table.fontsize = 5, 
-          legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
-          data = dat,      # data used to fit survival curves. 
-          risk.table = TRUE,       # show risk table.
-          legend = "right", 
-          pval = TRUE,             # show p-value of log-rank test.
-          conf.int = FALSE,        # show confidence intervals for 
-                            # point estimaes of survival curves.
-          xlim = c(0,5),        # present narrower X axis, but not affect
-                            # survival estimates.
-          break.time.by = 1,     # break X axis in time intervals by 500.
-          #palette = colorRampPalette(mypal)(14), 
-          palette = c("blue", "red"),
-          ggtheme = theme_bw(), # customize plot and risk table with a theme.
-          risk.table.y.text.col = T, # colour risk table text annotations.
-          risk.table.y.text = FALSE # show bars instead of names in text annotations
-                            # in legend of risk table
-          )
-          print(s)
-}
-} 
-
-pdf("fdr_sig_ion_channels_km_plots_sept21.pdf")
-mapply(get_km_plot, genes, cancs)
-dev.off()
-
-
-
+saveRDS(tcga_results1, file="TCGA_ION_CHANNEL_results_March19.rds")
+#saveRDS(tcga_results1, file="GBM_median_splits_IonCHannels.rds")
 
 
 

@@ -206,7 +206,7 @@ get_survival_models = function(dtt){
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          #print(s)
+          print(s)
 
    #generate boxplot 
    z = which(cancers == dtt$Cancer[1])
@@ -274,7 +274,7 @@ get_survival_models = function(dtt){
 results_cox1 = results_cox1[-1,]
 #fdr on p-values 
 results_cox1$pval = as.numeric(results_cox1$pval)
-results_cox1$fdr_pval = p.adjust(results_cox1$pval, method="bonferroni")
+results_cox1$fdr_pval = p.adjust(results_cox1$pval, method="fdr")
 
 return(results_cox1)
 
@@ -284,15 +284,18 @@ return(results_cox1)
 #-----------------------------------------------------------------------------------------------------------
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_lifespan_May3rd.pdf")
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_oct3.pdf")
+pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_mar19.pdf")
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
-#dev.off()
+dev.off()
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
 tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
 tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
 
-tcga_results1$fdr_pval = p.adjust(as.numeric(tcga_results1$pval), method="holm")
+tcga_results1$fdr_pval = p.adjust(as.numeric(tcga_results1$pval), method="fdr")
+tcga_results1 = as.data.table(tcga_results1)
+tcga_results1 = as.data.table(filter(tcga_results1, fdr_pval < 0.05))
 
 tcga_results1$perc_wevents = as.numeric(tcga_results1$perc_wevents)
 tcga_results1$num_events = as.numeric(tcga_results1$num_events)
@@ -382,16 +385,22 @@ cancers_tests = as.list(unique(tcga_results1$cancer[which(tcga_results1$cancer %
 get_matched_data = function(cancer){
     dtt = subset(pcawg_data, canc == cancer)
     z = which(colnames(dtt) %in% c(as.character(cands$Geneid[cands$Cancer == dtt$canc[1]]), "canc", 
-    "histo", "time", "status", "sex"))
+    "histo", "time", "status", "sex", "donor_age_at_diagnosis"))
     dtt = dtt[,z]
-    return(dtt)
+    if(nrow(dtt) >= 30){
+    return(dtt)}
 }
 
 filtered_data = llply(cancers_tests, get_matched_data)
+#remove nulls from list
+
+filtered_data = Filter(Negate(is.null), filtered_data) #12 cancers left
+getnames = ldply(filtered_data)
+getnames =  unique(getnames$canc)
+names(filtered_data) = getnames
 
 add_tags = function(dtt){
-
-  #log1p 
+  print(head(dtt))
   z = which(str_detect(colnames(dtt), "ENSG"))
   if(length(z)>1){
   medians = apply(dtt[,z], 2, median)}
@@ -399,29 +408,59 @@ add_tags = function(dtt){
     medians = median(dtt[,z])
   }
   #add high low tag
+  del = c()
   for(k in 1:length(medians)){
+    print(k)
     med = medians[k]
     if(med ==0){
-    #if median = 0 then anyone greater than zero is 1 
+    #if median = 0 then anyone greater than zero is 1
+    #but first check if non-zero group has a median higher than 0.1  
     l1 = which(dtt[,k] > 0)
     l2 = which(dtt[,k] ==0)
+    check = median(dtt[l1,k])
+    if((check >= 0.05) & (length(l1) >= 5)){
     dtt[l1,k] = 1
     dtt[l2, k] = 0
+      }
+    if((!(check >= 0.05)) | is.na(check)){
+      del = c(del, names(medians)[k])
+      }
+    if(!((check >= 0.05) & (length(l1) >= 5))){
+      del = c(del, names(medians)[k])
+      }  
     }
 
+    #check if meidan is greater than 0.1 otherwise save gene for deletion
     if(!(med ==0)){
+    if(med >= 0.05){
     l1 = which(dtt[,k] >= med)
     l2 = which(dtt[,k] < med)
     dtt[l1,k] = 1
     dtt[l2, k] = 0
     }
-  }  
+    if(med < 0.05){
+      del = c(del, names(medians)[k])
+    }
+    }
+    }
+  z = which(colnames(dtt) %in% del)
+  if(!(length(z)==0)){
+  dtt = dtt[,-z]}
+
+  z = which(str_detect(colnames(dtt), "ENSG"))
+  if(!(length(z)==0)){
   return(dtt)
+  }
 }
 
 filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
+filtered_data_tagged = Filter(Negate(is.null), filtered_data_tagged) #12 cancers left
+getnames = ldply(filtered_data_tagged)
+getnames =  unique(getnames$canc)
+names(filtered_data_tagged) = getnames
 
 get_survival_models = function(dtt){
+  print(head(dtt))
   results_cox1 <- as.data.frame(matrix(ncol=18)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
     "lnc_test_ph", 'global_test_ph', "num_risk", "perc_risk", "power", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero",
     "multi_model_concordance", "lnc_only_concordance")
@@ -429,7 +468,7 @@ get_survival_models = function(dtt){
   dat = dtt
   dat$canc = NULL
   dat$histo = NULL
-  dat$sex = NULL
+  #dat$sex = NULL
   dat$status[dat$status=="alive"] =0
   dat$status[dat$status=="deceased"] =1
 
@@ -441,11 +480,13 @@ get_survival_models = function(dtt){
         }
   }
   keep = unlist(apply(dat, 2, check_contrasts))
-  
+  print(keep)
+
   dat = dat[,c(which(colnames(dat) %in% names(keep)))]
 
   dat$status = as.numeric(dat$status)
   dat$time = as.numeric(dat$time)
+  dat$donor_age_at_diagnosis = as.numeric(dat$donor_age_at_diagnosis)
   num_genes = which(str_detect(colnames(dat), "ENSG"))
 
   for(i in 1:length(num_genes)){
@@ -454,8 +495,12 @@ get_survival_models = function(dtt){
   k = which(!(str_detect(colnames(dat), "ENSG")))
 
   newdat = dat[,c(gene,k)]
+  gene = colnames(newdat)[1]
+  gene_name = colnames(newdat)[1]
 
-  lncs = coxph(Surv(time, status)  ~ ., data = newdat)
+  colnames(newdat)[1] = "gene"
+
+  lncs = coxph(Surv(time, status)  ~ gene, data = newdat)
   test.ph <- cox.zph(lncs)
   lnc_test_ph = test.ph$table[1,3]
   global = test.ph$table[nrow(test.ph$table),3]
@@ -473,8 +518,6 @@ get_survival_models = function(dtt){
   mval = length(which(newdat$status == 1))
 
   power = powerCT.default0(k=kval,m=mval, RR=2, alpha=0.05)
-
-  gene_name = colnames(newdat)[1]
 
   hr = summary(lncs)$coefficients[1,c(1,2,5)][2]
   if(hr >1){
@@ -495,7 +538,6 @@ get_survival_models = function(dtt){
 
   check = ((!(lower95 == "Inf")) & (!(upper95=="Inf")))
   if(check){
-  gene = colnames(newdat)[1]
   colnames(newdat)[1] = "gene"
   newdat$time = newdat$time/365
   fit <- survfit(Surv(time, status) ~ gene, data = newdat)
@@ -527,9 +569,9 @@ get_survival_models = function(dtt){
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          #print(s)
+          print(s)
       #generate boxplot 
-      z = which(cancers_tests == dtt$canc[1])
+      z = which(names(filtered_data) == dtt$canc[1])
       exp_data = filtered_data[[z]]
       exp_data$patient = rownames(exp_data)
       exp_data = exp_data[,which(colnames(exp_data) %in% c(gene, "patient"))]
@@ -580,7 +622,7 @@ get_survival_models = function(dtt){
     gg <- ggplot(exp_data)
     gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
     gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" "))
-    print(gg)
+    #print(gg)
 
         p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
           color = "gene",
@@ -599,7 +641,7 @@ get_survival_models = function(dtt){
     gg <- ggplot(exp_data)
     gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
     gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" "))
-    print(gg)
+    #print(gg)
 
       exp_data$geneexp = log1p(exp_data$geneexp)
       p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
@@ -615,7 +657,23 @@ get_survival_models = function(dtt){
 }
 
 results_cox1 = results_cox1[-1,]
+if(!(dim(results_cox1)[1] == 0)){
+
+#get clinical model
+z = which(!(str_detect(colnames(dat), "ENSG")))
+dat = dat[,z]
+clinmodel = coxph(Surv(time, status)  ~ ., data = dat)
+conc = unlist(glance(clinmodel)[11])
+
+row = results_cox1[1,]
+row = c("clin", rep("na", 15), conc, "na")
+
+results_cox1 = rbind(results_cox1, row)
+results_cox1$cancer = results_cox1$cancer[1]
+print(results_cox1)
+
 return(results_cox1)
+}
 }
 
 #pdf("PCAWG_validating_individual_TCGA_candidates_survival_plots_final_cands_May3rd_full_lifespan.pdf")
@@ -628,10 +686,16 @@ pcawg_results1 = ldply(pcawg_results, data.frame)
 pcawg_results1$pval = as.numeric(pcawg_results1$pval)
 pcawg_results1$fdr_pval = p.adjust(pcawg_results1$pval, method="fdr")
 
+z = which(pcawg_results1$lnc_only_concordance == "na")
+clinical_concs = pcawg_results1[z,]
+pcawg_results1 = pcawg_results1[-z,]
+
 #combine results from TCGA and PCAWG
 pcawg_results1$data = "PCAWG"
 pcawg_results1$num_risk = as.numeric(pcawg_results1$num_risk)
 pcawg_results1 = filter(pcawg_results1, num_risk >=5)
+pcawg_results1 = as.data.table(pcawg_results1)
+filter(pcawg_results1, pval < 0.05)
 
 #z = which(pcawg_results1$upper95 == "Inf")
 #pcawg_results1 = pcawg_results1[-z,]
@@ -661,6 +725,7 @@ dev.off()
 tcga_results1$groupy = NULL
 tcga_results1$gene_name = NULL
 tcga_results1$lnc_better = NULL
+pcawg_results1[,1] = NULL
 
 all_results = as.data.table(rbind(tcga_results1, pcawg_results1))
 all_results = all_results[order(gene, cancer)]
