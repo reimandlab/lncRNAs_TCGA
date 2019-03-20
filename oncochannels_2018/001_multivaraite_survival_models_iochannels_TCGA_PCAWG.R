@@ -33,35 +33,15 @@ library(caret)
 
 #------DATA---------------------------------------------------------
 
-#get full dataset of GBM patients 
-ext = readRDS("all_genes_external_tcga_all_cancers_March13_wclinical_data.rds")
+dim(all)
+print(table(all$type))
 
-canc_conv = unique(rna[,c("type", "Cancer")])
-
-#check if cands are significant using data from ext 
-pats = as.data.table(table(ext$type))
-pats = as.data.table(filter(pats, N >= 15))
-colnames(pats)[1] = "type"
-pats = merge(pats, canc_conv, by="type")
-
-#get gbm
-gbm = subset(ext, type=="GBM")
-
-z = which(str_detect(colnames(all), "\\.y"))
-colnames(all)[z] = sapply(colnames(all)[z], function(x){unlist(strsplit(x, "\\."))[1]})
-
-z = which(colnames(all) %in% colnames(gbm))
-all = all[,z]
-
-z = which(colnames(gbm) %in% colnames(all))
-cols = colnames(gbm)[z]
-gbm = gbm[,z]
-
-all = all[,-c(25164, 25166, 25168)]
-
-r = rbind(all, gbm)
-
-all = r
+#UCSC gene info
+ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
+#z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
+#ucsc <- ucsc[z,]
+z <- which(duplicated(ucsc[,8]))
+ucsc <- ucsc[-z,]
 
 #------FEATURES-----------------------------------------------------
 
@@ -99,7 +79,7 @@ cancer_data = llply(cancers, get_canc_data)
 
 get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates 
-  z = which(colnames(dtt) %in% c(cands$hg19.ensGene.name2[1:2], "age_at_initial_pathologic_diagnosis", 
+  z = which(colnames(dtt) %in% c(cands$hg19.ensGene.name2, "age_at_initial_pathologic_diagnosis", 
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
     "new_tumor_event_type", "Cancer", "type"))
   dtt = dtt[,z]
@@ -281,7 +261,7 @@ return(results_cox1)
 
 }
 
-tcga_results = llply(filtered_data_tagged[1:2], get_survival_models) 
+tcga_results = llply(filtered_data_tagged, get_survival_models) 
 
 #for now just need GBM 
 #the other cancer types shouldn't be affected 
@@ -290,8 +270,7 @@ tcga_results = llply(filtered_data_tagged[1:2], get_survival_models)
 #tcga_results = get_survival_models(gbm_tagged)
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
-tcga_results1 = ldply(tcga_results, data.frame)
-tcga_results1 = tcga_results
+tcga_results1 = ldply(tcga_results)
 tcga_results1$ic_test_ph = as.numeric(tcga_results1$ic_test_ph)
 tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
 tcga_results1$fdr_pval = as.numeric(tcga_results1$fdr_pval)
@@ -303,6 +282,14 @@ ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 #ucsc <- ucsc[z,]
 z <- which(duplicated(ucsc[,6]))
 ucsc <- ucsc[-z,]
+
+get_name_pcg = function(pcg){
+  z = which(ucsc$hg19.ensGene.name2 == pcg)
+  if(length(z)>1){
+    z = z[1]
+  }
+  return(ucsc$hg19.ensemblToGeneName.value[z])
+}
 
 tcga_results1$name = sapply(tcga_results1$gene, get_name_pcg)
 

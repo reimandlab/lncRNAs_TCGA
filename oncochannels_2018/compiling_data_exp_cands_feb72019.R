@@ -5,68 +5,7 @@ library(dplyr)
 library(stringr)
 library(metap)
 library(ggpubr)
-
-#merging p-value function
-merge_p_values <- function(scores, method=c("Fisher", "Brown", "logitp",
-                                            "meanp", "sump", "sumz", "sumlog")) {
-  # Validation on scores
-  if (is.list(scores)) scores <- unlist(scores, recursive=FALSE)
-  if (!(is.vector(scores) || is.matrix(scores))) stop("scores must be a matrix or list")
-  if (any(is.na(scores))) stop("scores may not contain missing values")
-  if (!is.numeric(scores)) stop("scores must be numeric")
-  if (any(scores < 0 | scores > 1)) stop("All values in scores must be in [0,1]")
-  
-  method <- match.arg(method)
-  if(method == "Fisher") method <- "sumlog"
-  
-  if (is.vector(scores)) {
-    if (method == "Brown") stop("Brown's method cannot be used with a single list of p-values")
-    
-    # Some metap functions don't like p-values that are 0 or 1 so make them (0, 1) to avoid errors
-    scores <- sapply(scores, function(x) if (x == 0) 1e-16 else if (x==1) 1-1e-16 else x)
-    func <- function(x) getFromNamespace(method, 'metap')(x)$p
-    return(func(scores))
-  }
-  
-  # scores is a matrix
-  if (ncol(scores) == 1) return (scores[, 1, drop=TRUE])
-  
-  if (method == "Brown") {
-    cov.matrix <- calculateCovariances(t(scores))
-    return(apply(scores, 1, brownsMethod, cov.matrix=cov.matrix))
-  }
-  
-  scores <- apply(scores, c(1,2), function(x) if (x == 0) 1e-16 else if (x==1) 1-1e-16 else x)
-  func <- function(x) getFromNamespace(method, 'metap')(x)$p
-  return (apply(scores, 1, func))
-}
-
-brownsMethod <- function(p.values, data.matrix=NULL, cov.matrix=NULL) {
-  if (missing(data.matrix) && missing(cov.matrix)) {
-    stop ("Either data.matrix or cov.matrix must be supplied")
-  }
-  if (!(missing(data.matrix) || missing(cov.matrix))) {
-    message("Both data.matrix and cov.matrix were supplied. Ignoring data.matrix")
-  }
-  if (missing(cov.matrix)) cov.matrix <- calculateCovariances(data.matrix)
-  
-  N <- ncol(cov.matrix)
-  expected <- 2 * N
-  cov.sum <- 2 * sum(cov.matrix[lower.tri(cov.matrix, diag=FALSE)])
-  var <- (4 * N) + cov.sum
-  sf <- var / (2 * expected)
-  
-  df <- (2 * expected^2) / var
-  if (df > 2 * N) {
-    df <- 2 * N
-    sf <- 1
-  }
-  
-  x <- 2 * sum(-log(p.values), na.rm=TRUE)
-  p.brown <- pchisq(df=df, q=x/sf, lower.tail=FALSE)
-  p.brown
-}
-
+library(activePathways)
 
 ####################################################################################################
 #LOAD DATA
@@ -75,58 +14,65 @@ brownsMethod <- function(p.values, data.matrix=NULL, cov.matrix=NULL) {
 #----RNA-Seq----------------------------------------------------------------------------------------
 
 #SUBID results
-subid = readRDS("subid_results_KI_IC_feb7.rds")
+#SUBID results using Erik's technique 
+#includes results for 28 cancer types from TCGA for those with at least 50 patients 
+subid = readRDS("subid_results_KI_IC_march20.rds")
 subid$method = "SUBID_erik_data"
 colnames(subid)[c(1,6)] = paste(colnames(subid)[c(1,6)], "Eriks_data", sep="_")
+colnames(subid)[6] = "Cancer"
+colnames(subid)[4] = "ensg"
 
 #MEDIAN DICHOTOMIZED 
-gbm_med = readRDS("GBM_median_splits_IonCHannels.rds")
-colnames(gbm_med)[2:ncol(gbm_med)] = paste(colnames(gbm_med)[2:ncol(gbm_med)], "median", sep="_") 
-colnames(gbm_med)[7] = "Cancer"
-gbm_med = gbm_med[,c("gene", "HR_median", "pval_median", "fdr_pval_median", "name_median")]
-colnames(gbm_med)[c(1,5)] = c("ensg", "gene")
+medians = readRDS("TCGA_ION_CHANNEL_results_March19.rds")
+colnames(medians)[2:ncol(medians)] = paste(colnames(medians)[2:ncol(medians)], "median", sep="_") 
+colnames(medians)[7] = "Cancer"
+medians = medians[,c("gene", "HR_median", "pval_median", "fdr_pval_median", "name_median", "Cancer")]
+colnames(medians)[c(1,5)] = c("ensg", "gene")
 
 #OUTLIER DICHOTOMIZED 
 outliers = readRDS("TCGA_ION_CHANNEL_results_Jan3119.rds")
-gbm_out = as.data.table(filter(outliers, cancer == "GBM"))
-colnames(gbm_out)[2:ncol(gbm_out)] = paste(colnames(gbm_out)[2:ncol(gbm_out)], "outlier", sep="_") 
-colnames(gbm_out)[7] = "Cancer"
-gbm_out = gbm_out[,c("gene", "HR_outlier", "pval_outlier", "num_risk_outlier", "perc_risk_outlier", "fdr_pval_outlier")]
-gbm_out$perc_risk_outlier = as.numeric(gbm_out$perc_risk_outlier)
-colnames(gbm_out)[1] = c("ensg")
+colnames(outliers)[2:ncol(outliers)] = paste(colnames(outliers)[2:ncol(outliers)], "outlier", sep="_") 
+colnames(outliers)[7] = "Cancer"
+outliers = outliers[,c("gene", "HR_outlier", "pval_outlier", "num_risk_outlier", "perc_risk_outlier", "fdr_pval_outlier", "Cancer")]
+outliers$perc_risk_outlier = as.numeric(outliers$perc_risk_outlier)
+colnames(outliers)[1] = c("ensg")
 
 #----MICROARRAY-data--------------------------------------------------------------------------------
-microarray = readRDS("GBM_ics_microarray_results_feb9.rds")
+microarray = readRDS("GBM_ics_microarray_results_feb9.rds") #GBM data
 
 ####################################################################################################
 #SUMMARIZE DATA
 ####################################################################################################
 
 #[1] Combine RNA-Seq data 
-kidata = merge(gbm_med, gbm_out, by="ensg") #126 ion channels with both median and outlier available analyiss 
-kidata_sub = merge(kidata, subid, by="gene") #123 ion channels with both median, outlier and subid available 
+kidata = merge(medians, outliers, by=c("ensg", "Cancer")) #126 ion channels with both median and outlier available analyiss 
+kidata_sub = merge(kidata, subid, by=c("ensg", "Cancer")) #123 ion channels with both median, outlier and subid available 
 kidata_sub$HR_median = as.numeric(kidata_sub$HR_median)
 kidata_sub$HR_outlier = as.numeric(kidata_sub$HR_outlier)
 kidata_sub$pval_outlier = as.numeric(kidata_sub$pval_outlier)
 
 #[2] Combine microarray or add tag because most ICs may not have affy data
-z = which(kidata_sub$gene %in% microarray$gene)
-noaffy = kidata_sub[-z,]
-noaffy$HR_microarray = ""
-noaffy$pval_microarray = ""
-noaffy$conc_microarray = ""
-noaffy$fdr_microarray = ""
-alldat = merge(kidata_sub, microarray, by="gene")
-alldat = rbind(alldat, noaffy)
 
-alldat$HR_microarray = as.numeric(alldat$HR_microarray)
-alldat$pval_microarray = as.numeric(alldat$pval_microarray)
-alldat$conc_microarray = as.numeric(alldat$conc_microarray)
-alldat$fdr_microarray = as.numeric(alldat$fdr_microarray)
+#this is for GBM ONLY #####################################################
+#z = which(kidata_sub$gene %in% microarray$gene)
+#noaffy = kidata_sub[-z,]
+#noaffy$HR_microarray = ""
+#noaffy$pval_microarray = ""
+#noaffy$conc_microarray = ""
+#noaffy$fdr_microarray = ""
+#alldat = merge(kidata_sub, microarray, by="gene")
+#alldat = rbind(alldat, noaffy)
+
+#alldat$HR_microarray = as.numeric(alldat$HR_microarray)
+#alldat$pval_microarray = as.numeric(alldat$pval_microarray)
+#alldat$conc_microarray = as.numeric(alldat$conc_microarray)
+#alldat$fdr_microarray = as.numeric(alldat$fdr_microarray)
 
 #round all digits
-z = which(colnames(alldat) %in% c("HR_median", "pval_median", "fdr_pval_median", "HR_outlier", "pval_outlier", "perc_risk_outlier", "fdr_pval_outlier", "median_p_Eriks_data",
-          "subid_p","subid_fdr",  "median_fdr_Eriks_data", "HR_microarray", "pval_microarray", "conc_microarray", "fdr_microarray"))
+#z = which(colnames(alldat) %in% c("HR_median", "pval_median", "fdr_pval_median", "HR_outlier", "pval_outlier", "perc_risk_outlier", "fdr_pval_outlier", "median_p_Eriks_data",
+#          "subid_p","subid_fdr",  "median_fdr_Eriks_data", "HR_microarray", "pval_microarray", "conc_microarray", "fdr_microarray"))
+
+alldat = kidata_sub
 alldat = as.data.frame(alldat)
 #alldat[,z] = apply(alldat[,z], 2, function(x){round(x, digits=4)})
 alldat = as.data.table(alldat)
@@ -137,8 +83,8 @@ z = which((alldat$HR_median >1) & (alldat$HR_outlier >1))
 alldat$HR_match[z] = "yes"
 alldat = alldat[z,]
 
-saveRDS(alldat, file="ion_channels_4_methods_survival_analysis_KI_Feb22.rds")
-write.csv(alldat, file="ion_channels_4_methods_survival_analysis_KI_Feb22.csv", quote=F, row.names=F)
+saveRDS(alldat, file="ion_channels_3_methods_survival_analysis_KI_March20_all_cancers.rds")
+write.csv(alldat, file="ion_channels_3_methods_survival_analysis_KI_March20_all_cancers.csv", quote=F, row.names=F)
 
 alldat = as.data.table(alldat)
 alldat = alldat[order(pval_outlier, subid_p, pval_median)]
@@ -146,21 +92,26 @@ alldat$rank = 1:nrow(alldat)
 
 cands = c("GJB2", "CATSPER1", "AQP9", "SCN9A")
 cands_dat = filter(alldat, gene %in% cands)
-write.csv(cands_dat, file="ion_channels_four_exo_cands_KI_Feb22.csv", quote=F, row.names=F)
+#write.csv(cands_dat, file="ion_channels_four_exo_cands_KI_Feb22.csv", quote=F, row.names=F)
 
 ####################################################################################################
 #MAKE FIGURE FOR REPORT 
 ####################################################################################################
 
 #keep just the cols with the pvalues
-ps = c("gene", "pval_median", "pval_outlier", "subid_p", "pval_microarray")
+#ps = c("gene", "pval_median", "pval_outlier", "subid_p", "pval_microarray")
+ps = c("gene", "pval_median", "pval_outlier", "subid_p", "Cancer")
+fulldat = alldat
 alldat = alldat[,..ps]
-z = which(is.na(alldat$pval_microarray))
-alldat$pval_microarray[z] = 1
+#z = which(is.na(alldat$pval_microarray))
+#alldat$pval_microarray[z] = 1
 
 alldat = as.data.frame(alldat)
-rownames(alldat) = alldat$gene
+alldat$combo = paste(alldat$gene, alldat$Cancer, sep="_")
+rownames(alldat) = alldat$combo
+alldat$combo = NULL
 alldat$gene = NULL
+alldat$Cancer = NULL
 
 #get fisher's merged p-value
 #alldat$fish = apply(alldat, 1, function(x){merge_p_values(x)})
@@ -174,31 +125,82 @@ alldat$browns = browns
 #reorder
 alldat$gene = rownames(alldat)
 
-cols =  colnames(alldat)[1:5]
-alldat = alldat[,c("gene", cols)]
-
 alldat = as.data.table(alldat)
 alldat = alldat[order(browns)]
-z = which(alldat$gene %in% cands)
+
+#add cancer type and gene 
+alldat$Cancer = sapply(alldat$gene, function(x){unlist(strsplit(x, "_"))[2]})
+alldat$gene_name = sapply(alldat$gene, function(x){unlist(strsplit(x, "_"))[1]})
+
+z = which(alldat$gene_name %in% cands)
 alldat$cands = ""
 alldat$cands[z] = "yes"
 
-write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_220219.csv", quote=F, row.names=F)
+#write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_220219.csv", quote=F, row.names=F)
 
 #add fdr
 alldat$fdr = p.adjust(alldat$browns, method="fdr")
 
-write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_withFDR_010319.csv", quote=F, row.names=F)
+write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_withFDR_010319_all_cancers.csv", quote=F, row.names=F)
 
-#make summary plot
-alldat$fdr_plot = -log10(alldat$fdr)
-ggbarplot(alldat, x = "gene", y = "fdr_plot",
-          fill = "cands",               # change fill color by cyl
-          color = "white",            # Set bar border colors to white
-          palette = "jco",            # jco journal color palett. see ?ggpar
-          sort.val = "desc",          # Sort the value in dscending order
-          sort.by.groups = FALSE,     # Don't sort inside each group
-          x.text.angle = 90           # Rotate vertically x axis texts
-) + labs(x="Ion Channel", y="-log10(FDR)")+
-  geom_hline(yintercept=-log10(0.05), linetype="dashed", color = "red")
+#make summary plot <- for GBM only 
+#alldat$fdr_plot = -log10(alldat$fdr)
+#ggbarplot(alldat, x = "gene", y = "fdr_plot",
+#          fill = "cands",               # change fill color by cyl
+#          color = "white",            # Set bar border colors to white
+#          palette = "jco",            # jco journal color palett. see ?ggpar
+#          sort.val = "desc",          # Sort the value in dscending order
+#          sort.by.groups = FALSE,     # Don't sort inside each group
+#          x.text.angle = 90           # Rotate vertically x axis texts
+#) + labs(x="Ion Channel", y="-log10(FDR)")+
+#  geom_hline(yintercept=-log10(0.05), linetype="dashed", color = "red")
+
+#get HRs and make heatmap 
+
+fulldat$comb = paste(fulldat$gene_name, fulldat$Cancer, sep="_")
+fulldat = fulldat[,c("HR_median", "HR_outlier", "comb")]
+
+colnames(alldat)[5] = "comb"
+alldat = merge(alldat, fulldat, by="comb")
+
+#make heatmap
+alldat = as.data.table(filter(alldat, fdr < 0.1, HR_median < 20, HR_outlier < 20))
+table(alldat$Cancer)
+
+alldat$max_hr = sapply(1:nrow(alldat), function(x){max(alldat$HR_median[x], alldat$HR_outlier[x])})
+t = as.data.table(table(alldat$Cancer))
+t = t[order(-N)]
+
+k = as.data.table(table(alldat$gene_name))
+k = k[order(-N)]
+
+alldat$Cancer = factor(alldat$Cancer, levels = t$V1)
+alldat$gene_name = factor(alldat$gene_name, levels = k$V1)
+
+g = ggplot(alldat, aes(Cancer, gene_name)) + geom_tile(aes(fill=max_hr)) +
+  scale_fill_gradient(low="grey", high="red", na.value = 'transparent') + labs(x = "Cancer", y="Ion channel")
+
+g = ggpar(g, font.xtickslab = c(9,"plain", "black"), font.ytickslab = c(6,"plain", "black"))+
+  theme(legend.position="none")
+
+xplot = ggplot(alldat, aes(Cancer)) + geom_bar(fill = "black") + theme_bw()+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+yplot = ggplot(alldat, aes(gene_name)) + geom_bar(fill = "black") + theme_bw()+
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) + coord_flip()
+
+ggarrange(xplot, NULL, g, yplot, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(5, 1), heights = c(1, 6),
+          common.legend = FALSE)
+
+
+#save
+colnames(alldat)[9] = "BrownsFDR"
+write.csv(alldat, file="merged_pvals_all_cancers_hazardous.csv", quote=F, row.names=F)
+  
 
