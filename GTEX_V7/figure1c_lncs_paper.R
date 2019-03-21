@@ -1,4 +1,6 @@
-setwd("/Users/kisaev/remote10")
+#setwd("/Users/kisaev/remote10")
+
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/GTEx_V7_data")
 
 library(data.table)
 library(ggplot2)
@@ -40,13 +42,26 @@ summ = summ[order(N)]
 fig1$V1 = factor(fig1$V1, levels= summ$V1)
 fig1$V2 = factor(fig1$V2, levels = c("upreg", "downreg"))
 
+canc_conv = readRDS("canc_conv_tcga.rds")
+colnames(fig1)[1] = "Cancer"
+
+colnames(fig)[2] = "Cancer"
+fig = merge(fig, canc_conv, by = "Cancer")
+
+fig1 = merge(fig1, canc_conv, by = "Cancer")
+summ = as.data.table(table(fig$type))
+summ = summ[order(N)]
+fig1$type = factor(fig1$type, levels= summ$V1)
+
 #fig 1c----------------------------------------------
-pdf("Manuscript_FIGURE1C.pdf", width=9)
-g = ggbarplot(fig1, "V1", "N",
+
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ")
+
+pdf("Manuscript_FIGURE1C.pdf")
+g = ggbarplot(fig1, "type", "N",
           fill = "V2", color = "V2", 
-          label = TRUE, palette = "npg", lab.size = 2, 
-          position = position_dodge(0.9))
-ggpar(g,
+          label = TRUE, palette = "npg", lab.size = 2)
+ggpar(g, 
       font.xtickslab = c(7,"plain", "black"),
       xtickslab.rt = 45) + labs(x="Cancer type", y="Number of differentially ranked genes")
 dev.off()

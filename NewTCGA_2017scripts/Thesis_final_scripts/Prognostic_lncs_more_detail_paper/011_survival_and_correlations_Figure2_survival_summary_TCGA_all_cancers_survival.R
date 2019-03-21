@@ -52,9 +52,6 @@ fantom <- fantom[-z,]
 #saveRDS(rna, file="rna_lncRNAs_expression_data_june29.rds")
 #saveRDS(pcg, file="rna_pcg_expression_data_june29.rds")
 
-rna = readRDS("rna_lncRNAs_expression_data_june29.rds")
-pcg = readRDS("rna_pcg_expression_data_june29.rds")
-
 #summarize lncRNAs that we studied 
 lncs = colnames(rna)[which(str_detect(colnames(rna), "ENSG"))]
 z = which(fantom$CAT_geneID %in% lncs)
@@ -286,7 +283,7 @@ all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-c(z1,z2),]
 z = which(all_cancers_genes_surv_comb$HR > 10)
 all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-z,]
 
-lineval = -log10(0.05)
+lineval = -log10(0.1)
 
 all_cancers_genes_surv_comb$fdrsig = ""
 all_cancers_genes_surv_comb$fdrsig[all_cancers_genes_surv_comb$fdr < lineval] = "FDRnotSig"
@@ -305,7 +302,7 @@ all_cancers_genes_surv_comb$risk_perc_tag[all_cancers_genes_surv_comb$risk_perc 
 
 #figure 2B/C?
 sig_lncs = as.data.table(all_cancers_genes_surv_comb)
-sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, fdr >= -log10(0.05)))
+sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, fdr >= -log10(0.1)))
 
 #sig_lncs = as.data.table(subset(sig_lncs, fdrsig == "FDRsig"))
 
@@ -438,34 +435,34 @@ summ = dplyr::filter(summ, N > 0)
 summ$Cancer = factor(summ$Cancer, levels = order)
 
 #pdf("Univariate_summary_28_Cancers_july9.pdf", width=10)
-pdf("fig1_summ_all_prognostic_lncs.pdf", width=9, height=7)
+pdf("fig1_summ_all_prognostic_lncs.pdf")
 part1 <- ggplot(data=summ, aes(x=Cancer, y=N, fill=Risk)) +
 geom_bar(stat="identity")+
   theme_bw() + coord_flip() +
-  scale_fill_manual(values=c('darkcyan','orange')) + ggtitle("Number of Univariate Significant lncRNAs, CoxPH p-val < 0.05")
+  scale_fill_manual(values=c('blue','red')) + ggtitle("Number of Univariate Significant lncRNAs, adjusted CoxPH p-val < 0.1")
 
-part1 = ggpar(part1, legend="none",
+part1 = ggpar(part1, 
  font.xtickslab = c(8,"plain", "black"), ylab="Number of lncRNAs")
 part1
 dev.off()
 
-#just fdrsig
-summ = as.data.table(dplyr::filter(summ, Sig == "FDRsig"))
-summ = dplyr::filter(summ, N > 0)
 
-#pdf("Univariate_summary_28_Cancers_july9_justfdr.pdf", width=10)
-part2 <- ggplot(data=summ, aes(x=Cancer, y=N, fill=Risk)) +
-geom_bar(stat="identity")+
-  theme_bw() + coord_flip() +
-  scale_fill_manual(values=c('darkcyan','orange'))
+summ$Risk = factor(summ$Risk, levels = c("Unfavourable", "Favourable"))
 
-part2 = ggpar(part2, legend="bottom",
- font.xtickslab = c(8,"plain", "black"), ylab="Number of lncRNAs") + ggtitle("Number of Univariate Significant lncRNAs, CoxPH FDR < 0.05")
-#dev.off()
+pdf("final_figure_1c.pdf")
+g = ggbarplot(summ, "Cancer", "N",
+          fill = "Risk", color = "Risk", 
+          palette = "npg")
+ggpar(g, yticks.by = 500,
+      font.xtickslab = c(7,"plain", "black"),
+      xtickslab.rt = 45) + labs(x="Cancer type", y="Number of prognostic lncRNAs") + 
+ggtitle("Number of Univariate Significant lncRNAs, adjusted CoxPH p-val < 0.1")
+dev.off()
+
 
 #Figure 2A plot 
-pdf("figure2_A_july10.pdf", width=7, height=7)
-part1 + part2 + plot_layout(ncol = 1, heights = c(3, 2))
+pdf("figure2_A_july10.pdf")
+part1
 dev.off()
 
 aggregate(summ[, 4], list(summ$Risk), sum)

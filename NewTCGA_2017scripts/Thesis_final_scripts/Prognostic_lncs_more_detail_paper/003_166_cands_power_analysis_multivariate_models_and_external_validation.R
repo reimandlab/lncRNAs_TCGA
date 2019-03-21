@@ -867,7 +867,7 @@ write.csv(all_results_orig, file="168_lncRNA_cancers_combos_22_cancer_types_feb1
 #write.csv(all_results_orig, file="112_lncRNA_cancers_combos_22_cancer_types_aug8.csv", quote=F, row.names=F)
 saveRDS(all_results_orig, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 
-
+write.csv(all_results_orig, file="pcawg_results_tcga_results_file_supp_file_KI.csv", quote=F, row.names=F)
 
 
 
