@@ -162,8 +162,8 @@ get_survival_models = function(dtt){
   num_genes = which(str_detect(colnames(dat), "ENSG"))
 
   #save KM plots for each lncRNA for each cancer type sepereatley 
-  file = paste("ION_CHANNELS_TCGA_SEPT2018/", dtt$type[1], ".pdf", sep="_")
-  pdf(file)
+  #file = paste("ION_CHANNELS_TCGA_SEPT2018/", dtt$type[1], ".pdf", sep="_")
+  #pdf(file)
   
   for(i in 1:length(num_genes)){
   gene = num_genes[i]  

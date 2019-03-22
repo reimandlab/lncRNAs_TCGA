@@ -177,27 +177,29 @@ k = k[order(-N)]
 alldat$Cancer = factor(alldat$Cancer, levels = t$V1)
 alldat$gene_name = factor(alldat$gene_name, levels = k$V1)
 
-g = ggplot(alldat, aes(Cancer, gene_name)) + geom_tile(aes(fill=max_hr)) +
-  scale_fill_gradient(low="grey", high="red", na.value = 'transparent') + labs(x = "Cancer", y="Ion channel")
+g = ggplot(alldat, aes(gene_name, Cancer)) + geom_tile(aes(fill=max_hr)) +
+  scale_fill_gradient(low="grey", high="red", na.value = 'transparent') + labs(x = "Cancer", y="Ion channel") #+ coord_flip()
 
-g = ggpar(g, font.xtickslab = c(9,"plain", "black"), font.ytickslab = c(6,"plain", "black"))+
+g = ggpar(g, font.xtickslab = c(3,"plain", "black"), font.ytickslab = c(5,"plain", "black"), xtickslab.rt=90)+
   theme(legend.position="none")
 
 xplot = ggplot(alldat, aes(Cancer)) + geom_bar(fill = "black") + theme_bw()+
-  theme(axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())
-
-yplot = ggplot(alldat, aes(gene_name)) + geom_bar(fill = "black") + theme_bw()+
   theme(axis.title.y=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank()) + coord_flip()
 
-ggarrange(xplot, NULL, g, yplot, 
-          ncol = 2, nrow = 2,  align = "hv", 
-          widths = c(5, 1), heights = c(1, 6),
-          common.legend = FALSE)
+yplot = ggplot(alldat, aes(gene_name)) + geom_bar(fill = "black") + theme_bw()+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
 
+date = Sys.Date()
+pdf(paste(date, "summary_figure_ICs.pdf", sep="_"), width=12)
+ggarrange(yplot, NULL, g, xplot, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(6, 1), heights = c(1, 4),
+          common.legend = FALSE)
+dev.off()
 
 #save
 colnames(alldat)[9] = "BrownsFDR"
