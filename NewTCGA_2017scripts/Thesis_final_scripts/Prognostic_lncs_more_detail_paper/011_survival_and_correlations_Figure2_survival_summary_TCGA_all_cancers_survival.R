@@ -491,7 +491,7 @@ get_corplot = function(cancer){
 
     if(dim(canc_genes)[1] >=50){
       canc_genes = canc_genes[order(-fdr)]
-      canc_genes = canc_genes[1:50,]
+      canc_genes = canc_genes[1:100,]
     }
 
     genes = unique(canc_genes$gene)
@@ -504,7 +504,7 @@ get_corplot = function(cancer){
     col<- colorRampPalette(c("blue", "white", "red"))(20)
     c = corrplot(res2$r, order="hclust", col=col, 
       p.mat = res2$P, sig.level = 0.05, insig = "blank", tl.cex=1, method="color", mar=c(0,0,1,0),bg="snow2",
-      tl.pos = "n", title=paste(cancer, "top 50 lncRNA correlations"))
+      tl.pos = "n", title=paste(cancer, "top 100 lncRNA correlations"))
     print(c)
   }
 }

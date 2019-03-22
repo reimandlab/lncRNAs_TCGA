@@ -1,4 +1,4 @@
-setwd("/Users/kisaev/remote/IC_exp_cands")
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ")
 
 library(data.table)
 library(dplyr)
@@ -30,7 +30,7 @@ medians = medians[,c("gene", "HR_median", "pval_median", "fdr_pval_median", "nam
 colnames(medians)[c(1,5)] = c("ensg", "gene")
 
 #OUTLIER DICHOTOMIZED 
-outliers = readRDS("TCGA_ION_CHANNEL_results_Jan3119.rds")
+outliers = readRDS("TCGA_ION_CHANNEL_results_outlier_based_March22.rds")
 colnames(outliers)[2:ncol(outliers)] = paste(colnames(outliers)[2:ncol(outliers)], "outlier", sep="_") 
 colnames(outliers)[7] = "Cancer"
 outliers = outliers[,c("gene", "HR_outlier", "pval_outlier", "num_risk_outlier", "perc_risk_outlier", "fdr_pval_outlier", "Cancer")]
@@ -178,7 +178,7 @@ alldat$Cancer = factor(alldat$Cancer, levels = t$V1)
 alldat$gene_name = factor(alldat$gene_name, levels = k$V1)
 
 g = ggplot(alldat, aes(gene_name, Cancer)) + geom_tile(aes(fill=max_hr)) +
-  scale_fill_gradient(low="grey", high="red", na.value = 'transparent') + labs(x = "Cancer", y="Ion channel") #+ coord_flip()
+  scale_fill_gradient(low="grey", high="red", na.value = 'transparent') + labs(x = "Ion Channel", y="Cancer") #+ coord_flip()
 
 g = ggpar(g, font.xtickslab = c(3,"plain", "black"), font.ytickslab = c(5,"plain", "black"), xtickslab.rt=90)+
   theme(legend.position="none")
@@ -205,4 +205,35 @@ dev.off()
 colnames(alldat)[9] = "BrownsFDR"
 write.csv(alldat, file="merged_pvals_all_cancers_hazardous.csv", quote=F, row.names=F)
   
+
+#simple barplot 
+cancers = as.character(unique(alldat$Cancer))
+
+make_barplot = function(canc){
+  
+  dat = as.data.table(filter(alldat, Cancer == canc))
+  dat$fdr_plot = -log10(dat$BrownsFDR)
+  
+  g = ggbarplot(dat, x = "gene_name", y = "fdr_plot",
+          fill = "cands",               # change fill color by cyl
+          color = "white",            # Set bar border colors to white
+          palette = "jco",            # jco journal color palett. see ?ggpar
+          sort.val = "desc",          # Sort the value in dscending order
+          sort.by.groups = FALSE,     # Don't sort inside each group
+          x.text.angle = 90           # Rotate vertically x axis texts
+          ) + labs(x="Ion Channel", y="-log10(Brown's FDR)")+
+  geom_hline(yintercept=-log10(0.1), linetype="dashed", color = "red") + ggtitle(canc)
+
+print(g)
+
+}
+
+library(plyr)
+pdf(paste(date, "individual_cancers_barplots.pdf", sep="_"))
+llply(cancers, make_barplot)
+dev.off()
+
+
+
+
 

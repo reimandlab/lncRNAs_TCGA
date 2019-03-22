@@ -10,7 +10,7 @@ library(ggplot2)
 library(stringr)
 
 #read in real files 
-real_dat = readRDS("all_res_REAL_EN_runs_1203.rds")
+real_dat = readRDS("all_res_REAL_EN_runs_2203.rds")
 
 ########################################################################
 #1. evaluate c-indicies 
@@ -146,13 +146,23 @@ get_comp = function(cancer){
   ggtitle(cancer)
   print(pval)
   print(cancer)
-  print(p)
+  #print(p)
+  return(p)
 
 }
 
-pdf("summary_perms_real_vs_fake.pdf")
-llply(cancers, get_comp)
+#
+list_plots = llply(cancers, get_comp)
+
+library(gridExtra)
+n <- length(list_plots)
+nCol <- floor(sqrt(n))
+
+pdf("summary_perms_real_vs_fake.pdf", width=8, height=11)
+do.call("grid.arrange", c(list_plots, ncol=nCol))
 dev.off()
+
+#dev.off()
 
 
 

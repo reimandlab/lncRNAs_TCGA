@@ -43,6 +43,7 @@ dev.off()
 
 #save and compare to random shuffled data
 
+saveRDS(all_res, file="all_res_REAL_EN_runs_2203.rds")
 
 #for each cancer type get boxplot 
 check_perform = function(cancer){
@@ -95,7 +96,7 @@ rounds = unique(all_res$round)
 get_fdr = function(r){
   canc = as.data.table(filter(all_res, round == r))
   #get only those with sig inference post selective p-values 
-  canc$c = p.adjust(canc$inference_pvals, method="fdr")
+  canc$c = p.adjust(canc$wald_p, method="fdr")
   canc = as.data.table(filter(canc, c < 0.05))
   return(canc)
 }
