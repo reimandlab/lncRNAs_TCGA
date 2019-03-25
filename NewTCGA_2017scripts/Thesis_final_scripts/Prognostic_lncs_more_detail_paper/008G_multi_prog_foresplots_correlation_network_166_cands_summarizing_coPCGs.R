@@ -268,17 +268,17 @@ check_cis_pcg = function(combo){
 }#end function
 
 
-pdf("all_cis_antisense_lnc_pairs_survival_results_10kb_nov16.pdf", width=10)
-results = llply(combos, check_cis_pcg, .progress="text")
-dev.off()
+#pdf("all_cis_antisense_lnc_pairs_survival_results_10kb_nov16.pdf", width=10)
+#results = llply(combos, check_cis_pcg, .progress="text")
+#dev.off()
 
-results2 = ldply(results)
-results2$fdr_res = p.adjust(results2$res, method="fdr")
-results2$fdr_res2 = p.adjust(results2$res2, method="fdr")
-results2$rho_fdr = p.adjust(results2$rho_p, method="fdr")
+#results2 = ldply(results)
+#results2$fdr_res = p.adjust(results2$res, method="fdr")
+#results2$fdr_res2 = p.adjust(results2$res2, method="fdr")
+#results2$rho_fdr = p.adjust(results2$rho_p, method="fdr")
 
-results2 = as.data.table(results2)
-results2 = results2[order(fdr_res)]
+#results2 = as.data.table(results2)
+#results2 = results2[order(fdr_res)]
 
 length(which(results2$res <= 0.05)) #in 16/127 pairs , the lncRNA benefits from the signal from its neigboring gene 
 length(which(results2$fdr_res <= 0.05)) #2/127 pairs, the lncRNA beneifts from signal from neighboring gene when accounting for multiple testing correction
@@ -286,8 +286,8 @@ length(which(results2$fdr_res2 <= 0.05)) #even after multiple testing correction
 
 
 #saveRDS(results2, file="110_cis_antisense_pairs_survival_results_aug28.rds")
-saveRDS(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.rds")
-write.csv(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.csv", quote=F, row.names=F)
+#saveRDS(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.rds")
+#write.csv(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.csv", quote=F, row.names=F)
 
 ###START HERE###-----------------------------------------------------------------
 
@@ -375,11 +375,12 @@ g
 dev.off()
 
 
-saveRDS(prog_pcgs, file="final_set_126_lncRNAPCG_pairs_nov16.rds")
-write.csv(prog_pcgs, file="126_cis_antisense_pairs_survival_results_10kb_nov16.csv", quote=F, row.names=F)
+#saveRDS(prog_pcgs, file="final_set_126_lncRNAPCG_pairs_nov16.rds")
+#write.csv(prog_pcgs, file="126_cis_antisense_pairs_survival_results_10kb_nov16.csv", quote=F, row.names=F)
 
-
-
+#make sure it's only updated list of candidates 
+r = readRDS("final_set_126_lncRNAPCG_pairs_nov16.rds")
+filter(r, combo %in% allCands$combo)
 
 
 

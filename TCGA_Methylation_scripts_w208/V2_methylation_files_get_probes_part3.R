@@ -55,11 +55,14 @@ colnames(fantom)[1] = "gene"
 #----EDITED SEPT 11TH KI-------------------------------------
 #############################################################
 
-
 mypal = pal_npg("nrc", alpha = 0.7)(10)
 
 tss_codes = read.csv("TCGA_TissueSourceSite_Codes2017.csv")
 source_codes = source = read.csv("TCGA_sample_codes.csv")
+
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 #1. cands 
 cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
@@ -808,21 +811,24 @@ get_data = function(lnc){
 }
 }
 
-pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
-genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% probes$combo)]))) #88/166 have methylation probes overlapping them 
-lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
-dev.off()
+#pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
+#genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% probes$combo)]))) #88/166 have methylation probes overlapping them 
+#lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
+#dev.off()
 
-lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
-lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
-lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
-z= which(is.na(lnc_meth_cancer_data2$cancer))
-lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #255 lncRNA-probe pairs evaluated 
-lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer)
-saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Nov1.rds")
+#lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
+#lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
+#lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
+#z= which(is.na(lnc_meth_cancer_data2$cancer))
+#lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #255 lncRNA-probe pairs evaluated 
+#lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer)
+#saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Nov1.rds")
 #73 unique lncRNA-cancer pairs evaluated 
+
 lnc_meth_cancer_data2 = readRDS("new_results_methylation_Nov1.rds")
+
 #---------PROCESS RESULTS-----------------------------------------------------------------------------------------------------
+
 lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer, sep="_") #73 combos evaluated 
 lnc_meth_cancer_data2$wilcoxon_pval = as.numeric(as.character(lnc_meth_cancer_data2$wilcoxon_pval))
 lnc_meth_cancer_data2 = lnc_meth_cancer_data2[order(wilcoxon_pval)]
@@ -904,6 +910,8 @@ sig_diff$canc = factor(sig_diff$canc, levels=unique(sig_diff$canc))
 sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
 sig_diff = as.data.table(filter(sig_diff, stat_exp_pval < 0.05))
 write.csv(sig_diff, file="29_lncRNAs_wmethylation_relationship.csv", quote=F, row.names=F)
+
+sig_diff = as.data.table(filter(sig_diff, abs(stat_exp_cor) >= 0.2))
 
 pdf("Methylation_figure_partB_sep27.pdf", width=10, height=8)
 

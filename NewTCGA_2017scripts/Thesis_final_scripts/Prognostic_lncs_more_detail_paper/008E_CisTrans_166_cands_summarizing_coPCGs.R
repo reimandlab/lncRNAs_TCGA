@@ -46,9 +46,6 @@ fantom <- fantom[-z,]
 #saveRDS(rna, file="rna_lncRNAs_expression_data_june29.rds")
 #saveRDS(pcg, file="rna_pcg_expression_data_june29.rds")
 
-rna = readRDS("rna_lncRNAs_expression_data_june29.rds")
-pcg = readRDS("rna_pcg_expression_data_june29.rds")
-
 #------FEATURES-----------------------------------------------------
 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")

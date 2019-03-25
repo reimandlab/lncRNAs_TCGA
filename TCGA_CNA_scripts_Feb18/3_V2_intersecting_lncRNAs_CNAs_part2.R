@@ -34,6 +34,11 @@ lncswcnas = as.data.frame(lncswcnas)
 
 #2. cands 
 cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
+
 colnames(cands)[7] = "canc"
 
 colnames(lncswcnas)[6] = "gene"
@@ -90,7 +95,7 @@ lncswcnas$length = lncswcnas$End-lncswcnas$Start
 lncswcnas$length = lncswcnas$length/1000000
 lncswcnas = subset(lncswcnas, length <20) #10 KB
 
-genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% lncswcnas$combo)]))) #153/173 have CNAs overlapping them 
+genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% lncswcnas$combo)]))) #148/168 have CNAs overlapping them 
 #with segments that are shorter than 20 MB
 
 rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
@@ -373,15 +378,15 @@ get_data = function(lnc){
 }
 }
 }
-pdf("candidate_lncRNAs_CNA_versus_Expression_Nov1_new_plots.pdf")
-lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
-dev.off()
+#pdf("candidate_lncRNAs_CNA_versus_Expression_Nov1_new_plots.pdf")
+#lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
+#dev.off()
 
-lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
-lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
-saveRDS(lnc_cna_cancer_data2, file="new_results_CNAs_Sept27.rds")
+#lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
+#lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
+#saveRDS(lnc_cna_cancer_data2, file="new_results_CNAs_Sept27.rds")
 
-lnc_cna_cancer_data2 = readRDS("new_results_CNAs_Sept27.rds") #evaluated 107 lncRNA-cancer combos
+lnc_cna_cancer_data2 = readRDS("new_results_CNAs_Sept27.rds") #evaluated 71 lncRNA-cancer combos
 
 #---------PROCESS RESULTS-----------------------------------------------------------------------------------------------------
 
@@ -406,6 +411,9 @@ add_fdr = function(dat){
 }
 lnc_cna_cancer_data2 = llply(dats, add_fdr)
 lnc_cna_cancer_data2 = ldply(lnc_cna_cancer_data2)
+lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
+
+lnc_cna_cancer_data2 = as.data.table(filter(lnc_cna_cancer_data2, abs(stat_exp_cor) >= 0.2))
 
 #check which have sig overall correlation and sig kruskal wallis 
 sig_diff = as.data.table(filter(lnc_cna_cancer_data2, fdr <=0.05))
@@ -421,10 +429,10 @@ saveRDS(sig_diff, file="sig_diff_CNAs_sept27.rds")
 sig_diff$combo = paste(sig_diff$gene, sig_diff$cancer, sep="_")
 sig_diff = sig_diff[order(fdr)]
 genes = as.list(unique(sig_diff$combo))
-pdf("FDR_sig_candidate_lncRNAs_CNA_versus_Expression_Sept_JUST_SIG_ONES_sep28.pdf")
-lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
-dev.off()
 
+#pdf("FDR_sig_candidate_lncRNAs_CNA_versus_Expression_Sept_JUST_SIG_ONES_sep28.pdf")
+#lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
+#dev.off()
 
 #---------FIGURE SUMMARY FOR PAPER--------------------------------------------------------------------------------------------
 sig_diff$gene = as.character(sig_diff$gene)
@@ -447,7 +455,6 @@ sig_diff = sig_diff[order(stat, -(abs(stat_exp_cor)))]
 sig_diff$CAT_geneName = factor(sig_diff$CAT_geneName, levels=unique(sig_diff$CAT_geneName))
 sig_diff$canc = factor(sig_diff$canc, levels=unique(sig_diff$canc))
 sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
-
 
 sig_diff$cor[sig_diff$stat_exp_cor < 0] = "Negative" 
 sig_diff$cor[sig_diff$stat_exp_cor > 0] = "Positive" 
@@ -532,7 +539,8 @@ dev.off()
 
 saveRDS(sig_diff, file="cna_data_16_candidates_final_figure_oct10.rds")
 
-
+date = Sys.Date()
+write.csv(sig_diff, file=paste(date, "lncRNAs_sig_associated_with_CNAs.csv", quote=F, row.names=F)
 
 
 
