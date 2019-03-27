@@ -1058,7 +1058,9 @@ dev.off()
 
 saveRDS(barplot, file="methylation_data_23_candidates_final_figure_oct10.rds")
 
+date = Sys.Date()
 
+write.table(barplot, file=paste(date, "methylation_data_23_candidates_final_figure.csv", sep="_"), row.names=FALSE, na="", col.names = FALSE, sep=",")
 
 
 

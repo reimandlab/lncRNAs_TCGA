@@ -113,8 +113,8 @@ make_matrix_for_ap = function(canc){
 	}
 }
 
-all_lnc_pathways = llply(cancers, make_matrix_for_ap, .progress="text")
-all_lnc_pathways_df = ldply(all_lnc_pathways)
+#all_lnc_pathways = llply(cancers, make_matrix_for_ap, .progress="text")
+#all_lnc_pathways_df = ldply(all_lnc_pathways)
 #done gave Marta matriced produced by this code for ActivePathways 
 
 
@@ -122,7 +122,7 @@ all_lnc_pathways_df = ldply(all_lnc_pathways)
 
 #saveRDS(all_lnc_pathways_df, file="pathways_for_each_lncRNA_Oct30.rds")
 
-#all_lnc_pathways_df = readRDS("pathways_for_each_lncRNA_Oct30.rds")
+all_lnc_pathways_df = readRDS("pathways_for_each_lncRNA_Oct30.rds")
 
 #number of PCGs/lncRNA vs number of Pathways/lncRNAs 
 
@@ -154,7 +154,6 @@ sig_paths_sum = unique(sig_paths_sum)
 sig_paths_sum = merge(sig_paths_sum, sig_des_sum, by="combo")
 sig_paths_sum$canc = sapply(sig_paths_sum$combo, function(x){unlist(strsplit(x, "_"))[2]})
 
-
 canc_conv = rna[,c("type", "Cancer")]
 canc_conv = unique(canc_conv)
 colnames(canc_conv)[1] = "canc"
@@ -173,6 +172,8 @@ get_census_ensg = function(genes){
   return(ensg)
 }
 census$ensg = sapply(census$Synonyms, get_census_ensg)
+census_genes = as.data.table(filter(sig_des, ID %in% census$ensg))
+
 
 pdf("summary_#DE_pcgs_vs_pathways_pathways_figure_jdan2519.pdf", width=9, height=5)
 g = ggscatter(sig_paths_sum, x = "num_sig_des", y = "num_sig_pathways",
@@ -191,7 +192,6 @@ t=t[order(N)]
 ggbarplot(t, "V1", "N",
    fill = "V1")
 dev.off()
-
 
 paths = sig_paths_sum[,c("canc", "combo", "num_sig_pathways", "Cancer")]
 paths$type = "pathways"
@@ -227,22 +227,6 @@ pall =  c("#72E1E0" ,"#7CE147", "#73E590", "#E180E3" ,"#D39794", "#D4DC8D", "#A6
  "#DC5FA5" ,"#D8DB50" ,"#6891DB" ,"#633CE1" ,"#DDDDCF" ,"#DAAADA" ,"#D849DE",
 "#7C9F6A" ,"#E6565F" ,"#8C68D2" ,"#63859B" ,"#DD9955")
 
-pdf("summary_barplot_w_covariate_#DE_pcgs_vs_pathways_pathways_figure_jan2519.pdf", width=16, height=5)
-
-#covariate for cancer
-cov = ggplot(all_res, aes(combo, 1)) + geom_tile(aes(fill = type)) +
-theme_void() + theme(legend.position="none")+
-scale_fill_manual(values=pall)
-
-g + cov + plot_layout(ncol = 1, heights = c(15,1))
-dev.off()
-
-pdf("canc_cov_legend.pdf")
-ggplot(all_res, aes(combo, 1)) + geom_tile(aes(fill = type)) +
-theme_void() + coord_flip() + 
-scale_fill_manual(values=pall)
-dev.off()
-
 #instead of cancer type do gene name
 all_res$gene = as.character(all_res$combo)
 all_res$gene = sapply(all_res$gene, function(x){unlist(strsplit(x, "_"))[1]})
@@ -270,18 +254,20 @@ all_res$font_col[all_res$canc == "LGG"] = "1"
 
 sig_paths_sum$font_col = ""
 sig_paths_sum$font_col[sig_paths_sum$canc == "LGG"] = "1"
+a = ifelse(all_res$font_col == 1, "red", "black")
 a <- ifelse(sig_paths_sum$font_col == 1, "red", "black")
 
-all_res = as.data.table(filter(all_res, num_sig_des >=75))
+#all_res = as.data.table(filter(all_res, num_sig_des >=5))
 
 #117 unique lncRNA-cancer pairs 
 #114 unique lncRNAs 
 
-z = which(all_res$gene %in% census$lnc)
+z = which(all_res$gene %in% census_genes$lnc)
 census_cands = all_res[z,]
 census_cands$type = "census_genes"
+census_cands$num_sig_des = ""
 for(i in 1:length(census_cands$combo)){
-  genes = subset(census, combo %in% census_cands$combo[i])
+  genes = subset(census_genes, combo %in% census_cands$combo[i])
   num = dim(genes)[1]
   census_cands$num_sig_des[i] = num
 }
@@ -292,14 +278,19 @@ z = which(duplicated(all_res$combo3))
 if(!(length(z)==0)){
 all_res = all_res[-z,]}
 
-all_res$num_sig_des = log2(all_res$num_sig_des)
+#all_res$num_sig_des = log2(all_res$num_sig_des)
 all_res$type = factor(all_res$type, levels = c("genes", "census_genes", "pathways"))
 
-pdf("summary_barplot_genenames_#DE_pcgs_vs_pathways_pathways_figure_jan2519.pdf", width=12, height=4)
+order_l = as.data.table(all_res %>% group_by(combo2) %>% summarise(frequency =  sum(num_sig_des)))
+order_l = order_l[order(-frequency)]
+all_res$combo2 = factor(all_res$combo2, levels = order_l$combo2)
+
+pdf("summary_barplot_genenames_#DE_pcgs_vs_pathways_pathways_figure_jan2519.pdf", width=8, height=4)
 g = ggplot(all_res, aes(combo2, num_sig_des, group=type)) + theme_classic() + 
    geom_col(position = position_stack(), aes(fill=type), color="grey29")+xlab("lncRNA-cancer pair") + ylab("Number of sig genes/pathways")+
    theme(legend.title=element_blank(), legend.position="top", axis.title.x=element_blank(), 
-   	axis.text.x = element_text(angle = 65, hjust = 1, colour = a, size=6)) + scale_fill_manual(values=c("red", "#E69F00", "#56B4E9"))
+   	axis.text.x = element_text(angle = 90, hjust = 1, size=5)) + scale_fill_manual(values=c("#E69F00", "red", "#56B4E9"))+
+   scale_y_continuous(breaks=seq(0,2000,250))
 #ggpar(g,
 # font.tickslab = c(6,"plain", "black"),
 # xtickslab.rt = 45)
@@ -312,20 +303,30 @@ dev.off()
 
 #liver gluco related pathways 
 
-load("_LGG_all_up_down_genes_.2018-10-31.rdata")
+load("_LGG_all_up_down_genes_.2018-12-13.rdata")
 colnames(res)
 #canc = subset(res, res$term.name %in% canc_paths_paths)
 canc_paths_paths = res[which(str_detect(res$term.name, "brain")),]$term.name
 canc = subset(res, term.name %in% canc_paths_paths)
 
 #1. get all PCGs that are in these pathways 
-pcgs_brain = unique(unlist(canc$overlap)) #185 unique PCGs
-lncs_brain = unique(unlist(canc$evidence)) #8 unique lncRNAs to be used as covariates high vs low 
+pcgs_brain = unique(unlist(canc$overlap)) #50 unique PCGs
+lncs_brain = unique(unlist(canc$evidence))[1:2] #2 unique lncRNAs to be used as covariates high vs low 
+
+evi = c()
+for(i in 1:nrow(res)){
+  ress = unlist(res$evidence[i])
+  if(ress == "combined"){
+    ress = c(1,2)
+  }
+  evi = c(evi, length(ress))
+}
+
 
 ##2-----------------label patients by risk------------------------------
 
-dat = subset(all, Cancer=="Brain Lower Grade Glioma")
-lgg_nearby_genes = readRDS("lgg_nearby_genes.rds")
+dat = subset(all, type=="LGG")
+#lgg_nearby_genes = readRDS("lgg_nearby_genes.rds")
 
 res_all_brain = res[,c("term.id", "term.name", "adjusted.p.val", "overlap", "evidence")]
 #get count for overlap and for evidence 
@@ -340,7 +341,7 @@ for(i in 1:nrow(res_all_brain)){
 res_all_brain$overlap = as.character(res_all_brain$overlap)
 res_all_brain$evidence = as.character(res_all_brain$evidence)
 
-write.csv(res_all_brain, file="all_brain_pathways_lgg_nov16.csv", quote=F, row.names=F)
+write.csv(res_all_brain, file="all_brain_pathways_lgg_march26.csv", quote=F, row.names=F)
 
 #get counts of pathway per lcnRNA
 res_all_brain = res[,c("term.id", "term.name", "adjusted.p.val", "overlap", "evidence")]
@@ -396,7 +397,7 @@ random_genes = c()#which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4"
 z1 = which(colnames(heat) %in% c(census$Gene.Symbol))
 z2 = which(colnames(heat) %in% ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 %in% lncs_brain)])
 z3 = which(colnames(heat) %in% hox_genes)
-heat = heat[,unique(c(z1,z2,z3))]
+#heat = heat[,unique(c(z1,z2,z3))]
 
 #get expression of these genes and compare between low lGG, high LGG and GBM 
 
@@ -418,8 +419,9 @@ lgg = as.data.frame(lgg)
 rownames(lgg) = paste(rownames(lgg), "lgg")
 
 #3. get GBM 
-z = which(all$type == "GBM")
-gbm = all[z,]
+#z = which(all$type == "GBM")
+#gbm = all[z,]
+gbm = gbm_old
 z = which(colnames(gbm) %in% c("patient", development_genes))
 
 gbm = gbm[,z]
@@ -481,15 +483,8 @@ mat = all_canc[,c(which(!(colnames(all_canc) %in% c("type", "IDH.status"))))]
 mat = scale(mat)
 mat=t(mat)
 
-df = as.data.frame(all_canc[,c(which(colnames(all_canc) %in% c("type", "IDH.status", "ENSG00000239552", "ENSG00000224950", 
-  "ENSG00000250360", "ENSG00000253187", "ENSG00000254635", "ENSG00000255020", "ENSG00000256482", "ENSG00000257261")))])
+df = as.data.frame(all_canc[,c(which(colnames(all_canc) %in% c("type", "IDH.status", "ENSG00000239552", "ENSG00000253187")))])
 df$patient = rownames(df)
-
-lnc_med = median(df$ENSG00000254635[df$type=="lgg"])
-z1=which((df$ENSG00000254635 >= lnc_med) & (df$type=="lgg"))
-z2=which((df$ENSG00000254635 < lnc_med) & (df$type=="lgg"))
-df$ENSG00000254635[z1] = 1
-df$ENSG00000254635[z2] = 0
 
 lnc_med = median(df$ENSG00000253187[df$type=="lgg"])
 z1=which((df$ENSG00000253187 > lnc_med) & (df$type=="lgg"))
@@ -497,64 +492,52 @@ z2=which((df$ENSG00000253187 <= lnc_med) & (df$type=="lgg"))
 df$ENSG00000253187[z1] = 1
 df$ENSG00000253187[z2] = 0
 
-lnc_med = median(df$ENSG00000256482[df$type=="lgg"])
-z1=which((df$ENSG00000256482 > lnc_med) & (df$type=="lgg"))
-z2=which((df$ENSG00000256482 <= lnc_med) & (df$type=="lgg"))
-df$ENSG00000256482[z1] = 1
-df$ENSG00000256482[z2] = 0
-
-lnc_med = median(df$ENSG00000224950[df$type=="lgg"])
-z1=which((df$ENSG00000224950 >= lnc_med) & (df$type=="lgg"))
-z2=which((df$ENSG00000224950 < lnc_med) & (df$type=="lgg"))
-df$ENSG00000224950[z1] = 1
-df$ENSG00000224950[z2] = 0
-
-lnc_med = median(df$ENSG00000255020[df$type=="lgg"])
-z1=which((df$ENSG00000255020 >= lnc_med) & (df$type=="lgg"))
-z2=which((df$ENSG00000255020 < lnc_med) & (df$type=="lgg"))
-df$ENSG00000255020[z1] = 1
-df$ENSG00000255020[z2] = 0
-
-lnc_med = median(df$ENSG00000257261[df$type=="lgg"])
-z1=which((df$ENSG00000257261 >= lnc_med) & (df$type=="lgg"))
-z2=which((df$ENSG00000257261 < lnc_med) & (df$type=="lgg"))
-df$ENSG00000257261[z1] = 1
-df$ENSG00000257261[z2] = 0
-
 lnc_med = median(df$ENSG00000239552[df$type=="lgg"])
 z1=which((df$ENSG00000239552 > lnc_med) & (df$type=="lgg"))
 z2=which((df$ENSG00000239552 <= lnc_med) & (df$type=="lgg"))
 df$ENSG00000239552[z1] = 1
 df$ENSG00000239552[z2] = 0
 
-lnc_med = median(df$ENSG00000250360[df$type=="lgg"])
-z1=which((df$ENSG00000250360 > lnc_med) & (df$type=="lgg"))
-z2=which((df$ENSG00000250360 <= lnc_med) & (df$type=="lgg"))
-df$ENSG00000250360[z1] = 1
-df$ENSG00000250360[z2] = 0
-
-df$ENSG00000254635[df$type=="gbm"]=NA
 df$ENSG00000253187[df$type=="gbm"]=NA
-df$ENSG00000256482[df$type=="gbm"]=NA
-df$ENSG00000224950[df$type=="gbm"]=NA
-df$ENSG00000255020[df$type=="gbm"]=NA
-df$ENSG00000257261[df$type=="gbm"]=NA
 df$ENSG00000239552[df$type=="gbm"]=NA
-df$ENSG00000250360[df$type=="gbm"]=NA
 
 #which are favourable lncs? (for those ones flip 0s and 1s)
-cands_lncs = as.data.table(filter(allCands, cancer== "Brain Lower Grade Glioma"))
-cands_lncs = as.data.table(filter(cands_lncs, HR <1))
-cands_lncs = cands_lncs$gene
+cands_lncs = as.data.table(filter(allCands, Cancer== "Brain Lower Grade Glioma"))
+#cands_lncs = as.data.table(filter(cands_lncs, HR <1))
+#cands_lncs = cands_lncs$gene
 
-z = which(colnames(df) %in% cands_lncs)
-for(i in 1:length(z)){
-  k = which(df[,z[i]] == 0)
-  df[k,z[i]] = 1
-  df[-k,z[i]] = 0
-}
+#z = which(colnames(df) %in% cands_lncs)
+#for(i in 1:length(z)){
+#  k = which(df[,z[i]] == 0)
+#  df[k,z[i]] = 1
+#  df[-k,z[i]] = 0
+#}
 
-df$risk = apply(df[,1:8], 1, sum)
+df$risk = apply(df[,1:2], 1, sum)
+
+df$patientt = sapply(df$patient, function(x){unlist(strsplit(x, " "))[1]})
+surv = all[,c("patient", "OS", "OS.time")]
+colnames(surv)[1] = "patientt"
+df = merge(df, surv, by="patientt")
+get_risk = as.data.table(filter(df, type=="lgg"))
+gbm = as.data.table(filter(df, type=="gbm"))
+
+fitCPH <- coxph(Surv(OS.time, OS) ~ ENSG00000253187 + ENSG00000239552, data=get_risk)    # Cox-PH model
+(coefCPH <- coef(fitCPH))    
+
+meanENSG00000253187  <- mean(as.numeric(get_risk$ENSG00000253187) - 1)   # average of financial aid dummy
+meanENSG00000239552  <- mean(as.numeric(get_risk$ENSG00000239552)-1)                  
+rMean <- exp(coefCPH["ENSG00000253187"] * meanENSG00000253187 +       # e^Xb
+           coefCPH["ENSG00000239552"]   *meanENSG00000239552)
+
+all_lgg_pats <- exp(coefCPH["ENSG00000253187"]* (get_risk[1:4, "ENSG00000253187"]-1)
+           + coefCPH["ENSG00000239552"] * (get_risk[1:4, "ENSG00000239552"]-1))
+
+
+relRisk <- predict(fitCPH, get_risk, type="risk")   # relative risk
+get_risk$risk = relRisk
+
+df = rbind(get_risk, gbm)
 
 #df$patient = NULL
 #another version of ha
@@ -584,6 +567,15 @@ df$risk = apply(df[,1:8], 1, sum)
 
 #make sure order of patients in df matches order of patients in amtrix
 df = df[,c("patient", "risk", "type", "IDH.status")]
+rownames(df) = df$patient
+#df$patient = NULL
+
+identical(rownames(df), colnames(mat))
+
+df$patient <- factor(df$patient, levels=colnames(mat))
+df = df[order(df$patient),]
+df = as.data.frame(df)
+rownames(df) = df$patient
 df$patient = NULL
 identical(rownames(df), colnames(mat))
 
@@ -595,21 +587,49 @@ df$risk = NULL
 typevals = df$type
 idh = as.character(df$IDH.status)
 
-ha = HeatmapAnnotation(points = anno_points(values, gp = gpar(size=0.6), axis = TRUE),
-  type = typevals, idh_m = idh,
-  col = list(type = c("lgg" = "orange", "gbm" = "purple"), idh_m = c("Mutant" = "black", "WT" = "white")),
+ha = HeatmapAnnotation(relative_risk = anno_points(values, gp = gpar(size=0.6), axis = TRUE),
+  type = typevals, m = idh,
+  col = list(type = c("lgg" = "orange", "gbm" = "purple"), m = c("Mutant" = "black", "WT" = "white")),
     show_annotation_name = TRUE,
     annotation_name_offset = unit(2, "mm"),
     annotation_name_rot = c(0, 0, 90))
 
-pdf("developmental_genes_lgg_gbm_all_small_version_genes_new.pdf", width=12, height=10)
+rownames(mat)[1:2] = c("HOXA10-AS", "HOXB-AS2")
+
+pdf("developmental_genes_lgg_gbm_all_small_version_genes_new_march26.pdf", width=12, height=4)
 Heatmap(mat, column_names_gp = gpar(fontsize = 1), top_annotation = ha, show_column_names = FALSE,
   heatmap_legend_param = list(legend_height = unit(3, "cm"), legend_width = unit(3, "cm")),
-  top_annotation_height = unit(3, "cm"), clustering_distance_rows = "pearson")
+  top_annotation_height = unit(2, "cm"), clustering_distance_rows = "pearson", row_names_gp = gpar(fontsize = 5))
+dev.off()
+
+tiff("developmental_genes_lgg_gbm_all_small_version_genes_new_march26.tiff", height = 10, width = 25, units= "cm",  
+     compression = "lzw", res = 300)
+Heatmap(mat, column_names_gp = gpar(fontsize = 1), top_annotation = ha, show_column_names = FALSE,
+  heatmap_legend_param = list(legend_height = unit(3, "cm"), legend_width = unit(3, "cm")),
+  top_annotation_height = unit(2, "cm"), clustering_distance_rows = "pearson", row_names_gp = gpar(fontsize = 5))
 dev.off()
 
 
+#get km plots for all the PCGs
+genes = rownames(mat)[3:nrow(mat)]
+genes = sapply(genes, get_ensg_pcg)
+
+pdf("LGG_heatmap_KM_plots.pdf")
+list = sapply(genes,get_km_plot, cancer = "LGG")
+dev.off()
+
+genes = c("ENSG00000253187", "ENSG00000239552")
+pdf("LGG_heatmaps_KM_plots_lncrnas.pdf")
+list = sapply(genes,get_km_plot, cancer = "LGG")
+dev.off()
 
 
+library(gridExtra)
+n <- length(list)
+nCol <- floor(sqrt(n))
+
+pdf("hoxlncs.pdf", width=8, height=11)
+do.call("grid.arrange", c(list, ncol=nCol))
+dev.off()
 
 

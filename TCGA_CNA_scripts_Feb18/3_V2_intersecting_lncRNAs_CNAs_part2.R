@@ -539,8 +539,11 @@ dev.off()
 
 saveRDS(sig_diff, file="cna_data_16_candidates_final_figure_oct10.rds")
 
+data1<-data.frame(lapply(sig_diff, as.character), stringsAsFactors=FALSE)
 date = Sys.Date()
-write.csv(sig_diff, file=paste(date, "lncRNAs_sig_associated_with_CNAs.csv", quote=F, row.names=F)
+
+write.table(data1, file=paste(date, "lncRNAs_sig_associated_with_CNAs.csv", sep="_"), row.names=FALSE, na="", col.names = FALSE, sep=",")
+
 
 
 
