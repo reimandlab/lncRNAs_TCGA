@@ -18,8 +18,8 @@ library(activePathways)
 #includes results for 28 cancer types from TCGA for those with at least 50 patients 
 subid = readRDS("subid_results_KI_IC_march20.rds")
 subid$method = "SUBID_erik_data"
-colnames(subid)[c(1,6)] = paste(colnames(subid)[c(1,6)], "Eriks_data", sep="_")
-colnames(subid)[6] = "Cancer"
+colnames(subid)[c(1,7)] = paste(colnames(subid)[c(1,7)], "Eriks_data", sep="_")
+colnames(subid)[7] = "Cancer"
 colnames(subid)[4] = "ensg"
 
 #MEDIAN DICHOTOMIZED 
@@ -30,7 +30,7 @@ medians = medians[,c("gene", "HR_median", "pval_median", "fdr_pval_median", "nam
 colnames(medians)[c(1,5)] = c("ensg", "gene")
 
 #OUTLIER DICHOTOMIZED 
-outliers = readRDS("TCGA_ION_CHANNEL_results_outlier_based_March22.rds")
+outliers = readRDS("TCGA_ION_CHANNEL_results_outlier_based_March28_min10percent_risk_group.rds")
 colnames(outliers)[2:ncol(outliers)] = paste(colnames(outliers)[2:ncol(outliers)], "outlier", sep="_") 
 colnames(outliers)[7] = "Cancer"
 outliers = outliers[,c("gene", "HR_outlier", "pval_outlier", "num_risk_outlier", "perc_risk_outlier", "fdr_pval_outlier", "Cancer")]
@@ -79,7 +79,7 @@ alldat = as.data.table(alldat)
 alldat$method = NULL
 
 alldat$HR_match = ""
-z = which((alldat$HR_median >1) & (alldat$HR_outlier >1))
+z = which((alldat$HR_median >1) & (alldat$HR_outlier >1) & (alldat$HR > 1))
 alldat$HR_match[z] = "yes"
 alldat = alldat[z,]
 
@@ -117,6 +117,8 @@ alldat$Cancer = NULL
 #alldat$fish = apply(alldat, 1, function(x){merge_p_values(x)})
 #alldat$fish = round(alldat$fish, digits=7)
 
+source("functions_needed_oncohannels_activepathways.R")
+
 alldat = as.matrix(alldat)
 browns = merge_p_values(alldat, method="Brown")
 alldat = as.data.frame(alldat)
@@ -141,7 +143,7 @@ alldat$cands[z] = "yes"
 #add fdr
 alldat$fdr = p.adjust(alldat$browns, method="fdr")
 
-write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_withFDR_010319_all_cancers.csv", quote=F, row.names=F)
+write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_withFDR_03282019_all_cancers.csv", quote=F, row.names=F)
 
 #make summary plot <- for GBM only 
 #alldat$fdr_plot = -log10(alldat$fdr)
@@ -158,7 +160,7 @@ write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_wit
 #get HRs and make heatmap 
 
 fulldat$comb = paste(fulldat$gene_name, fulldat$Cancer, sep="_")
-fulldat = fulldat[,c("HR_median", "HR_outlier", "comb")]
+fulldat = fulldat[,c("HR_median", "HR_outlier", "HR", "comb")]
 
 colnames(alldat)[5] = "comb"
 alldat = merge(alldat, fulldat, by="comb")
@@ -167,7 +169,7 @@ alldat = merge(alldat, fulldat, by="comb")
 alldat = as.data.table(filter(alldat, fdr < 0.1, HR_median < 20, HR_outlier < 20))
 table(alldat$Cancer)
 
-alldat$max_hr = sapply(1:nrow(alldat), function(x){max(alldat$HR_median[x], alldat$HR_outlier[x])})
+alldat$max_hr = sapply(1:nrow(alldat), function(x){max(alldat$HR_median[x], alldat$HR_outlier[x], alldat$HR[x])})
 t = as.data.table(table(alldat$Cancer))
 t = t[order(-N)]
 
@@ -176,11 +178,12 @@ k = k[order(-N)]
 
 alldat$Cancer = factor(alldat$Cancer, levels = t$V1)
 alldat$gene_name = factor(alldat$gene_name, levels = k$V1)
+alldat$max_hr = log2(alldat$max_hr)
 
-g = ggplot(alldat, aes(gene_name, Cancer)) + geom_tile(aes(fill=max_hr)) +
+g = ggplot(alldat, aes(gene_name, Cancer)) + geom_tile(aes(fill=max_hr)) + theme_bw() + 
   scale_fill_gradient(low="grey", high="red", na.value = 'transparent') + labs(x = "Ion Channel", y="Cancer") #+ coord_flip()
 
-g = ggpar(g, font.xtickslab = c(3,"plain", "black"), font.ytickslab = c(5,"plain", "black"), xtickslab.rt=90)+
+g = ggpar(g, font.xtickslab = c(5,"plain", "black"), font.ytickslab = c(8,"plain", "black"), xtickslab.rt=90)+
   theme(legend.position="none")
 
 xplot = ggplot(alldat, aes(Cancer)) + geom_bar(fill = "black") + theme_bw()+
@@ -201,9 +204,21 @@ ggarrange(yplot, NULL, g, xplot,
           common.legend = FALSE)
 dev.off()
 
+
+#just main heatmap so i can get legend 
+pdf("heatmap_only_ICs.pdf")
+g = ggplot(alldat, aes(gene_name, Cancer)) + geom_tile(aes(fill=max_hr)) + theme_bw() + 
+  scale_fill_gradient(low="grey", high="red", na.value = 'transparent') + labs(x = "Ion Channel", y="Cancer") #+ coord_flip()
+
+g = ggpar(g, font.xtickslab = c(5,"plain", "black"), font.ytickslab = c(8,"plain", "black"), xtickslab.rt=90)
+print(g)
+dev.off()
+
+
 #save
 colnames(alldat)[9] = "BrownsFDR"
-write.csv(alldat, file="merged_pvals_all_cancers_hazardous.csv", quote=F, row.names=F)
+date = Sys.Date()
+write.csv(alldat, file=paste(date, "merged_pvals_all_cancers_hazardous.csv", sep="_"), quote=F, row.names=F)
   
 
 #simple barplot 

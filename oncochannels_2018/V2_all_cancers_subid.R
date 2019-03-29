@@ -23,41 +23,6 @@ dataset <- read.csv("final_ic_rnaseq.csv", header=TRUE, stringsAsFactors=FALSE, 
 dataset <- as.data.frame(t(dataset[,1:ncol(dataset)]))
 name.prefix <- "(TCGA_RNASEQ)"
 
-#setwd("/.mounts/labs/reimandlab/private/users/kisaev/SUBID/gbm_ic/data/MASTER_FILES")
-#dataset <- read.csv("IC_ONLY_GSE4271_GPL96.csv", header=TRUE, stringsAsFactors=FALSE, row.names=1)
-#dataset <- as.data.frame(t(dataset[,1:ncol(dataset)]))
-#name.prefix <- "(GSE4271_GPL96)"
-
-#setwd("/.mounts/labs/reimandlab/private/users/kisaev/SUBID/gbm_ic/data/MASTER_FILES")
-#dataset <- read.csv("IC_ONLY_GSE4271_GPL97.csv", header=TRUE, stringsAsFactors=FALSE, row.names=1)
-#dataset <- as.data.frame(t(dataset[,1:ncol(dataset)]))
-#name.prefix <- "(GSE4271_GPL97)"
-
-#setwd("/.mounts/labs/reimandlab/private/users/kisaev/SUBID/gbm_ic/data/MASTER_FILES")
-#dataset <- read.csv("IC_ONLY_GSE7696.csv", header=TRUE, stringsAsFactors=FALSE, row.names=1)
-#dataset <- as.data.frame(t(dataset[,1:ncol(dataset)]))
-#name.prefix <- "(GSE7696)"
-
-#setwd("/.mounts/labs/reimandlab/private/users/kisaev/SUBID/gbm_ic/data/MASTER_FILES")
-#dataset <- read.csv("IC_ONLY_GSE13041_GPL96.csv", header=TRUE, stringsAsFactors=FALSE, row.names=1)
-#dataset <- as.data.frame(t(dataset[,1:ncol(dataset)]))
-#name.prefix <- "(GSE13041_GPL96)"
-
-#setwd("/.mounts/labs/reimandlab/private/users/kisaev/SUBID/gbm_ic/data/MASTER_FILES")
-#dataset <- read.csv("IC_ONLY_TCGA_Affymetrix_RMA.csv", header=TRUE, stringsAsFactors=FALSE, row.names=1)
-#dataset <- as.data.frame(t(dataset[,1:ncol(dataset)]))
-#name.prefix <- "(TCGA_AGILENT)"
-
-#setwd("/.mounts/labs/reimandlab/private/users/kisaev/SUBID/gbm_ic/data/MASTER_FILES")
-#dataset <- read.csv("IC_ONLY_TCGA_Overlap.csv", header=TRUE, stringsAsFactors=FALSE, row.names=1)
-#dataset <- as.data.frame(t(dataset[,1:ncol(dataset)]))
-#name.prefix <- "(TCGA_OVERLAP)"
-
-#setwd("/.mounts/labs/reimandlab/private/users/kisaev/SUBID/gbm_ic/data/MASTER_FILES")
-#dataset <- read.csv("IC_ONLY_TCGA_Non-Overlap.csv", header=TRUE, stringsAsFactors=FALSE, row.names=1)
-#dataset <- as.data.frame(t(dataset[,1:ncol(dataset)]))
-#name.prefix <- "(TCGA_NONOVERLAP)"
-
 #remove duplicate patients 
 dataset$pats = ""
 dataset$pats = unlist(sapply(rownames(dataset), function(x){unlist(strsplit(x, "\\."))[4]}))
@@ -238,9 +203,42 @@ for (i in 1:(nrow(output2))){
   output2[i,"subid_%"] <- min(which(canc[i,20:80]==min(canc[i,20:80]))+19)
 }
 
+cancer = canc$canc[1]
+
 output2$gene = rownames(output2)
 output2$gene_name = unlist(sapply(output2$gene, get_name_pcg))
 output2 = as.data.table(output2)
+
+genes = output2$gene
+colnames(output2)[3] = "subid_perc"
+percs = output2$subid_perc
+
+canc_dat = as.data.table(filter(all, type == cancer))
+canc_dat = as.data.frame(canc_dat)
+z = which(colnames(canc_dat) %in% c(output2$gene, "OS", "OS.time", "patient"))
+cancer_dat = canc_dat[,z]
+
+get_hr = function(gene, perc){
+
+  canc_dat = cancer_dat
+  z = which(colnames(canc_dat) %in% c(gene, "patient", "OS", "OS.time"))
+  canc_dat = canc_dat[,z]
+  colnames(canc_dat)[4] = "IC"
+  canc_dat = canc_dat[order(canc_dat$IC) , ]
+
+  i = as.numeric(perc)
+  x=round((((i)/100)*nrow(canc_dat)), digits = 0)
+  canc_dat$IC[1:x] <- "Low"            
+  y=x+1
+  canc_dat$IC[y:nrow(canc_dat)] <- "High"
+  canc_dat$IC = factor(canc_dat$IC, levels=c("Low", "High"))
+  current.coxph <- coxph(Surv(OS.time, OS) ~ IC, data=canc_dat)
+  hr = summary(current.coxph)$coefficients[2]
+  return(hr)
+}
+
+output2$HR = mapply(get_hr, genes, percs)
+
 output2 = output2[order(median_p, subid_p)]
 output2 <- output2[order(output2$subid_p), ]
 output2$canc = canc$canc[1]

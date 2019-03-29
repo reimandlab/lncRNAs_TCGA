@@ -67,7 +67,11 @@ if(!(length(z)==0)){
 
 #1. Get cancer data (gene expression and clinical for each cancer type)
 
-cancers = unique(all$type)
+t = as.data.table(table(all$type))
+t = filter(t, N >=100)
+
+cancers = unique(t$V1) #look at only cancers with minimum 100 patients 
+
 get_canc_data = function(canc){
   sub = subset(all, type == canc)
   return(sub)
@@ -192,10 +196,12 @@ get_survival_models = function(dtt){
   k = which(!(str_detect(colnames(dat), "ENSG")))
 
   newdat = dat[,c(gene,k)]
-  c1 = table(newdat[,1])[1] > 10
-  c2 = table(newdat[,1])[2] > 10
+  perc = 0.1 * nrow(newdat)
+  c1 = table(newdat[,1])[1] >= perc #used to be 10 now try 10% of cohort minimum 
+  c2 = table(newdat[,1])[2] >= perc #used to be 10 now try 10% of cohort minimum 
 
   if(c1 & c2){
+  newdat[,1] = factor(newdat[,1], levels=c(0,1))
   ionchannel_model = coxph(Surv(OS.time, OS)  ~ ., data = newdat)
   test.ph <- cox.zph(ionchannel_model)
   ic_test_ph = test.ph$table[1,3]
@@ -315,5 +321,5 @@ get_name_pcg = function(pcg){
 
 tcga_results1$name = sapply(tcga_results1$gene, get_name_pcg)
 
-saveRDS(tcga_results1, file="TCGA_ION_CHANNEL_results_outlier_based_March22.rds")
+saveRDS(tcga_results1, file="TCGA_ION_CHANNEL_results_outlier_based_March28_min10percent_risk_group.rds")
 #saveRDS(tcga_results1, file="GBM_median_splits_IonCHannels.rds")
