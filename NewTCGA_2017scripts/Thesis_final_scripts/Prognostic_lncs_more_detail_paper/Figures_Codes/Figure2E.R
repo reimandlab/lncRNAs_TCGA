@@ -17,20 +17,20 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June1
 allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
-val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
-val_cands = as.data.table(val_cands)
-val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
-val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
-val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+#val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
+#val_cands = as.data.table(val_cands)
+#val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+#val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
+#val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 
 #Combined into one dataframe because need to get ranks 
-all <- merge(rna, pcg, by = c("patient", "Cancer"))
-all = all[,1:25170]
+#all <- merge(rna, pcg, by = c("patient", "Cancer"))
+#all = all[,1:25170]
 
 #canc conversion
-canc_conv = rna[,c(which(colnames(rna) %in% c("Cancer", "type")))]
-canc_conv = canc_conv[!duplicated(canc_conv),]
-colnames(canc_conv) = c("type", "cancer")
+#canc_conv = rna[,c(which(colnames(rna) %in% c("Cancer", "type")))]
+#canc_conv = canc_conv[!duplicated(canc_conv),]
+#colnames(canc_conv) = c("type", "cancer")
 
 #------DATA-----------------------------------------------------
 
@@ -46,6 +46,14 @@ r = ldply(lnc_cands)
 r = as.data.table(r)
 z = which(r$type == "lncRNA&clin")
 r = r[-z,]
+
+#remove those that are no longer considred in our analysis
+r$combo = paste(r$lncRNA, r$Cancer, sep="_")
+z1 = which(r$combo %in% allCands$combo)
+z2 = which(!(str_detect(r$lncRNA, "ENSG")))
+
+r = r[c(z1,z2),]
+
 list_r = split(r, by = "Cancer")
 
 get_sum = function(canc){
@@ -78,6 +86,13 @@ r = ldply(lnc_rand)
 r = as.data.table(r)
 z = which(r$type == "ClinicalVariables")
 r = r[z,]
+
+#remove those that are no longer considred in our analysis
+r$combo = paste(r$lncRNA, r$Cancer, sep="_")
+z1 = which(r$combo %in% allCands$combo)
+z2 = which(!(str_detect(r$lncRNA, "ENSG")))
+
+r = r[c(z1,z2),]
 
 list_r = split(r, by = "Cancer")
 
@@ -113,6 +128,7 @@ r = ldply(lnc_rand)
 r = as.data.table(r)
 z = which(r$type == "lncRNA&clin")
 r = r[-z,]
+
 list_r = split(r, by = "Cancer")
 lists = llply(list_r, get_sum)
 lists = ldply(lists)
@@ -129,6 +145,14 @@ r = ldply(lnc_rand)
 r = as.data.table(r)
 z = which(r$type == "lncRNA&clin")
 r = r[z,]
+
+#remove those that are no longer considred in our analysis
+r$combo = paste(r$lncRNA, r$Cancer, sep="_")
+z1 = which(r$combo %in% allCands$combo)
+z2 = which(!(str_detect(r$lncRNA, "ENSG")))
+
+r = r[c(z1,z2),]
+
 list_r = split(r, by = "Cancer")
 lists = llply(list_r, get_sum)
 lists = ldply(lists)
@@ -372,14 +396,13 @@ random_lncs_vs_cand1 = random_lncs_vs_cand1[order(wp_lnc_clinical, diff_meds_lnc
 #try new Figure 2E
 #x-axis median difference between lncRNA and clinical variables
 #y-axis p-value 
-random_lncs_vs_cand1$wp_lnc_clinical = p.adjust(random_lncs_vs_cand1$wp_lnc_clinical, method="fdr")
+random_lncs_vs_cand1$wp_lnc_clinical_fdr = p.adjust(random_lncs_vs_cand1$wp_lnc_clinical, method="fdr")
 random_lncs_vs_cand1$wp_lnc_clinical_fdr = -log10(random_lncs_vs_cand1$wp_lnc_clinical_fdr)
 
 random_lncs_vs_cand1$wp_lnc_random_fdr = p.adjust(random_lncs_vs_cand1$wp_lnc_random, method="fdr")
 random_lncs_vs_cand1$wp_lnc_random_fdr = -log10(random_lncs_vs_cand1$wp_lnc_random_fdr)
 
 random_lncs_vs_cand1$wp_lnc_clinical_combo = p.adjust(random_lncs_vs_cand1$wp_lnc_clinical_combo, method="fdr")
-
 
 
 #plot 1 - lncs vs clinical 
