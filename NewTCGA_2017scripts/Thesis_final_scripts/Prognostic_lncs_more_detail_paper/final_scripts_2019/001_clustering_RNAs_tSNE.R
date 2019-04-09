@@ -21,7 +21,7 @@ library("FactoMineR")
 #------FEATURES-----------------------------------------------------
 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = filter(allCands, data=="TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands = filter(allCands, data=="TCGA") #168 unique lncRNA-cancer combos, #166 unique lncRNAs 
 
 canc_conv = rna[,which(colnames(rna) %in% c("Cancer", "type"))]
 canc_conv = canc_conv[!duplicated(canc_conv), ]
@@ -111,9 +111,7 @@ for(i in 1:length(z)){
 
 
 #assign color to variable ******
-
 pdf("tSNE_28_cancers_oct1_top_var_1000_pcgs.pdf", width=9)
 ggplot(tsne_plot,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col)) + scale_colour_manual(values=mypal)+
 geom_text_repel(data = subset(tsne_plot, !(label == "no")))
 dev.off()
-\

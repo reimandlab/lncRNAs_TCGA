@@ -28,6 +28,18 @@ tss_codes$TSS.Code[tss_codes$TSS.Code == "2"] = "02"
 tss_codes$TSS.Code[tss_codes$TSS.Code == "6"] = "06"
 tss_codes$TSS.Code[tss_codes$TSS.Code == "8"] = "08"
 
+
+#not actually done originally 
+tss_codes$TSS.Code[tss_codes$TSS.Code == "2"] = "02"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "6"] = "06"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "8"] = "08"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "1"] = "01"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "4"] = "04"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "3"] = "03"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "9"] = "09"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "5"] = "05"
+
+
 #3. TCGA new clinical file - downloaded previously 
 #clin = read.csv("all_clin_XML_tcgaSept2017.csv")
 #clin = clin[,1:90]

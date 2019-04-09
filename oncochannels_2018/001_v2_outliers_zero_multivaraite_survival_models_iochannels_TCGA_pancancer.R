@@ -64,11 +64,7 @@ t = filter(t, N >=50)
 
 cancers = unique(t$V1) #look at only cancers with minimum 100 patients 
 
-get_canc_data = function(canc){
-  sub = subset(all, type == canc)
-  return(sub)
-} 
-cancer_data = llply(cancers, get_canc_data)
+cancer_data = all
 
 #2. Subset data to ion channels and clinical variables 
 
@@ -81,7 +77,7 @@ get_canc_data_for_plot = function(dtt){
   return(dtt)
 }
 
-filtered_data = llply(cancer_data, get_canc_data_for_plot)
+filtered_data = get_canc_data_for_plot(cancer_data)
 
 #3. Add tags to each ion channel to indicate High or Low expression 
 #if median zero --> zero based split
@@ -141,8 +137,8 @@ add_tags = function(dtt){
   return(dtt)
 }
 
-filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
-saveRDS(filtered_data_tagged, file="29_cancers_tagged_by_ion_channels_zeromed_outliers_KI.rds")
+filtered_data_tagged = add_tags(filtered_data)
+saveRDS(filtered_data_tagged, file="pancancer_tagged_by_ion_channels_zeromed_outliers_KI.rds")
 
 #3. Fit survival models and plot Kaplan Meier plot 
 
@@ -178,19 +174,15 @@ get_survival_models = function(dtt){
     dat$age_at_initial_pathologic_diagnosis = as.numeric(dat$age_at_initial_pathologic_diagnosis)}
 
   num_genes = which(str_detect(colnames(dat), "ENSG"))
-
-  #save KM plots for each lncRNA for each cancer type sepereatley 
-  #file = paste("ION_CHANNELS_TCGA_SEPT2018/", dtt$type[1], ".pdf", sep="_")
-  #pdf(file)
   
   for(i in 1:length(num_genes)){
   gene = num_genes[i]  
   k = which(!(str_detect(colnames(dat), "ENSG")))
 
   newdat = dat[,c(gene,k)]
-  perc = 0.1 * nrow(newdat)
-  c1 = table(newdat[,1])[1] >= perc #used to be 10 now try 10% of cohort minimum 
-  c2 = table(newdat[,1])[2] >= perc #used to be 10 now try 10% of cohort minimum 
+  #perc = 0.1 * nrow(newdat)
+  c1 = table(newdat[,1])[1] >= 10 #used to be 10 now try 10% of cohort minimum - back to min 10 patients in each group
+  c2 = table(newdat[,1])[2] >= 10 #used to be 10 now try 10% of cohort minimum - back to min 10 patients in each group
 
   if(c1 & c2){
   newdat[,1] = factor(newdat[,1], levels=c(0,1))
@@ -267,7 +259,6 @@ get_survival_models = function(dtt){
         # Change method
   p = p + stat_compare_means(method = "wilcox.test")
   #print(p)
-  print(dat$type[1])
 }
 }
 #dev.off()
@@ -283,13 +274,7 @@ return(results_cox1)
 
 tcga_results = llply(filtered_data_tagged, get_survival_models) 
 
-#for now just need GBM 
-#the other cancer types shouldn't be affected 
-#before i just didnt have the right number of patients 
-#gbm_tagged = filtered_data_tagged[[1]]
-#tcga_results = get_survival_models(gbm_tagged)
-
-#all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
+#all coxph results for lncRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results)
 tcga_results1$ic_test_ph = as.numeric(tcga_results1$ic_test_ph)
 tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
@@ -313,5 +298,4 @@ get_name_pcg = function(pcg){
 
 tcga_results1$name = sapply(tcga_results1$gene, get_name_pcg)
 
-saveRDS(tcga_results1, file="TCGA_ION_CHANNEL_results_outlier_based_March28_min10percent_risk_group.rds")
-#saveRDS(tcga_results1, file="GBM_median_splits_IonCHannels.rds")
+saveRDS(tcga_results1, file="TCGA_ION_CHANNEL_results_outlier_based_April10_min10patients_risk_group.rds")

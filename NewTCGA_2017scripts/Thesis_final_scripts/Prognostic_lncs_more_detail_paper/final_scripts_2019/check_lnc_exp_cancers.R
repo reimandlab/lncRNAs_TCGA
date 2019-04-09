@@ -2,7 +2,7 @@
 ###Load libraries and data - April 16th 
 ###---------------------------------------------------------------
 
-source("source_code_Cox_MonteCarlo_CV_April12.R")
+#source("source_code_Cox_MonteCarlo_CV_April12.R")
 require(caTools)
 
 library(survAUC)
@@ -36,6 +36,8 @@ if(!(length(z)==0)){
 
 print(table(all$type))
 
+all = rna
+
 #------DATA---------------------------------------------------------
 #UCSC gene info
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
@@ -57,12 +59,6 @@ z <- which(duplicated(fantom$CAT_geneName))
 rm <- fantom$CAT_geneName[z]
 z <- which(fantom$CAT_geneName %in% rm)
 fantom <- fantom[-z,]
-
-#remove cancer types with less than 50 patients 
-pats_num = as.data.table(table(all$type))
-pats_num = filter(pats_num, N <50)
-canc_rm = pats_num$V1
-all = all[-which(all$type %in% canc_rm),]
 
 #lncRNA candidates, n = 166, n=173 combos 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")

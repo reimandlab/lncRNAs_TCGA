@@ -127,7 +127,6 @@ saveRDS(pcg, "19438_PCGS_RNASeq_tcga_all_cancers_wclinical_data.rds")
 
 
 
-/.mounts/labs/reimandlab/private/projects/oncochannels/data
 
 
 
