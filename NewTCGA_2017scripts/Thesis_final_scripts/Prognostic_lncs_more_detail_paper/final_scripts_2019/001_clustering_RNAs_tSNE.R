@@ -46,7 +46,7 @@ canc_rm = pats_num$V1
 #remove those ones
 cancers = unlist(cancers[which(!(cancers %in% canc_rm))])
 
-rna = pcg
+#rna = pcg
 rna = subset(rna, Cancer %in% cancers)
 
 dim(rna)
@@ -93,9 +93,9 @@ library(Rtsne)
 #iris_matrix <- as.matrix(iris_unique[,1:4])
 set.seed(42) # Set a seed if you want reproducible results
 tsne_out <- Rtsne(logged_rna[,z1], dims = 2, perplexity=30, verbose=TRUE, max_iter = 500) # Run TSNE
-saveRDS(tsne_out, file="tsne_out_28_cancers_Oct1_pcgs.rds")
+saveRDS(tsne_out, file="tsne_out_28_cancers_Oct1_lncRNAs.rds")
 
-tsne_plot = readRDS("tsne_out_28_cancers_Oct1_pcgs.rds")
+tsne_plot = readRDS("tsne_out_28_cancers_Oct1_lncRNAs.rds")
 # Show the objects in the 2D tsne representation
 tsne_plot <- data.frame(x = tsne_out$Y[,1], y = tsne_out$Y[,2], col = logged_rna$type)
 
@@ -109,9 +109,8 @@ for(i in 1:length(z)){
 	tsne_plot$label[z[i]] = canc
 }
 
-
 #assign color to variable ******
-pdf("tSNE_28_cancers_oct1_top_var_1000_pcgs.pdf", width=9)
+pdf("tSNE_28_cancers_april10_top_var_1000_lncRNAs.pdf", width=9)
 ggplot(tsne_plot,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col)) + scale_colour_manual(values=mypal)+
 geom_text_repel(data = subset(tsne_plot, !(label == "no")))
 dev.off()

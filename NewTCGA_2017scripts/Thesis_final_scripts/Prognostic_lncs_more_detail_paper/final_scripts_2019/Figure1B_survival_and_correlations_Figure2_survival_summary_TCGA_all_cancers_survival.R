@@ -458,12 +458,12 @@ get_summary = function(cancer){
   }
 }
 
-canc_results = llply(cancers, get_summary, .progress = "text")
+#canc_results = llply(cancers, get_summary, .progress = "text")
 #remove null
-canc_results = Filter(Negate(is.null), canc_results)
+#canc_results = Filter(Negate(is.null), canc_results)
 
-canc_results = do.call(rbind.data.frame, canc_results)
-colnames(canc_results) = c("cancer", "total_pairs", "sig_pairs", "perc")
+#canc_results = do.call(rbind.data.frame, canc_results)
+#colnames(canc_results) = c("cancer", "total_pairs", "sig_pairs", "perc")
 
 #get correlations 
 
@@ -523,31 +523,33 @@ get_pairs_results = function(cancer){
   }
 }
 
-canc_results_pairs_types = llply(cancers, get_pairs_results, .progress = "text")
+#canc_results_pairs_types = llply(cancers, get_pairs_results, .progress = "text")
 
 #save 
 #saveRDS(canc_results_pairs_types, file="correlation_lnc_lnc_results_april10_res2.rds")
 
 #remove null
-canc_results_pairs_types2 = Filter(Negate(is.null), canc_results_pairs_types)
-canc_results_pairs_types2 = ldply(canc_results_pairs_types2)
-canc_results_pairs_types2 = as.data.table(canc_results_pairs_types2)
-colnames(canc_conv)[2] = "cancer"
-canc_results_pairs_types2 = merge(canc_results_pairs_types2, canc_conv, by="cancer")
+#canc_results_pairs_types2 = Filter(Negate(is.null), canc_results_pairs_types)
+#canc_results_pairs_types2 = ldply(canc_results_pairs_types2)
+#canc_results_pairs_types2 = as.data.table(canc_results_pairs_types2)
+#colnames(canc_conv)[2] = "cancer"
+#canc_results_pairs_types2 = merge(canc_results_pairs_types2, canc_conv, by="cancer")
 
-canc_results_pairs_types2$HR_pair = ""
-canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "F"] = "Both \nFavourable"
-canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "U"] = "Both \nUnfavourable"
-canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "D"] = "Opposite \nHRs"
+#canc_results_pairs_types2$HR_pair = ""
+#canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "F"] = "Both \nFavourable"
+#canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "U"] = "Both \nUnfavourable"
+#canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "D"] = "Opposite \nHRs"
 
 #keep only fdr significant ones
-canc_results_pairs_types2 = as.data.table(filter(canc_results_pairs_types2, fdr < 0.05, abs(cor) >= 0.3))
+#canc_results_pairs_types2 = as.data.table(filter(canc_results_pairs_types2, fdr < 0.05, abs(cor) >= 0.3))
 
 #cancer order keep same as first plot
-canc_results_pairs_types2$type <- factor(canc_results_pairs_types2$type, levels = rev(order))
-canc_results_pairs_types2$column_name = paste(canc_results_pairs_types2$HR_pair, canc_results_pairs_types2$Exp_pair)
+#canc_results_pairs_types2$type <- factor(canc_results_pairs_types2$type, levels = rev(order))
+#canc_results_pairs_types2$column_name = paste(canc_results_pairs_types2$HR_pair, canc_results_pairs_types2$Exp_pair)
 
-saveRDS(canc_results_pairs_types2, file="correlation_lnc_lnc_results_april10_res2.rds")
+#saveRDS(canc_results_pairs_types2, file="correlation_lnc_lnc_results_april10_res2.rds")
+
+canc_results_pairs_types2 = readRDS("correlation_lnc_lnc_results_april10_res2.rds")
 
 ######################################
 #FIGURE 1B PART 2---------------------
@@ -567,17 +569,56 @@ ggpar(g,
 
 dev.off()
 
+######################################
+#FIGURE 1C PART ---------------------
+######################################
 
+gtex_res = readRDS("significant_GTEX_comparisons_april10.rds")
+z = which(gtex_res$canc %in% c("Glioblastoma multiforme", "Brain Lower Grade Glioma"))
+brain  = gtex_res[z,]
+gtex_res = gtex_res[-z,]
+z = which(brain$tis %in% c("Brain - Cerebellum", "Brain - Spinal cord (cervical c-1)"))
+brain = brain[z,]
+gtex_res = rbind(gtex_res, brain)
 
+#get lncRNAs that are prognosic with gtex data 
+head(gtex_res)
+head(all_cancers_genes_surv_comb)
+all_cancers_genes_surv_comb$combo2 = paste(all_cancers_genes_surv_comb$gene, all_cancers_genes_surv_comb$canc, sep="_")
 
+gtex_res = merge(gtex_res, all_cancers_genes_surv_comb, by="combo2")
+gtex_res = as.data.table(filter(gtex_res, abs(median_difference) >= 0.25))
 
+###Data
+gtex = readRDS("allGTEX_lncRNAs_scored_Feb2619.rds")
+tcga = readRDS("TCGA_all_lncRNAs_cancers_scored_byindexMay23.rds")
+gtex = gtex[,c(1:4, 6, 5)]
 
+fav = as.data.table(filter(gtex_res, HR < 0))
+unfav = as.data.table(filter(gtex_res, HR > 0))
 
+tcga$combo2 = paste(tcga$gene, tcga$tis, sep="_")
+z = which(tcga$combo2 %in% fav$combo2)
+tcga = tcga[z,]
 
+z = which(gtex$gene %in% tcga$gene)
+gtex = gtex[z,]
 
+fav$combo3 = paste(fav$gene.x, fav$tis, sep="_")
+gtex$combo2 = paste(gtex$gene, gtex$tis, sep="_")
+z = which(gtex$combo2 %in% fav$combo3)
+gtex = gtex[z,]
 
+all_ranks = rbind(gtex, tcga)
 
+pdf("final_figure_1C.pdf", height=6, width=6)
 
+#unfav 
+m <- ggplot(gtex_res, aes(x = median_difference, y = HR)) +
+ geom_point(aes(colour = factor(type)))
+m + geom_density_2d()
+
+dev.off()
 
 
 

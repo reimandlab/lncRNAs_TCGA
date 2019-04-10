@@ -2,6 +2,7 @@
 ###Load Libraries
 ###---------------------------------------------------------------
 
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/GTEx_V7_data")
 source("source_file.R")
 library(stringr)
 library(VennDiagram)
@@ -252,63 +253,9 @@ compare_exp_boxplots = function(lnc){
 
 #DO NOT RUN - ALREADY DONE
 results = llply(lncs, compare_exp_boxplots, .progress="text")
-
+saveRDS(results, file="lncRNAs_risk_groups_correlation_ranks.rds")
 
 #-----------SUMMARIZE---------------------------------------------------------
-
-results2 = ldply(results)
-results2$fdr = ""
-results2$fdr = p.adjust(as.numeric(results2$wilcox_p), method="fdr")
-results2$median_diff = as.numeric(results2$median_diff)
-results2$status[results2$risk == "High_exp"] = "Unfavourable"
-results2$status[results2$risk == "Low_exp"] = "Favourable"
-
-results2$fdr_sig[results2$fdr <= 0.05] = "FDRsig"
-results2$fdr_sig[results2$fdr > 0.05] = "NotFDRsig"
-
-#check if median difference matches type of risk
-results2$match = ""
-results2$match[(results2$risk == "High_exp") & (results2$median_diff >= 0.1)] = "OG"
-results2$match[(results2$risk == "Low_exp") & (results2$median_diff <= -0.1)] = "TS"
-
-#get lnc names
-get_name = function(ensg){
-    z = which(fantom$CAT_geneID == ensg)
-    return(fantom$CAT_geneName[z][1])
-}
-
-results2$name = llply(results2$lnc, get_name)
-library(ggrepel)
-
-#get cancer type 
-canc_conv = readRDS("cancers_conv_july23.rds")
-results2 = merge(results2, canc_conv, by="canc")
-results2 = as.data.table(results2)
-results2[,11]=as.character(results2[,11])
-saveRDS(results2, file="110_lncRNAs_wgtex_data_nov16.rds")
-write.csv(results2, file="110_lncRNAs_wgtex_data_nov16.csv", quote=F,row.names=F)
-
-#keep only sig
-#results2 = as.data.table(filter(results2, fdr_sig == "FDRsig"))
-
-pdf("new_figure5A_aug24.pdf", width=7, height=5)
-ggplot(results2, aes(x=status, y=median_diff)) +
-  geom_point() + 
-  geom_hline(yintercept=0, linetype="dashed", color = "grey")+
-  scale_color_gradient2(low="grey",
-                     high="blue", space ="Lab" ) + xlab("lncRNA expression type") + ylab("Median rank difference \nRisk Group - GTEx") +
-  geom_label_repel(data=filter(results2, median_diff >= 0.2, fdr <= 0.05, status == "Unfavourable"), aes(label=name, fill=type), size=1.5) +
-  geom_label_repel(data=filter(results2, median_diff <= -0.2, fdr <= 0.05, status == "Favourable"), aes(label=name, fill=type), size=1.5) +
-  scale_fill_brewer(palette="Paired")
-dev.off()
-
-
-#figure 5B 
-#summarize how many lncRNAs fall into which bins 
-results2$match[(results2$risk == "High_exp") & (results2$median_diff <= 0)] = "High_tum_exp"
-results2$match[(results2$risk == "Low_exp") & (results2$median_diff >= 0)] = "Low_tum_exp"
-
-sum = as.data.table(table(results2$match))
 
 
 

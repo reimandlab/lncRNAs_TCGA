@@ -24,9 +24,9 @@ ids_remove = unique(ids_remove[,2])
 
 #2. TCGA Tumour Codes Table
 tss_codes = read.csv(" TCGA_TissueSourceSite_Codes2017 .csv"     )
-tss_codes$TSS.Code[tss_codes$TSS.Code == "2"] = "02"
-tss_codes$TSS.Code[tss_codes$TSS.Code == "6"] = "06"
-tss_codes$TSS.Code[tss_codes$TSS.Code == "8"] = "08"
+#tss_codes$TSS.Code[tss_codes$TSS.Code == "2"] = "02" not originally done  
+#tss_codes$TSS.Code[tss_codes$TSS.Code == "6"] = "06" not originally done
+#tss_codes$TSS.Code[tss_codes$TSS.Code == "8"] = "08" not originally done 
 
 #3. TCGA new clinical file - downloaded previously 
 #clin = read.csv("all_clin_XML_tcgaSept2017.csv")
