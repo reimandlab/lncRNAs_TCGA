@@ -17,6 +17,7 @@ library(caret)
 library(Rtsne)
 require("powerSurvEpi")
 library(SIBER)
+library(EnvStats)
 
 #------FEATURES-----------------------------------------------------
 
@@ -179,10 +180,10 @@ get_survival_models = function(dtt){
   newdat$OS.time = newdat$OS.time/365
   fit <- survfit(Surv(OS.time, OS) ~ gene, data = newdat)
           s <- ggsurvplot(
-          title = paste(gene, dtt$Cancer[1], "HR =", hr, digits=4),
+          title = paste(get_name(gene_name), canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], "\nHR =", round(hr, digits=2)),
           fit, 
           xlab = "Time (Years)", 
-          surv.median.line = "hv",
+          #surv.median.line = "hv",
           font.main = c(16, "bold", "black"),
           font.x = c(14, "plain", "black"),
           font.y = c(14, "plain", "black"),
@@ -201,7 +202,7 @@ get_survival_models = function(dtt){
           break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
           palette = mypal[c(4,1)],
-          ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          #ggtheme = theme_bw(), # customize plot and risk table with a theme.
           risk.table.y.text.col = T, # colour risk table text annotations.
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
@@ -260,15 +261,15 @@ get_survival_models = function(dtt){
    gg <- ggplot(exp_data)
    gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
    gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" ")) + labs(y="log1p(FPKM-UQ)")
-   print(gg)
+   #print(gg)
 
    p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
           color = "gene",
          palette = mypal[c(4,1)], title = paste(gene, "Expression", dtt$Cancer[1] , sep=" "), 
           add = "jitter", ylab = "FPKM",  ggtheme = theme_bw())
         # Change method
-  p = p + stat_compare_means(method = "wilcox.test")
-  #print(p)
+  p = p + stat_compare_means(method = "wilcox.test") + stat_n_text()
+  print(p)
 }
 
 results_cox1 = results_cox1[-1,]
@@ -284,7 +285,7 @@ return(results_cox1)
 #-----------------------------------------------------------------------------------------------------------
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_lifespan_May3rd.pdf")
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_oct3.pdf")
-pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_mar19.pdf")
+pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_mar19.pdf", width=7, height=6)
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
 dev.off()
 
