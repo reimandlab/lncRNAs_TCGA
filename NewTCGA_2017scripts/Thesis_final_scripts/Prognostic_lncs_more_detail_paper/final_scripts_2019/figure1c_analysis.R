@@ -104,7 +104,7 @@ ranked_comp = readRDS("results_analysis_Feb26.rds")
 ranked_comp = as.data.table(ldply(ranked_comp))
 ranked_comp$median_difference = as.numeric(ranked_comp$median_difference)
 #ranked_comp = as.data.table(filter(ranked_comp, fdr < 0.05, abs(median_difference) >= 0.25))
-ranked_comp = as.data.table(filter(ranked_comp, fdr < 0.05))
+ranked_comp = as.data.table(filter(ranked_comp, fdr < 0.05)) #1st look at all the ones that had fdr sig difference in medians between TCGA and GTEx
 
 #########compare ranks-------------------------------------------------------------------
 
@@ -233,27 +233,42 @@ compare_exp_boxplots = function(lnc){
 		names(res) = c("lnc", "canc", "risk", "median_diff", "fc", "wilcox_p", "tissue")
 		all_exp_for_plot$Group = factor(all_exp_for_plot$Group, levels = c("GTEx", "High_exp", "Low_exp"))
 
+		#get spearman correlation 
+		if(risk == "Low_exp"){
+		cor = rcorr(all_exp_for_plot$Group, all_exp_for_plot$lncRNA_score, type="spearma")$r[2]
+		cor_p = rcorr(all_exp_for_plot$Group, all_exp_for_plot$lncRNA_score, type="spearma")$P[2]
 		#boxplot
-		g = ggboxplot(all_exp_for_plot, ylab="lncRNA Score", x="Group", y="lncRNA_score", palette = mypal[c(3,1,2)], add = "jitter", fill = "Group", 
-		order=c("GTEx", "High_exp", "Low_exp"), 
+		g = ggboxplot(all_exp_for_plot, ylab="lncRNA Score", x="Group", y="lncRNA_score", palette = mypal[c(3,1,2)], add = "jitter", fill = "Group",  
 		title= paste(lnc, tiss, cancc, "\nrisk=", risk))+ 
 		stat_compare_means(label = "p.signif", 
                      ref.group = "GTEx") + stat_n_text() + theme_classic()
 		g = ggpar(g, font.tickslab = c(14, "plain", "black"), legend="none")
-		#print(g)
-
-		#get spearman correlation 
+		if(p < 0.05){
+		print(g)}
+		}
+		if(risk == "High_exp"){
+	    all_exp_for_plot$Group = factor(all_exp_for_plot$Group, levels = c("GTEx", "Low_exp", "High_exp"))
 		cor = rcorr(all_exp_for_plot$Group, all_exp_for_plot$lncRNA_score, type="spearma")$r[2]
 		cor_p = rcorr(all_exp_for_plot$Group, all_exp_for_plot$lncRNA_score, type="spearma")$P[2]
-
+		#boxplot
+		g = ggboxplot(all_exp_for_plot, ylab="lncRNA Score", x="Group", y="lncRNA_score", palette = mypal[c(3,1,2)], add = "jitter", fill = "Group",  
+		title= paste(lnc, tiss, cancc, "\nrisk=", risk))+ 
+		stat_compare_means(label = "p.signif", 
+                     ref.group = "GTEx") + stat_n_text() + theme_classic()
+		g = ggpar(g, font.tickslab = c(14, "plain", "black"), legend="none")
+		if(p < 0.05){
+		print(g)}
+		}	
 		res = c(res, cor, cor_p)
 		return(res)
 
 }
 
 #DO NOT RUN - ALREADY DONE
+pdf("sig_wilcoxon_risk_vs_gtex_plots.pdf")
 results = llply(lncs, compare_exp_boxplots, .progress="text")
-saveRDS(results, file="lncRNAs_risk_groups_correlation_ranks.rds")
+saveRDS(results, file="lncRNAs_risk_groups_correlation_ranks_updated_order_for_cor.rds")
+dev.off()
 
 #-----------SUMMARIZE---------------------------------------------------------
 

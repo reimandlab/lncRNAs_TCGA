@@ -178,19 +178,20 @@ get_survival_models = function(dtt){
   gene = colnames(newdat)[1]
   colnames(newdat)[1] = "gene"
   newdat$OS.time = newdat$OS.time/365
+  newdat$gene = factor(newdat$gene, levels=c(1,0))
   fit <- survfit(Surv(OS.time, OS) ~ gene, data = newdat)
           s <- ggsurvplot(
-          title = paste(get_name(gene_name), canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], "\nHR =", round(hr, digits=2)),
+          title = paste(get_name(gene_name), canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], "HR =", round(hr, digits=2)),
           fit, 
           xlab = "Time (Years)", 
           #surv.median.line = "hv",
-          font.main = c(16, "bold", "black"),
-          font.x = c(14, "plain", "black"),
-          font.y = c(14, "plain", "black"),
-          font.tickslab = c(14, "plain", "black"),
-          font.legend = 12,
+          font.main = c(14, "bold", "black"),
+          font.x = c(12, "plain", "black"),
+          font.y = c(12, "plain", "black"),
+          font.tickslab = c(11, "plain", "black"),
+          font.legend = 10,
           risk.table.fontsize = 5, 
-          legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
+          legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
           data = newdat,      # data used to fit survival curves. 
           risk.table = TRUE,       # show risk table.
           legend = "right", 
@@ -201,7 +202,8 @@ get_survival_models = function(dtt){
                             # survival estimates.
           break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
-          palette = mypal[c(4,1)],
+          #palette = mypal[c(4,1)],
+          palette = "npg", 
           #ggtheme = theme_bw(), # customize plot and risk table with a theme.
           risk.table.y.text.col = T, # colour risk table text annotations.
           risk.table.y.text = FALSE # show bars instead of names in text annotations
@@ -263,12 +265,12 @@ get_survival_models = function(dtt){
    gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" ")) + labs(y="log1p(FPKM-UQ)")
    #print(gg)
 
-   p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
-          color = "gene",
-         palette = mypal[c(4,1)], title = paste(gene, "Expression", dtt$Cancer[1] , sep=" "), 
-          add = "jitter", ylab = "FPKM",  ggtheme = theme_bw())
+   p <- ggboxplot(exp_data, x = "median", y = "geneexp",
+          color = "median",
+         palette = mypal[c(4,1)], title = paste(get_name(gene_name), "Expression", canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], sep=" "), 
+          add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
         # Change method
-  p = p + stat_compare_means(method = "wilcox.test") + stat_n_text()
+  p = p + stat_compare_means(method = "wilcox.test") + stat_n_text() + scale_color_npg() 
   print(p)
 }
 
@@ -285,7 +287,7 @@ return(results_cox1)
 #-----------------------------------------------------------------------------------------------------------
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_lifespan_May3rd.pdf")
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_oct3.pdf")
-pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_mar19.pdf", width=7, height=6)
+pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_mar19.pdf", width=6, height=5)
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
 dev.off()
 
@@ -541,19 +543,21 @@ get_survival_models = function(dtt){
   if(check){
   colnames(newdat)[1] = "gene"
   newdat$time = newdat$time/365
+  newdat$gene = factor(newdat$gene, levels=c(1,0))
+  
   fit <- survfit(Surv(time, status) ~ gene, data = newdat)
           s <- ggsurvplot(
-          title = paste(gene, dtt$canc[1], "HR =", hr, digits=4),
+          title = paste(get_name(gene_name), canc_conv$type[canc_conv$Cancer == dtt$canc[1]][1], "HR =", round(hr, digits=2)),
           fit, 
           xlab = "Time (Years)", 
-          surv.median.line = "hv",
-          font.main = c(16, "bold", "black"),
-          font.x = c(14, "plain", "black"),
-          font.y = c(14, "plain", "black"),
-          font.tickslab = c(14, "plain", "black"),
-          font.legend = 12,
+          #surv.median.line = "hv",
+          font.main = c(14, "bold", "black"),
+          font.x = c(12, "plain", "black"),
+          font.y = c(12, "plain", "black"),
+          font.tickslab = c(11, "plain", "black"),
+          font.legend = 10,
           risk.table.fontsize = 5, 
-          legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
+          legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
           data = newdat,      # data used to fit survival curves. 
           risk.table = TRUE,       # show risk table.
           legend = "right", 
@@ -564,13 +568,16 @@ get_survival_models = function(dtt){
                             # survival estimates.
           break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
-          palette = mypal[c(4,1)],
-          ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          #palette = mypal[c(4,1)],
+          palette = "npg", 
+          #ggtheme = theme_bw(), # customize plot and risk table with a theme.
           risk.table.y.text.col = T, # colour risk table text annotations.
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          print(s)
+          print(s)      
+
+
       #generate boxplot 
       z = which(names(filtered_data) == dtt$canc[1])
       exp_data = filtered_data[[z]]
@@ -631,7 +638,7 @@ get_survival_models = function(dtt){
           add = "jitter", ylab = "FPKM-UQ",  ggtheme = theme_bw())
         # Change method
        p = p + stat_compare_means(method = "wilcox.test")
-       print(p)
+       #print(p)
 
 
    #get measure of bimodality 
@@ -651,7 +658,17 @@ get_survival_models = function(dtt){
           add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_bw())
         # Change method
        p = p + stat_compare_means(method = "wilcox.test")
-       print(p)
+       #print(p)
+
+  p <- ggboxplot(exp_data, x = "median", y = "geneexp",
+          color = "median",
+         palette = mypal[c(4,1)], title = paste(get_name(gene_name), "Expression", canc_conv$type[canc_conv$Cancer == dtt$canc[1]][1], sep=" "), 
+          add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
+        # Change method
+  p = p + stat_compare_means(method = "wilcox.test") + stat_n_text() + scale_color_npg() 
+  print(p)
+
+
 }
 }
 }
@@ -678,7 +695,7 @@ return(results_cox1)
 }
 
 #pdf("PCAWG_validating_individual_TCGA_candidates_survival_plots_final_cands_May3rd_full_lifespan.pdf")
-pdf("PCAWG_validating_individual_TCGA_candidates_survival_plots_Oct3_five_year_survival.pdf")
+pdf("PCAWG_validating_individual_TCGA_candidates_survival_plots_Oct3_five_year_survival.pdf", width=6, height=5)
 pcawg_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
 dev.off()
 

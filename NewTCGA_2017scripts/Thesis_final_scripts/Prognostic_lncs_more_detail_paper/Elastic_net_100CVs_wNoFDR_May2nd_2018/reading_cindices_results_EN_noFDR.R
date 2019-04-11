@@ -50,15 +50,6 @@ res$type = factor(res$type, levels = order)
 
 saveRDS(res, file="noFDR_all_cindices_june22.rds")
 
-#for each cancer type plot the distribution of cindices 
-plots = res %>% dplyr::group_by(canc, type) %>% do(plots=ggplot(data=.) +
-         aes(x=cindex) + geom_histogram())
-
-#to view plots -----------------------------------------------------------
-#DO NOT RUN
-#plots$plots
-#end 
-
 #but basically distirbution is normal 
 #so can calculate standard error 
 
@@ -191,8 +182,6 @@ dev.off()
 
 #----------------------------------------------------------------------------------------------------------------------
 
-
-
 #pdf("cindices_results_elastic_net_100CVs_No_FDR_cancers_May2nd_nofacet.pdf", width=5, height=5)
 
   for(i in 1:length(unique(res$canc))){
@@ -280,7 +269,6 @@ genes_keep = rbind(genes_keep, genes_list)
 }
 
 #dev.off()
-
 genes_keep = genes_keep[-1,]
 genes_keep = as.data.table(genes_keep)
 all_genes = genes_keep

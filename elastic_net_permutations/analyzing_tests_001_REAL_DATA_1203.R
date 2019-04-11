@@ -14,8 +14,10 @@ library(stringr)
 ########################################################################
 
 #read in all CINDICES files 
-results = list.files(pattern="cindices_.rds")
+results = list.files(pattern="2019-04-11")
 print(length(results))
+
+results = results[which(str_detect(results, "cindices"))]
 
 #break into cancer types 
 get_canc = function(file){
@@ -43,7 +45,7 @@ dev.off()
 
 #save and compare to random shuffled data
 
-saveRDS(all_res, file="all_res_REAL_EN_runs_2203.rds")
+saveRDS(all_res, file="all_res_REAL_EN_runs_1104.rds")
 
 #for each cancer type get boxplot 
 check_perform = function(cancer){
@@ -79,7 +81,9 @@ wil_sig = wil_sig[order(med_lnc)]
 #2. get genes 
 ########################################################################
 
-genes = list.files(pattern = "genes_.rds")
+results = list.files(pattern="2019-04-11")
+print(length(results))
+genes = results[which(str_detect(results, "genes"))]
 
 #break into cancer types 
 get_canc = function(file){

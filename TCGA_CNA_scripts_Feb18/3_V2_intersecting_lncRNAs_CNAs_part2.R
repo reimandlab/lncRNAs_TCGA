@@ -85,6 +85,8 @@ lncswcnas$combo = ""
 lncswcnas$combo = paste(lncswcnas$gene, lncswcnas$canc, sep="_")
 cands$combo = paste(cands$gene, cands$canc, sep="_")
 
+cands = as.data.table(filter(cands, data == "TCGA"))
+
 colnames(lncswcnas) = c("lnc_chr", "lnc_start", "lnc_end", "width", "type", "gene" , "type_lnc" , "name", "name2", "Chromosome", "Start", 
 	"End", "Num_Probes" , "Segment_Mean", "canc", "rm" ,"patient", "combo")
 
@@ -99,7 +101,7 @@ genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% lncswcnas
 #with segments that are shorter than 20 MB
 
 rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
-unique(rna$type)
+table(rna$type)
 
 # Create the function.
 getmode <- function(v) {
@@ -327,7 +329,7 @@ get_data = function(lnc){
       #print(sp1)
       #print(sp2)
       #print(sp3)
-      print(sp6)
+      #print(sp6)
       print(lnc)
     #plot length of segments 
     print(hist(df$length))
@@ -379,7 +381,8 @@ get_data = function(lnc){
 }
 }
 #pdf("candidate_lncRNAs_CNA_versus_Expression_Nov1_new_plots.pdf")
-#lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
+
+lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
 #dev.off()
 
 #lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))

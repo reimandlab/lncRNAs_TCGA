@@ -541,7 +541,7 @@ get_pairs_results = function(cancer){
 #canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "D"] = "Opposite \nHRs"
 
 #keep only fdr significant ones
-#canc_results_pairs_types2 = as.data.table(filter(canc_results_pairs_types2, fdr < 0.05, abs(cor) >= 0.3))
+#canc_results_pairs_types2 = as.data.table(filter(canc_results_pairs_types2, fdr < 0.05, abs(cor)))
 
 #cancer order keep same as first plot
 #canc_results_pairs_types2$type <- factor(canc_results_pairs_types2$type, levels = rev(order))
@@ -573,50 +573,57 @@ dev.off()
 #FIGURE 1C PART ---------------------
 ######################################
 
-gtex_res = readRDS("significant_GTEX_comparisons_april10.rds")
-z = which(gtex_res$canc %in% c("Glioblastoma multiforme", "Brain Lower Grade Glioma"))
-brain  = gtex_res[z,]
-gtex_res = gtex_res[-z,]
-z = which(brain$tis %in% c("Brain - Cerebellum", "Brain - Spinal cord (cervical c-1)"))
-brain = brain[z,]
-gtex_res = rbind(gtex_res, brain)
+gtex_res_risk = readRDS("lncRNAs_risk_groups_correlation_ranks.rds")
+gtex_res_risk = ldply(gtex_res_risk)
+gtex_res_risk$V2 = as.numeric(gtex_res_risk$V2)
+summary(gtex_res_risk$V2)
+gtex_res_risk = as.data.table(gtex_res_risk)
+colnames(gtex_res_risk)[8:9] = c("Spearman_rho", "Spearman_p")
+gtex_res_risk$Spearman_fdr = p.adjust(gtex_res_risk$Spearman_p, method="fdr")
+
+gtex_res_risk$wilcox_p = as.numeric(gtex_res_risk$wilcox_p)
+gtex_res_risk$wilcox_p = p.adjust(gtex_res_risk$wilcox_p, method="fdr")
+gtex_res_risk = as.data.table(filter(gtex_res_risk, wilcox_p < 0.05))
+
+#gtex_res = readRDS("significant_GTEX_comparisons_april10.rds")
+#z = which(gtex_res$canc %in% c("Glioblastoma multiforme", "Brain Lower Grade Glioma"))
+#brain  = gtex_res[z,]
+#gtex_res = gtex_res[-z,]
+#z = which(brain$tis %in% c("Brain - Cerebellum", "Brain - Spinal cord (cervical c-1)"))
+#brain = brain[z,]
+#gtex_res = rbind(gtex_res, brain)
 
 #get lncRNAs that are prognosic with gtex data 
+gtex_res = gtex_res_risk
 head(gtex_res)
+gtex_res$combo2 = paste(gtex_res$lnc, gtex_res$canc, sep="_")
 head(all_cancers_genes_surv_comb)
-all_cancers_genes_surv_comb$combo2 = paste(all_cancers_genes_surv_comb$gene, all_cancers_genes_surv_comb$canc, sep="_")
+all_cancers_genes_surv_comb$combo2 = paste(all_cancers_genes_surv_comb$gene, all_cancers_genes_surv_comb$type, sep="_")
 
 gtex_res = merge(gtex_res, all_cancers_genes_surv_comb, by="combo2")
-gtex_res = as.data.table(filter(gtex_res, abs(median_difference) >= 0.25))
+gtex_res$median_diff = as.numeric(gtex_res$median_diff)
+gtex_res = as.data.table(filter(gtex_res, abs(median_diff) >= 0.2))
 
 ###Data
-gtex = readRDS("allGTEX_lncRNAs_scored_Feb2619.rds")
-tcga = readRDS("TCGA_all_lncRNAs_cancers_scored_byindexMay23.rds")
-gtex = gtex[,c(1:4, 6, 5)]
+#gtex = readRDS("allGTEX_lncRNAs_scored_Feb2619.rds")
+#tcga = readRDS("TCGA_all_lncRNAs_cancers_scored_byindexMay23.rds")
+#gtex = gtex[,c(1:4, 6, 5)]
 
-fav = as.data.table(filter(gtex_res, HR < 0))
-unfav = as.data.table(filter(gtex_res, HR > 0))
+gtex_res$Hazard = gtex_res$risk.y
+gtex_res$Hazard = factor(gtex_res$Hazard, levels = c("Unfavourable", "Favourable"))
+gtex_res$Spearman_rho = as.numeric(gtex_res$Spearman_rho)
+gtex_res$med[gtex_res$median_diff > 0] = "upreg"
+gtex_res$med[gtex_res$median_diff < 0] = "downreg"
+table(gtex_res$med, gtex_res$Hazard)
 
-tcga$combo2 = paste(tcga$gene, tcga$tis, sep="_")
-z = which(tcga$combo2 %in% fav$combo2)
-tcga = tcga[z,]
-
-z = which(gtex$gene %in% tcga$gene)
-gtex = gtex[z,]
-
-fav$combo3 = paste(fav$gene.x, fav$tis, sep="_")
-gtex$combo2 = paste(gtex$gene, gtex$tis, sep="_")
-z = which(gtex$combo2 %in% fav$combo3)
-gtex = gtex[z,]
-
-all_ranks = rbind(gtex, tcga)
-
-pdf("final_figure_1C.pdf", height=6, width=6)
+pdf("final_figure_1C.pdf", height=5, width=6)
 
 #unfav 
-m <- ggplot(gtex_res, aes(x = median_difference, y = HR)) +
- geom_point(aes(colour = factor(type)))
-m + geom_density_2d()
+m <- ggplot(gtex_res, aes(x = median_diff, y = HR)) +
+ geom_point(aes(colour = Hazard)) + scale_color_npg() 
+m + geom_density_2d(colour="black") + geom_hline(yintercept=0, linetype="dashed", color = "black")+
+xlab("Median(High risk rank - GTEx rank)") + ylab("Hazard Ratio")+
+geom_vline(xintercept=0, linetype="dashed", color = "black") #+ scale_colour_gradient(low = "blue", high = "red")
 
 dev.off()
 

@@ -40,6 +40,8 @@ all_de_results = rbind(all_de_results, all_de_results_lgg)
 all_de_results$combo = paste(all_de_results$lnc, all_de_results$cancer) #156/162 unique combos across 21 unique cancer types 
 all_de_results = as.data.table(filter(all_de_results, combo %in% allCands$combo))
 
+full_diff_exp = all_de_results
+
 #------make matrix of lncRNA candidates within each cancer type
 #and their associated PCGs
 
@@ -299,6 +301,40 @@ dev.off()
 
 #stopped here Jan 25
 
+#make barplot just for LGG candidates found in the network
+keep = c("ENSG00000253187", "ENSG00000239552", "ENSG00000224950", "ENSG00000254635", "ENSG00000250360", "ENSG00000256482", "ENSG00000257261")
+lgg_res = as.data.table(filter(full_diff_exp, cancer == "LGG", adj.P.Val <= 0.05, (logFC >= 1) | (logFC < -1), lnc %in% keep)) 
+lgg_res$type[lgg_res$logFC >= 1] = "UpregulatedRisk"
+lgg_res$type[lgg_res$logFC < -1] = "DownregulatedRisk"
+
+#get order
+lgg_res$gene_name = sapply(lgg_res$lnc, get_name)
+ttt = as.data.table(table(lgg_res$gene_name))
+ttt = ttt[order(N)]
+
+#how many cancer gene census genes
+z = which(lgg_res$ID %in% census$ensg)
+lgg_res$census[z] = "census"
+lgg_res$census[-z] = "not_census"
+
+barplot1 = as.data.table(table(lgg_res$type, lgg_res$gene_name))
+barplot2 = as.data.table(table(lgg_res$census, lgg_res$gene_name))
+barplot2 = as.data.table(filter(barplot2, V1 == "census"))
+barplot = rbind(barplot1, barplot2)
+colnames(barplot) = c("type", "lncRNA", "num")
+barplot = as.data.table(filter(barplot, N >0))
+barplot$lncRNA = factor(barplot$lncRNA, levels = ttt$V1)
+
+pdf("figure6A_lgg_only.pdf", width=5, height=6)
+g = ggplot(barplot, aes(x=lncRNA, y=num, fill=type)) + theme_classic() + 
+   geom_bar(aes(fill=type), stat="identity", position=position_dodge())+xlab("LGG lncRNAs") + ylab("Number of genes")+
+   theme(legend.title=element_blank(), legend.position="top", axis.title.x=element_blank(), 
+    axis.text.x = element_text(angle = 90, hjust = 1, size=5)) + scale_fill_manual(values=c("#56B4E9","red", "#E69F00"))
+ggpar(g,
+ font.tickslab = c(6,"plain", "black"),
+ xtickslab.rt = 45)
+dev.off()
+
 ###---------------Make heatmap-------------------------------###
 
 #liver gluco related pathways 
@@ -421,7 +457,7 @@ rownames(lgg) = paste(rownames(lgg), "lgg")
 #3. get GBM 
 #z = which(all$type == "GBM")
 #gbm = all[z,]
-gbm = gbm_old
+gbm = subset(all, type == "GBM")
 z = which(colnames(gbm) %in% c("patient", development_genes))
 
 gbm = gbm[,z]
@@ -430,7 +466,7 @@ gbm$patient = NULL
 gbm = t(gbm)
 
 #change pcg names
-  for(i in 1:nrow(gbm)){
+for(i in 1:nrow(gbm)){
     print(i)
     pcg = rownames(gbm)[i]
     newname = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == pcg)][1]
@@ -476,30 +512,31 @@ z = which(colnames(all_canc) %in% (sapply(lncs_brain, get_name)))
 for(i in 1:length(z)){
   colnames(all_canc)[z[i]] = get_ensg(colnames(all_canc)[z[i]])
 }
-z = which(colnames(all_canc) == "HOXA10-AS")
-colnames(all_canc)[z] = "ENSG00000253187"
+
+
+z = which(colnames(all_canc) %in% c("ENSG00000239552", "HOXA10-AS"))
+old_canc = all_canc
+all_canc = all_canc[,-z]
 
 mat = all_canc[,c(which(!(colnames(all_canc) %in% c("type", "IDH.status"))))]
 mat = scale(mat)
 mat=t(mat)
 
-df = as.data.frame(all_canc[,c(which(colnames(all_canc) %in% c("type", "IDH.status", "ENSG00000239552", "ENSG00000253187")))])
+df = as.data.frame(old_canc[,c(which(colnames(old_canc) %in% c("type", "IDH.status", "ENSG00000239552", "HOXA10-AS")))])
+colnames(df)[2] = get_name("ENSG00000239552")
 df$patient = rownames(df)
 
-lnc_med = median(df$ENSG00000253187[df$type=="lgg"])
-z1=which((df$ENSG00000253187 > lnc_med) & (df$type=="lgg"))
-z2=which((df$ENSG00000253187 <= lnc_med) & (df$type=="lgg"))
-df$ENSG00000253187[z1] = 1
-df$ENSG00000253187[z2] = 0
+lnc_med = median(df[,1])
+z1=which(df[,1] > lnc_med)
+z2=which(df[,1] == lnc_med)
+df[z1,1] = 1
+df[z2,1] = 0
 
-lnc_med = median(df$ENSG00000239552[df$type=="lgg"])
-z1=which((df$ENSG00000239552 > lnc_med) & (df$type=="lgg"))
-z2=which((df$ENSG00000239552 <= lnc_med) & (df$type=="lgg"))
-df$ENSG00000239552[z1] = 1
-df$ENSG00000239552[z2] = 0
-
-df$ENSG00000253187[df$type=="gbm"]=NA
-df$ENSG00000239552[df$type=="gbm"]=NA
+lnc_med = median(df[,2])
+z1=which(df[,2] > lnc_med)
+z2=which(df[,2] == lnc_med)
+df[z1,2] = 1
+df[z2,2] = 0
 
 #which are favourable lncs? (for those ones flip 0s and 1s)
 cands_lncs = as.data.table(filter(allCands, Cancer== "Brain Lower Grade Glioma"))
@@ -521,6 +558,7 @@ colnames(surv)[1] = "patientt"
 df = merge(df, surv, by="patientt")
 get_risk = as.data.table(filter(df, type=="lgg"))
 gbm = as.data.table(filter(df, type=="gbm"))
+colnames(get_risk)[2:3] = c("ENSG00000253187", "ENSG00000239552")
 
 fitCPH <- coxph(Surv(OS.time, OS) ~ ENSG00000253187 + ENSG00000239552, data=get_risk)    # Cox-PH model
 (coefCPH <- coef(fitCPH))    
@@ -536,6 +574,7 @@ all_lgg_pats <- exp(coefCPH["ENSG00000253187"]* (get_risk[1:4, "ENSG00000253187"
 
 relRisk <- predict(fitCPH, get_risk, type="risk")   # relative risk
 get_risk$risk = relRisk
+colnames(get_risk)[2:3] = c("HOXA10-AS", "HOXB-AS2")
 
 df = rbind(get_risk, gbm)
 
@@ -566,7 +605,7 @@ df = rbind(get_risk, gbm)
 #ENSG00000250360 = colorRamp2(c(-10, 0, 5), c("chartreuse4", "white", "tomato4"))))
 
 #make sure order of patients in df matches order of patients in amtrix
-df = df[,c("patient", "risk", "type", "IDH.status")]
+df = df[,2:7]
 rownames(df) = df$patient
 #df$patient = NULL
 
@@ -586,21 +625,23 @@ values = df$risk
 df$risk = NULL
 typevals = df$type
 idh = as.character(df$IDH.status)
+hoxa10as = df[,1]
+hoxbas2 = df[,2]
 
-ha = HeatmapAnnotation(relative_risk = anno_points(values, gp = gpar(size=0.6), axis = TRUE),
-  type = typevals, m = idh,
-  col = list(type = c("lgg" = "orange", "gbm" = "purple"), m = c("Mutant" = "black", "WT" = "white")),
+ha = HeatmapAnnotation(relative_risk = anno_points(values, gp = gpar(size=0.3), axis = TRUE),
+  type = typevals, m = idh, hoxa10as = hoxa10as, hoxbas2=hoxbas2, 
+  col = list(type = c("lgg" = "orange", "gbm" = "purple"), m = c("Mutant" = "black", "WT" = "white"),
+  hoxa10as = c("1" = "limegreen", "0" = "mistyrose2"), hoxbas2=c("1" = "limegreen", "0" = "mistyrose2")), 
     show_annotation_name = TRUE,
-    annotation_name_offset = unit(2, "mm"),
-    annotation_name_rot = c(0, 0, 90))
+    annotation_name_offset = unit(2, "mm"))
 
-rownames(mat)[1:2] = c("HOXA10-AS", "HOXB-AS2")
-
-pdf("developmental_genes_lgg_gbm_all_small_version_genes_new_march26.pdf", width=12, height=4)
+#pdf("developmental_genes_lgg_gbm_all_small_version_genes_new_march26.pdf", width=12, height=4)
+pdf("developmental_genes_lgg_gbm_all_small_version_genes_new_april11.pdf", width=9, height=5)
 Heatmap(mat, column_names_gp = gpar(fontsize = 1), top_annotation = ha, show_column_names = FALSE,
-  heatmap_legend_param = list(legend_height = unit(3, "cm"), legend_width = unit(3, "cm")),
-  top_annotation_height = unit(2, "cm"), clustering_distance_rows = "pearson", row_names_gp = gpar(fontsize = 5))
+  heatmap_legend_param = list(legend_height = unit(2, "cm"), legend_width = unit(2, "cm")),
+  top_annotation_height = unit(2, "cm"), row_names_gp = gpar(fontsize = 4), clustering_distance_rows = "spearman", clustering_distance_columns = "spearman")
 dev.off()
+
 
 tiff("developmental_genes_lgg_gbm_all_small_version_genes_new_march26.tiff", height = 10, width = 25, units= "cm",  
      compression = "lzw", res = 300)
@@ -622,7 +663,6 @@ genes = c("ENSG00000253187", "ENSG00000239552")
 pdf("LGG_heatmaps_KM_plots_lncrnas.pdf")
 list = sapply(genes,get_km_plot, cancer = "LGG")
 dev.off()
-
 
 library(gridExtra)
 n <- length(list)

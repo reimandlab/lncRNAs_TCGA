@@ -10,8 +10,6 @@
 #working directory (source files, data files)
 #/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ
 
-#------Load libraries and scripts-----------------------------------
-
 library(survAUC)
 #source("source_code_Cox_MonteCarlo_CV_Mar13.R")
 require(caTools)
@@ -22,7 +20,7 @@ library(caret)
 library(stringr)
 
 #this script below prepares the RNA and clinical files for analysis 
-source("universal_LASSO_survival_script.R")
+source("universal_LASSO_survival_script_oncochannels.R")
 
 library(ggpubr)
 library(ggrepel)
@@ -33,8 +31,8 @@ library(caret)
 
 #------DATA---------------------------------------------------------
 
-dim(all)
-print(table(all$type))
+dim(rna)
+print(table(rna$type))
 
 #UCSC gene info
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
@@ -49,26 +47,22 @@ ucsc <- ucsc[-z,]
 cands = read.csv("ION_CHANNELS_targets_and_families.csv")
 colnames(ucsc)[8] = "HGNC.symbol"
 cands = merge(cands, ucsc, by = "HGNC.symbol")
-z = which(duplicated(all$patient))
-if(!(length(z)==0)){
-  dups = all$patient[z]
-  k = which(all$patient %in% dups)
-  all = all[-k,]
-}
 
 #--------This script ------------------------------------------------
 
-#just make KM plots for TCGA 
-#whatever data is available for PCAWG
-#make them KM plots as well 
-#just get list of genes that are significant in both data sets
-#also check Cox PH assumptions within each data-set
+#first assign outlier based binary labels to everyone
+#then conduct outlier based survival analysis 
 
 #--------------------------------------------------------------------
 
 #1. Get cancer data (gene expression and clinical for each cancer type)
+all = rna
 
-cancers = unique(all$type)
+t = as.data.table(table(all$type))
+t = filter(t, N >=50)
+
+cancers = unique(t$V1) #look at only cancers with minimum 100 patients 
+
 get_canc_data = function(canc){
   sub = subset(all, type == canc)
   return(sub)
@@ -103,28 +97,24 @@ add_tags = function(dtt){
     medians = median(dtt[,z])
   }
   #add high low tag
+  rm = c()
   for(k in 1:length(medians)){
     med = medians[k]
-    if(med ==0){
-    #if median = 0 then anyone greater than zero is 1 
-    l1 = which(dtt[,names(medians)[k]] > 0)
-    l2 = which(dtt[,names(medians)[k]] ==0)
-    dtt[l1,names(medians)[k]] = 1
-    dtt[l2, names(medians)[k]] = 0
-    }
-
+    if(med == 0){rm = c(rm, names(medians[k]))}
     if(!(med ==0)){
     l1 = which(dtt[,names(medians)[k]] >= med)
     l2 = which(dtt[,names(medians)[k]] < med)
     dtt[l1,names(medians)[k]] = 1
     dtt[l2, names(medians)[k]] = 0
     }
-  }  
+  }
+  z = which(colnames(dtt) %in% rm)
+  dtt = dtt[,-z]  
   return(dtt)
 }
 
 filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
-saveRDS(filtered_data_tagged, file="28cancers_median_tagged_by_ion_channels.rds")
+saveRDS(filtered_data_tagged, file="29cancers_median_tagged_by_ion_channels.rds")
 
 #3. Fit survival models and plot Kaplan Meier plot 
 
@@ -247,10 +237,10 @@ get_survival_models = function(dtt){
         # Change method
   p = p + stat_compare_means(method = "wilcox.test")
   #print(p)
-  print(dat$type[1])
+  print(dtt$type[1])
 }
 }
-dev.off()
+#dev.off()
 
 results_cox1 = results_cox1[-1,]
 #fdr on p-values 
@@ -262,6 +252,7 @@ return(results_cox1)
 }
 
 tcga_results = llply(filtered_data_tagged, get_survival_models) 
+saveRDS(tcga_results, "median_based_IC_survival_analysis.R")
 
 #for now just need GBM 
 #the other cancer types shouldn't be affected 
@@ -293,7 +284,7 @@ get_name_pcg = function(pcg){
 
 tcga_results1$name = sapply(tcga_results1$gene, get_name_pcg)
 
-saveRDS(tcga_results1, file="TCGA_ION_CHANNEL_results_March19.rds")
+saveRDS(tcga_results1, file="TCGA_ION_CHANNEL_results_april11_median_based.rds")
 #saveRDS(tcga_results1, file="GBM_median_splits_IonCHannels.rds")
 
 
