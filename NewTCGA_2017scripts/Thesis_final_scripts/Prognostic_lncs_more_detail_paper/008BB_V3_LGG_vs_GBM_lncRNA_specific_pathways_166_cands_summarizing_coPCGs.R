@@ -329,9 +329,9 @@ pdf("figure6A_lgg_only.pdf", width=5, height=6)
 g = ggplot(barplot, aes(x=lncRNA, y=num, fill=type)) + theme_classic() + 
    geom_bar(aes(fill=type), stat="identity", position=position_dodge())+xlab("LGG lncRNAs") + ylab("Number of genes")+
    theme(legend.title=element_blank(), legend.position="top", axis.title.x=element_blank(), 
-    axis.text.x = element_text(angle = 90, hjust = 1, size=5)) + scale_fill_manual(values=c("#56B4E9","red", "#E69F00"))
+    axis.text.x = element_text(angle = 90, hjust = 1, size=8)) + scale_fill_manual(values=c("#56B4E9","red", "#E69F00"))
 ggpar(g,
- font.tickslab = c(6,"plain", "black"),
+ font.tickslab = c(9,"plain", "black"),
  xtickslab.rt = 45)
 dev.off()
 
@@ -630,46 +630,214 @@ hoxbas2 = df[,2]
 
 ha = HeatmapAnnotation(relative_risk = anno_points(values, gp = gpar(size=0.3), axis = TRUE),
   type = typevals, m = idh, hoxa10as = hoxa10as, hoxbas2=hoxbas2, 
-  col = list(type = c("lgg" = "orange", "gbm" = "purple"), m = c("Mutant" = "black", "WT" = "white"),
+  col = list(type = c("lgg" = "orange", "gbm" = "purple"), m = c("Mutant" = "black", "WT" = "gray88"),
   hoxa10as = c("1" = "limegreen", "0" = "mistyrose2"), hoxbas2=c("1" = "limegreen", "0" = "mistyrose2")), 
     show_annotation_name = TRUE,
     annotation_name_offset = unit(2, "mm"))
 
 #pdf("developmental_genes_lgg_gbm_all_small_version_genes_new_march26.pdf", width=12, height=4)
-pdf("developmental_genes_lgg_gbm_all_small_version_genes_new_april11.pdf", width=9, height=5)
+pdf("developmental_genes_lgg_gbm_all_small_version_genes_new_april11.pdf", width=9, height=6)
 Heatmap(mat, column_names_gp = gpar(fontsize = 1), top_annotation = ha, show_column_names = FALSE,
   heatmap_legend_param = list(legend_height = unit(2, "cm"), legend_width = unit(2, "cm")),
-  top_annotation_height = unit(2, "cm"), row_names_gp = gpar(fontsize = 4), clustering_distance_rows = "spearman", clustering_distance_columns = "spearman")
+  top_annotation_height = unit(2, "cm"), row_names_gp = gpar(fontsize = 5), clustering_distance_rows = "spearman", clustering_distance_columns = "spearman")
 dev.off()
 
 
-tiff("developmental_genes_lgg_gbm_all_small_version_genes_new_march26.tiff", height = 10, width = 25, units= "cm",  
-     compression = "lzw", res = 300)
-Heatmap(mat, column_names_gp = gpar(fontsize = 1), top_annotation = ha, show_column_names = FALSE,
-  heatmap_legend_param = list(legend_height = unit(3, "cm"), legend_width = unit(3, "cm")),
-  top_annotation_height = unit(2, "cm"), clustering_distance_rows = "pearson", row_names_gp = gpar(fontsize = 5))
-dev.off()
+#tiff("developmental_genes_lgg_gbm_all_small_version_genes_new_march26.tiff", height = 10, width = 25, units= "cm",  
+#     compression = "lzw", res = 300)
+#Heatmap(mat, column_names_gp = gpar(fontsize = 1), top_annotation = ha, show_column_names = FALSE,
+#  heatmap_legend_param = list(legend_height = unit(3, "cm"), legend_width = unit(3, "cm")),
+#  top_annotation_height = unit(2, "cm"), clustering_distance_rows = "pearson", row_names_gp = gpar(fontsize = 5))
+#dev.off()
 
 
 #get km plots for all the PCGs
 genes = rownames(mat)[3:nrow(mat)]
 genes = sapply(genes, get_ensg_pcg)
 
-pdf("LGG_heatmap_KM_plots.pdf")
-list = sapply(genes,get_km_plot, cancer = "LGG")
-dev.off()
+#pdf("LGG_heatmap_KM_plots.pdf")
+#list = sapply(genes,get_km_plot, cancer = "LGG")
+#dev.off()
 
-genes = c("ENSG00000253187", "ENSG00000239552")
-pdf("LGG_heatmaps_KM_plots_lncrnas.pdf")
-list = sapply(genes,get_km_plot, cancer = "LGG")
-dev.off()
+#genes = c("ENSG00000253187", "ENSG00000239552")
+#pdf("LGG_heatmaps_KM_plots_lncrnas.pdf")
+#list = sapply(genes,get_km_plot, cancer = "LGG")
+#dev.off()
 
 library(gridExtra)
-n <- length(list)
-nCol <- floor(sqrt(n))
+#n <- length(list)
+#nCol <- floor(sqrt(n))
 
-pdf("hoxlncs.pdf", width=8, height=11)
-do.call("grid.arrange", c(list, ncol=nCol))
+#pdf("hoxlncs.pdf", width=8, height=11)
+#do.call("grid.arrange", c(list, ncol=nCol))
+#dev.off()
+
+dim(lgg_idh)
+head(lgg_idh)
+lgg = as.data.table(subset(rna, type == "LGG"))
+lgg = lgg[,c("ENSG00000253187", "ENSG00000239552", "patient", "type", "OS", "OS.time")]
+lgg = merge(lgg, lgg_idh, by="patient")
+
+lgg$ENSG00000253187[lgg$ENSG00000253187 > 0] = "High"
+lgg$ENSG00000253187[lgg$ENSG00000253187 == 0] = "Low"
+
+lgg$ENSG00000239552[lgg$ENSG00000239552 > 0] = "High"
+lgg$ENSG00000239552[lgg$ENSG00000239552 == 0] = "Low"
+
+colnames(lgg)[3] = "HOXB-AS2"
+colnames(lgg)[2] = "HOXA10-AS"
+
+#get km plots
+
+lgg$OS.time = lgg$OS.time/365
+
+gene_name = colnames(lgg)[2]
+colnames(lgg)[2] = "gene"
+
+lgg$IDH.status = factor(lgg$IDH.status, levels=c("WT", "Mutant"))
+
+fit <- survfit(Surv(OS.time, OS) ~ gene + IDH.status, data = lgg)
+
+pdf("lgg_two_lncRNAs_cands_figure6d.pdf", width=8, height=7)
+
+s <- ggsurvplot(
+          title = gene_name, 
+          fit, 
+          xlab = "Time (Years)", 
+          #surv.median.line = "hv",
+          font.main = c(14, "bold", "black"),
+          font.x = c(12, "plain", "black"),
+          font.y = c(12, "plain", "black"),
+          font.tickslab = c(12, "plain", "black"),
+          font.legend = 10,
+          risk.table.fontsize = 5, 
+          #legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
+          data = lgg,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,5),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          #palette = mypal[c(4,1)],
+          palette = "npg", 
+           legend.labs = c("High exp & IDH WT", "High exp & IDH Mutant", "Low exp & IDH WT", "Low exp & IDH Mutant"), 
+          #ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+
+print(s)
+
+gene_name = colnames(lgg)[3]
+colnames(lgg)[2] = "lnc"
+
+colnames(lgg)[3] = "gene"
+
+lgg$IDH.status = factor(lgg$IDH.status, levels=c("WT", "Mutant"))
+
+fit <- survfit(Surv(OS.time, OS) ~ gene + IDH.status, data = lgg)
+
+s <- ggsurvplot(
+          title = gene_name, 
+          fit, 
+          xlab = "Time (Years)", 
+          #surv.median.line = "hv",
+          font.main = c(14, "bold", "black"),
+          font.x = c(12, "plain", "black"),
+          font.y = c(12, "plain", "black"),
+          font.tickslab = c(12, "plain", "black"),
+          font.legend = 10,
+          risk.table.fontsize = 5, 
+          #legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
+          data = lgg,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,5),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          #palette = mypal[c(4,1)],
+          palette = "npg", 
+           legend.labs = c("High exp & IDH WT", "High exp & IDH Mutant", "Low exp & IDH WT", "Low exp & IDH Mutant"), 
+          #ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+print(s)
+
 dev.off()
+
+
+
+lgg = as.data.table(subset(rna, type == "LGG"))
+lgg = lgg[,c("ENSG00000253187", "ENSG00000239552", "patient", "type", "OS", "OS.time")]
+lgg = merge(lgg, lgg_idh, by="patient")
+
+z = which(is.na(lgg$IDH.status))
+lgg = lgg[-z,]
+
+lgg$ENSG00000253187 = log1p(lgg$ENSG00000253187)
+lgg$ENSG00000253187_tag[lgg$ENSG00000253187 > 0] = "High"
+lgg$ENSG00000253187_tag[lgg$ENSG00000253187 == 0] = "Low"
+lgg$ENSG00000253187_tag = factor(lgg$ENSG00000253187_tag, levels=c("Low", "High"))
+
+lgg$ENSG00000239552 = log1p(lgg$ENSG00000239552)
+lgg$ENSG00000239552_tag[lgg$ENSG00000239552 > 0] = "High"
+lgg$ENSG00000239552_tag[lgg$ENSG00000239552 == 0] = "Low"
+lgg$ENSG00000239552_tag = factor(lgg$ENSG00000239552_tag, levels=c("Low", "High"))
+
+lgg$IDH.status = factor(lgg$IDH.status, levels=c("WT", "Mutant"))
+lgg$ENSG00000253187_tag = paste(lgg$ENSG00000253187_tag, lgg$IDH.status)
+lgg$ENSG00000253187_tag = factor(lgg$ENSG00000253187_tag, levels=c("High WT", "High Mutant", "Low WT", "Low Mutant"))
+
+lgg$ENSG00000239552_tag = paste(lgg$ENSG00000239552_tag, lgg$IDH.status)
+lgg$ENSG00000239552_tag = factor(lgg$ENSG00000239552_tag, levels=c("High WT", "High Mutant", "Low WT", "Low Mutant"))
+
+pdf("lgg_two_lncRNAs_cands_figure6d_boxplots.pdf", width=6, height=6)
+
+#make boxplots
+   p <- ggboxplot(lgg, x = "ENSG00000253187_tag", y = "ENSG00000253187",
+          color = "ENSG00000253187_tag",
+         palette = "npg", title = "HOXA10-AS expression", 
+          add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
+        # Change method
+  p = p + stat_n_text() + scale_color_npg() + theme(legend.position="none")+xlab("HOXA10-AS expression & IDH mutation status")
+  ggpar(p, font.tickslab = c(12, "plain", "black")) 
+
+#make boxplots
+   p <- ggboxplot(lgg, x = "ENSG00000239552_tag", y = "ENSG00000239552",
+          color = "ENSG00000239552_tag",
+         palette = "npg", title = "HOXB-AS2 expression", 
+          add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
+        # Change method
+  p = p + stat_n_text() + scale_color_npg() + theme(legend.position="none") +xlab("HOXB-AS2 expression & IDH mutation status")
+  ggpar(p, font.tickslab = c(12, "plain", "black")) 
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

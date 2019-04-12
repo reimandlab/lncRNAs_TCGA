@@ -49,6 +49,8 @@ source("subid_wnew_tcga_dat.R")
 
 #Fix survival times to update them
 #using the script subid_wnew_tcga_dat
+gbm = subset(rna, type == "GBM")
+
 for(i in 1:nrow(dataset)){
   print(dataset$os_time[i])  
   pat = dataset$patient[i]
@@ -60,10 +62,8 @@ for(i in 1:nrow(dataset)){
 }
 }
 
-z = which(duplicated(all$patient))
-pats = all$patient[z]
-z = which(all$patient %in% pats)
-all = all[-z,]
+
+all = rna
 
 cancers = unique(all$type)
 
@@ -126,7 +126,8 @@ for (j in 1:nrow(output)) {
   canc_surv_dat$OS = as.numeric(canc_surv_dat$OS)
   canc_surv_dat$OS.time = as.numeric(canc_surv_dat$OS.time)
   print(colnames((canc_surv_dat)[4]))
-  colnames(canc_surv_dat)[4] = "IC"
+  z = which(str_detect(colnames(canc_surv_dat), "ENSG"))
+  colnames(canc_surv_dat)[z] = "IC"
 
   #Part 1: Extract survival data for query gene, and sort based on exprssion
   survival.data <- data.frame(as.numeric(as.character(canc_surv_dat[,"OS.time"])), 
@@ -155,15 +156,16 @@ for (j in 1:nrow(output)) {
   return(output)
 }
 
-#subid_res = llply(setup, subid)
+subid_res = llply(setup, subid)
 
 #setwd("/.mounts/labs/reimandlab/private/users/idzneladze/gbm_ic/data/MASTER_OUTPUT")
 #write.csv(output, file=paste("karin_SUBID", "_full_subid.csv", sep=""), quote=FALSE)
 #saveRDS(subid_res, file="all_cancers_subid_results_march19.rds")
+saveRDS(subid_res, file="all_cancers_subid_results_april12.rds")
 
 #################################################################################
 
-subid_res = readRDS("all_cancers_subid_results_march19.rds")
+subid_res = readRDS("all_cancers_subid_results_april12.rds")
 
 #UCSC gene info
 ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
@@ -223,7 +225,8 @@ get_hr = function(gene, perc){
   canc_dat = cancer_dat
   z = which(colnames(canc_dat) %in% c(gene, "patient", "OS", "OS.time"))
   canc_dat = canc_dat[,z]
-  colnames(canc_dat)[4] = "IC"
+  z = which(str_detect(colnames(canc_dat), "ENSG"))
+  colnames(canc_dat)[z] = "IC"
   canc_dat = canc_dat[order(canc_dat$IC) , ]
 
   i = as.numeric(perc)
@@ -259,6 +262,6 @@ res_list_subids2[,1] = NULL
 #setwd("/.mounts/labs/reimandlab/private/users/idzneladze/gbm_ic/data/MASTER_OUTPUT")
 #write.csv(output2, file=paste(name.prefix, "_subid.csv", sep=""), quote=FALSE)
 
-saveRDS(res_list_subids2, file="subid_results_KI_IC_march20.rds")
+saveRDS(res_list_subids2, file="subid_results_KI_IC_april12.rds")
 
 

@@ -16,21 +16,21 @@ library(activePathways)
 #SUBID results
 #SUBID results using Erik's technique 
 #includes results for 28 cancer types from TCGA for those with at least 50 patients 
-subid = readRDS("subid_results_KI_IC_march20.rds")
+subid = readRDS("subid_results_KI_IC_april12.rds")
 subid$method = "SUBID_erik_data"
 colnames(subid)[c(1,7)] = paste(colnames(subid)[c(1,7)], "Eriks_data", sep="_")
 colnames(subid)[7] = "Cancer"
 colnames(subid)[4] = "ensg"
 
 #MEDIAN DICHOTOMIZED 
-medians = readRDS("TCGA_ION_CHANNEL_results_March19.rds")
+medians = readRDS("TCGA_ION_CHANNEL_results_april11_median_based.rds")
 colnames(medians)[2:ncol(medians)] = paste(colnames(medians)[2:ncol(medians)], "median", sep="_") 
 colnames(medians)[7] = "Cancer"
 medians = medians[,c("gene", "HR_median", "pval_median", "fdr_pval_median", "name_median", "Cancer")]
 colnames(medians)[c(1,5)] = c("ensg", "gene")
 
 #OUTLIER DICHOTOMIZED 
-outliers = readRDS("TCGA_ION_CHANNEL_results_outlier_based_March28_min10percent_risk_group.rds")
+outliers = readRDS("TCGA_ION_CHANNEL_results_outlier_based_April10_min10patients_risk_group.rds")
 colnames(outliers)[2:ncol(outliers)] = paste(colnames(outliers)[2:ncol(outliers)], "outlier", sep="_") 
 colnames(outliers)[7] = "Cancer"
 outliers = outliers[,c("gene", "HR_outlier", "pval_outlier", "num_risk_outlier", "perc_risk_outlier", "fdr_pval_outlier", "Cancer")]

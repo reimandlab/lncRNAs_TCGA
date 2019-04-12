@@ -357,20 +357,19 @@ for(i in 1:nrow(prog_pcgs)){
 }
 
 
-pdf("figure2E_summary_lncs_pcgs_antisense_10kb_nov16.pdf", width=9,height=4)
+pdf("figure2E_summary_lncs_pcgs_antisense_10kb_nov16.pdf", width=5,height=5)
 g = ggplot(prog_pcgs, aes(pcgConcordance, lncConcordance, label=lnc_pcg)) +
- geom_point(aes(color=type_lnc, alpha=0.5))+
+ geom_point(color = "black")+
     scale_colour_manual(values = c("blue", "dimgrey", "red", "purple")) + 
-    xlab("Neighbour PCG Concordance") + ylab("lncRNA Concordance") + theme_bw() +
+    xlab("Neighbour PCG Concordance") + ylab("lncRNA Concordance") + 
     theme(legend.box = "horizontal", axis.text = element_text(size=13), 
       legend.text=element_text(size=10), legend.title=element_text(size=10))+
      xlim(0.45,0.75) + ylim(0.45,0.75) + geom_abline(intercept=0) +
-     geom_vline(xintercept=0.5, linetype="dashed", color = "red")
-
+     geom_vline(xintercept=0.5, linetype="dashed", color = "red") + 
+     geom_hline(yintercept=0.5, linetype="dashed", color = "red")
      #geom_text_repel(data = subset(prog_pcgs, lncConcordance > 0.7 | pcgConcordance > 0.65), size=2, nudge_y = 0.1,
       #direction = "x",segment.color = "grey50",
       #segment.size = 0.05)
-
 g
 dev.off()
 
