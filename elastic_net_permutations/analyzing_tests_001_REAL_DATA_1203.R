@@ -8,13 +8,14 @@ library(tidyr)
 library(broom)
 library(ggplot2)
 library(stringr)
+library(wesanderson)
 
 ########################################################################
 #1. evaluate c-indicies 
 ########################################################################
 
 #read in all CINDICES files 
-results = list.files(pattern="2019-04-11")
+results = list.files(pattern="2019-04-12")
 print(length(results))
 
 results = results[which(str_detect(results, "cindices"))]
@@ -35,17 +36,32 @@ all_res = as.data.table(all_res)
 
 new_res = as.data.table(all_res %>% gather(all_res, cindex, combined:clinical))
 
+#save and compare to random shuffled data
+
+#get cancer types 
+canc_conv = readRDS("canc_conv.rds")
+colnames(canc_conv)[2] = "canc"
+canc_conv = as.data.table(merge(canc_conv, new_res, by="canc"))
+
+##order by medians
+res = as.data.table(canc_conv %>% 
+	group_by(type, all_res) %>% summarise_each(funs(max, min, mean, median, sd), cindex))
+
+res = as.data.table(filter(res, all_res == "lncRNAs"))
+res = res[order(median)]
+canc_conv$type = factor(canc_conv$type, levels = res$type)
 #summary boxplots all cancers 
-pdf("cindices_real_march2019.pdf", width=20, height=10)
-g = ggboxplot(new_res, "canc", "cindex", fill="all_res", color="black", notch = TRUE)
+
+mypal = wes_palette("FantasticFox")
+
+pdf("cindices_real_march2019.pdf", width=9, height=3)
+g = ggboxplot(canc_conv, "type", "cindex", fill="all_res", color="black", notch = TRUE, palette=c("grey", "dodgerblue4", "orange"))
 g =  g + stat_compare_means(aes(group = all_res), label = "p.signif") + theme_minimal()
-g = ggpar(g, x.text.angle = 90)
+g = ggpar(g, x.text.angle = 65, legend.title="Predictors")
 print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red"))
 dev.off()
 
-#save and compare to random shuffled data
-
-saveRDS(all_res, file="all_res_REAL_EN_runs_1104.rds")
+saveRDS(all_res, file="all_res_REAL_EN_runs_1204.rds")
 
 #for each cancer type get boxplot 
 check_perform = function(cancer){
@@ -81,7 +97,7 @@ wil_sig = wil_sig[order(med_lnc)]
 #2. get genes 
 ########################################################################
 
-results = list.files(pattern="2019-04-11")
+results = list.files(pattern="2019-04-12")
 print(length(results))
 genes = results[which(str_detect(results, "genes"))]
 
@@ -96,16 +112,6 @@ all_res = ldply(all_res)
 all_res = as.data.table(all_res)
 
 rounds = unique(all_res$round)
-
-get_fdr = function(r){
-  canc = as.data.table(filter(all_res, round == r))
-  #get only those with sig inference post selective p-values 
-  canc$c = p.adjust(canc$wald_p, method="fdr")
-  canc = as.data.table(filter(canc, c < 0.05))
-  return(canc)
-}
-
-rounds = as.data.table(ldply(llply(rounds, get_fdr)))
 
 
 
