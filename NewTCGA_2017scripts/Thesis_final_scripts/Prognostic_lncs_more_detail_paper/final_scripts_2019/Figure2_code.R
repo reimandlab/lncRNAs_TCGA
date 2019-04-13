@@ -54,5 +54,35 @@ get_name = function(ensg){
 #--------------------------------------------------------------------
 
 res = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+res = as.data.table(filter(res, data=="TCGA"))
+canc_conv = readRDS("canc_conv.rds")
+colnames(canc_conv)[2] = "cancer"
+res = merge(res, canc_conv, by="cancer")
+t = as.data.table(table(res$type))
+t = t[order(N)]
+res$type = factor(res$type, levels =t$V1)
+res = res[order(type, HR)]
+
+#x = lnc
+#stratify by type
+#y-axis = HR
+#colour = lncRNA type CAT_geneClass
+
+#res = res[1:20,]
+
+res$HR = log2(res$HR)
+
+g = ggplot(data=res, aes(x=CAT_geneName, y=HR, fill=CAT_geneClass)) + 
+  geom_bar(stat="identity") + facet_grid(~ type, scale="free", space = "free")+
+  geom_hline(yintercept=0, linetype="dashed", color = "red") + theme_light()
+ggpar(g, xtickslab.rt=45, font.tickslab=c(6, "plain", "black"),
+	legend = "bottom", legend.title = "lncRNA type",
+ font.legend = c(5, "plain	", "black")) 
+
+
+
+
+
+
 
 
