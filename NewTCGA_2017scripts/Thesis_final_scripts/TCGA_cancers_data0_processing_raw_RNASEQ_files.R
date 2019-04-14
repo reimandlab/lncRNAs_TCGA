@@ -26,14 +26,14 @@ ids_remove = unique(ids_remove[,2])
 tss_codes = read.csv(" TCGA_TissueSourceSite_Codes2017 .csv"     )
 
 #not actually done originally 
-tss_codes$TSS.Code[tss_codes$TSS.Code == "2"] = "02"
-tss_codes$TSS.Code[tss_codes$TSS.Code == "6"] = "06"
-tss_codes$TSS.Code[tss_codes$TSS.Code == "8"] = "08"
-tss_codes$TSS.Code[tss_codes$TSS.Code == "1"] = "01"
-tss_codes$TSS.Code[tss_codes$TSS.Code == "4"] = "04"
-tss_codes$TSS.Code[tss_codes$TSS.Code == "3"] = "03"
-tss_codes$TSS.Code[tss_codes$TSS.Code == "9"] = "09"
-tss_codes$TSS.Code[tss_codes$TSS.Code == "5"] = "05"
+#tss_codes$TSS.Code[tss_codes$TSS.Code == "2"] = "02"
+#tss_codes$TSS.Code[tss_codes$TSS.Code == "6"] = "06"
+#tss_codes$TSS.Code[tss_codes$TSS.Code == "8"] = "08"
+#tss_codes$TSS.Code[tss_codes$TSS.Code == "1"] = "01"
+#tss_codes$TSS.Code[tss_codes$TSS.Code == "4"] = "04"
+#tss_codes$TSS.Code[tss_codes$TSS.Code == "3"] = "03"
+#tss_codes$TSS.Code[tss_codes$TSS.Code == "9"] = "09"
+#tss_codes$TSS.Code[tss_codes$TSS.Code == "5"] = "05"
 
 
 #3. TCGA new clinical file - downloaded previously 

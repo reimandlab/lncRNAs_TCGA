@@ -150,7 +150,7 @@ rna$patient = rownames(rna)
 colnames(clin)[2] = "patient"
 rna = merge(rna, clin, by="patient")
 
-saveRDS(rna, "5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
+saveRDS(rna, "5919_lncRNAs_tcga_all_cancers_March13_wclinical_dataalldat.rds")
 
 #Add survival info to RNA file - normal matched 
 norm = as.data.frame(norm)
@@ -158,7 +158,7 @@ norm$patient = rownames(norm)
 colnames(clin)[2] = "patient"
 norm = merge(norm, clin, by="patient")
 
-saveRDS(norm, "all_genes_matched_normals_563_March13_wclinical_data.rds")
+saveRDS(norm, "all_genes_matched_normals_563_March13_wclinical_dataalldat.rds")
 
 #Add survival info to RNA file - metastatic matched 
 met = as.data.frame(met)
@@ -166,21 +166,21 @@ met$patient = rownames(met)
 colnames(clin)[2] = "patient"
 met = merge(met, clin, by="patient")
 
-saveRDS(met, "all_genes_matched_metastatic_300_March13_wclinical_data.rds")
+saveRDS(met, "all_genes_matched_metastatic_300_March13_wclinical_dataalldat.rds")
 
 #Add survival info to PCG file
 pcg = as.data.frame(pcg)
 pcg$patient = rownames(pcg)
 pcg = merge(pcg, clin, by="patient")
 
-saveRDS(pcg, "19438_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
+saveRDS(pcg, "19438_lncRNAs_tcga_all_cancers_March13_wclinical_dataalldat.rds")
 
 #Add survival info to PCG file
 ext = as.data.frame(ext)
 ext$patient = rownames(ext)
 ext = merge(ext, clin, by="patient")
 
-saveRDS(ext, "all_genes_external_tcga_all_cancers_March13_wclinical_data.rds")
+saveRDS(ext, "all_genes_external_tcga_all_cancers_March13_wclinical_dataalldat.rds")
 
 
 
