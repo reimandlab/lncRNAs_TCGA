@@ -23,6 +23,7 @@ library(EnvStats)
 
 #cands -- should be this file
 cands = readRDS("genes_keep_100CV_No_FDR_May2nd2018.rds")
+cands = readRDS("lncRNAs_selected_by_EN_april14.rds")
 
 #--------This script ------------------------------------------------
 
@@ -56,12 +57,12 @@ get_name = function(ensg){
 #write function that adds tag to whole data group 
 #and does survival analysis on whole group
 
-z = which(cancers %in% cands$Cancer)
+z = which(cancers %in% cands$cancer)
 cancer_data = canc_datas[z] #cancers list and canc_datas list should be the same 
 
 get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates 
-  z = which(colnames(dtt) %in% c(as.character(cands$Geneid[cands$Cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
+  z = which(colnames(dtt) %in% c(as.character(cands$gene[cands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
     "new_tumor_event_type", "Cancer"))
   dtt = dtt[,z]
@@ -107,7 +108,7 @@ filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
 saveRDS(filtered_data_tagged, file="22_cancer_types_with_lncRNA_candidates_labelled_high_low.rds")
 
 get_survival_models = function(dtt){
-  results_cox1 <- as.data.frame(matrix(ncol=21)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
+  results_cox1 <- as.data.frame(matrix(ncol=21)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer", 
     "lnc_test_ph", 'global_test_ph', "num_risk", "perc_risk", "power", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero", "multi_model_concordance", 
     "lnc_only_concordance", "clinical_only_concordance", "num_events", "perc_wevents")
 
@@ -150,6 +151,8 @@ get_survival_models = function(dtt){
   lnc_only = coxph(Surv(OS.time, OS)  ~ newdat[,1], data = newdat)
   clnconly = as.numeric(glance(lnc_only)[11])
   
+  hr = summary(lnc_only)$coefficients[2]
+
   z = which(str_detect(colnames(newdat), "ENSG"))
   clin_only = newdat[,-z]
   clinical_only = coxph(Surv(OS.time, OS)  ~ ., data = clin_only)
@@ -163,7 +166,7 @@ get_survival_models = function(dtt){
 
   power = powerCT.default0(k=kval,m=mval, RR=2, alpha=0.05)
 
-  hr = summary(lncs)$coefficients[1,c(1,2,5)][2]
+  #hr = summary(lncs)$coefficients[1,c(1,2,5)][2]
   if(hr >1){
     risk_num = length(which(newdat[,1] == 1))
     perc = risk_num/nrow(newdat)
@@ -209,7 +212,7 @@ get_survival_models = function(dtt){
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          print(s)
+          #print(s)
 
    #generate boxplot 
    z = which(cancers == dtt$Cancer[1])
@@ -237,7 +240,7 @@ get_survival_models = function(dtt){
       max_nonzero = "notavail"
    }
 
-   row <- c(gene_name, summary(lncs)$coefficients[1,c(1,2,5)],  summary(lncs)$conf.int[1,c(3,4)], dtt$Cancer[1], 
+   row <- c(gene_name, summary(lncs)$coefficients[1,c(1,5)], hr,  summary(lncs)$conf.int[1,c(3,4)], dtt$Cancer[1], 
     lnc_test_ph, global, risk_num, perc, power, median_nonzero,
     sd_nonzero,
     min_nonzero,
@@ -271,7 +274,7 @@ get_survival_models = function(dtt){
           add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
         # Change method
   p = p + stat_compare_means(method = "wilcox.test") + stat_n_text() + scale_color_npg() 
-  print(p)
+  #print(p)
 }
 
 results_cox1 = results_cox1[-1,]
@@ -287,9 +290,9 @@ return(results_cox1)
 #-----------------------------------------------------------------------------------------------------------
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_lifespan_May3rd.pdf")
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_oct3.pdf")
-pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_mar19.pdf", width=6, height=5)
+#pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_mar19.pdf", width=6, height=5)
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
-dev.off()
+#dev.off()
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
@@ -387,7 +390,7 @@ cancers_tests = as.list(unique(tcga_results1$cancer[which(tcga_results1$cancer %
 
 get_matched_data = function(cancer){
     dtt = subset(pcawg_data, canc == cancer)
-    z = which(colnames(dtt) %in% c(as.character(cands$Geneid[cands$Cancer == dtt$canc[1]]), "canc", 
+    z = which(colnames(dtt) %in% c(as.character(cands$gene[cands$cancer == dtt$canc[1]]), "canc", 
     "histo", "time", "status", "sex", "donor_age_at_diagnosis"))
     dtt = dtt[,z]
     if(nrow(dtt) >= 30){
@@ -575,7 +578,7 @@ get_survival_models = function(dtt){
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          print(s)      
+          #print(s)      
 
 
       #generate boxplot 
@@ -666,7 +669,7 @@ get_survival_models = function(dtt){
           add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
         # Change method
   p = p + stat_compare_means(method = "wilcox.test") + stat_n_text() + scale_color_npg() 
-  print(p)
+  #print(p)
 
 
 }
@@ -695,9 +698,9 @@ return(results_cox1)
 }
 
 #pdf("PCAWG_validating_individual_TCGA_candidates_survival_plots_final_cands_May3rd_full_lifespan.pdf")
-pdf("PCAWG_validating_individual_TCGA_candidates_survival_plots_Oct3_five_year_survival.pdf", width=6, height=5)
+#pdf("PCAWG_validating_individual_TCGA_candidates_survival_plots_Oct3_five_year_survival.pdf", width=6, height=5)
 pcawg_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
-dev.off()
+#dev.off()
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 pcawg_results1 = ldply(pcawg_results, data.frame)

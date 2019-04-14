@@ -63,21 +63,28 @@ t = t[order(N)]
 res$type = factor(res$type, levels =t$V1)
 res = res[order(type, HR)]
 
+#need to order genes wtihin cancer type 
+res$combo = paste(res$CAT_geneName, res$type)
+res = res[order(type, HR)]
+order = unique(res$CAT_geneName)
+
+res$CAT_geneName = factor(res$CAT_geneName, levels=order)
+
 #x = lnc
 #stratify by type
 #y-axis = HR
 #colour = lncRNA type CAT_geneClass
 
-#res = res[1:20,]
+res = res[1:20,]
 
 res$HR = log2(res$HR)
 
-g = ggplot(data=res, aes(x=CAT_geneName, y=HR, fill=CAT_geneClass)) + 
+g = ggplot(data=res, aes(x=CAT_geneName, y=HR, fill=CAT_geneClass, order = -HR)) + 
   geom_bar(stat="identity") + facet_grid(~ type, scale="free", space = "free")+
   geom_hline(yintercept=0, linetype="dashed", color = "red") + theme_light()
 ggpar(g, xtickslab.rt=45, font.tickslab=c(6, "plain", "black"),
 	legend = "bottom", legend.title = "lncRNA type",
- font.legend = c(5, "plain	", "black")) 
+ font.legend = c(5, "plain	", "black")) + scale_fill_brewer(palette="Dark2")
 
 
 

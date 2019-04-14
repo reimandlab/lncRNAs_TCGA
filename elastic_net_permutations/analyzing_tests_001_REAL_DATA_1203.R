@@ -113,7 +113,7 @@ all_res = as.data.table(all_res)
 
 rounds = unique(all_res$round)
 
-
+saveRDS(all_res, file="lncRNAs_selected_by_EN_april14.rds")
 
 
 
