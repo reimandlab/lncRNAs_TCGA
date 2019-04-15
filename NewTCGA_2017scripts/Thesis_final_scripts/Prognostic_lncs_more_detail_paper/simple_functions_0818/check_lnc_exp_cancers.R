@@ -2,9 +2,9 @@
 ###Load libraries and data - April 16th 
 ###---------------------------------------------------------------
 
-source("source_code_Cox_MonteCarlo_CV_April12.R")
-require(caTools)
+source("universal_LASSO_survival_script.R")
 
+require(caTools)
 library(survAUC)
 #source("source_code_Cox_MonteCarlo_CV_Mar13.R")
 require(caTools)
@@ -15,9 +15,6 @@ library(caret)
 library(stringr)
 library(EnvStats)
 library(patchwork)
-
-source("universal_LASSO_survival_script.R")
-
 library(ggpubr)
 library(ggrepel)
 library(viridis)
@@ -26,6 +23,7 @@ library(caret)
 library(Rtsne)
 library(data.table)
 library(mixtools)
+library(TCGAbiolinks)
 
 #------DATA---------------------------------------------------------
 #UCSC gene info
@@ -55,10 +53,6 @@ pats_num = filter(pats_num, N <50)
 canc_rm = pats_num$V1
 rna = rna[-which(rna$Cancer %in% canc_rm),]
 
-#Combined into one dataframe because need to get ranks 
-all <- merge(rna, pcg, by = c("patient", "Cancer", "type", "OS", "OS.time"))
-#all = all[,1:25170]
-
 #lncRNA candidates, n = 166, n=173 combos 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
@@ -66,6 +60,9 @@ allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 #cindices
 r = readRDS("lncs_cross_validations_Results_nov20.rds")
+
+#GBM clinical subset 
+clin_subtypes <- TCGAquery_subtype(tumor = "GBM")
 
 #Co-expression results of PCGs 
 #coexp = readRDS("coexpression_results_processed_july24.rds")
@@ -336,7 +333,11 @@ cancer = "PAAD"
 get_km_plot = function(gene, cancer){
   all_g = all
   all_g = as.data.frame(all_g)
+  
   dat = all[,c(which(colnames(all) %in% c("type", gene, "OS", "OS.time")))]
+  #dat = all[,c(which(colnames(all) %in% c("type", gene, "OS", "OS.time", "gender", "race", "age_at_initial_pathologic_diagnosis",
+  #  "clinical_stage", "histological_grade")))]
+
   z = which(str_detect(colnames(dat), "ENSG"))
   if(!(length(z)==0)){
   colnames(dat)[z] = "gene"
@@ -367,7 +368,9 @@ get_km_plot = function(gene, cancer){
   if(is.na(gene_name)){
     gene_name = get_name_pcg(gene)
   }
+  
   cox_mod = coxph(Surv(OS.time, OS) ~ gene, data = dat)
+  
   print(glance(cox_mod)$concordance)
   conc = round(glance(cox_mod)$concordance, digits=2)
   fit <- survfit(Surv(OS.time, OS) ~ gene, data = dat)
@@ -402,6 +405,8 @@ get_km_plot = function(gene, cancer){
           print(s)
 }
 }	
+
+
 
 #######
 ##[7]##-------------------------------------------------------------

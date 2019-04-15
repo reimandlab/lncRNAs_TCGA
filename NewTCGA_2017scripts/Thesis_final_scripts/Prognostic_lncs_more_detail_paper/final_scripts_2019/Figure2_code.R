@@ -75,18 +75,20 @@ res$CAT_geneName = factor(res$CAT_geneName, levels=order)
 #y-axis = HR
 #colour = lncRNA type CAT_geneClass
 
-res = res[1:20,]
+#res = res[1:20,]
 
 res$HR = log2(res$HR)
+
+pdf("lncRNA_candidates_final_figure2B.pdf", width=16, height=6)
 
 g = ggplot(data=res, aes(x=CAT_geneName, y=HR, fill=CAT_geneClass, order = -HR)) + 
   geom_bar(stat="identity") + facet_grid(~ type, scale="free", space = "free")+
   geom_hline(yintercept=0, linetype="dashed", color = "red") + theme_light()
-ggpar(g, xtickslab.rt=45, font.tickslab=c(6, "plain", "black"),
+ggpar(g, xtickslab.rt=90, font.tickslab=c(7, "plain", "black"),
 	legend = "bottom", legend.title = "lncRNA type",
  font.legend = c(5, "plain	", "black")) + scale_fill_brewer(palette="Dark2")
 
-
+dev.off()
 
 
 

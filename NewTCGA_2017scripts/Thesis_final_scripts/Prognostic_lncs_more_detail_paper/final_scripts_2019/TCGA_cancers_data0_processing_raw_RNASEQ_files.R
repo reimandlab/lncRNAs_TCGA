@@ -19,21 +19,22 @@ source("source_file.R")
 #1. List of TCGA IDs used in PCAWG - to remove
 ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
 #ids_remove = readRDS("TCGA_IDs_usedinPCAWG.rds")
-ids_remove[,2] = sapply(ids_remove[,2], function(x){paste(unlist(strsplit(x, "-"))[1:3], collapse="-")})
-ids_remove = unique(ids_remove[,2])
+#ids_remove[,2] = sapply(ids_remove[,2], function(x){paste(unlist(strsplit(x, "-"))[1:3], collapse="-")})
+#ids_remove = as.data.frame(ids_remove)
+#ids_remove = unique(ids_remove[,2])
 
 #2. TCGA Tumour Codes Table
 tss_codes = read.csv(" TCGA_TissueSourceSite_Codes2017 .csv"     )
 
 #not actually done originally 
-#tss_codes$TSS.Code[tss_codes$TSS.Code == "2"] = "02"
-#tss_codes$TSS.Code[tss_codes$TSS.Code == "6"] = "06"
-#tss_codes$TSS.Code[tss_codes$TSS.Code == "8"] = "08"
-#tss_codes$TSS.Code[tss_codes$TSS.Code == "1"] = "01"
-#tss_codes$TSS.Code[tss_codes$TSS.Code == "4"] = "04"
-#tss_codes$TSS.Code[tss_codes$TSS.Code == "3"] = "03"
-#tss_codes$TSS.Code[tss_codes$TSS.Code == "9"] = "09"
-#tss_codes$TSS.Code[tss_codes$TSS.Code == "5"] = "05"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "2"] = "02"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "6"] = "06"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "8"] = "08"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "1"] = "01"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "4"] = "04"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "3"] = "03"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "9"] = "09"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "5"] = "05"
 
 #3. TCGA new clinical file - downloaded previously 
 #clin = read.csv("all_clin_XML_tcgaSept2017.csv")
@@ -140,7 +141,7 @@ normals_keep$id = ""
 normals_keep[,4] = apply(normals_keep, 1, clean_tcga_id) 
 
 #remove those patients already used in PCAWG
-ids_remove = unique(clin$bcr_patient_barcode[which(clin$bcr_patient_barcode %in% ids_remove)]) 
+ids_remove = unique(clin$bcr_patient_barcode[which(clin$bcr_patient_barcode %in% ids_remove$bcr_patient_barcode)]) 
 z = which(cancers_keep$id %in% ids_remove)
 external_dataset = cancers_keep[z,]
 cancers_keep = cancers_keep[-z,]
