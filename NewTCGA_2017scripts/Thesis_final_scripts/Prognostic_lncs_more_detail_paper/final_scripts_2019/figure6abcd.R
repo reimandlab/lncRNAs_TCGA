@@ -633,13 +633,13 @@ ha = HeatmapAnnotation(relative_risk = anno_points(values, gp = gpar(size=0.3), 
   col = list(type = c("lgg" = "orange", "gbm" = "purple"), m = c("Mutant" = "black", "WT" = "gray88"),
   hoxa10as = c("1" = "limegreen", "0" = "mistyrose2"), hoxbas2=c("1" = "limegreen", "0" = "mistyrose2")), 
     show_annotation_name = TRUE,
-    annotation_name_offset = unit(2, "mm"))
+    annotation_name_offset = unit(3, "mm"))
 
 #pdf("developmental_genes_lgg_gbm_all_small_version_genes_new_march26.pdf", width=12, height=4)
-pdf("developmental_genes_lgg_gbm_all_small_version_genes_new_april11.pdf", width=9, height=6)
+pdf("developmental_genes_lgg_gbm_all_small_version_genes_new_april11.pdf", width=9, height=7)
 Heatmap(mat, column_names_gp = gpar(fontsize = 1), top_annotation = ha, show_column_names = FALSE,
   heatmap_legend_param = list(legend_height = unit(2, "cm"), legend_width = unit(2, "cm")),
-  top_annotation_height = unit(2, "cm"), row_names_gp = gpar(fontsize = 5), clustering_distance_rows = "spearman", clustering_distance_columns = "spearman")
+  top_annotation_height = unit(3, "cm"), row_names_gp = gpar(fontsize = 5), clustering_distance_rows = "pearson", clustering_distance_columns = "pearson")
 dev.off()
 
 

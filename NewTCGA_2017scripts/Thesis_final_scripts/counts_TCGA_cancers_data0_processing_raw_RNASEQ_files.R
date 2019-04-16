@@ -21,6 +21,14 @@ ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
 
 #2. TCGA Tumour Codes Table
 tss_codes = read.csv(" TCGA_TissueSourceSite_Codes2017 .csv"     )
+tss_codes$TSS.Code[tss_codes$TSS.Code == "2"] = "02"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "6"] = "06"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "8"] = "08"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "1"] = "01"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "4"] = "04"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "3"] = "03"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "9"] = "09"
+tss_codes$TSS.Code[tss_codes$TSS.Code == "5"] = "05"
 
 #3. TCGA new clinical file - downloaded previously 
 #clin = read.csv("all_clin_XML_tcgaSept2017.csv")
@@ -70,13 +78,13 @@ rna$V1 = NULL
 rna = as.data.table(rna)
 
 #2. Convert UUIDs into TCGA ids
-barcode = fread("File_metadata.txt")
+barcode = readRDS("File_metadata.rds")
 barcode$file_id = as.character(barcode$file_id)
-barcode$cases.0.samples.0.submitter_id = as.character(barcode$cases.0.samples.0.submitter_id)
+barcode$submitter_id = as.character(barcode$submitter_id)
 
 change = function(colname){
 	z <- which(barcode$file_id == colname)
-	return(barcode$cases.0.samples.0.submitter_id[z])	
+	return(barcode$submitter_id[z])	
 }
 
 colnames(rna)[1:(ncol(rna)-1)] = sapply(colnames(rna)[1:(ncol(rna)-1)], change)
@@ -97,7 +105,6 @@ cancers_order = as.data.table(cancers_order)
 
 #cancers_keep = c("Ovarian serous cystadenocarcinoma", "Kidney renal clear cell carcinoma", "Liver hepatocellular carcinoma" , "Pancreatic adenocarcinoma")
 #cancers_keep = filter(cancers_order, Cancer %in% cancers_keep)
-
 cancers_keep = cancers_order
 cancers_keep$source = ""
 for(i in 1:nrow(cancers_keep)){

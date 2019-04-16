@@ -1,3 +1,13 @@
+###---------------------------------------------------------------
+###007_analyzing_tests_REAL_DATA_100_en_runs.R
+###---------------------------------------------------------------
+
+#what? 
+#Systematic analysis of how prognostic lncRNAs are across cancer types
+#After finding prognostic lncRNAs --> look at how co-expressed these pairs of lncRNAs are 
+#This script also generates supplementary tables 1 and 2 
+
+
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/real_elastic_net_runs")
 
 library(data.table)
@@ -15,7 +25,7 @@ library(wesanderson)
 ########################################################################
 
 #read in all CINDICES files 
-results = list.files(pattern="2019-04-12")
+results = list.files()
 print(length(results))
 
 results = results[which(str_detect(results, "cindices"))]
@@ -97,13 +107,14 @@ wil_sig = wil_sig[order(med_lnc)]
 #2. get genes 
 ########################################################################
 
-results = list.files(pattern="2019-04-12")
+results = list.files()
 print(length(results))
 genes = results[which(str_detect(results, "genes"))]
 
 #break into cancer types 
 get_canc = function(file){
   dat = readRDS(file)
+  dat = as.data.table(filter(dat, num_rounds_selected >=50))
   return(dat)
 }
 

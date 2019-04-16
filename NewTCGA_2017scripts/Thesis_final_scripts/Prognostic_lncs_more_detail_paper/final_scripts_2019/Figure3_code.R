@@ -24,6 +24,7 @@ library(EnvStats)
 #cands -- should be this file
 cands = readRDS("genes_keep_100CV_No_FDR_May2nd2018.rds")
 cands = readRDS("lncRNAs_selected_by_EN_april14.rds")
+cands = readRDS("lncRNAs_selected_by_EN_april14.rds")
 
 #--------This script ------------------------------------------------
 
@@ -57,7 +58,7 @@ get_name = function(ensg){
 #write function that adds tag to whole data group 
 #and does survival analysis on whole group
 
-z = which(cancers %in% cands$cancer)
+z = which(cancers %in% cands$canc)
 cancer_data = canc_datas[z] #cancers list and canc_datas list should be the same 
 
 get_canc_data_for_plot = function(dtt){
@@ -361,7 +362,7 @@ tcga_results1 = as.data.table(tcga_results1)
 #robust = readRDS(file="112_combos_robust_internal_validation_survival_lncRNAs_aug8.rds")
 #robust = readRDS("148_combos_robust_5perc_increase_internal_validation_survival_lncRNAs_aug9.rds")
 head(cands)
-cands$combo = paste(cands$Geneid, cands$Cancer, sep="_")
+cands$combo = paste(cands$gene, cands$canc, sep="_")
 #z = which(cands$combo %in% robust$combo)
 #cands = cands[z,]
 
@@ -390,7 +391,7 @@ cancers_tests = as.list(unique(tcga_results1$cancer[which(tcga_results1$cancer %
 
 get_matched_data = function(cancer){
     dtt = subset(pcawg_data, canc == cancer)
-    z = which(colnames(dtt) %in% c(as.character(cands$gene[cands$cancer == dtt$canc[1]]), "canc", 
+    z = which(colnames(dtt) %in% c(as.character(cands$gene[cands$canc == dtt$canc[1]]), "canc", 
     "histo", "time", "status", "sex", "donor_age_at_diagnosis"))
     dtt = dtt[,z]
     if(nrow(dtt) >= 30){
@@ -704,12 +705,12 @@ pcawg_results = llply(filtered_data_tagged, get_survival_models, .progress="text
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 pcawg_results1 = ldply(pcawg_results, data.frame)
-pcawg_results1$pval = as.numeric(pcawg_results1$pval)
-pcawg_results1$fdr_pval = p.adjust(pcawg_results1$pval, method="fdr")
 
 z = which(pcawg_results1$lnc_only_concordance == "na")
 clinical_concs = pcawg_results1[z,]
 pcawg_results1 = pcawg_results1[-z,]
+pcawg_results1$pval = as.numeric(pcawg_results1$pval)
+pcawg_results1$fdr_pval = p.adjust(pcawg_results1$pval, method="fdr")
 
 #combine results from TCGA and PCAWG
 pcawg_results1$data = "PCAWG"

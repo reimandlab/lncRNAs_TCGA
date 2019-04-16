@@ -67,6 +67,7 @@ clin_subtypes = clin_subtypes[,c("patient", "Histology", "Grade", "Age..years.at
   "Karnofsky.Performance.Score", "IDH.status", "X1p.19q.codeletion", "MGMT.promoter.status", "Chr.7.gain.Chr.10.loss", "Chr.19.20.co.gain",
   "Original.Subtype", "Transcriptome.Subtype")]
 clin_subtypes = as.data.table(clin_subtypes)
+saveRDS(clin_subtypes, file="gbm_clin_subtypes_glioblastoma.rds")
 
 #Co-expression results of PCGs 
 #coexp = readRDS("coexpression_results_processed_july24.rds")

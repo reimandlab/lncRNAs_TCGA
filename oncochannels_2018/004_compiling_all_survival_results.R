@@ -248,7 +248,6 @@ pdf(paste(date, "individual_cancers_barplots.pdf", sep="_"))
 llply(cancers, make_barplot)
 dev.off()
 
-
-
+write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_withFDR_04162019_all_cancers.csv", quote=F, row.names=F)
 
 
