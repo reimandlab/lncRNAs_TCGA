@@ -38,7 +38,7 @@ tss_codes$TSS.Code[tss_codes$TSS.Code == "5"] = "05"
 clin = fread("mmc1_clinical_data_cellpaper2018.txt")
 
 #4. RNA-Seq File
-rna = readRDS("9246rnaSEQfiles.rds") 
+rna = readRDS("9320rnaSEQfiles.rds") 
 rna[,1] = as.character(rna[,1])
 
 #5. Fantom data 
@@ -151,8 +151,8 @@ normals_keep = normals_keep[-z,] #563 unique TCGA normal IDs
 
 table(cancers_keep$Cancer)
 
-z = which(cancers_keep$Cancer == "") #remove those patients with no cancer type
-cancers_keep = cancers_keep[-z,] #7501 samples in total with both RNA_Sequencing and clinical data 
+#z = which(cancers_keep$Cancer == "") #remove those patients with no cancer type
+#cancers_keep = cancers_keep[-z,] #7501 samples in total with both RNA_Sequencing and clinical data 
 
 saveRDS(cancers_keep, file="counts_tcga_id_cancer_type_conversion.txt")
 saveRDS(normals_keep, file="counts_tcga_id_NORMAL_samples_type_conversion.txt")

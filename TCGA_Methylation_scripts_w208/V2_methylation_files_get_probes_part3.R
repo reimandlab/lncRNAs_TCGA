@@ -233,9 +233,19 @@ probes$canc[probes$canc=="Glioblastoma multiforme"] = "GBM"
 probes$canc[probes$canc=="Esophageal carcinoma"] = "ESCA"
 
 
-#4. Expression data 
-rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
-unique(rna$type)
+rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_dataalldat.rds")
+table(rna$type)
+
+z = which(rna$vital_status == "[Discrepancy]")
+rna = rna[-z,]
+z = which(is.na(as.numeric(rna$age_at_initial_pathologic_diagnosis)))
+rna = rna[-z,]
+z = which(is.na(as.numeric(rna$OS.time)))
+rna = rna[-z,]
+z = which(as.numeric(rna$OS.time) == 0)
+rna = rna[-z,]
+
+table(rna$type)
 
 get_data = function(lnc){
 	comb = lnc
@@ -367,9 +377,9 @@ get_data = function(lnc){
 
 	#multiple probes present 	
 	if(probecount > 1){
-		results_all_probes = as.data.frame(matrix(ncol = 23)) ; colnames(results_all_probes) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test", 
-      "risk_met", "nonrisk_met", "other", "nonrisk_unmet", "risk_not_met", "risk_other", "nonrisk_other")
+		results_all_probes = as.data.frame(matrix(ncol = 25)) ; colnames(results_all_probes) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
+      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "rop", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test", 
+      "risk_met", "nonrisk_met", "other", "nonrisk_unmet", "risk_not_met", "risk_other", "nonrisk_other", "cox_p")
 	
 	for(k in 1:probecount){
 	new = subset(df, df$probe == unique(df$probe)[k])
@@ -421,7 +431,7 @@ get_data = function(lnc){
           }
        #overall correlation
        ro = rcorr(new$beta, new$geneExp, type="spearman")$r[2]
-
+       rop = rcorr(new$beta, new$geneExp, type="spearman")$P[2]
 
     #get_chisq_pval
     t = table(new$median, new$mut_status)
@@ -439,6 +449,8 @@ get_data = function(lnc){
     
     new$median <- factor(new$median, levels = c("High", "Low"))
     new$median  # notice the changed order of factor levels
+
+    print("pass2")
 
     library("ggExtra")
     new$risk = med_risk
@@ -502,7 +514,7 @@ get_data = function(lnc){
     sp6 = ggplot(new, aes(x=mut_status, y=geneExp, color=mut_status)) + ggtitle(paste(gene_name, cancer, probe)) + 
     geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
     stat_n_text(size = 6) + 
-    xlab("lncRNA CNA status") +
+    xlab("lncRNA Methylation status") +
     ylab("log1p(FPKM-UQ)") + stat_compare_means()+
     geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15))+
     annotate("text", x = 1.3, y =ycord , label = text_add)+
@@ -517,7 +529,61 @@ get_data = function(lnc){
     t = as.data.table(table(pat_dat$median, pat_dat$mut_status))
     t = as.data.table(filter(t, N >0))
     t = t[order(N)]
+    
+    new$group = ""
 
+    if(HR < 1){
+      new$group[new$mut_status == "Methylated"] = "RISK"
+      new$group[new$mut_status %in% c("other", "Unmethylated")] = "nonRISK"
+    }
+
+    if(HR > 1){
+      new$group[new$mut_status == "Unmethylated"] = "RISK"
+      new$group[new$mut_status %in% c("other", "Methylated")] = "nonRISK"
+    }
+
+    print("pass3")
+
+    if(!(length(unique(as.character(new$group)))) == 1) {
+
+    #check if prognostic 
+    cox_p = glance(coxph(Surv(OS.time, OS) ~ group, data = new))[8]
+    newdat = new
+    newdat$OS.time = newdat$OS.time/365
+    newdat$group = factor(newdat$group, levels=c("RISK","nonRISK"))
+    fit <- survfit(Surv(OS.time, OS) ~ group, data = newdat)
+          s <- ggsurvplot(
+          title = paste(cancer, name),
+          fit, 
+          xlab = "Time (Years)", 
+          #surv.median.line = "hv",
+          font.main = c(14, "bold", "black"),
+          font.x = c(12, "plain", "black"),
+          font.y = c(12, "plain", "black"),
+          font.tickslab = c(11, "plain", "black"),
+          font.legend = 10,
+          risk.table.fontsize = 5, 
+          legend.labs = c("Risk Methylation group", "Non-risk \nMethylation groups"),             # survfit object with calculated statistics.
+          data = newdat,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,5),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          #palette = mypal[c(4,1)],
+          palette = "npg", 
+          #ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          print(s)
+
+    print("pass 4")
     risk = pat_dat$risk[1]
 
     if(risk == "Low"){
@@ -567,12 +633,12 @@ get_data = function(lnc){
   #  results = c(cancer, unique(df$gene), length(unique(df$patient)), 
   #    wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, probe, bal, stat_exp_cor, stat_exp_pval, ks_test, risk_met, nonrisk_met, other,nonrisk_unmet, risk_not_met)
     results = c(cancer, unique(new$gene), length(unique(new$patient)), 
-      wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, probe, bal, stat_exp_cor, stat_exp_pval, ks_test, 
-      risk_met, nonrisk_met, other, nonrisk_unmet, risk_not_met, risk_other, nonrisk_other)
+      wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, rop, probe, bal, stat_exp_cor, stat_exp_pval, ks_test, 
+      risk_met, nonrisk_met, other, nonrisk_unmet, risk_not_met, risk_other, nonrisk_other, cox_p)
     
     names(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test",
-      "risk_met", "nonrisk_met", "other", "nonrisk_unmet", "risk_not_met", "risk_other", "nonrisk_other")
+      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "rop", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test",
+      "risk_met", "nonrisk_met", "other", "nonrisk_unmet", "risk_not_met", "risk_other", "nonrisk_other", "cox_p")
 
       print(sp6)
       print(lnc)
@@ -580,6 +646,7 @@ get_data = function(lnc){
     #print(lnc)
     }
     results_all_probes = rbind(results_all_probes, results)
+  }
   }
   }
 
@@ -715,7 +782,7 @@ get_data = function(lnc){
     sp6 = ggplot(df, aes(x=mut_status, y=geneExp, color=mut_status)) + ggtitle(paste(gene_name, cancer, probe)) + 
     geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
     stat_n_text(size = 6) + 
-    xlab("lncRNA CNA status") +
+    xlab("lncRNA Methylation status") +
     ylab("log1p(FPKM-UQ)") + stat_compare_means()+
     geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15))+
     annotate("text", x = 1.3, y =ycord , label = text_add)+
@@ -733,6 +800,59 @@ get_data = function(lnc){
     t = as.data.table(table(pat_dat$median, pat_dat$mut_status))
     t = as.data.table(filter(t, N >0))
     t = t[order(N)]
+
+    new = df
+    new$group = ""
+
+    if(HR < 1){
+      new$group[new$mut_status == "Methylated"] = "RISK"
+      new$group[new$mut_status %in% c("other", "Unmethylated")] = "nonRISK"
+    }
+
+    if(HR > 1){
+      new$group[new$mut_status == "Unmethylated"] = "RISK"
+      new$group[new$mut_status %in% c("other", "Methylated")] = "nonRISK"
+    }
+
+
+    if(!(length(unique(as.character(new$group)))) == 1){
+
+    #check if prognostic 
+    cox_p = glance(coxph(Surv(OS.time, OS) ~ group, data = new))[8]
+    newdat = new
+    newdat$OS.time = newdat$OS.time/365
+    newdat$group = factor(newdat$group, levels=c("RISK","nonRISK"))
+    fit <- survfit(Surv(OS.time, OS) ~ group, data = newdat)
+          s <- ggsurvplot(
+          title = paste(cancer, name),
+          fit, 
+          xlab = "Time (Years)", 
+          #surv.median.line = "hv",
+          font.main = c(14, "bold", "black"),
+          font.x = c(12, "plain", "black"),
+          font.y = c(12, "plain", "black"),
+          font.tickslab = c(11, "plain", "black"),
+          font.legend = 10,
+          risk.table.fontsize = 5, 
+          legend.labs = c("Risk Methylation group", "Non-risk \nMethylation groups"),             # survfit object with calculated statistics.
+          data = newdat,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,5),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          #palette = mypal[c(4,1)],
+          palette = "npg", 
+          #ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          print(s)
 
     risk = pat_dat$risk[1]
 
@@ -781,12 +901,12 @@ get_data = function(lnc){
     other = length(unique(pat_dat$patient)) - risk_met - nonrisk_unmet - risk_not_met - nonrisk_met - risk_other - nonrisk_other
 
     results = c(cancer, unique(df$gene), length(unique(df$patient)), 
-      wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, probe, bal, stat_exp_cor, stat_exp_pval, ks_test, risk_met, nonrisk_met, 
-      other,nonrisk_unmet, risk_not_met, risk_other, nonrisk_other)
+      wilcoxon_pval, chi_pval, fc, med_risk, length_risk_pats, rr, rp, ro, rop, probe, bal, stat_exp_cor, stat_exp_pval, ks_test, risk_met, nonrisk_met, 
+      other,nonrisk_unmet, risk_not_met, risk_other, nonrisk_other, cox_p)
     
     names(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test", 
-      "risk_met", "nonrisk_met", "other", "nonrisk_unmet", "risk_not_met", "risk_other", "nonrisk_other")
+      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "rop", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test", 
+      "risk_met", "nonrisk_met", "other", "nonrisk_unmet", "risk_not_met", "risk_other", "nonrisk_other", "cox_p")
     
     results = as.data.frame(results)
 
@@ -800,10 +920,11 @@ get_data = function(lnc){
   }
   }
 	}
+  }
 
 	if(!((both & (length(unique(df$patient)) >=10)))){
-		results = as.data.frame(matrix(ncol = 16)) ; colnames(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
-      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test")
+		results = as.data.frame(matrix(ncol = 18)) ; colnames(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
+      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "rop", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test", "cox_p")
   }  
   return(results)
 }
@@ -811,10 +932,10 @@ get_data = function(lnc){
 }
 }
 
-#pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
-#genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% probes$combo)]))) #88/166 have methylation probes overlapping them 
-#lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
-#dev.off()
+pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
+genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% probes$combo)]))) #88/166 have methylation probes overlapping them 
+lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
+dev.off()
 
 #lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
 #lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)

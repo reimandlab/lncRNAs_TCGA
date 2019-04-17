@@ -97,12 +97,17 @@ sig = filter(wil_sig, imp >0, pval <0.05)
 z = which(canc_conv$canc %in% sig$cancer)
 canc_conv$sig = ""
 canc_conv$sig[z] = "V"
+canc_conv = canc_conv[z,]
 
-pdf("cindices_real_march2019_1000.pdf", width=9, height=3)
+canc_conv$all_res = factor(canc_conv$all_res, levels = c("clinical", "lncRNAs", "combined"))
+
+pdf("cindices_real_march2019_1000.pdf", width=10, height=3)
 g = ggplot(canc_conv, aes(type, cindex, fill=all_res)) +
-  geom_boxplot(outlier.alpha = 0.1, color="black") + theme_classic()
-g = ggpar(g, x.text.angle = 65, legend.title="Predictors")
-print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red") + scale_fill_brewer(palette="Set1"))
+  geom_boxplot(outlier.alpha = 0.1, color="black") + theme_classic() #+
+  #stat_compare_means(aes(group = all_res), label = "p.signif") 
+g = ggpar(g, x.text.angle = 45, legend.title="Predictors") 
+print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red") + scale_fill_brewer(palette="Set2") +
+ xlab("Cancer") + ylab("c-index"))
 dev.off()
 
 
@@ -117,6 +122,7 @@ genes = results[which(str_detect(results, "genes"))]
 #break into cancer types 
 get_canc = function(file){
   dat = readRDS(file)
+  dat = as.data.table(filter(dat, num_rounds_selected >=500))
   return(dat)
 }
 

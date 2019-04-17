@@ -3,7 +3,7 @@ setwd("/Users/kisaev/remote22") #<- "/.mounts/labs/reimandlab/private/users/kisa
 library(GenomicDataCommons)
 
 #get UUIDs used for RNA-Seq files
-rna = readRDS("9246rnaSEQfiles.rds") 
+rna = readRDS("9320rnaSEQfiles.rds") 
 uuids = colnames(rna)
 
 library(GenomicDataCommons)
@@ -27,4 +27,4 @@ TCGAtranslateID = function(file_ids, legacy = FALSE) {
 }
 
 res = TCGAtranslateID(uuids)
-saveRDS(re, file="File_metadata.txt")
+saveRDS(res, file="File_metadata.rds")

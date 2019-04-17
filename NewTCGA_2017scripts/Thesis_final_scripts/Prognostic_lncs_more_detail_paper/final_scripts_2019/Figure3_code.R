@@ -23,8 +23,8 @@ library(EnvStats)
 
 #cands -- should be this file
 cands = readRDS("genes_keep_100CV_No_FDR_May2nd2018.rds")
-cands = readRDS("lncRNAs_selected_by_EN_april14.rds")
-cands = readRDS("lncRNAs_selected_by_EN_april14.rds")
+
+cands = readRDS("lncRNAs_selected_by_EN_april14.rds") #1000 runs of cross-validations using new updated dataset (GBM=124, OV and LUAD)
 
 #--------This script ------------------------------------------------
 
