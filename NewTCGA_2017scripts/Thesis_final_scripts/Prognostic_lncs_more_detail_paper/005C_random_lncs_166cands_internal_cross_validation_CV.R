@@ -21,8 +21,14 @@ cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 #1 - get cancer data 
 #-----------------------------------------------------------------------------------------------------------------------------------
 
-z = which(cancers %in% allCands$cancer)
-cancer_data = canc_datas[z] #cancers list and canc_datas list should be the same 
+cancers = unique(allCands$cancer)
+
+get_canc = function(canc){
+	canc_dat = subset(rna, Cancer == canc)
+	return(canc_dat)
+}	
+
+cancer_data = llply(cancers, get_canc)
 
 get_canc_data = function(dtt){
   #get cancer specific candidates 
@@ -85,7 +91,7 @@ run_cv = function(dtt){
 	all_runs_results = as.data.frame(matrix(ncol=5))
 	colnames(all_runs_results) = c("lncRNA", "Cancer", "C-index", "type", "round")
 
-	for(j in 1:100){
+	for(j in 1:1000){
 		
 		print(j)
 		smp_size <- floor(0.7 * nrow(dtt))
@@ -361,7 +367,7 @@ run_cv = function(dtt){
 
 
 all_cancers_results = llply(setup_data, run_cv, .progress="text")
-saveRDS(all_cancers_results, file="lncRNAs_RANDOM_100_internal_CVs_individual_cands_june19.rds")
+saveRDS(all_cancers_results, file="lncRNAs_RANDOM_1000_internal_CVs_individual_cands_june19.rds")
 print("DONE SIR, all good WOO")
 
 #get average and median c-index for each lncRNA clincial variabels per cancer type

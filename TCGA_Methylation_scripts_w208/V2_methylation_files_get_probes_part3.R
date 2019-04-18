@@ -932,10 +932,10 @@ get_data = function(lnc){
 }
 }
 
-pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
-genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% probes$combo)]))) #88/166 have methylation probes overlapping them 
-lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
-dev.off()
+#pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
+#genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% probes$combo)]))) #88/166 have methylation probes overlapping them 
+#lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
+#dev.off()
 
 #lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
 #lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
@@ -947,10 +947,12 @@ dev.off()
 #73 unique lncRNA-cancer pairs evaluated 
 
 lnc_meth_cancer_data2 = readRDS("new_results_methylation_Nov1.rds")
+cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+colnames(cands)[7] = "canc"
 
 #---------PROCESS RESULTS-----------------------------------------------------------------------------------------------------
 
-lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer, sep="_") #73 combos evaluated 
+lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer, sep="_") #55 combos evaluated 
 lnc_meth_cancer_data2$wilcoxon_pval = as.numeric(as.character(lnc_meth_cancer_data2$wilcoxon_pval))
 lnc_meth_cancer_data2 = lnc_meth_cancer_data2[order(wilcoxon_pval)]
 lnc_meth_cancer_data2$wilcoxon_pval = as.numeric(lnc_meth_cancer_data2$wilcoxon_pval)
@@ -961,10 +963,10 @@ lnc_meth_cancer_data2$stat_exp_pval = as.numeric(as.character(lnc_meth_cancer_da
 #get fdr by cancer type - if only one test then there weren't multiple tests done
 dats = split(lnc_meth_cancer_data2, by="cancer")
 add_fdr = function(dat){
-  if(dim(dat)[1]>10){
+  if(dim(dat)[1]>5){
   dat$fdr = p.adjust(dat$ks_test, method="fdr")
   }
-  if(dim(dat)[1] <=10){
+  if(dim(dat)[1] <=5){
     dat$fdr = dat$ks_test
   }
   return(dat)
@@ -972,6 +974,11 @@ add_fdr = function(dat){
 lnc_meth_cancer_data2 = llply(dats, add_fdr)
 lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
 sig_diff = filter(lnc_meth_cancer_data2, fdr <=0.05) #31 with sig wilcoxon pval 
+sig_diff = as.data.table(sig_diff)
+sig_diff = as.data.table(filter(sig_diff, abs(overall_correlation) >= 0.2))
+
+#keep only ones with sig correlation
+sig_diff = as.data.table(filter(sig_diff, rop < 0.05)) #17 sig positive correlation and fdr sig difference in dist
 
 #plot just the sig ones 
 sig_diff$combo = paste(sig_diff$gene, sig_diff$cancer, sep="_") #31/73 unique combos ~ 42% 
@@ -980,7 +987,10 @@ sig_diff$combo = paste(sig_diff$gene, sig_diff$cancer, sep="_") #31/73 unique co
 #sig_diff = sig_diff[-z,] #23/73 unique combos ~ 32% 
 
 #---------FIGURE SUMMARY FOR PAPER--------------------------------------------------------------------------------------------
-cands$combo = paste(cands$gene, cands$canc, sep="_")
+canc_conv = readRDS("canc_conv.rds")
+colnames(canc_conv)[2] = "canc"
+cands = merge(cands, canc_conv, by="canc")
+cands$combo = paste(cands$gene, cands$type, sep="_")
 sig_diff = merge(sig_diff, cands, by=colnames(cands)[which(colnames(cands) %in% colnames(sig_diff))])
 sig_diff = subset(sig_diff, data == "TCGA")
 sig_diff$stat_exp_cor = unlist(sig_diff$stat_exp_cor)
@@ -1005,8 +1015,8 @@ library(patchwork)
 
 sig_diff$cor[sig_diff$stat_exp_cor < 0] = "Negative" 
 sig_diff$cor[sig_diff$stat_exp_cor > 0] = "Positive" 
-z = which(is.na(sig_diff$cor))
-sig_diff = sig_diff[-z,]
+#z = which(is.na(sig_diff$cor))
+#sig_diff = sig_diff[-z,]
 
 #which have multiple probes per lncRNA? --> keep strongest absolute correlated one
 t = as.data.table(table(sig_diff$combo))
@@ -1033,6 +1043,10 @@ sig_diff = as.data.table(filter(sig_diff, stat_exp_pval < 0.05))
 write.csv(sig_diff, file="29_lncRNAs_wmethylation_relationship.csv", quote=F, row.names=F)
 
 sig_diff = as.data.table(filter(sig_diff, abs(stat_exp_cor) >= 0.2))
+
+table(sig_diff$cor)
+summary(abs(as.numeric(sig_diff$dist_toTSS))[sig_diff$cor == "Negative"])
+summary(abs(as.numeric(sig_diff$dist_toTSS))[sig_diff$cor == "Positive"])
 
 pdf("Methylation_figure_partB_sep27.pdf", width=10, height=8)
 
@@ -1173,7 +1187,7 @@ g + geom_col(aes(fill = variable)) + scale_fill_manual(values=c("gainsboro",  "r
                        breaks=c("other_met", "nonrisk_wmet", "riskwmet"),
                        labels=c("Other", "NonRisk wMethylation", "Risk wMethylation"))+
 theme_bw()+
-theme(axis.text.x = element_text(size=9, angle=45, hjust=1),
+theme(axis.text.x = element_text(size=9, angle=65, hjust=1),
           axis.text.y = element_text(size=12), legend.position="top") + xlab("lncRNA-cancer") + ylab("% of patients")
 dev.off() 
 

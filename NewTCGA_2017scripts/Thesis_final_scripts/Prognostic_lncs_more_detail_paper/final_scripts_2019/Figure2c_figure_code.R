@@ -37,14 +37,9 @@ old = readRDS("old_168_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.r
 
 #------DATA-----------------------------------------------------
 
-#lncRNAs with 5% improvemenet over clinical 
-lncs_perc = readRDS("173_combos_robust_5perc_increase_internal_validation_survival_lncRNAs_aug9.rds")
-lncs_perc$better = ""
-z = which(lncs_perc$diff >= 0.1)
-
 ################################################################################
 #cindices from 166 candidates 
-lnc_cands = readRDS("lncRNAs_100_internal_CVs_individual_cands_june19.rds")
+lnc_cands = readRDS("lncRNAs_1000_internal_CVs_individual_cands_june19.rds")
 r = ldply(lnc_cands)
 r = as.data.table(r)
 z = which(r$type == "lncRNA&clin")
@@ -84,7 +79,7 @@ lncs_cands_all_cindices = r
 
 ################################################################################
 #cindices from clinical variables
-lnc_rand = readRDS("lncRNAs_RANDOM_100_internal_CVs_individual_cands_june19.rds")
+lnc_rand = readRDS("lncRNAs_1000_internal_CVs_individual_cands_june19.rds")
 r = ldply(lnc_rand)
 r = as.data.table(r)
 z = which(r$type == "ClinicalVariables")
@@ -126,7 +121,7 @@ clinical_cindices = r
 
 ################################################################################
 #cindices from 100 random lncRNAs 
-lnc_rand = readRDS("lncRNAs_RANDOM_100_internal_CVs_individual_cands_june19.rds")
+lnc_rand = readRDS("lncRNAs_RANDOM_100_internal_CVs_individual_cands_june19.rds") #<- still need to re-do this analysis 
 r = ldply(lnc_rand)
 r = as.data.table(r)
 z = which(r$type == "lncRNA&clin")
@@ -141,9 +136,10 @@ lncs_random_lists = lists[z,]
 lncs_random_cindices = r
 #---------------------------------------------------------------------------------
 
+
 ################################################################################
 #cindices from 100 combined models lncRNA + clinical
-lnc_rand = readRDS("lncRNAs_100_internal_CVs_individual_cands_june19.rds")
+lnc_rand = readRDS("lncRNAs_1000_internal_CVs_individual_cands_june19.rds")
 r = ldply(lnc_rand)
 r = as.data.table(r)
 z = which(r$type == "lncRNA&clin")
@@ -344,6 +340,7 @@ get_comparison = function(comboo){
 	#rbind lnc candidate and random lncs 
 	all_cindices = rbind(lnc_cind, rand_cind, clinical_cinds, clin_combo_cind)
 	all_cindices$cindex = as.numeric(all_cindices$cindex)
+	
 	#get pvalue 
 	w = wilcox.test(all_cindices$cindex[all_cindices$type=="lncRNA_canc"], all_cindices$cindex[all_cindices$type=="lncRNA_random"], alternative="greater")
 	wp_lnc_random = glance(w)[2]
@@ -401,11 +398,14 @@ random_lncs_vs_cand1 = random_lncs_vs_cand1[order(wp_lnc_clinical, diff_meds_lnc
 #y-axis p-value 
 random_lncs_vs_cand1$wp_lnc_clinical_fdr = p.adjust(random_lncs_vs_cand1$wp_lnc_clinical, method="fdr")
 random_lncs_vs_cand1$wp_lnc_clinical_fdr = -log10(random_lncs_vs_cand1$wp_lnc_clinical_fdr)
+random_lncs_vs_cand1$wp_lnc_clinical_combo = p.adjust(random_lncs_vs_cand1$wp_lnc_clinical_combo, method="fdr")
+
+z = which(random_lncs_vs_cand1$wp_lnc_clinical_fdr == "Inf")
+random_lncs_vs_cand1 = random_lncs_vs_cand1[-z,]
 
 random_lncs_vs_cand1$wp_lnc_random_fdr = p.adjust(random_lncs_vs_cand1$wp_lnc_random, method="fdr")
 random_lncs_vs_cand1$wp_lnc_random_fdr = -log10(random_lncs_vs_cand1$wp_lnc_random_fdr)
 
-random_lncs_vs_cand1$wp_lnc_clinical_combo = p.adjust(random_lncs_vs_cand1$wp_lnc_clinical_combo, method="fdr")
 
 
 #plot 1 - lncs vs clinical 
@@ -423,18 +423,19 @@ random_lncs_vs_cand1$type = factor(random_lncs_vs_cand1$type, levels=unique(rand
 allCands$name = unlist(llply(allCands$gene, get_name))
 
 #known lncRNAs 
-known_lncs = c("TINCR", "U3", "CAHM", "MAPT-AS1", "UCHL1-AS1")
+known_lncs = c("CAHM", "MAPT-AS1")
 
 #part a
 pdf("figure2_e_lncRNA_cands_vs_clinical_variables.pdf", width=6, height=6)
-ggplot(random_lncs_vs_cand1, aes(x=diff_meds_lnc_clinical, y=wp_lnc_clinical_fdr, label=lncRNA)) + geom_point(aes(colour=type))+
+ggplot(random_lncs_vs_cand1, aes(x=diff_meds_lnc_clinical, y=wp_lnc_clinical_fdr, label=lncRNA)) + geom_point(aes(fill=type), 
+       colour="black", pch=21, size=2)+
+geom_text_repel(data = subset(random_lncs_vs_cand1, lncRNA %in% known_lncs), size=3, nudge_y = 3,
+      direction = "y",segment.color = "grey50",
+      segment.size = 0.7)+ labs(fill = "Cancer") + 
 geom_hline(yintercept=-log10(0.05), linetype="dashed", color = "black")+
 geom_vline(xintercept=0, linetype="dashed", color = "black")+
 labs(x="(median lncRNA candidate c-index) - (median clinical variables c-index)", y="-log10(adjusted p-val)")+
-scale_colour_manual(values = mypal5[1:22]) + theme(legend.position="bottom", text = element_text(size=11))+
-geom_text_repel(data = subset(random_lncs_vs_cand1, lncRNA %in% known_lncs), size=3, nudge_y = 2,
-      direction = "x",segment.color = "grey50",
-      segment.size = 0.5) 
+scale_fill_manual(values = mypal5[1:22]) + theme(legend.position="bottom", text = element_text(size=11))
 dev.off()
 
 #part b 

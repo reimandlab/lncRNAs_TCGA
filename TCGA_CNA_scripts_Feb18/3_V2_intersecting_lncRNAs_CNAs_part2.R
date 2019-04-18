@@ -445,13 +445,13 @@ get_data = function(lnc){
 }
 }
 
-pdf("candidate_lncRNAs_CNA_versus_Expression_Nov1_new_plots.pdf")
-lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
-dev.off()
+#pdf("candidate_lncRNAs_CNA_versus_Expression_Nov1_new_plots.pdf")
+#lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
+#dev.off()
 
-lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
-lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
-saveRDS(lnc_cna_cancer_data2, file="new_results_CNAs_April17.rds")
+#lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
+#lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
+#saveRDS(lnc_cna_cancer_data2, file="new_results_CNAs_April17.rds")
 
 #lnc_cna_cancer_data2 = readRDS("new_results_CNAs_Sept27.rds") #evaluated 63 lncRNA-cancer combos
 lnc_cna_cancer_data2 = readRDS("new_results_CNAs_April17.rds") #evaluated 63 lncRNA-cancer combos

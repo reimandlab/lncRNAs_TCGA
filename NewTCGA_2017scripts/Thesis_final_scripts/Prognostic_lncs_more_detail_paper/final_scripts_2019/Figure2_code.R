@@ -21,18 +21,6 @@ library(EnvStats)
 
 #------FEATURES-----------------------------------------------------
 
-#cands -- should be this file
-cands = readRDS("genes_keep_100CV_No_FDR_May2nd2018.rds")
-
-#--------This script ------------------------------------------------
-
-#just make KM plots for TCGA 
-#whatever data is available for PCAWG
-#make them KM plots as well 
-#just get list of genes that are significant in both data sets
-#also check Cox PH assumptions within each data-set
-#fantom 
-
 fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
 extract3 <- function(row){
   gene <- as.character(row[[1]])
@@ -59,7 +47,7 @@ canc_conv = readRDS("canc_conv.rds")
 colnames(canc_conv)[2] = "cancer"
 res = merge(res, canc_conv, by="cancer")
 t = as.data.table(table(res$type))
-t = t[order(N)]
+t = t[order(-N)]
 res$type = factor(res$type, levels =t$V1)
 res = res[order(type, HR)]
 
@@ -78,15 +66,18 @@ res$CAT_geneName = factor(res$CAT_geneName, levels=order)
 #res = res[1:20,]
 
 res$HR = log2(res$HR)
+#res$fdr = -log10(res$fdr)
+res$fdr = as.numeric(res$fdr)
 
-pdf("lncRNA_candidates_final_figure2B.pdf", width=16, height=6)
+pdf("lncRNA_candidates_final_figure2B.pdf", width=15, height=6)
 
-g = ggplot(data=res, aes(x=CAT_geneName, y=HR, fill=CAT_geneClass, order = -HR)) + 
-  geom_bar(stat="identity") + facet_grid(~ type, scale="free", space = "free")+
-  geom_hline(yintercept=0, linetype="dashed", color = "red") + theme_light()
+g = ggplot(data=res, aes(x=CAT_geneName, y=HR, order = -HR)) + 
+  geom_bar(stat="identity", aes(fill=fdr)) + facet_grid(~ type, scale="free", space = "free")+
+  geom_hline(yintercept=0, linetype="dashed", color = "red") + theme_minimal()
 ggpar(g, xtickslab.rt=90, font.tickslab=c(7, "plain", "black"),
-	legend = "bottom", legend.title = "lncRNA type",
- font.legend = c(5, "plain	", "black")) + scale_fill_brewer(palette="Dark2")
+	legend = "bottom", legend.title = "Wald test, adjusted \nP-value",
+ font.legend = c(10, "plain	", "black")) + scale_fill_gradient(low = "black", high = "white")+
+theme(strip.text.x = element_text(size = 8, colour = "Black", angle=90)) + xlab("lncRNA") + ylab("log2(Hazard Ratio)")
 
 dev.off()
 

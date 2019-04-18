@@ -33,6 +33,15 @@ load("hic_data.rsav")
 rownames(hic_data) = c(1:nrow(hic_data))
 
 pcg_counts = readRDS("counts_19438_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
+z = which(pcg_counts$vital_status == "[Discrepancy]")
+pcg_counts = pcg_counts[-z,]
+z = which(is.na(as.numeric(pcg_counts$age_at_initial_pathologic_diagnosis)))
+pcg_counts = pcg_counts[-z,]
+z = which(is.na(as.numeric(pcg_counts$OS.time)))
+pcg_counts = pcg_counts[-z,]
+z = which(as.numeric(pcg_counts$OS.time) == 0)
+pcg_counts = pcg_counts[-z,]
+table(pcg_counts$type) 
 
 #------FEATURES-----------------------------------------------------
 
@@ -45,10 +54,6 @@ val_cands = as.data.table(val_cands)
 val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
 val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
-
-#Combined into one dataframe because need to get ranks 
-all <- merge(rna, pcg, by = c("patient", "Cancer"))
-all = all[,1:25170]
 
 #------------------------------------------------------------------
 #Within each tissue type, rank lncRNAs by which percentile of 
@@ -72,8 +77,8 @@ canc_conv = unique(rna[,c("type", "Cancer")])
 #for each lnc-cancer, label patient as lncRNA-risk or non-risk 
 #---------------------------------------------------------
 
-z = which(str_detect(combos, "Brain Lower Grade Glioma")) 
-combos = combos[z]
+#z = which(str_detect(combos, "Brain Lower Grade Glioma")) 
+#combos = combos[z]
 
 get_lnc_canc = function(comb){
 	lnc = unlist(strsplit(comb, "_"))[1]
@@ -157,13 +162,15 @@ diffE <- function(d){
 		z = which(is.na(d$IDH.status))
 		d = d[-z,]
 		design <- model.matrix(~ 0 + factor(d$lnc_tag) + factor(d$IDH.status))
+		colnames(design) <- c("high", "low", "IDH_WT")
+
 	}
 
 	z = which(str_detect(colnames(d), "ENSG"))	
 	rownames(d) = d$patient
 
-	#design <- model.matrix(~ 0 + factor(d$lnc_tag))
-	colnames(design) <- c("high", "low", "IDH_WT")
+	design <- model.matrix(~ 0 + factor(d$lnc_tag))
+	colnames(design) <- c("high", "low")
 	rownames(d) <- d$patient
 
 	expression <- t(d[,z])
@@ -259,8 +266,8 @@ diffEresults = llply(all_canc_lnc_data, diffE, .progress="text")
 
 diffEresults1 = ldply(diffEresults, data.frame)
 diffEresults1 = as.data.table(diffEresults1)
-#saveRDS(diffEresults1, file="diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
-saveRDS(diffEresults1, file="diff_expressed_PCGs_lncRNA_risk_groups_lgg_nov30.rds")
+saveRDS(diffEresults1, file="diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
+#saveRDS(diffEresults1, file="diff_expressed_PCGs_lncRNA_risk_groups_lgg_nov30.rds")
 
 ##########
 ###DONE###

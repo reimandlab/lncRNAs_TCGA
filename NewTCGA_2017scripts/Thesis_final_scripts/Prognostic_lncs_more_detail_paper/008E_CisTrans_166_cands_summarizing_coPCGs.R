@@ -53,13 +53,6 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June1
 allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
-val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
-val_cands = as.data.table(val_cands)
-val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
-val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
-val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
-val_cands = subset(val_cands, as.numeric(pval) < 0.05)
-
 #Combined into one dataframe because need to get ranks 
 #all <- merge(rna, pcg, by = c("patient", "Cancer"))
 #all = all[,1:25170]
@@ -101,7 +94,7 @@ lncs = (unique(allCands$gene))
   #missing lncRNA 
   lncs_cords = as.data.table(lncs_cords)
   lncs_cords = lncs_cords[,c("chr", "start", "end", "name", "strand", "type")]
-  write.table(lncs_cords, file="lncs_cords_166_cands_aug8.bed", quote=F, row.names=F, col.names=F, sep="\t")
+  write.table(lncs_cords, file="lncs_cords_158_cands.bed", quote=F, row.names=F, col.names=F, sep="\t")
 
 
 #2. Get coordinates of all PCGs 
@@ -127,17 +120,17 @@ lncs = (unique(allCands$gene))
 module load bedtools 
 
 #1. first need to sort lncRNA coordinates 
-sort -k1,1 -k2,2n lncs_cords_166_cands_aug8.bed > lncs_cords_166_cands_aug8.sorted.bed
+sort -k1,1 -k2,2n lncs_cords_158_cands.bed > lncs_cords_158_cands.sorted.bed
 sort -k1,1 -k2,2n pcgs_cords_allPCGs_aug8.bed > pcgs_cords_allPCGs_aug8.sorted.bed
 
 #2. merge transcripts into one 
-bedtools merge -i lncs_cords_166_cands_aug8.sorted.bed -c 4 -o collapse -delim "|" > lncs_cords_166_cands_aug8.sorted.merged.bed
+bedtools merge -i lncs_cords_158_cands.sorted.bed -c 4 -o collapse -delim "|" > lncs_cords_158_cands.sorted.merged.bed
 bedtools merge -i pcgs_cords_allPCGs_aug8.sorted.bed -c 4 -o collapse -delim "|" > pcgs_cords_allPCGs_aug8.sorted.merged.bed
 
 #3. get file of lncRNA-cis interactions 
-#bedtools window -a lncs_cords_166_cands_aug8.sorted.bed -b pcgs_cords_allPCGs_aug8.sorted.bed -w 5000 > lncs_candidates_pcgs_intersected.bed
+#bedtools window -a lncs_cords_158_cands.sorted.bed -b pcgs_cords_allPCGs_aug8.sorted.bed -w 5000 > lncs_candidates_pcgs_intersected.bed
 
-bedtools window -a lncs_cords_166_cands_aug8.sorted.bed -b pcgs_cords_allPCGs_aug8.sorted.bed -w 10000 > lncs_candidates_pcgs_intersected_10_kb.bed
+bedtools window -a lncs_cords_158_cands.sorted.bed -b pcgs_cords_allPCGs_aug8.sorted.bed -w 10000 > lncs_candidates_pcgs_intersected_10_kb.bed
 
 #get file of lncRNA-trans interactions 
 

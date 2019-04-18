@@ -80,7 +80,7 @@ cis_pcgs  =readRDS("lncRNA_cands_wPCGs_that_are_in_cis_10kb_nov16.rds")
 #convert to ensgs
 get_ensg = function(name){
   z = which(ucsc$hg19.ensemblToGeneName.value == name)
-  return(ucsc$hg19.ensGene.name2[z])
+  return(ucsc$hg19.ensGene.name2[z][1])
 }
 cis_pcgs$lnc = sapply(cis_pcgs$lnc, get_ensg)
 cis_pcgs$pcg = sapply(cis_pcgs$pcg, get_ensg)
@@ -261,17 +261,17 @@ check_cis_pcg = function(combo){
 #results = llply(combos, check_cis_pcg, .progress="text")
 #dev.off()
 
-results2 = ldply(results)
-results2$fdr_res = p.adjust(results2$res, method="fdr")
-results2$fdr_res2 = p.adjust(results2$res2, method="fdr")
-results2$rho_fdr = p.adjust(results2$rho_p, method="fdr")
+#results2 = ldply(results)
+#results2$fdr_res = p.adjust(results2$res, method="fdr")
+#results2$fdr_res2 = p.adjust(results2$res2, method="fdr")
+#results2$rho_fdr = p.adjust(results2$rho_p, method="fdr")
 
-results2 = as.data.table(results2)
-results2 = results2[order(fdr_res)]
+#results2 = as.data.table(results2)
+#results2 = results2[order(fdr_res)]
 
-length(which(results2$res <= 0.05)) #in 16/127 pairs , the lncRNA benefits from the signal from its neigboring gene 
-length(which(results2$fdr_res <= 0.05)) #2/127 pairs, the lncRNA beneifts from signal from neighboring gene when accounting for multiple testing correction
-length(which(results2$fdr_res2 <= 0.05)) #even after multiple testing correction, 124/127 pairs improve from adding lncRNA expression to PCG expression 
+#length(which(results2$res <= 0.05)) #in 16/127 pairs , the lncRNA benefits from the signal from its neigboring gene 
+#length(which(results2$fdr_res <= 0.05)) #2/127 pairs, the lncRNA beneifts from signal from neighboring gene when accounting for multiple testing correction
+#length(which(results2$fdr_res2 <= 0.05)) #even after multiple testing correction, 124/127 pairs improve from adding lncRNA expression to PCG expression 
 
 saveRDS(results2, file="110_cis_antisense_pairs_survival_results_aug28.rds")
 saveRDS(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.rds")
@@ -323,7 +323,6 @@ prog_pcgs = merge(prog_pcgs, cands_pairs, by=c("pcg_combo"))
 colnames(prog_pcgs)[12] = "type"
 prog_pcgs = prog_pcgs[order(fdr_res)]
 
-
 #x-axis lnc concordance 
 #y-axis pcg concordance 
 #color of point - +/- correlation red or blue 
@@ -342,7 +341,6 @@ for(i in 1:nrow(prog_pcgs)){
   lnc_type = allCands$CAT_geneClass[which(allCands$combo == lnc)]
   prog_pcgs$type_lnc[i] = lnc_type
 }
-
 
 pdf("figure2E_summary_lncs_pcgs_antisense_10kb_nov16.pdf", width=5,height=5)
 g = ggplot(prog_pcgs, aes(pcgConcordance, lncConcordance, label=lnc_pcg)) +

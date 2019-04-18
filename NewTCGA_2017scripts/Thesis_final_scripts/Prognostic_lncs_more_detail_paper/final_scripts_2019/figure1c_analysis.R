@@ -31,7 +31,8 @@ fantom <- fantom[-z,]
 
 ###Data
 gtex = readRDS("allGTEX_lncRNAs_scored_Feb2619.rds")
-tcga = readRDS("TCGA_all_lncRNAs_cancers_scored_byindexMay23.rds")
+tcga = readRDS("TCGA_all_lncRNAs_cancers_scored_byindexMay23.rds") #<- need to update this file because there are 
+#more patient samples
 
 #lncRNA survival info 
 surv_info = readRDS("lncRNAs_all_survival_results_feb27.rds")
