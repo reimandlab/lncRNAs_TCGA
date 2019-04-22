@@ -7,7 +7,7 @@ library(survcomp)
 library(caret)
 library(stringr)
 
-source("universal_LASSO_survival_script.R")
+#source("universal_LASSO_survival_script.R")
 
 library(ggpubr)
 library(ggrepel)
@@ -47,10 +47,12 @@ fantom <- fantom[-z,]
 #saveRDS(rna, file="rna_lncRNAs_expression_data_june29.rds")
 #saveRDS(pcg, file="rna_pcg_expression_data_june29.rds")
 
-rna = readRDS("rna_lncRNAs_expression_data_june29.rds")
-pcg = readRDS("rna_pcg_expression_data_june29.rds")
+#rna = readRDS("rna_lncRNAs_expression_data_june29.rds")
+#pcg = readRDS("rna_pcg_expression_data_june29.rds")
 
 antibody = fread("GBM.antibody_annotation.txt")
+antibody = fread("mdanderson.org_GBM.MDA_RPPA_Core.antibody_annotation.txt")
+
 rppa = fread("GBM.rppa.txt")
 
 #-----------------------------------------------------
@@ -90,8 +92,8 @@ rppa$gene_id = unlist(llply(rppa[,1], get_gene))
 #------FEATURES-----------------------------------------------------
 
 #Combined into one dataframe because need to get ranks 
-all <- merge(rna, pcg, by = c("patient", "Cancer"))
-all = all[,1:25170]
+#all <- merge(rna, pcg, by = c("patient", "Cancer"))
+#all = all[,1:25170]
 
 #--------This script ------------------------------------------------
 
@@ -163,7 +165,7 @@ p <- ggboxplot(clin_subtypes, x = "subtype", y = "ENSG00000125968",
 # 1. what if the correlation is restricted to the classical subtype? 
 dev.off()
 
-pdf("ID1_EGFR_correlation_classical_subtype_pearson.pdf")
+pdf("ID1_EGFR_correlation_classical_subtype_spearman.pdf")
 #scatter plot 
 sp <- ggscatter(clin_subtypes[which(clin_subtypes$subtype == "Classical"),], x = "ENSG00000125968", y = "ENSG00000146648",
   add = "reg.line",  # Add regressin line
@@ -171,7 +173,7 @@ sp <- ggscatter(clin_subtypes[which(clin_subtypes$subtype == "Classical"),], x =
   conf.int = TRUE # Add confidence interval
   )
 # Add correlation coefficient
-sp = sp + stat_cor(method = "pearson") + theme_bw() + ggtitle("GBM, ID1 vs EGFR Expression, \nClassical only")+
+sp = sp + stat_cor(method = "spearman") + theme_bw() + ggtitle("GBM, ID1 vs EGFR Expression, \nClassical only")+
 xlab("ID1 expression") + ylab("EGFR expression")
 print(sp)
 

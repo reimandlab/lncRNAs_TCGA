@@ -36,7 +36,7 @@ if(!(length(z)==0)){
 
 print(table(all$type))
 
-all = rna
+#all = rna
 
 #------DATA---------------------------------------------------------
 #UCSC gene info
