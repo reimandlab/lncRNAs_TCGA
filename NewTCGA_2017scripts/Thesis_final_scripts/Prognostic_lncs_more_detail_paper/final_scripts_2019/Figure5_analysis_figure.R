@@ -120,24 +120,24 @@ add_clin_vars = function(dtt){
 
 }
 
-clin_data_lncs = llply(filtered_data, add_clin_vars)
+#clin_data_lncs = llply(filtered_data, add_clin_vars)
 
 #remove Nulls
-clin_data_lncs = Filter(Negate(is.null), clin_data_lncs)
+#clin_data_lncs = Filter(Negate(is.null), clin_data_lncs)
 #save this file can work on at home 
 #saved file --- below
-saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
+#saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
 
-clin = readRDS("clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
+#clin = readRDS("clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
 
-gbm = clin_data_lncs[[10]]
-z = which(str_detect(colnames(gbm), "ENSG"))
-gbm = gbm[,-z]
-lgg = clin_data_lncs[[2]]
-z = which(str_detect(colnames(lgg), "ENSG"))
-lgg = lgg[,-z]
-saveRDS(lgg, file="TCGA_lgg_wsubtype_info_biolinks.rds")
-saveRDS(gbm, file="TCGA_gbm_wsubtype_info_biolinks.rds")
+#gbm = clin_data_lncs[[10]]
+#z = which(str_detect(colnames(gbm), "ENSG"))
+#gbm = gbm[,-z]
+#lgg = clin_data_lncs[[2]]
+#z = which(str_detect(colnames(lgg), "ENSG"))
+#lgg = lgg[,-z]
+#saveRDS(lgg, file="TCGA_lgg_wsubtype_info_biolinks.rds")
+#saveRDS(gbm, file="TCGA_gbm_wsubtype_info_biolinks.rds")
 
 
 #--------LOOK AT ASSOCIATIONS BETWEEN EXPRESSION-------------------------------
