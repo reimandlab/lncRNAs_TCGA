@@ -72,9 +72,9 @@ z <- which(fantom$CAT_geneName %in% rm)
 fantom <- fantom[-z,]
 
 #Combined into one dataframe because need to get ranks 
-all <- merge(rna, pcg, by = c("patient", "Cancer"))
-rownames(all) = all$patient
-all = all[,1:25170]
+#all <- merge(rna, pcg, by = c("patient", "Cancer"))
+#rownames(all) = all$patient
+#all = all[,1:25170]
 
 #genes <- fread("all_genes_used_inRankingAnalysisPCAWG_Mar26.txt", sep=";")
 #rownames(all) = all$patient
@@ -85,7 +85,7 @@ all = all[,1:25170]
 tcga_genes = fread("all_genes_used_inRankingAnalysisTCGA_May4th.txt")
 tcga_genes$type = ""
 tcga_genes$type[tcga_genes$x %in% fantom$CAT_geneID] = "lncRNA"
-tcga_genes$type[is.na(tcga_genes$type)] = "pcg"
+tcga_genes$type[(tcga_genes$type == "")] = "pcg"
 
 #------------------------------------------------------------------
 #Within each tissue type, rank lncRNAs by which percentile of 
@@ -97,8 +97,12 @@ z = which(str_detect(colnames(all), "ENSG"))
 all[,z] <- log1p(all[,z])
 
 #2. Get lncRNA - median within each tissue type
-tissues <- unique(all$Cancer)
 #tissues <- tissues[c(7,9,12,13)]
+
+t = as.data.table(table(all$type))
+t = filter(t, N >=50)
+all = subset(all, type %in% t$V1)
+tissues <- unique(all$Cancer)
 
 #3. Want ranking seperatley for high lncRNA expression group versus low lncRNA expression group
 

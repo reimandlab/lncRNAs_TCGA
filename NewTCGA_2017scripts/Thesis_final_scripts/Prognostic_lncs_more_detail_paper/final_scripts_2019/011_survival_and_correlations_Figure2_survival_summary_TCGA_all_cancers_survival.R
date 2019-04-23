@@ -523,52 +523,73 @@ get_pairs_results = function(cancer){
   }
 }
 
-canc_results_pairs_types = llply(cancers, get_pairs_results, .progress = "text")
+#canc_results_pairs_types = llply(cancers, get_pairs_results, .progress = "text")
 
 #save 
 #saveRDS(canc_results_pairs_types, file="correlation_lnc_lnc_results_april10_res2.rds")
 
 #remove null
-canc_results_pairs_types2 = Filter(Negate(is.null), canc_results_pairs_types)
-canc_results_pairs_types2 = ldply(canc_results_pairs_types2)
-canc_results_pairs_types2 = as.data.table(canc_results_pairs_types2)
-colnames(canc_conv)[2] = "cancer"
-canc_results_pairs_types2 = merge(canc_results_pairs_types2, canc_conv, by="cancer")
+#canc_results_pairs_types2 = Filter(Negate(is.null), canc_results_pairs_types)
+#canc_results_pairs_types2 = ldply(canc_results_pairs_types2)
+#canc_results_pairs_types2 = as.data.table(canc_results_pairs_types2)
+#colnames(canc_conv)[2] = "cancer"
+#canc_results_pairs_types2 = merge(canc_results_pairs_types2, canc_conv, by="cancer")
 
-canc_results_pairs_types2$HR_pair = ""
-canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "F"] = "Both \nFavourable"
-canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "U"] = "Both \nUnfavourable"
-canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "D"] = "Opposite \nHRs"
+#canc_results_pairs_types2$HR_pair = ""
+#canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "F"] = "Both \nFavourable"
+#canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "U"] = "Both \nUnfavourable"
+#canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "D"] = "Opposite \nHRs"
 
 #keep only fdr significant ones
-canc_results_pairs_types2 = as.data.table(filter(canc_results_pairs_types2, fdr < 0.05, abs(cor) >= 0.3))
+#canc_results_pairs_types2 = as.data.table(filter(canc_results_pairs_types2, fdr < 0.05, abs(cor) >= 0.3))
 
 #cancer order keep same as first plot
-canc_results_pairs_types2$type <- factor(canc_results_pairs_types2$type, levels = rev(order))
-canc_results_pairs_types2$column_name = paste(canc_results_pairs_types2$HR_pair, canc_results_pairs_types2$Exp_pair)
+#canc_results_pairs_types2$type <- factor(canc_results_pairs_types2$type, levels = rev(order))
+#canc_results_pairs_types2$column_name = paste(canc_results_pairs_types2$HR_pair, canc_results_pairs_types2$Exp_pair)
 
-saveRDS(canc_results_pairs_types2, file="correlation_lnc_lnc_results_april10_res2.rds")
+#saveRDS(canc_results_pairs_types2, file="correlation_lnc_lnc_results_april10_res2.rds")
+canc_results_pairs_types2 = readRDS("correlation_lnc_lnc_results_april10_res2.rds")
 
 ######################################
 #FIGURE 1B PART 2---------------------
 ######################################
-
-pdf("final_figure_1B_parttwo.pdf", width=4, height=4)
-
 canc_results_pairs_types2$HR_pair = factor(canc_results_pairs_types2$HR_pair, levels = c("Both \nUnfavourable", "Opposite \nHRs", "Both \nFavourable"))
 
+RColorBrewer::brewer.pal(8, "Set1")
+
+pdf("final_figure_1B_parttwoa.pdf", width=2, height=2)
 # Change density plot fill colors by groups
-g = ggplot(canc_results_pairs_types2, aes(x=cor, fill=HR_pair), color="black") +
-  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") + scale_fill_brewer(palette="Set1") +
+g = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both \nUnfavourable"], aes(x=cor, fill=HR_pair), color="black") +
+  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") #+ scale_fill_brewer(palette="Set1") +
   theme(legend.position="bottom")
 
 ggpar(g, 
-      font.tickslab = c(9,"plain", "black"), font.legend=c(8, "plain", "black"))
+      font.tickslab = c(4,"plain", "black"), font.legend=c(4, "plain", "black"))
 
 dev.off()
 
+pdf("final_figure_1B_parttwob.pdf", width=2, height=2)
 
+# Change density plot fill colors by groups
+g = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Opposite \nHRs"], aes(x=cor, fill=HR_pair), color="black") +
+  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") #+ scale_fill_brewer(palette="Set1") +
+  theme(legend.position="bottom")
 
+ggpar(g, 
+      font.tickslab = c(4,"plain", "black"), font.legend=c(4, "plain", "black"))
+
+dev.off()
+
+pdf("final_figure_1B_parttwoc.pdf", width=2, height=2)
+# Change density plot fill colors by groups
+g = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both \nFavourable"], aes(x=cor, fill=HR_pair), color="black") +
+  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") #+ scale_fill_brewer(palette="Set1") +
+  theme(legend.position="bottom")
+
+ggpar(g, 
+      font.tickslab = c(4,"plain", "black"), font.legend=c(4, "plain", "black"))
+
+dev.off()
 
 
 

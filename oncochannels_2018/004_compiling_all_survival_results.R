@@ -234,7 +234,8 @@ make_barplot = function(canc){
           color = "white",            # Set bar border colors to white
           palette = "jco",            # jco journal color palett. see ?ggpar
           sort.val = "desc",          # Sort the value in dscending order
-          sort.by.groups = FALSE,     # Don't sort inside each group
+          sort.by.groups = FALSE, 
+          font.xtickslab = c(8, "plain", "black"),    # Don't sort inside each group
           x.text.angle = 90           # Rotate vertically x axis texts
           ) + labs(x="Ion Channel", y="-log10(Brown's FDR)")+
   geom_hline(yintercept=-log10(0.1), linetype="dashed", color = "red") + ggtitle(canc)
@@ -249,5 +250,27 @@ llply(cancers, make_barplot)
 dev.off()
 
 write.csv(alldat, file="ion_channels_merged_pvalues_browns_KI_onlyhazardours_withFDR_04162019_all_cancers.csv", quote=F, row.names=F)
+
+#summary barplot of ion channels per cancer type
+
+t = as.data.table(table(alldat$Cancer))
+t = t[order(-N)]
+t$V1 = factor(t$V1, levels = t$V1)
+
+png("ion_channel_summary_barplot.png", units="in", width=5, height=5, res=300)
+# insert ggplot code
+g = ggbarplot(t, "V1", "N",
+ fill = "steelblue", color = "steelblue", lab.size = 1.5, 
+ label = TRUE, lab.pos = "in", lab.col = "white") + xlab("Cancer") + ylab("Number of hazardous ion channels")
+ggpar(g, x.text.angle = 65)
+dev.off()
+
+#summary of how many unique ion channels per cancer type 
+
+
+
+
+
+
 
 
