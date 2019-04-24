@@ -458,12 +458,12 @@ get_summary = function(cancer){
   }
 }
 
-canc_results = llply(cancers, get_summary, .progress = "text")
+#canc_results = llply(cancers, get_summary, .progress = "text")
 #remove null
-canc_results = Filter(Negate(is.null), canc_results)
+#canc_results = Filter(Negate(is.null), canc_results)
 
-canc_results = do.call(rbind.data.frame, canc_results)
-colnames(canc_results) = c("cancer", "total_pairs", "sig_pairs", "perc")
+#canc_results = do.call(rbind.data.frame, canc_results)
+#colnames(canc_results) = c("cancer", "total_pairs", "sig_pairs", "perc")
 
 #get correlations 
 

@@ -10,11 +10,9 @@ library(plyr)
 library(EnvStats)
 library(ggsci)
 
-
 ###Data
-gtex = readRDS("allGTEX_lncRNAs_scored_Feb2619.rds")
-tcga = readRDS("TCGA_all_lncRNAs_cancers_scored_byindexMay23.rds")
-
+#gtex = readRDS("allGTEX_lncRNAs_scored_Feb2619.rds")
+#tcga = readRDS("TCGA_all_lncRNAs_cancers_scored_byindexMay23.rds")
 
 #summmary results 
 res = readRDS("results_analysis_Feb26.rds")

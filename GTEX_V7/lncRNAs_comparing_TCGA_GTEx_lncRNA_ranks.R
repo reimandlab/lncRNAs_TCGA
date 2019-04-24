@@ -127,7 +127,7 @@ lncs_both = lncs_tcga[which(lncs_tcga %in% lncs_gtex)] #271 ion channels
 library(plyr)
 library(doParallel)
 
-registerDoParallel(cores=2)
+#registerDoParallel(cores=2)
 
 #4. get fold change and p-value for each gene 
 get_fc = function(dataframee){
@@ -167,7 +167,7 @@ get_fc = function(dataframee){
 }
 
 #pdf("volcano_plots_foldchange_of_lncRNA_ranks_TCGA_vs_GTEX_May24.pdf")
-results_analysis = llply(all_datas, get_fc, .parallel=TRUE)
+results_analysis = llply(all_datas, get_fc)
 #dev.off()
 #saveRDS(results_analysis, file="results_analysis_July24.rds")
 #saveRDS(results_analysis, file="results_analysis_Dec30.rds")

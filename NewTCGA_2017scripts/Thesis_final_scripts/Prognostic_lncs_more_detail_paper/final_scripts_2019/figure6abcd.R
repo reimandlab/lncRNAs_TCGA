@@ -30,6 +30,7 @@ allCands$combo = paste(allCands$gene, allCands$type)
 
 all_de_results = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
 all_de_results = as.data.table(all_de_results)
+
 z = which(all_de_results$cancer == "LGG")
 all_de_results = all_de_results[-z,]
 
@@ -37,7 +38,7 @@ all_de_results_lgg = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_lgg_nov30.r
 all_de_results_lgg = as.data.table(all_de_results_lgg)
 all_de_results = rbind(all_de_results, all_de_results_lgg)
 
-all_de_results$combo = paste(all_de_results$lnc, all_de_results$cancer) #156/162 unique combos across 21 unique cancer types 
+all_de_results$combo = paste(all_de_results$lnc, all_de_results$cancer) #148/158 unique combos across 22 unique cancer types 
 all_de_results = as.data.table(filter(all_de_results, combo %in% allCands$combo))
 
 full_diff_exp = all_de_results
@@ -115,15 +116,14 @@ make_matrix_for_ap = function(canc){
 	}
 }
 
-#all_lnc_pathways = llply(cancers, make_matrix_for_ap, .progress="text")
-#all_lnc_pathways_df = ldply(all_lnc_pathways)
+all_lnc_pathways = llply(cancers, make_matrix_for_ap, .progress="text")
+all_lnc_pathways_df = ldply(all_lnc_pathways)
 #done gave Marta matriced produced by this code for ActivePathways 
 
 
 ###---------------Summary figure-------------------------------###
 
-#saveRDS(all_lnc_pathways_df, file="pathways_for_each_lncRNA_Oct30.rds")
-
+saveRDS(all_lnc_pathways_df, file="pathways_for_each_lncRNA_Oct30.rds")
 all_lnc_pathways_df = readRDS("pathways_for_each_lncRNA_Oct30.rds")
 
 #number of PCGs/lncRNA vs number of Pathways/lncRNAs 
@@ -322,7 +322,7 @@ barplot2 = as.data.table(table(lgg_res$census, lgg_res$gene_name))
 barplot2 = as.data.table(filter(barplot2, V1 == "census"))
 barplot = rbind(barplot1, barplot2)
 colnames(barplot) = c("type", "lncRNA", "num")
-barplot = as.data.table(filter(barplot, N >0))
+barplot = as.data.table(filter(barplot, num >0))
 barplot$lncRNA = factor(barplot$lncRNA, levels = ttt$V1)
 
 pdf("figure6A_lgg_only.pdf", width=5, height=6)

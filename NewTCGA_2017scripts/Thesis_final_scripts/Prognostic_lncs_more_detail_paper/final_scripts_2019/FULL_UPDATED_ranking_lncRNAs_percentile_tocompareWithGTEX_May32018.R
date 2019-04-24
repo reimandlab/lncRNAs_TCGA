@@ -103,6 +103,7 @@ t = as.data.table(table(all$type))
 t = filter(t, N >=50)
 all = subset(all, type %in% t$V1)
 tissues <- unique(all$Cancer)
+print(table(all$type))
 
 #3. Want ranking seperatley for high lncRNA expression group versus low lncRNA expression group
 
