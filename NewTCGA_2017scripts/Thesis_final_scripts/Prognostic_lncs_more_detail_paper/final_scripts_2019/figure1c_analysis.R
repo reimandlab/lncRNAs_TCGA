@@ -81,7 +81,7 @@ tis_match = tis_match[-1,]
 #add glioblastoma manually
 gbm = subset(tis_match, cancer == "Brain Lower Grade Glioma")
 gbm$cancer = "Glioblastoma multiforme"
-tis_match = rbind(tis_match, gbm) #54 comparisons in total 
+tis_match = rbind(tis_match, gbm) #52 comparisons in total 
 
 #2. type of cancers with tissues available -> seperate into dataframes
 cancers = as.data.frame(unique(tis_match$cancer))
@@ -98,7 +98,8 @@ tis_match$combo = paste(tis_match$cancer, tis_match$tis, sep = "_")
 cancers = tis_match$combo
 
 #expression data 
-rna = readRDS("TCGA_rna_expression_Data_forgtex_analysis.rds")
+#rna = readRDS("TCGA_rna_expression_Data_forgtex_analysis.rds")
+rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_dataalldat.rds")
 
 #tcga gtex comparison - MAIN FILE 
 ranked_comp = readRDS("results_analysis_Feb26.rds")
@@ -150,7 +151,7 @@ compare_exp_boxplots = function(lnc){
 	print(lnc)
 	combo = lnc
 	#get tumour expression and seperate by high and low expression
-	z = which(combined$combo == lnc)
+	z = which(combined$comboo == lnc)
 	cance = unlist(strsplit(lnc, "_"))[2]
 	lnc = unlist(strsplit(lnc, "_"))[1]
 	tiss = unlist(strsplit(combo, "_"))[3]
@@ -236,17 +237,18 @@ compare_exp_boxplots = function(lnc){
 
 		#get spearman correlation 
 		if(risk == "Low_exp"){
-		cor = rcorr(all_exp_for_plot$Group, all_exp_for_plot$lncRNA_score, type="spearma")$r[2]
-		cor_p = rcorr(all_exp_for_plot$Group, all_exp_for_plot$lncRNA_score, type="spearma")$P[2]
+		cor = rcorr(all_exp_for_plot$Group, all_exp_for_plot$lncRNA_score, type="spearman")$r[2]
+		cor_p = rcorr(all_exp_for_plot$Group, all_exp_for_plot$lncRNA_score, type="spearman")$P[2]
 		#boxplot
 		g = ggboxplot(all_exp_for_plot, ylab="lncRNA Score", x="Group", y="lncRNA_score", palette = mypal[c(3,1,2)], add = "jitter", fill = "Group",  
 		title= paste(lnc, tiss, cancc, "\nrisk=", risk))+ 
 		stat_compare_means(label = "p.signif", 
                      ref.group = "GTEx") + stat_n_text() + theme_classic()
 		g = ggpar(g, font.tickslab = c(14, "plain", "black"), legend="none")
-		if(p < 0.05){
-		print(g)}
-		}
+		#if(p < 0.05){
+		#print(g)}
+		#}
+	    }
 		if(risk == "High_exp"){
 	    all_exp_for_plot$Group = factor(all_exp_for_plot$Group, levels = c("GTEx", "Low_exp", "High_exp"))
 		cor = rcorr(all_exp_for_plot$Group, all_exp_for_plot$lncRNA_score, type="spearma")$r[2]
@@ -257,8 +259,9 @@ compare_exp_boxplots = function(lnc){
 		stat_compare_means(label = "p.signif", 
                      ref.group = "GTEx") + stat_n_text() + theme_classic()
 		g = ggpar(g, font.tickslab = c(14, "plain", "black"), legend="none")
-		if(p < 0.05){
-		print(g)}
+		#if(p < 0.05){
+		#print(g)}
+		#}
 		}	
 		res = c(res, cor, cor_p)
 		return(res)
@@ -266,10 +269,10 @@ compare_exp_boxplots = function(lnc){
 }
 
 #DO NOT RUN - ALREADY DONE
-pdf("sig_wilcoxon_risk_vs_gtex_plots.pdf")
+#pdf("sig_wilcoxon_risk_vs_gtex_plots.pdf")
 results = llply(lncs, compare_exp_boxplots, .progress="text")
 saveRDS(results, file="lncRNAs_risk_groups_correlation_ranks_updated_order_for_cor.rds")
-dev.off()
+#dev.off()
 
 #-----------SUMMARIZE---------------------------------------------------------
 

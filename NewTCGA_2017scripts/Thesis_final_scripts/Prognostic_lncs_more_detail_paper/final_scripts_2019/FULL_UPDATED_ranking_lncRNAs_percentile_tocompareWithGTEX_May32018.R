@@ -122,9 +122,9 @@ tissues_data <- llply(tissues, get_tissue_specific, .progress="text")
 #each patient 
 
 addScores <- function(dtt){
-	names <- as.list(rownames(dtt))
+	names <- as.list(dtt$patient)
 	getScores <- function(patient){
-	z = which(rownames(dtt) %in% patient)
+	z = which((dtt$patient) %in% patient)
 	row = dtt[z,]
 	z = which(str_detect(names(row), "ENSG"))
 

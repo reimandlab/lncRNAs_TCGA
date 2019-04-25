@@ -877,7 +877,7 @@ all_results_orig$perc_risk = as.numeric(all_results_orig$perc_risk)
 all_results_orig$perc_risk = round(all_results_orig$perc_risk, digits=4)
 
 all_results_orig$fdr_pval = as.numeric(all_results_orig$fdr_pval)
-all_results_orig$fdr_pval = round(all_results_orig$fdr_pval, digits=4)
+#all_results_orig$fdr_pval = round(all_results_orig$fdr_pval, digits=4)
 
 all_results_orig$combo = paste(all_results_orig$gene, all_results_orig$cancer, sep="_")
 
