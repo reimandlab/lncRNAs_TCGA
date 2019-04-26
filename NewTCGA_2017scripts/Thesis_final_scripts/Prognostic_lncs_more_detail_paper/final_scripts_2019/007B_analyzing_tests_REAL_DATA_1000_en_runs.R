@@ -103,8 +103,8 @@ canc_conv$all_res = factor(canc_conv$all_res, levels = c("clinical", "lncRNAs", 
 
 pdf("cindices_real_march2019_1000_pvalues.pdf", width=10, height=3)
 g = ggplot(canc_conv, aes(type, cindex, fill=all_res)) +
-  geom_boxplot(outlier.alpha = 0.1, color="black") + theme_classic() +
-  stat_compare_means(aes(group = all_res), label = "p.signif") 
+  geom_boxplot(outlier.alpha = 0.1, color="black") + theme_classic() #+
+  #stat_compare_means(aes(group = all_res), label = "p.signif") 
 g = ggpar(g, x.text.angle = 45, legend.title="Predictors") 
 print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red") + scale_fill_brewer(palette="Set2") +
  xlab("Cancer") + ylab("c-index"))

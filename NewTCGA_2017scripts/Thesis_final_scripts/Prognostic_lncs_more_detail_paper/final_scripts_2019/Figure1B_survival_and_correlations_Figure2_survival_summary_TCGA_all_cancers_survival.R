@@ -555,25 +555,63 @@ canc_results_pairs_types2 = readRDS("correlation_lnc_lnc_results_april10_res2.rd
 #FIGURE 1B PART 2---------------------
 ######################################
 
-pdf("final_figure_1B_parttwo.pdf", width=4, height=4)
-
 canc_results_pairs_types2$HR_pair = factor(canc_results_pairs_types2$HR_pair, levels = c("Both \nUnfavourable", "Opposite \nHRs", "Both \nFavourable"))
 
+cols = RColorBrewer::brewer.pal(8, "Set1")
+
+pdf("final_figure_1B_parttwoa.pdf", width=2, height=2)
 # Change density plot fill colors by groups
-g = ggplot(canc_results_pairs_types2, aes(x=cor, fill=HR_pair), color="black") +
-  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") + scale_fill_brewer(palette="Set1") +
+g = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both \nUnfavourable"], aes(x=cor), color="black") +
+  geom_density(alpha=0.4, aes(x=cor, y=..density..), fill = cols[1]) + xlab("Spearman Correlation") #+ scale_fill_brewer(palette="Set1") +
   theme(legend.position="bottom")
 
 ggpar(g, 
-      font.tickslab = c(9,"plain", "black"), font.legend=c(8, "plain", "black"))
+      font.tickslab = c(6,"plain", "black"), font.legend=c(2, "plain", "black"), font.x = c(4, "plain", "black"), font.y = c(6, "plain", "black"))
 
 dev.off()
+
+pdf("final_figure_1B_parttwob.pdf", width=2, height=2)
+# Change density plot fill colors by groups
+g = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Opposite \nHRs"], aes(x=cor), color="black") +
+  geom_density(alpha=0.4, aes(x=cor, y=..density..), fill = cols[2]) + xlab("Spearman Correlation") #+ scale_fill_brewer(palette="Set1") +
+  theme(legend.position="bottom")
+
+ggpar(g, 
+      font.tickslab = c(6,"plain", "black"), font.legend=c(2, "plain", "black"), font.x = c(4, "plain", "black"), font.y = c(6, "plain", "black"))
+
+dev.off()
+
+pdf("final_figure_1B_parttwoc.pdf", width=2, height=2)
+# Change density plot fill colors by groups
+g = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both \nFavourable"], aes(x=cor), color="black") +
+  geom_density(alpha=0.4, aes(x=cor, y=..density..), fill = cols[3]) + xlab("Spearman Correlation") #+ scale_fill_brewer(palette="Set1") +
+  theme(legend.position="bottom")
+
+ggpar(g, 
+      font.tickslab = c(6,"plain", "black"), font.legend=c(2, "plain", "black"), font.x = c(4, "plain", "black"), font.y = c(6, "plain", "black"))
+
+dev.off()
+
+
+#pdf("final_figure_1B_parttwo.pdf", width=4, height=4)
+
+# Change density plot fill colors by groups
+#g = ggplot(canc_results_pairs_types2, aes(x=cor, fill=HR_pair), color="black") +
+#  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") + scale_fill_brewer(palette="Set1") +
+#  theme(legend.position="bottom")
+
+#ggpar(g, 
+#      font.tickslab = c(9,"plain", "black"), font.legend=c(8, "plain", "black"))
+
+#dev.off()
 
 ######################################
 #FIGURE 1C PART ---------------------
 ######################################
 
-gtex_res_risk = readRDS("lncRNAs_risk_groups_correlation_ranks.rds")
+gtex_res_risk = readRDS("lncRNAs_risk_groups_correlation_ranks_updated_order_for_cor.rds")
+
+#gtex_res_risk = readRDS("lncRNAs_risk_groups_correlation_ranks.rds")
 gtex_res_risk = ldply(gtex_res_risk)
 gtex_res_risk$V2 = as.numeric(gtex_res_risk$V2)
 summary(gtex_res_risk$V2)
@@ -616,14 +654,13 @@ gtex_res$med[gtex_res$median_diff > 0] = "upreg"
 gtex_res$med[gtex_res$median_diff < 0] = "downreg"
 table(gtex_res$med, gtex_res$Hazard)
 
-pdf("final_figure_1C.pdf", height=5, width=6)
+pdf("final_figure_1C.pdf", height=5, width=5)
 
 #unfav 
-m <- ggplot(gtex_res, aes(x = median_diff, y = HR)) +
- geom_point(aes(colour = Hazard)) + scale_color_npg() 
-m + geom_density_2d(colour="black") + geom_hline(yintercept=0, linetype="dashed", color = "black")+
+m <- ggplot(gtex_res, aes(x = median_diff, y = HR))
+m + geom_hex() + geom_hline(yintercept=0, linetype="dashed", color = "black")+
 xlab("Median(High risk rank - GTEx rank)") + ylab("Hazard Ratio")+
-geom_vline(xintercept=0, linetype="dashed", color = "black") #+ scale_colour_gradient(low = "blue", high = "red")
+geom_vline(xintercept=0, linetype="dashed", color = "black") + scale_fill_gradient(low = "blue", high = "red")
 
 dev.off()
 

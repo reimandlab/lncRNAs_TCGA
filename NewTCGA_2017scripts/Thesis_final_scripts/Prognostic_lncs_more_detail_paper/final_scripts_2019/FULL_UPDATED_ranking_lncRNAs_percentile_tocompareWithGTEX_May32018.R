@@ -155,7 +155,10 @@ addScores <- function(dtt){
 	return(patients1)
 }	
 
-scored <- llply(tissues_data, addScores, .progress="text") #list of dataframes
+#scored <- llply(tissues_data, addScores, .progress="text") #list of dataframes
+
+scored = mclapply(tissues_data, addScores, mc.cores = 2)
+
 all_tissues_scored <-  rbindlist(scored)
 
 all_cancers_scored <- as.data.frame(all_tissues_scored)

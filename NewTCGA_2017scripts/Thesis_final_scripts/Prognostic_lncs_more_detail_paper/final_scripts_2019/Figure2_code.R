@@ -66,7 +66,7 @@ res$CAT_geneName = factor(res$CAT_geneName, levels=order)
 #res = res[1:20,]
 
 res$HR = log2(res$HR)
-#res$fdr = -log10(res$fdr)
+res$fdr = -log10(res$fdr)
 res$fdr = as.numeric(res$fdr)
 
 pdf("lncRNA_candidates_final_figure2B.pdf", width=15, height=6)
@@ -75,7 +75,7 @@ g = ggplot(data=res, aes(x=CAT_geneName, y=HR, order = -HR)) +
   geom_bar(stat="identity", aes(fill=fdr)) + facet_grid(~ type, scale="free", space = "free")+
   geom_hline(yintercept=0, linetype="dashed", color = "red") + theme_minimal()
 ggpar(g, xtickslab.rt=90, font.tickslab=c(7, "plain", "black"),
-	legend = "bottom", legend.title = "Wald test, adjusted \nP-value",
+	legend = "bottom", legend.title = "Wald test, adjusted \n-log10(p-value)",
  font.legend = c(10, "plain	", "black")) + scale_fill_gradient(low = "black", high = "white")+
 theme(strip.text.x = element_text(size = 8, colour = "Black", angle=90)) + xlab("lncRNA") + ylab("log2(Hazard Ratio)")
 

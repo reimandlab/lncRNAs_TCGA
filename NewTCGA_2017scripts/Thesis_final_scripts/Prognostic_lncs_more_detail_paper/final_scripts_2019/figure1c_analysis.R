@@ -129,10 +129,32 @@ results_cands = ranked_comp
 results_cands$reg[results_cands$median_difference >=0.25] = "Upregulated_Cancer"
 results_cands$reg[results_cands$median_difference <=-0.25] = "Downregulated_Cancer"
 
-surv_results = readRDS("lncRNAs_all_survival_results_feb27.rds")
-surv_results = as.data.table(surv_results)
-surv_results = as.data.table(filter(surv_results, fdr < 0.1))
+all_cancers_genes_surv_comb = readRDS("lncRNAs_all_survival_results_feb27.rds")
+all_cancers_genes_surv_comb = merge(all_cancers_genes_surv_comb, canc_conv, by="canc")
+write.csv(all_cancers_genes_surv_comb, file="ALL_lncRNAs_survival_Feb262019.csv", quote=F, row.names=F)
 
+#all_cancers_genes_surv_comb = as.data.table(all_cancers_genes_surv_comb)
+all_cancers_genes_surv_comb[,c(3:10)] = apply(all_cancers_genes_surv_comb[,c(3:10)], 2, function(x){as.numeric(x)})
+all_cancers_genes_surv_comb = as.data.table(all_cancers_genes_surv_comb)
+all_cancers_genes_surv_comb = as.data.table(filter(all_cancers_genes_surv_comb, fdr < 0.1))
+
+###-------------------------------------------------------------------------------------------------
+
+#plot scatter plot - HR versus p-value draw line for FDR = 0.05
+all_cancers_genes_surv_comb$pval = -log10(as.numeric(all_cancers_genes_surv_comb$pval))
+all_cancers_genes_surv_comb$fdr = -log10(all_cancers_genes_surv_comb$fdr)
+all_cancers_genes_surv_comb$HR = as.numeric(all_cancers_genes_surv_comb$HR)
+
+z = which(is.na(all_cancers_genes_surv_comb$pval))
+if(!(length(z)==0)){all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-z,]}
+
+#z1 = which(all_cancers_genes_surv_comb$fdr == "Inf")
+#z2 = which(all_cancers_genes_surv_comb$upper95 == "Inf")
+#all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-c(z1,z2),]
+
+z = which(all_cancers_genes_surv_comb$HR > 10)
+all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-z,]
+surv_results = all_cancers_genes_surv_comb
 surv_results$combo = paste(surv_results$gene, surv_results$canc, sep="_")
 
 combined = merge(surv_results, results_cands, by="combo")
@@ -140,7 +162,7 @@ combined$gene.y = NULL
 colnames(combined)[2] = "gene"
 combined$HR = as.numeric(combined$HR)
 
-combined$comboo = paste(combined$gene, combined$canc.y, combined$tis, sep="_")
+combined$comboo = paste(combined$gene.x, combined$canc.y, combined$tis, sep="_")
 
 #lets look only at the ones that have some significnat prognostic signal 
 lncs = as.list(as.character(unique(combined$comboo)))
@@ -270,7 +292,10 @@ compare_exp_boxplots = function(lnc){
 
 #DO NOT RUN - ALREADY DONE
 #pdf("sig_wilcoxon_risk_vs_gtex_plots.pdf")
-results = llply(lncs, compare_exp_boxplots, .progress="text")
+#results = llply(lncs, compare_exp_boxplots, .progress="text")
+
+results = mclapply(lncs, compare_exp_boxplots, mc.cores = 4)
+
 saveRDS(results, file="lncRNAs_risk_groups_correlation_ranks_updated_order_for_cor.rds")
 #dev.off()
 
