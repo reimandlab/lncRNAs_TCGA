@@ -267,7 +267,7 @@ sp <- ggscatter(clin_subtypes[which(clin_subtypes$subtype == "Classical"),], x =
   conf.int = TRUE # Add confidence interval
   )
 # Add correlation coefficient
-sp = sp + stat_cor(method = "pearson") + theme_bw() + ggtitle("GBM, ID1 expression vs EGFR RPPA, \nClassical only")+
+sp = sp + stat_cor(method = "spearman") + theme_bw() + ggtitle("GBM, ID1 expression vs EGFR RPPA, \nClassical only")+
 xlab("ID1 gene expression")
 
 print(sp)
@@ -279,7 +279,7 @@ sp <- ggscatter(clin_subtypes[which(clin_subtypes$subtype == "Classical"),], x =
   conf.int = TRUE # Add confidence interval
   )
 # Add correlation coefficient
-sp = sp + stat_cor(method = "pearson") + theme_bw() + ggtitle("GBM, ENSG00000125968 expression vs EGFR_pY1068 RPPA, \nClassical only")+
+sp = sp + stat_cor(method = "spearman") + theme_bw() + ggtitle("GBM, ENSG00000125968 expression vs EGFR_pY1068 RPPA, \nClassical only")+
 xlab("ID1 gene expression")
 
 print(sp)
@@ -291,7 +291,19 @@ sp <- ggscatter(clin_subtypes[which(clin_subtypes$subtype == "Classical"),], x =
   conf.int = TRUE # Add confidence interval
   )
 # Add correlation coefficient
-sp = sp + stat_cor(method = "pearson") + theme_bw() + ggtitle("GBM, ID1 expression vs EGFR_pY1173 RPPA, \nClassical only")+
+sp = sp + stat_cor(method = "spearman") + theme_bw() + ggtitle("GBM, ID1 expression vs EGFR_pY1173 RPPA, \nClassical only")+
+xlab("ID1 gene expression")
+
+print(sp)
+
+#scatter plot 
+sp <- ggscatter(clin_subtypes[which(clin_subtypes$subtype == "Classical"),], x = "ENSG00000125968", y = "EGFR_pY1173",
+  add = "reg.line",  # Add regressin line
+  add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+  conf.int = TRUE # Add confidence interval
+  )
+# Add correlation coefficient
+sp = sp + stat_cor(method = "spearman") + theme_bw() + ggtitle("GBM, ID1 expression vs EGFR_pY1173 RPPA, \nClassical only")+
 xlab("ID1 gene expression")
 
 print(sp)
