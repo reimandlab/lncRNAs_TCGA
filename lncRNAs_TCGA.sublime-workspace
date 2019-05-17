@@ -1,0 +1,201 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+		]
+	},
+	"buffers":
+	[
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/Users/kisaev/lncRNAs_TCGA"
+	],
+	"file_history":
+	[
+		"/Users/kisaev/DLBCL-CNS-relapse/001_symlinks_BC_BAM_files.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/001_symlinks_BC_VCF_files.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/002_bam_index_files.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/comparing_vcf_files.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/mutect2_scripts_run_cluster/004_mutect2_run_LY_CNSrel_001_paired.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/mutect2_scripts_run_cluster/004_mutect2_run_LY_CNSrel_003_paired.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/mutect2_scripts_run_cluster/004_mutect2_run_LY_CNSrel_005_paired.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/mutect2_scripts_run_cluster/004_mutect2_run_LY_CNSrel_007_paired.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/003_mutect2_run_LY_CNSrel_001_T2.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/004_mutect2_run_LY_CNSrel_003_paired.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/004_mutect2_run_LY_CNSrel_001_paired.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/004_mutect2_run_LY_CNSrel_006_paired.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/004_mutect2_run_LY_CNSrel_005_paired.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/004_mutect2_run_LY_CNSrel_007_paired.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/003_mutect2_run_LY_CNSrel_006_T1.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/003_mutect2_run_LY_CNSrel_006_T2.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/003_mutect2_run_LY_CNSrel_007_T1.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/003_mutect2_run_LY_CNSrel_007_T2.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/003_mutect2_run_LY_CNSrel_001_T1.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/003_mutect2_run_LY_CNSrel_003_T1.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/003_mutect2_run_LY_CNSrel_003_T2.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/003_mutect2_run_LY_CNSrel_005_T1.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/gatk_mutect2.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/001_paired_exomes_analysis.R",
+		"/Users/kisaev/DLBCL-CNS-relapse/002_paired_exomes_analysis.R",
+		"/Users/kisaev/DLBCL-CNS-relapse/001_symlinks.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/README.md",
+		"/Users/kisaev/DLBCL-CNS-relapse/mutect2_run.sh",
+		"/Users/kisaev/DLBCL-CNS-relapse/annovar_to_maf.R",
+		"/Users/kisaev/Desktop/406_CCNB1IP1_survival.R",
+		"/Users/kisaev/Desktop/survival_analysis_pcgs_fullTCGA.R",
+		"/Users/kisaev/Desktop/full_survival.R",
+		"/Users/kisaev/Downloads/survival.R"
+	],
+	"find":
+	{
+		"height": 39.0
+	},
+	"find_in_files":
+	{
+		"height": 101.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"sheets":
+			[
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 24.0
+	},
+	"input":
+	{
+		"height": 36.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "lncRNAs_TCGA.sublime-project",
+	"replace":
+	{
+		"height": 44.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 414.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

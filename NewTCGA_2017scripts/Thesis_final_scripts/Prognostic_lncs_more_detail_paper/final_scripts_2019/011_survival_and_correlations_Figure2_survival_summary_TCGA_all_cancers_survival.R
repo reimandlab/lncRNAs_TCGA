@@ -555,43 +555,44 @@ canc_results_pairs_types2 = readRDS("correlation_lnc_lnc_results_april10_res2.rd
 ######################################
 canc_results_pairs_types2$HR_pair = factor(canc_results_pairs_types2$HR_pair, levels = c("Both \nUnfavourable", "Opposite \nHRs", "Both \nFavourable"))
 
-RColorBrewer::brewer.pal(8, "Set1")
+cols = RColorBrewer::brewer.pal(8, "Set1")
 
-pdf("final_figure_1B_parttwoa.pdf", width=2, height=2)
+pdf("final_figure_1B_parttwoa.pdf", width=5, height=5)
 # Change density plot fill colors by groups
-g = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both \nUnfavourable"], aes(x=cor, fill=HR_pair), color="black") +
-  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") #+ scale_fill_brewer(palette="Set1") +
+g1 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both \nUnfavourable"], aes(x=cor, fill=HR_pair), color="black") +
+  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") + scale_fill_manual(values=cols[1]) +
   theme(legend.position="bottom")
-
-ggpar(g, 
-      font.tickslab = c(4,"plain", "black"), font.legend=c(4, "plain", "black"))
-
+g1 = ggpar(g1, 
+      font.tickslab = c(15,"plain", "black"), font.legend=c(4, "plain", "black"), xlim=c(-1,1))+
+theme(legend.position="none")
 dev.off()
 
-pdf("final_figure_1B_parttwob.pdf", width=2, height=2)
+pdf("final_figure_1B_parttwob.pdf", width=5, height=5)
 
 # Change density plot fill colors by groups
-g = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Opposite \nHRs"], aes(x=cor, fill=HR_pair), color="black") +
-  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") #+ scale_fill_brewer(palette="Set1") +
+g2 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Opposite \nHRs"], aes(x=cor, fill=HR_pair), color="black") +
+  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") + scale_fill_manual(values=cols[2]) +
   theme(legend.position="bottom")
 
-ggpar(g, 
-      font.tickslab = c(4,"plain", "black"), font.legend=c(4, "plain", "black"))
-
+g2 = ggpar(g2, 
+      font.tickslab = c(15,"plain", "black"), font.legend=c(4, "plain", "black"), xlim=c(-1,1))+
+theme(legend.position="none")
 dev.off()
 
-pdf("final_figure_1B_parttwoc.pdf", width=2, height=2)
+pdf("final_figure_1B_parttwoc.pdf", width=5, height=5)
 # Change density plot fill colors by groups
-g = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both \nFavourable"], aes(x=cor, fill=HR_pair), color="black") +
-  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") #+ scale_fill_brewer(palette="Set1") +
+g3 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both \nFavourable"], aes(x=cor, fill=HR_pair), color="black") +
+  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") + scale_fill_manual(values=cols[3]) + 
   theme(legend.position="bottom")
 
-ggpar(g, 
-      font.tickslab = c(4,"plain", "black"), font.legend=c(4, "plain", "black"))
-
+g3 = ggpar(g3, 
+      font.tickslab = c(15,"plain", "black"), font.legend=c(4, "plain", "black"), xlim=c(-1,1))+
+theme(legend.position="none")
 dev.off()
 
-
+pdf("final_figure2b_2019.pdf")
+plot_grid(g1, g2, g3, ncol=1, nrow=3,  align = "v")
+dev.off()
 
 
 
