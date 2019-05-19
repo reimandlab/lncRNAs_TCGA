@@ -97,6 +97,7 @@ sig = filter(wil_sig, imp >0, pval <0.05)
 z = which(canc_conv$canc %in% sig$cancer)
 canc_conv$sig = ""
 canc_conv$sig[z] = "V"
+canc_conv = subset(canc_conv, sig="V")
 
 pdf("cindices_real_march2019_1000.pdf", width=9, height=3)
 g = ggplot(canc_conv, aes(type, cindex, fill=all_res)) +

@@ -72,11 +72,11 @@ res$fdr = as.numeric(res$fdr)
 pdf("lncRNA_candidates_final_figure2B.pdf", width=15, height=6)
 
 g = ggplot(data=res, aes(x=CAT_geneName, y=HR, order = -HR)) + 
-  geom_bar(stat="identity", aes(fill=fdr)) + facet_grid(~ type, scale="free", space = "free")+
+  geom_bar(stat="identity", aes(fill=fdr),colour="black") + facet_grid(~ type, scale="free", space = "free")+
   geom_hline(yintercept=0, linetype="dashed", color = "red") + theme_minimal()
 ggpar(g, xtickslab.rt=90, font.tickslab=c(7, "plain", "black"),
 	legend = "bottom", legend.title = "Wald test, adjusted \n-log10(p-value)",
- font.legend = c(10, "plain	", "black")) + scale_fill_gradient(low = "black", high = "white")+
+ font.legend = c(10, "plain	", "black")) + scale_fill_gradient(low = "white", high = "black")+
 theme(strip.text.x = element_text(size = 8, colour = "Black", angle=90)) + xlab("lncRNA") + ylab("log2(Hazard Ratio)")
 
 dev.off()

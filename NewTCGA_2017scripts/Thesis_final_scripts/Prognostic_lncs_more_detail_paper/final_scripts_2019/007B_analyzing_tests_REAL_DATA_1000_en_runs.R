@@ -106,7 +106,7 @@ g = ggplot(canc_conv, aes(type, cindex, fill=all_res)) +
   geom_boxplot(outlier.alpha = 0.1, color="black") + theme_classic() #+
   #stat_compare_means(aes(group = all_res), label = "p.signif") 
 g = ggpar(g, x.text.angle = 45, legend.title="Predictors") 
-print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red") + scale_fill_brewer(palette="Set2") +
+print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red") + scale_fill_brewer(c("grey", "green", "orange")) +
  xlab("Cancer") + ylab("c-index"))
 dev.off()
 
