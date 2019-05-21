@@ -749,10 +749,10 @@ z = which(duplicated(clinsig_cause_lnc$combo_clin))
 
 pdf("summary_clinical_concordances_vs_lnc_scatterplot_oct11.pdf", width=5, height=5)
 g = ggplot(clinsig_cause_lnc, aes(clin_concordance, concordance_combo_model, label=combo_clin)) +
- geom_point(aes(color=type))+
+ geom_point(aes(fill=type), color="black")+
  #scale_size(range = c(0, 3))+
     #scale_colour_manual(values = mypal[c(2:5, 9,8)]) +
-    scale_colour_manual(values = mypal) +  
+    scale_fill_manual(values = mypal) +  
     xlab("Clinical Concordance") + ylab("lncRNA & Clinical Combined Concordance") + theme_classic() +
     theme(legend.position = "top", axis.text = element_text(size=12), 
       legend.text=element_text(size=10), legend.title=element_text(size=10)) +

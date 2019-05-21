@@ -185,9 +185,9 @@ check_cis_pcg = function(combo){
   res2 = as.numeric(tidy(anova(cox_pcg, cox_both))[2,4]) #if sig, then yes 
 
   #compare coefficeints
-  lnc_plot = print(ggforest(cox_lnc, data=exp_dat))
-  pcg_plot = print(ggforest(cox_pcg, data=exp_dat))
-  both_plot = print(ggforest(cox_both, data=exp_dat))
+  #lnc_plot = print(ggforest(cox_lnc, data=exp_dat))
+  #pcg_plot = print(ggforest(cox_pcg, data=exp_dat))
+  #both_plot = print(ggforest(cox_both, data=exp_dat))
 
   #arrange
   library(patchwork)
@@ -258,24 +258,24 @@ check_cis_pcg = function(combo){
 
 
 #pdf("all_cis_antisense_lnc_pairs_survival_results_10kb_nov16.pdf", width=10)
-#results = llply(combos, check_cis_pcg, .progress="text")
+results = llply(combos, check_cis_pcg, .progress="text")
 #dev.off()
 
-#results2 = ldply(results)
-#results2$fdr_res = p.adjust(results2$res, method="fdr")
-#results2$fdr_res2 = p.adjust(results2$res2, method="fdr")
-#results2$rho_fdr = p.adjust(results2$rho_p, method="fdr")
+results2 = ldply(results)
+results2$fdr_res = p.adjust(results2$res, method="fdr")
+results2$fdr_res2 = p.adjust(results2$res2, method="fdr")
+results2$rho_fdr = p.adjust(results2$rho_p, method="fdr")
 
-#results2 = as.data.table(results2)
-#results2 = results2[order(fdr_res)]
+results2 = as.data.table(results2)
+results2 = results2[order(fdr_res)]
 
-#length(which(results2$res <= 0.05)) #in 16/127 pairs , the lncRNA benefits from the signal from its neigboring gene 
-#length(which(results2$fdr_res <= 0.05)) #2/127 pairs, the lncRNA beneifts from signal from neighboring gene when accounting for multiple testing correction
-#length(which(results2$fdr_res2 <= 0.05)) #even after multiple testing correction, 124/127 pairs improve from adding lncRNA expression to PCG expression 
+length(which(results2$res <= 0.05)) #in 16/127 pairs , the lncRNA benefits from the signal from its neigboring gene 
+length(which(results2$fdr_res <= 0.05)) #2/127 pairs, the lncRNA beneifts from signal from neighboring gene when accounting for multiple testing correction
+length(which(results2$fdr_res2 <= 0.05)) #even after multiple testing correction, 124/127 pairs improve from adding lncRNA expression to PCG expression 
 
-saveRDS(results2, file="110_cis_antisense_pairs_survival_results_aug28.rds")
-saveRDS(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.rds")
-write.csv(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.csv", quote=F, row.names=F)
+#saveRDS(results2, file="110_cis_antisense_pairs_survival_results_aug28.rds")
+#saveRDS(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.rds")
+#write.csv(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.csv", quote=F, row.names=F)
 
 ###START HERE###-----------------------------------------------------------------
 

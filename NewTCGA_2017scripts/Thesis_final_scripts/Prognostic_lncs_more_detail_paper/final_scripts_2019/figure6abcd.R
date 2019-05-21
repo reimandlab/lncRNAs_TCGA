@@ -116,14 +116,14 @@ make_matrix_for_ap = function(canc){
 	}
 }
 
-all_lnc_pathways = llply(cancers, make_matrix_for_ap, .progress="text")
-all_lnc_pathways_df = ldply(all_lnc_pathways)
+#all_lnc_pathways = llply(cancers, make_matrix_for_ap, .progress="text")
+#all_lnc_pathways_df = ldply(all_lnc_pathways)
 #done gave Marta matriced produced by this code for ActivePathways 
 
 
 ###---------------Summary figure-------------------------------###
 
-saveRDS(all_lnc_pathways_df, file="pathways_for_each_lncRNA_Oct30.rds")
+#saveRDS(all_lnc_pathways_df, file="pathways_for_each_lncRNA_Oct30.rds")
 all_lnc_pathways_df = readRDS("pathways_for_each_lncRNA_Oct30.rds")
 
 #number of PCGs/lncRNA vs number of Pathways/lncRNAs 
@@ -329,7 +329,7 @@ pdf("figure6A_lgg_only.pdf", width=5, height=6)
 g = ggplot(barplot, aes(x=lncRNA, y=num, fill=type)) + theme_classic() + 
    geom_bar(aes(fill=type), stat="identity", position=position_dodge())+xlab("LGG lncRNAs") + ylab("Number of genes")+
    theme(legend.title=element_blank(), legend.position="top", axis.title.x=element_blank(), 
-    axis.text.x = element_text(angle = 90, hjust = 1, size=8)) + scale_fill_manual(values=c("#56B4E9","red", "#E69F00"))
+    axis.text.x = element_text(angle = 90, hjust = 1, size=8)) + scale_fill_manual(values=c("#56B4E9","#E69F00", "red"))
 ggpar(g,
  font.tickslab = c(9,"plain", "black"),
  xtickslab.rt = 45)
@@ -491,8 +491,11 @@ all_canc$patient = rownames(all_canc)
 all_canc$patient = sapply(all_canc$patient, function(x){unlist(strsplit(x, " "))[1]})
 all_canc$full_patient = rownames(all_canc)
 
+library(TCGAbiolinks)
 #lgg info 
-lgg_idh = readRDS("TCGA_lgg_wsubtype_info_biolinks.rds")
+clin_subtypes <- TCGAquery_subtype(tumor = "LGG")
+#lgg_idh = readRDS("TCGA_lgg_wsubtype_info_biolinks.rds")
+lgg_idh=clin_subtypes
 lgg_idh = lgg_idh[,c("IDH.status", "patient")]
 
 gb_idh = readRDS("gbm_clin_subtypes_glioblastoma.rds")
