@@ -13,7 +13,7 @@ library(stringr)
 library(EnvStats)
 library(patchwork)
 
-source("universal_LASSO_survival_script.R")
+source("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/universal_LASSO_survival_script.R")
 
 library(ggpubr)
 library(ggrepel)
@@ -25,14 +25,14 @@ library(data.table)
 
 #------DATA---------------------------------------------------------
 #UCSC gene info
-ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
+ucsc <- fread("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 #z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
 #ucsc <- ucsc[z,]
 z <- which(duplicated(ucsc[,8]))
 ucsc <- ucsc[-z,]
 
 #fantom 
-fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
+fantom <- fread("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
 extract3 <- function(row){
   gene <- as.character(row[[1]])
   ens <- gsub("\\..*","",gene)
@@ -53,7 +53,10 @@ fantom <- fantom[-z,]
 lncs = colnames(rna)[which(str_detect(colnames(rna), "ENSG"))]
 z = which(fantom$CAT_geneID %in% lncs)
 fantom = fantom[z,]
-write.csv(fantom, file="5785_lncRNAs_used_in_study_table2.csv", quote=F, row.names=F)
+
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
+
+write.csv(fantom, file="SuppTable2_5785_lncRNAs_used_in_study.csv", quote=F, row.names=F)
 
 #summarize patients 
 pats = unique(rna[,c("type", "Cancer")])
@@ -61,14 +64,14 @@ tt = as.data.table(table(rna$type))
 colnames(tt) = c("type", "num_patients")
 tt = merge(tt, pats, by="type")
 tt = tt[order(num_patients)]
-write.csv(tt, file="TCGA_cancer_types_used_in_study_table1.csv", quote=F, row.names=F)
+write.csv(tt, file="SuppTable1_TCGA_cancer_types_used_in_study.csv", quote=F, row.names=F)
 
 #------FEATURES-----------------------------------------------------
 
-allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
-allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
-cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
+#allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+#allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+#allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
+#cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 
 ###[2.] Data splitting 
 
@@ -90,8 +93,8 @@ library(tidyr)
 rna = as.data.frame(rna)
 dim(rna)
 dim(pcg)
-dim(norm)
-dim(met)
+#dim(norm)
+#dim(met)
 
 all_genes = as.data.frame(unique(c(colnames(rna), colnames(pcg))))
 z = which(str_detect(all_genes[,1], "ENSG"))
@@ -105,7 +108,7 @@ all_genes$type[z] = "lncRNA"
 z = which(all_genes$gene %in% colnames(pcg))
 all_genes$type[z] = "pcg"
 
-saveRDS(all_genes, file="all_genes_used_in_TCGA_april17.rds")
+saveRDS(all_genes, file="all_genes_used_in_TCGA.rds")
 
 ###---------------------------------------------------------------
 
@@ -137,6 +140,17 @@ canc_datas = llply(cancers, get_canc)
 #4. function that calculates survival for each gene 
 #det_lncs = readRDS("all_TCGA_cancers_lncRNAs_detectable_May18.rds")
 #det_lncs =filter(det_lncs, status =="detectable")
+
+#clean up clinical columns 
+cols_keep = c("race", "clinical_stage", "histological_grade")
+z = which(rna$race %in% c("[Not Available]", "[Not Evaluated]", "[Unknown]"))
+rna$race[z] = "unknown"
+
+z = which(rna$clinical_stage %in% c("[Not Applicable]", "[Not Available]"))
+rna$clinical_stage[z] = "unknown"
+
+z = which(rna$histological_grade %in% c("[Unknown]", "[Not Available]", "[Discrepancy]"))
+rna$histological_grade[z] = "unknown"
 
 canc_survival_genes = function(dato){
 	#look at all lncRNAs that are expressed in at least some patients 
@@ -244,11 +258,10 @@ canc_survival_genes = function(dato){
 
 #DO NOT RUN 
 
-#all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text")
-#all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
+all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text")
+all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
 
-#saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_all_survival_results_feb27.rds") #<---- important file 
-
+saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_all_survival_results_feb27.rds") #<---- important file 
 
 ##############RUN-----------------------------------------------------------------------------------
 

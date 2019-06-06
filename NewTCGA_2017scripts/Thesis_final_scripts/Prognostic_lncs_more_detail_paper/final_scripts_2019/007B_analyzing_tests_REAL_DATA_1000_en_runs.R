@@ -1,4 +1,5 @@
-setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/real_elastic_net_runs_1000")
+#setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/real_elastic_net_runs_1000")
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript/real_elastic_net_runs_1000")
 
 library(data.table)
 library(dplyr)
@@ -39,7 +40,7 @@ new_res = as.data.table(all_res %>% gather(all_res, cindex, combined:clinical))
 #save and compare to random shuffled data
 
 #get cancer types 
-canc_conv = readRDS("canc_conv.rds")
+canc_conv = readRDS("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/canc_conv.rds")
 colnames(canc_conv)[2] = "canc"
 canc_conv = as.data.table(merge(canc_conv, new_res, by="canc"))
 
@@ -62,7 +63,7 @@ g = ggpar(g, x.text.angle = 65, legend.title="Predictors")
 print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red"))
 dev.off()
 
-saveRDS(all_res, file="all_res_REAL_EN_1000_runs_1204.rds")
+saveRDS(all_res, file="all_res_REAL_EN_1000_runs_0606.rds")
 
 #for each cancer type get boxplot 
 check_perform = function(cancer){

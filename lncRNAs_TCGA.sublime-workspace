@@ -7,6 +7,24 @@
 	},
 	"buffers":
 	[
+		{
+			"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/figure6abcd.R",
+			"settings":
+			{
+				"buffer_size": 30656,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/Figure5_analysis_figure.R",
+			"settings":
+			{
+				"buffer_size": 44188,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		}
 	],
 	"build_system": "",
 	"build_system_choices":
@@ -40,10 +58,21 @@
 	},
 	"expanded_folders":
 	[
-		"/Users/kisaev/lncRNAs_TCGA"
+		"/Users/kisaev/lncRNAs_TCGA",
+		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts",
+		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts",
+		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper",
+		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019"
 	],
 	"file_history":
 	[
+		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/011_survival_and_correlations_Figure2_survival_summary_TCGA_all_cancers_survival.R",
+		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/Figure2_code.R",
+		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/007B_analyzing_tests_REAL_DATA_1000_en_runs.R",
+		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/Figure5_analysis_figure.R",
+		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/TCGA_biolinks_figure5_code.R",
+		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/figure2_d_pcgs_lncs.R",
+		"/Users/kisaev/lncRNAs_TCGA/elastic_net_permutations/001_main_elastic_net_1000_runs_analyzing.R",
 		"/Users/kisaev/DLBCL-CNS-relapse/001_symlinks_BC_BAM_files.sh",
 		"/Users/kisaev/DLBCL-CNS-relapse/001_symlinks_BC_VCF_files.sh",
 		"/Users/kisaev/DLBCL-CNS-relapse/002_bam_index_files.sh",
@@ -94,6 +123,10 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"biol",
+			"save",
+			"matrix",
+			"print"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -111,8 +144,69 @@
 	"groups":
 	[
 		{
+			"selected": 1,
 			"sheets":
 			[
+				{
+					"buffer": 0,
+					"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/figure6abcd.R",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 30656,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								22795,
+								22862
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/R/R.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 6031.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/Figure5_analysis_figure.R",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 44188,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								708,
+								730
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/R/R.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				}
 			]
 		}
 	],
@@ -193,7 +287,7 @@
 	"show_open_files": false,
 	"show_tabs": true,
 	"side_bar_visible": true,
-	"side_bar_width": 414.0,
+	"side_bar_width": 611.0,
 	"status_bar_visible": true,
 	"template_settings":
 	{

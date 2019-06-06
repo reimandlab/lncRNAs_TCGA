@@ -10,7 +10,7 @@
 ###Load Libraries
 ###---------------------------------------------------------------
 
-source("source_file.R")
+source("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/source_file.R")
 library(stringr)
 
 ###---------------------------------------------------------------
@@ -20,13 +20,13 @@ library(stringr)
 #1. RNA data 
 
 #--lncrna
-rna = readRDS("5919_all_tumours_7501_tissues_TCGAnew.rds")
+rna = readRDS("5919_all_tumours_9603_tissues_TCGAnew.rds")
 rownames(rna) = rna$gene
 rna$gene = NULL
 rna = t(rna)
 
 #--pcg
-pcg = readRDS("54564_PCGs_all_tumours_7501_tissues_TCGAnew.rds")
+pcg = readRDS("54564_PCGs_all_tumours_9603_tissues_TCGAnew.rds")
 rownames(pcg) = pcg$gene
 pcg$gene = NULL
 pcg = t(pcg)
@@ -44,12 +44,12 @@ met$gene = NULL
 met = t(met)
 
 #--external
-ext = readRDS("external_data_set_pcawg_patients_all_tumours_7501_tissues_TCGAnew.rds")
-rownames(ext) = ext$gene
-ext$gene = NULL
-ext = t(ext)
+#ext = readRDS("external_data_set_pcawg_patients_all_tumours_7501_tissues_TCGAnew.rds")
+#rownames(ext) = ext$gene
+#ext$gene = NULL
+#ext = t(ext)
 
-ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
+ucsc <- fread("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 z <- which(ucsc$hg19.ensemblSource.source %in% "protein_coding")
 ucsc <- ucsc[z,]
 z <- which(duplicated(ucsc[,6]))
@@ -63,10 +63,10 @@ pcg = pcg[,z]
 #clin = read.csv("all_clin_XML_tcgaSept2017.csv")
 #clin = clin[,1:90]
 
-clin = fread("mmc1_clinical_data_cellpaper2018.txt")
+clin = fread("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/mmc1_clinical_data_cellpaper2018.txt")
 
 #3. Fantom data 
-fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
+fantom <- fread("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
 extract3 <- function(row){
 	gene <- as.character(row[[1]])
 	ens <- gsub("\\..*","",gene)
@@ -87,10 +87,10 @@ fantom <- fantom[-z,]
 canc_conversion = readRDS("tcga_id_cancer_type_conversion.txt")
 norm_conversion = readRDS("tcga_id_NORMAL_samples_type_conversion.txt")
 met_conversion = readRDS("tcga_id_Metastatic_samples_type_conversion.txt")
-ext_conversion = readRDS("tcga_id_external_samples_type_conversion.txt")
+#ext_conversion = readRDS("tcga_id_external_samples_type_conversion.txt")
 
 #6. List of TCGA IDs used in PCAWG - to remove
-ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
+ids_remove = fread("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/TCGA_IDs_usedinPCAWG.txt")
 
 #norm
 z = which(colnames(norm) %in% c(colnames(rna), colnames(pcg)))
@@ -125,11 +125,11 @@ change = function(rowname){
 }
 rownames(met) = sapply(rownames(met), change)
 
-change = function(rowname){
-  new = ext_conversion$id[which(ext_conversion$TCGA_id %in% rowname)]
-  return(new)  
-}
-rownames(ext) = sapply(rownames(ext), change)
+#change = function(rowname){
+#  new = ext_conversion$id[which(ext_conversion$TCGA_id %in% rowname)]
+#  return(new)  
+#}
+#rownames(ext) = sapply(rownames(ext), change)
 
 #Keep only those patients with both RNA-Seq AND clinical data
 z <- which(rownames(rna) %in% clin$bcr_patient_barcode)
@@ -141,8 +141,8 @@ z <- which(rownames(norm) %in% clin$bcr_patient_barcode)
 norm = norm[z,] #all have clinical data - 563 patients (matched normals)
 z <- which(rownames(met) %in% clin$bcr_patient_barcode)
 met = met[z,] #all have clinical data - 563 patients (matched normals)
-z <- which(rownames(ext) %in% clin$bcr_patient_barcode)
-ext = ext[z,] #all have clinical data - 563 patients (matched normals)
+#z <- which(rownames(ext) %in% clin$bcr_patient_barcode)
+#ext = ext[z,] #all have clinical data - 563 patients (matched normals)
 
 #Add survival info to RNA file
 rna = as.data.frame(rna)
@@ -176,11 +176,11 @@ pcg = merge(pcg, clin, by="patient")
 saveRDS(pcg, "19438_lncRNAs_tcga_all_cancers_March13_wclinical_dataalldat.rds")
 
 #Add survival info to PCG file
-ext = as.data.frame(ext)
-ext$patient = rownames(ext)
-ext = merge(ext, clin, by="patient")
+#ext = as.data.frame(ext)
+#ext$patient = rownames(ext)
+#ext = merge(ext, clin, by="patient")
 
-saveRDS(ext, "all_genes_external_tcga_all_cancers_March13_wclinical_dataalldat.rds")
+#saveRDS(ext, "all_genes_external_tcga_all_cancers_March13_wclinical_dataalldat.rds")
 
 
 
