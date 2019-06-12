@@ -1,3 +1,5 @@
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ")
+
 library(survAUC)
 #source("source_code_Cox_MonteCarlo_CV_Mar13.R")
 require(caTools)
@@ -7,7 +9,7 @@ library(survcomp)
 library(caret)
 library(stringr)
 
-source("universal_LASSO_survival_script.R")
+source("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/universal_LASSO_survival_script.R")
 
 library(ggpubr)
 library(ggrepel)
@@ -15,14 +17,15 @@ library(viridis)
 library(patchwork)
 library(caret)  
 library(Rtsne)
-require("powerSurvEpi")
+#require("powerSurvEpi")
 library(SIBER)
 library(EnvStats)
 
 #------FEATURES-----------------------------------------------------
 
 #cands -- should be this file
-cands = readRDS("genes_keep_100CV_No_FDR_May2nd2018.rds")
+#cands = readRDS("genes_keep_100CV_No_FDR_May2nd2018.rds")
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
 cands = readRDS("lncRNAs_selected_by_EN_april14.rds") #1000 runs of cross-validations using new updated dataset (GBM=124, OV and LUAD)
 
@@ -35,7 +38,15 @@ cands = readRDS("lncRNAs_selected_by_EN_april14.rds") #1000 runs of cross-valida
 #also check Cox PH assumptions within each data-set
 #fantom 
 
-fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
+#UCSC gene info
+ucsc <- fread("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
+#z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
+#ucsc <- ucsc[z,]
+z <- which(duplicated(ucsc[,8]))
+ucsc <- ucsc[-z,]
+
+#fantom 
+fantom <- fread("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
 extract3 <- function(row){
   gene <- as.character(row[[1]])
   ens <- gsub("\\..*","",gene)
@@ -47,6 +58,7 @@ z <- which(duplicated(fantom$CAT_geneName))
 rm <- fantom$CAT_geneName[z]
 z <- which(fantom$CAT_geneName %in% rm)
 fantom <- fantom[-z,]
+
 
 get_name = function(ensg){
     z = which(fantom$CAT_geneID == ensg)
@@ -65,7 +77,9 @@ get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates 
   z = which(colnames(dtt) %in% c(as.character(cands$gene[cands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
-    "new_tumor_event_type", "Cancer"))
+    "new_tumor_event_type", "Cancer", "type"))
+  print(dtt$type[1])
+  print(cands$cancer[1])
   dtt = dtt[,z]
   return(dtt)
 }
@@ -109,8 +123,8 @@ filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
 saveRDS(filtered_data_tagged, file="22_cancer_types_with_lncRNA_candidates_labelled_high_low.rds")
 
 get_survival_models = function(dtt){
-  results_cox1 <- as.data.frame(matrix(ncol=21)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer", 
-    "lnc_test_ph", 'global_test_ph', "num_risk", "perc_risk", "power", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero", "multi_model_concordance", 
+  results_cox1 <- as.data.frame(matrix(ncol=20)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer", 
+    "lnc_test_ph", 'global_test_ph', "num_risk", "perc_risk", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero", "multi_model_concordance", 
     "lnc_only_concordance", "clinical_only_concordance", "num_events", "perc_wevents")
 
   dat = dtt
@@ -165,7 +179,7 @@ get_survival_models = function(dtt){
   #m = expected total number of events over both groups.
   mval = length(which(newdat$OS == 1))
 
-  power = powerCT.default0(k=kval,m=mval, RR=2, alpha=0.05)
+  #power = powerCT.default0(k=kval,m=mval, RR=2, alpha=0.05)
 
   #hr = summary(lncs)$coefficients[1,c(1,2,5)][2]
   if(hr >1){
@@ -242,7 +256,7 @@ get_survival_models = function(dtt){
    }
 
    row <- c(gene_name, summary(lncs)$coefficients[1,c(1,5)], hr,  summary(lncs)$conf.int[1,c(3,4)], dtt$Cancer[1], 
-    lnc_test_ph, global, risk_num, perc, power, median_nonzero,
+    lnc_test_ph, global, risk_num, perc, median_nonzero,
     sd_nonzero,
     min_nonzero,
     max_nonzero, cmulti, clnconly, clinical_only, num_events, perc_events)
@@ -342,6 +356,18 @@ dev.off()
 tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
 tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
 saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
+
+write.table(tcga_results1, file="SuppTable6.txt", quote=F, row.names=F)
+
+tcga_results1 = as.data.table(tcga_results1)
+
+dim(filter(tcga_results1, HR >1))
+tcga_results1$HR = as.numeric(tcga_results1$HR)
+median(filter(tcga_results1, HR >1)$HR)
+
+dim(filter(tcga_results1, HR <1))
+tcga_results1$HR = as.numeric(tcga_results1$HR)
+median(filter(tcga_results1, HR <1)$HR)
 
 #-------------------------------------------------------------------
 #------PCAWG DATA---------------------------------------------------
@@ -468,8 +494,8 @@ names(filtered_data_tagged) = getnames
 
 get_survival_models = function(dtt){
   print(head(dtt))
-  results_cox1 <- as.data.frame(matrix(ncol=18)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
-    "lnc_test_ph", 'global_test_ph', "num_risk", "perc_risk", "power", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero",
+  results_cox1 <- as.data.frame(matrix(ncol=17)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
+    "lnc_test_ph", 'global_test_ph', "num_risk", "perc_risk", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero",
     "multi_model_concordance", "lnc_only_concordance")
 
   dat = dtt

@@ -64,6 +64,8 @@ print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red"))
 dev.off()
 
 saveRDS(all_res, file="all_res_REAL_EN_1000_runs_0606.rds")
+#scp all_res_REAL_EN_1000_runs_0606.rds /u/kisaev/
+#scp kisaev@chickenwire.oicr.on.ca:/u/kisaev/all_res_REAL_EN_1000_runs_0606.rds /Users/kisaev/Documents/lncRNAs
 
 #for each cancer type get boxplot 
 check_perform = function(cancer){
@@ -71,13 +73,21 @@ dat = subset(new_res, canc==cancer)
 w = wilcox.test(dat$cindex[dat$all_res=="lncRNAs"], dat$cindex[dat$all_res=="clinical"], alternative="greater")
 med_lnc = median(dat$cindex[dat$all_res=="lncRNAs"])
 med_clin =  median(dat$cindex[dat$all_res=="clinical"])
-t = tidy(w)
-t$cancer = cancer
-t$med_lnc = med_lnc
-t$med_clin = med_clin
-imp = med_lnc - med_clin
-t$imp = imp
-return(t)
+med_combo = median(dat$cindex[dat$all_res=="combined"])
+w_combo_clin = wilcox.test(dat$cindex[dat$all_res=="combined"], dat$cindex[dat$all_res=="clinical"], alternative="greater")
+
+ t = tidy(w)
+  t$cancer = cancer
+  t$med_lnc = med_lnc
+  t$med_clin = med_clin
+  t$med_combo = med_combo
+  imp = med_lnc - med_clin
+  imp_combo_clin = med_combo - med_clin
+  t$imp = imp
+  t$imp_combo_clin = imp_combo_clin
+  t$w_combo_clin = w_combo_clin$p.value
+
+  return(t)
 }
 
 cancers = unique(new_res$canc)
@@ -88,13 +98,15 @@ wil = ldply(wil)
 wil = as.data.table(wil)
 colnames(wil)[2] = "pval"
 wil = wil[order(pval, -imp)]
+wil$fdr = p.adjust(wil$pval, method="fdr")
+wil$fdr_w_combo_clin = p.adjust(wil$w_combo_clin, method="fdr")
 
 wil_sig = wil
 
 wil_sig$imp = round(wil_sig$imp, digits=2)
 wil_sig = as.data.table(wil_sig)
 wil_sig = wil_sig[order(med_lnc)]
-sig = filter(wil_sig, imp >0, pval <0.05)
+sig = filter(wil_sig, imp >0, fdr <0.05, med_lnc >=0.5)
 z = which(canc_conv$canc %in% sig$cancer)
 canc_conv$sig = ""
 canc_conv$sig[z] = "V"
@@ -118,7 +130,7 @@ dev.off()
 
 results = list.files()
 print(length(results))
-genes = results[which(str_detect(results, "genes"))]
+genes = results[which(str_detect(results, "genes_.rds"))]
 
 #break into cancer types 
 get_canc = function(file){
@@ -133,7 +145,22 @@ all_res = as.data.table(all_res)
 
 rounds = unique(all_res$round)
 
-saveRDS(all_res, file="lncRNAs_selected_by_EN_april14.rds")
+#remove candidates that are duplicated 
+dups = all_res$gene[which(duplicated(all_res$gene))]
+all_res = as.data.table(filter(all_res, !(gene %in% dups)))
+
+#for j in `seq 1 29`; do qsub -cwd -b y -N real10000$j -l h_vmem=55g "module load R/3.4.0;Rscript V1_10000new_runsmarch_2019_REAL_elsatic_net_lncRNAs_main_script.R $j"; done
+
+dim(filter(all_res, hr >1))
+all_res$hr = as.numeric(all_res$hr)
+median(filter(all_res, hr >1)$hr)
+
+dim(filter(all_res, hr <1))
+all_res$hr = as.numeric(all_res$hr)
+median(filter(all_res, hr <1)$hr)
+
+saveRDS(all_res, file="/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript/lncRNAs_selected_by_EN_april14.rds")
+
 
 
 

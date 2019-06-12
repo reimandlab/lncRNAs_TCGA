@@ -258,14 +258,15 @@ canc_survival_genes = function(dato){
 
 #DO NOT RUN 
 
-all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text")
-all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
+#all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text")
+#all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
 
-saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_all_survival_results_feb27.rds") #<---- important file 
+#saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_all_survival_results_feb27.rds") #<---- important file 
 
 ##############RUN-----------------------------------------------------------------------------------
 
 all_cancers_genes_surv_comb = readRDS("lncRNAs_all_survival_results_feb27.rds")
+all_cancers_genes_surv_comb = as.data.table(all_cancers_genes_surv_comb)
 canc_conv = rna[,which(colnames(rna) %in% c("Cancer", "type"))]
 canc_conv = canc_conv[!duplicated(canc_conv), ]
 colnames(canc_conv)[2] = "canc"
@@ -273,7 +274,7 @@ all_cancers_genes_surv_comb = merge(all_cancers_genes_surv_comb, canc_conv, by="
 write.csv(all_cancers_genes_surv_comb, file="ALL_lncRNAs_survival_Feb262019.csv", quote=F, row.names=F)
 
 #all_cancers_genes_surv_comb = as.data.table(all_cancers_genes_surv_comb)
-all_cancers_genes_surv_comb[,c(3:10)] = apply(all_cancers_genes_surv_comb[,c(3:10)], 2, function(x){as.numeric(x)})
+#all_cancers_genes_surv_comb[,c(3:10)] = apply(all_cancers_genes_surv_comb[,c(3:10)], 2, function(x){as.numeric(x)})
 all_cancers_genes_surv_comb = as.data.table(all_cancers_genes_surv_comb)
 
 ###-------------------------------------------------------------------------------------------------
@@ -293,7 +294,7 @@ all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-c(z1,z2),]
 z = which(all_cancers_genes_surv_comb$HR > 10)
 all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-z,]
 
-lineval = -log10(0.1)
+lineval = -log10(0.05)
 
 all_cancers_genes_surv_comb$fdrsig = ""
 all_cancers_genes_surv_comb$fdrsig[all_cancers_genes_surv_comb$fdr < lineval] = "FDRnotSig"
@@ -308,7 +309,7 @@ all_cancers_genes_surv_comb$risk_perc_tag[all_cancers_genes_surv_comb$risk_perc 
 
 #figure 2B/C?
 sig_lncs = as.data.table(all_cancers_genes_surv_comb)
-sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, fdr >= -log10(0.1)))
+sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, fdr >= -log10(0.05)))
 saveRDS(sig_lncs, file="3662_prognostic_lncRNAs_fdr0.1.rds")
 
 all_cancers_genes_surv_comb = sig_lncs

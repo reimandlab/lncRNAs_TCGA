@@ -84,7 +84,6 @@ clin = merge(clin, more_clin, by = merge_cols)
 #RNA-Seq file 
 rna <- fread("joint_fpkm_uq.tsv", data.table=F)
 
-
 #---------------------------------------------------------
 #Processing
 #---------------------------------------------------------
@@ -166,7 +165,6 @@ colnames(t) = c("country-project","freq")
 t = t[order(freq)]
 grid.table(t)
 dev.off()
-
 
 
 z = which(str_detect(new_pcawg$project_code, "LIAD|LIHM|LICA|LIHC|LINC|LICA|LIRI"))

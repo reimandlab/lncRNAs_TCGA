@@ -19,6 +19,8 @@ require("powerSurvEpi")
 library(SIBER)
 library(EnvStats)
 
+#dont use
+
 #------FEATURES-----------------------------------------------------
 
 #cands -- should be this file
