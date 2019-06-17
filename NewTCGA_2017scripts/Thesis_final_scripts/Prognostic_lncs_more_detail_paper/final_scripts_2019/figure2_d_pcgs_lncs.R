@@ -24,12 +24,6 @@ load("hic_data.rsav")
 #remove rownames
 rownames(hic_data) = c(1:nrow(hic_data))
 
-#------FEATURES-----------------------------------------------------
-
-allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
-allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
-
 #------FUNCTIONS-----------------------------------------------------
 
 # ++++++++++++++++++++++++++++
@@ -72,9 +66,17 @@ cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 #-------------------ANALYSIS--------------------------------------------
 ##3-----------------get correlation pairs-----------------------------------
 
-prog_pcgs = readRDS("mRNAs_Survival_Results_prognostic_pcgs_July19.rds")
-prog_pcgs = as.data.table(prog_pcgs)
+#prog_pcgs = readRDS("mRNAs_Survival_Results_prognostic_pcgs_July19.rds")
+#prog_pcgs = as.data.table(prog_pcgs)
 #cis_pcgs = readRDS("lncRNA_cands_wPCGs_that_are_in_cis_aug8.rds")
+
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
+
+#------FEATURES-----------------------------------------------------
+
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 cis_pcgs  =readRDS("lncRNA_cands_wPCGs_that_are_in_cis_10kb_nov16.rds")
 #convert to ensgs
@@ -95,14 +97,14 @@ check_cis_pcg = function(combo){
   lnc = unlist(str_split(combo, "_"))[1]
   cancer = allCands$cancer[which(allCands$gene == lnc)]
   pcgg = unlist(str_split(combo, "_"))[2]
-  pcg_surv = filter(prog_pcgs, gene == pcgg, canc == cancer)
-  print(pcg_surv)
+  #pcg_surv = filter(prog_pcgs, gene == pcgg, canc == cancer)
+  #print(pcg_surv)
 
   #pcg pvalue 
-  pcg_pvalue = as.numeric(pcg_surv$fdr)
-  if(length(pcg_pvalue)==0){
-    pcg_pvalue = 1
-  }
+  #pcg_pvalue = as.numeric(pcg_surv$fdr)
+  #if(length(pcg_pvalue)==0){
+  #  pcg_pvalue = 1
+  #}
 
   #get surv and exp data for these genes 
   z = which(colnames(all) %in% c(lnc, pcgg, "OS", "OS.time", "type", "patient", "Cancer"))
@@ -174,6 +176,11 @@ check_cis_pcg = function(combo){
   rho = rcorr(exp_dat$LNC, exp_dat$PCG, type="spearman")$r[2]
   rho_p = rcorr(exp_dat$LNC, exp_dat$PCG, type="spearman")$P[2]
 
+  check1 = table(exp_dat$pcg_median)[1] >= 10
+  check2 = table(exp_dat$pcg_median)[2] >= 10
+  
+  if(dim(table(exp_dat$pcg_median))>1){
+
   #cox model using both
   cox_lnc = coxph(Surv(OS.time, OS) ~ lnc_median, data = exp_dat)
   cox_pcg = coxph(Surv(OS.time, OS) ~ pcg_median, data = exp_dat)
@@ -207,12 +214,11 @@ check_cis_pcg = function(combo){
   res$lnc_improvepcg[res$res2 <= 0.05] = "yes"
   res$lnc_improvepcg[res$res2 > 0.05] = "no"
 
-  res$pcg_fdr_pval = pcg_pvalue #Fdr from cox model
+  #res$pcg_fdr_pval = pcg_pvalue #Fdr from cox model
   print(res)
 
   res$rho = rho
   res$rho_p = rho_p
-
   
   #get concordance and AIC values
   res$lncAIC = as.data.table(glance(cox_lnc))$AIC
@@ -253,7 +259,7 @@ check_cis_pcg = function(combo){
           #print(s)
 
   return(res)        
-          
+}          
 }#end function
 
 
@@ -274,8 +280,8 @@ length(which(results2$fdr_res <= 0.05)) #2/127 pairs, the lncRNA beneifts from s
 length(which(results2$fdr_res2 <= 0.05)) #even after multiple testing correction, 124/127 pairs improve from adding lncRNA expression to PCG expression 
 
 #saveRDS(results2, file="110_cis_antisense_pairs_survival_results_aug28.rds")
-#saveRDS(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.rds")
-#write.csv(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.csv", quote=F, row.names=F)
+saveRDS(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.rds")
+write.csv(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.csv", quote=F, row.names=F)
 
 ###START HERE###-----------------------------------------------------------------
 
@@ -296,7 +302,7 @@ cands_pairs$pcg_combo = paste(cands_pairs$pcg, cands_pairs$Cancer, sep="_")
 #make summary plot 
 #any of these in cancer gene census list?
 #COSMIC cancer gene census
-census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
+#census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
 #get ensg
 get_census_ensg = function(genes){
   glist = unlist(strsplit(genes, ","))
@@ -314,19 +320,21 @@ cands_pairs$pcg = unlist(llply(cands_pairs$pcg, get_name_pcg))
 cands_pairs$lnc = unlist(llply(cands_pairs$lnc, get_name))
 
 #get pcg HR and p-value?
-prog_pcgs$pcg_combo = paste(prog_pcgs$gene, prog_pcgs$canc, sep="_")
-prog_pcgs = prog_pcgs[which(prog_pcgs$pcg_combo %in% cands_pairs$pcg_combo),]
-prog_pcgs$pval = as.numeric(prog_pcgs$pval)
-prog_pcgs = prog_pcgs[order(pval)]
+#prog_pcgs$pcg_combo = paste(prog_pcgs$gene, prog_pcgs$canc, sep="_")
+#prog_pcgs = prog_pcgs[which(prog_pcgs$pcg_combo %in% cands_pairs$pcg_combo),]
+#prog_pcgs$pval = as.numeric(prog_pcgs$pval)
+#prog_pcgs = prog_pcgs[order(pval)]
 
-prog_pcgs = merge(prog_pcgs, cands_pairs, by=c("pcg_combo"))
-colnames(prog_pcgs)[12] = "type"
-prog_pcgs = prog_pcgs[order(fdr_res)]
+#prog_pcgs = merge(prog_pcgs, cands_pairs, by=c("pcg_combo"))
+#colnames(prog_pcgs)[12] = "type"
+#prog_pcgs = prog_pcgs[order(fdr_res)]
 
 #x-axis lnc concordance 
 #y-axis pcg concordance 
 #color of point - +/- correlation red or blue 
 #size of point - Spearman FDR
+prog_pcgs = cands_pairs
+
 prog_pcgs$cor[prog_pcgs$rho <0] = "Negative"
 prog_pcgs$cor[prog_pcgs$rho >0] = "Positive"
 prog_pcgs$cor[prog_pcgs$rho_fdr > 0.05] = "NS"
@@ -357,7 +365,6 @@ g = ggplot(prog_pcgs, aes(pcgConcordance, lncConcordance, label=lnc_pcg)) +
       #segment.size = 0.05)
 g
 dev.off()
-
 
 #saveRDS(prog_pcgs, file="final_set_126_lncRNAPCG_pairs_nov16.rds")
 #write.csv(prog_pcgs, file="126_cis_antisense_pairs_survival_results_10kb_nov16.csv", quote=F, row.names=F)

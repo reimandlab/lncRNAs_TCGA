@@ -312,6 +312,16 @@ sig_lncs = as.data.table(all_cancers_genes_surv_comb)
 sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, fdr >= -log10(0.05)))
 saveRDS(sig_lncs, file="3662_prognostic_lncRNAs_fdr0.1.rds")
 
+#saev only those that appear in only one cancer type 
+print(dim(sig_lncs)) #sig lncs overall
+
+t = filter(as.data.table(table(sig_lncs$gene)), N ==1)
+print(length(t$V1)) #lncRNAs signiciant in only one cancer type  
+sig_lncs = as.data.table(filter(sig_lncs, gene %in% t$V1))
+sig_lncs$risk_perc_tag[(sig_lncs$risk_perc > 0.48) | (sig_lncs$risk_perc < 0.52)] = "equal"
+sig_lncs$risk_perc_tag[sig_lncs$risk_perc > 0.6] = "high_risk"
+sig_lncs$risk_perc_tag[sig_lncs$risk_perc < 0.45] = "low_risk"
+
 all_cancers_genes_surv_comb = sig_lncs
 
 #sum freq
@@ -574,7 +584,7 @@ cols = RColorBrewer::brewer.pal(8, "Set1")
 pdf("final_figure_1B_parttwoa.pdf", width=5, height=5)
 # Change density plot fill colors by groups
 g1 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both \nUnfavourable"], aes(x=cor, fill=HR_pair), color="black") +
-  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") + scale_fill_manual(values=cols[1]) +
+  geom_density(alpha=0.4, aes(x=cor, y=..scaled..)) + xlab("") + scale_fill_manual(values=cols[1]) +
   theme(legend.position="bottom")
 g1 = ggpar(g1, 
       font.tickslab = c(15,"plain", "black"), font.legend=c(4, "plain", "black"), xlim=c(-1,1))+
@@ -585,7 +595,7 @@ pdf("final_figure_1B_parttwob.pdf", width=5, height=5)
 
 # Change density plot fill colors by groups
 g2 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Opposite \nHRs"], aes(x=cor, fill=HR_pair), color="black") +
-  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") + scale_fill_manual(values=cols[2]) +
+  geom_density(alpha=0.4, aes(x=cor, y=..scaled..)) + xlab("") + scale_fill_manual(values=cols[2]) +
   theme(legend.position="bottom")
 
 g2 = ggpar(g2, 
@@ -596,7 +606,7 @@ dev.off()
 pdf("final_figure_1B_parttwoc.pdf", width=5, height=5)
 # Change density plot fill colors by groups
 g3 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both \nFavourable"], aes(x=cor, fill=HR_pair), color="black") +
-  geom_density(alpha=0.4, aes(x=cor, y=..density..)) + xlab("Spearman Correlation") + scale_fill_manual(values=cols[3]) + 
+  geom_density(alpha=0.4, aes(x=cor, y=..scaled..)) + xlab("Spearman Correlation") + scale_fill_manual(values=cols[3]) + 
   theme(legend.position="bottom")
 
 g3 = ggpar(g3, 

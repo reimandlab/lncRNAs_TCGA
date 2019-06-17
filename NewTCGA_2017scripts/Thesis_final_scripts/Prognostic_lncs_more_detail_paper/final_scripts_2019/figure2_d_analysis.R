@@ -46,6 +46,8 @@ fantom <- fantom[-z,]
 #saveRDS(rna, file="rna_lncRNAs_expression_data_june29.rds")
 #saveRDS(pcg, file="rna_pcg_expression_data_june29.rds")
 
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
+
 #------FEATURES-----------------------------------------------------
 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
@@ -138,6 +140,8 @@ bedtools window -a lncs_cords_158_cands.sorted.bed -b pcgs_cords_allPCGs_aug8.so
 ###in R 
 ##--------------------------------------------------------------------
 
+library(data.table)
+
 #cis_ints = read.table("lncs_candidates_pcgs_intersected.bed")
 cis_ints = read.table("lncs_candidates_pcgs_intersected_10_kb.bed")
 colnames(cis_ints) = c("lnc_chr", "lnc_start", "lnc_end", "lnc", "lnc_strand", "lnc_type", "pcg_chr", 
@@ -148,7 +152,7 @@ cis_ints = as.data.table(cis_ints)
 z = which(duplicated(cis_ints$pair))
 cis_ints = cis_ints[-z,]
 
-#80/166 lncRNAs have at least 1 nearby PCG
+#96/179 lncRNAs have at least 1 nearby PCG
 saveRDS(cis_ints, file="lncRNA_cands_wPCGs_that_are_in_cis_10kb_nov16.rds")
 
 #all the lncRNA candidates that are not in the above ^ file are "trans lncRNAs"

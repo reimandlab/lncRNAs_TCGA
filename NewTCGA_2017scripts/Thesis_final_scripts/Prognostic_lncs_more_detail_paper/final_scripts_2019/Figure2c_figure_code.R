@@ -5,11 +5,16 @@
 #relationship 
 #------------------------------------------------------------------------------
 
-#source code
-source("check_lnc_exp_cancers.R")
+set.seed(911)
 
+#load all libraries and functions 
+source("check_lnc_exp_cancers.R")
+source("survival_script_march14_already_labelled_highlow.R")
 #COSMIC cancer gene census
 census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
+
+#setWD
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
 #------FEATURES-----------------------------------------------------
 
@@ -17,8 +22,7 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June1
 allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
-old = readRDS("old_168_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-
+#old = readRDS("old_168_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 
 #val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
 #val_cands = as.data.table(val_cands)
@@ -250,7 +254,9 @@ full_summary_cinds = function(canc){
 	clin_lnc_combo$type = "lnc_clin_combo"
 
 	#all variables
-	all_cs = rbind(lncs_cands, clin_cands, rand_lncs, rand_pcgs, clin_lnc_combo)
+	#all_cs = rbind(lncs_cands, clin_cands, rand_lncs, rand_pcgs, clin_lnc_combo)
+
+	all_cs = rbind(lncs_cands, clin_cands, clin_lnc_combo)
 
 	#for plotting
 	all_cs = all_cs[,c("type", "overall_mean", "overall_sd")]
@@ -271,15 +277,15 @@ full_summary_cinds = function(canc){
 #RUN 
 cancs = as.list(unique(allCands$cancer))
 plots_cancs = llply(cancs, full_summary_cinds)
-plots_cancs
-dev.off()
+#plots_cancs
+#dev.off()
 
 #for each lncRNA-cancer pair 
 #compare distribution of cindices via two-sided U test between lncRNA candidate
 #and random lncRNAs 
 
 allCands = filter(allCands, data == "TCGA")
-combos = as.list(unique(allCands$combo))
+combos = (unique(allCands$combo))
 lncs_cands_all_cindices$combo = paste(lncs_cands_all_cindices$lncRNA, lncs_cands_all_cindices$Cancer, sep="_")
 lncsclinccombo_random_cindices$combo = paste(lncsclinccombo_random_cindices$lncRNA, lncsclinccombo_random_cindices$Cancer, sep="_")
 
@@ -342,9 +348,9 @@ get_comparison = function(comboo){
 	all_cindices$cindex = as.numeric(all_cindices$cindex)
 	
 	#get pvalue 
-	w = wilcox.test(all_cindices$cindex[all_cindices$type=="lncRNA_canc"], all_cindices$cindex[all_cindices$type=="lncRNA_random"], alternative="greater")
-	wp_lnc_random = glance(w)[2]
-	diff_meds_lnc_random = median(all_cindices$cindex[all_cindices$type=="lncRNA_canc"]) - median(all_cindices$cindex[all_cindices$type=="lncRNA_random"])
+	#w = wilcox.test(all_cindices$cindex[all_cindices$type=="lncRNA_canc"], all_cindices$cindex[all_cindices$type=="lncRNA_random"], alternative="greater")
+	#wp_lnc_random = glance(w)[2]
+	#diff_meds_lnc_random = median(all_cindices$cindex[all_cindices$type=="lncRNA_canc"]) - median(all_cindices$cindex[all_cindices$type=="lncRNA_random"])
 
 	w = wilcox.test(all_cindices$cindex[all_cindices$type=="lncRNA_canc"], all_cindices$cindex[all_cindices$type=="clinical_variables"], alternative="greater")
 	wp_lnc_clinical = glance(w)[2]
@@ -359,18 +365,18 @@ get_comparison = function(comboo){
 	all_cindices$type = factor(all_cindices$type, levels=c("clinical_variables", "lncRNA_canc", "lncRNA_random", "lncRNA&clin"))
 
 	# Visualize: Specify the comparisons you want
-	my_comparisons <- list( c("clinical_variables", "lncRNA_canc"), c("lncRNA_canc", "lncRNA_random"),
-	 c("clinical_variables", "lncRNA_random"),c("clinical_variables", "lncRNA&clin"))
+	#my_comparisons <- list( c("clinical_variables", "lncRNA_canc"), c("lncRNA_canc", "lncRNA_random"),
+	# c("clinical_variables", "lncRNA_random"),c("clinical_variables", "lncRNA&clin"))
 	
 	#boxplots
-	p = ggplot(data = all_cindices, aes(x = type, y = cindex)) +
-    geom_jitter(alpha = 0.3, color = "tomato") + 
-    geom_boxplot() + labs(title=paste(gene, canc, "\nc-index vs random lncRNAs and clinical variables"))
-	#  Add p-value
-	p = p + stat_compare_means(comparisons = my_comparisons) + geom_hline(yintercept=0.5, linetype="dashed", color = "red")
-	res = unlist(c(gene, canc, runs, wp_lnc_random, diff_meds_lnc_random, wp_lnc_clinical, diff_meds_lnc_clinical, 
+	#p = ggplot(data = all_cindices, aes(x = type, y = cindex)) +
+    #geom_jitter(alpha = 0.3, color = "tomato") + 
+    #geom_boxplot() + labs(title=paste(gene, canc, "\nc-index vs random lncRNAs and clinical variables"))
+	##  Add p-value
+	#p = p + stat_compare_means(comparisons = my_comparisons) + geom_hline(yintercept=0.5, linetype="dashed", color = "red")
+	res = unlist(c(gene, canc, runs, wp_lnc_clinical, diff_meds_lnc_clinical, 
 	wp_lnc_clinical_combo, diff_meds_lnc_clinical_combo, 
-		lnc_med, random_lnc_med, clin_med, clin_combo_cind_med))
+			lnc_med, clin_med, clin_combo_cind_med))
 	#print(p)
 	return(res)
 }
@@ -381,17 +387,17 @@ random_lncs_vs_cand = llply(combos, get_comparison, .progress="text")
 #dev.off()
 random_lncs_vs_cand1 = ldply(random_lncs_vs_cand)
 random_lncs_vs_cand1 = as.data.table(random_lncs_vs_cand1)
-colnames(random_lncs_vs_cand1) = c("lncRNA", "cancer", "num_rounds", "random", "wp_lnc_random", "diff_meds_lnc_random", "wp_lnc_clinical", 
-	"diff_meds_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical_combo", "median_lncRNA", "median_random_lnc", "median_clinical", "clin_combo_cind_med")
-random_lncs_vs_cand1$wp_lnc_random = as.numeric(random_lncs_vs_cand1$wp_lnc_random)
+random_lncs_vs_cand1$V4 = NULL
+colnames(random_lncs_vs_cand1) = c("lncRNA", "cancer", "num_rounds", "wp_lnc_clinical", 
+	"diff_meds_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical_combo", "median_lncRNA", "median_clinical", "clin_combo_cind_med")
+#random_lncs_vs_cand1$wp_lnc_random = as.numeric(random_lncs_vs_cand1$wp_lnc_random)
 random_lncs_vs_cand1$wp_lnc_clinical = as.numeric(random_lncs_vs_cand1$wp_lnc_clinical)
 random_lncs_vs_cand1$wp_lnc_clinical_combo = as.numeric(random_lncs_vs_cand1$wp_lnc_clinical_combo)
 
 random_lncs_vs_cand1 = random_lncs_vs_cand1[order(wp_lnc_clinical)]
 random_lncs_vs_cand1$random = NULL
 write.csv(random_lncs_vs_cand1, file="summary_cross_validation_clinical_random_lncRNAs_Nov1.csv", quote=F, row.names=F)
-random_lncs_vs_cand1 = random_lncs_vs_cand1[order(wp_lnc_clinical, diff_meds_lnc_clinical, wp_lnc_clinical,wp_lnc_random, diff_meds_lnc_random)]
-
+random_lncs_vs_cand1 = random_lncs_vs_cand1[order(wp_lnc_clinical, diff_meds_lnc_clinical, wp_lnc_clinical)]
 
 #try new Figure 2E
 #x-axis median difference between lncRNA and clinical variables
@@ -403,10 +409,8 @@ random_lncs_vs_cand1$wp_lnc_clinical_combo = p.adjust(random_lncs_vs_cand1$wp_ln
 z = which(random_lncs_vs_cand1$wp_lnc_clinical_fdr == "Inf")
 random_lncs_vs_cand1 = random_lncs_vs_cand1[-z,]
 
-random_lncs_vs_cand1$wp_lnc_random_fdr = p.adjust(random_lncs_vs_cand1$wp_lnc_random, method="fdr")
-random_lncs_vs_cand1$wp_lnc_random_fdr = -log10(random_lncs_vs_cand1$wp_lnc_random_fdr)
-
-
+#random_lncs_vs_cand1$wp_lnc_random_fdr = p.adjust(random_lncs_vs_cand1$wp_lnc_random, method="fdr")
+#random_lncs_vs_cand1$wp_lnc_random_fdr = -log10(random_lncs_vs_cand1$wp_lnc_random_fdr)
 
 #plot 1 - lncs vs clinical 
 canc_conv = rna[,c("type", "Cancer")]
@@ -414,16 +418,19 @@ canc_conv = unique(canc_conv)
 colnames(canc_conv)[2] = "cancer"
 random_lncs_vs_cand1 = merge(random_lncs_vs_cand1, canc_conv, by="cancer")
 random_lncs_vs_cand1$diff_meds_lnc_clinical = as.numeric(random_lncs_vs_cand1$diff_meds_lnc_clinical)
-random_lncs_vs_cand1$diff_meds_lnc_random = as.numeric(random_lncs_vs_cand1$diff_meds_lnc_random)
+#random_lncs_vs_cand1$diff_meds_lnc_random = as.numeric(random_lncs_vs_cand1$diff_meds_lnc_random)
 
-random_lncs_vs_cand1 = random_lncs_vs_cand1[order(wp_lnc_clinical, diff_meds_lnc_clinical, wp_lnc_clinical,wp_lnc_random, diff_meds_lnc_random)]
+random_lncs_vs_cand1 = random_lncs_vs_cand1[order(wp_lnc_clinical, diff_meds_lnc_clinical, wp_lnc_clinical)]
 random_lncs_vs_cand1$type = factor(random_lncs_vs_cand1$type, levels=unique(random_lncs_vs_cand1$type))
 
 #add gene name 
 allCands$name = unlist(llply(allCands$gene, get_name))
 
+z = which(random_lncs_vs_cand1$lncRNA == "HOXA-AS4")
+random_lncs_vs_cand1$lncRNA[z] = "HOXA10-AS"
+
 #known lncRNAs 
-known_lncs = c("CAHM", "MAPT-AS1")
+known_lncs = c("HOXB-AS2", "HOXA10-AS")
 
 #part a
 pdf("figure2_e_lncRNA_cands_vs_clinical_variables.pdf", width=6, height=6)
@@ -447,7 +454,6 @@ theme_bw() +
 labs(x="(median lncRNA candidate c-index) - (median random lncRNAs c-index)", y="-log10(adjusted p-val)")+
 scale_colour_manual(values = mypal5[1:22]) + theme(legend.position="bottom", text = element_text(size=12))
 dev.off()
-
 
 
 #-----FIGURE 2E-------------------------------------------------

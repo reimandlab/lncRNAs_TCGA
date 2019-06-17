@@ -1,19 +1,20 @@
 set.seed(911)
 
-#setWD
-setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ")
-
 #load all libraries and functions 
 source("check_lnc_exp_cancers.R")
+source("survival_script_march14_already_labelled_highlow.R")
+
+#setWD
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
 #get candidates files
 #Data--------------------------------------------
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = filter(allCands, data=="TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs 
 
 #which cancer types are the non-unique lncRNAs from?
 allCands$Combo = NULL
-allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "CAT_geneName")]
+allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_name")]
 allCands = allCands[!duplicated(allCands), ]
 cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 
@@ -149,7 +150,6 @@ run_cv = function(dtt){
 			} #end for k in 1:length(medians) 
 
 		#survival script
-		source("survival_script_march14_already_labelled_highlow.R")
 		z = which(str_detect(colnames(train), "ENSG"))
 		genes = colnames(train)[z]
 

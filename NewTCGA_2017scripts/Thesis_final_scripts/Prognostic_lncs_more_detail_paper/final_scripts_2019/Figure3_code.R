@@ -70,8 +70,24 @@ get_name = function(ensg){
 #write function that adds tag to whole data group 
 #and does survival analysis on whole group
 
-z = which(cancers %in% cands$canc)
-cancer_data = canc_datas[z] #cancers list and canc_datas list should be the same 
+#clean up clinical columns 
+cols_keep = c("race", "clinical_stage", "histological_grade")
+z = which(rna$race %in% c("[Not Available]", "[Not Evaluated]", "[Unknown]"))
+rna$race[z] = "unknown"
+
+z = which(rna$clinical_stage %in% c("[Not Applicable]", "[Not Available]"))
+rna$clinical_stage[z] = "unknown"
+
+z = which(rna$histological_grade %in% c("[Unknown]", "[Not Available]", "[Discrepancy]"))
+rna$histological_grade[z] = "unknown"
+
+cancers = unique(cands$canc)
+get_canc = function(canc){
+  rna_dat = subset(rna, Cancer == canc)
+  return(rna_dat)
+}
+
+cancer_data = llply(cancers, get_canc) #cancers list and canc_datas list should be the same 
 
 get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates 
@@ -79,7 +95,7 @@ get_canc_data_for_plot = function(dtt){
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
     "new_tumor_event_type", "Cancer", "type"))
   print(dtt$type[1])
-  print(cands$cancer[1])
+  #print(cands$cancer[1])
   dtt = dtt[,z]
   return(dtt)
 }
@@ -230,9 +246,11 @@ get_survival_models = function(dtt){
           #print(s)
 
    #generate boxplot 
-   z = which(cancers == dtt$Cancer[1])
-   exp_data = canc_datas[[z]]
+   z = which(rna$Cancer == dtt$Cancer[1])
+   exp_data = rna[z,]
+
    exp_data = exp_data[,which(colnames(exp_data) %in% c(gene, "patient"))]
+   
    newdat$patient = rownames(newdat)
    exp_data = merge(exp_data, newdat, by="patient")
    colnames(exp_data)[2] = "geneexp"
@@ -271,24 +289,24 @@ get_survival_models = function(dtt){
    exp_data$median[exp_data$gene==1] = "High"
    exp_data$median = factor(exp_data$median, levels=c("High", "Low"))
    
-   gg <- ggplot(exp_data)
-   gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
-   gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" "))
+   #gg <- ggplot(exp_data)
+   #gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
+   #gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" "))
    #print(gg)
 
    exp_data$geneexp = log1p(exp_data$geneexp)
   
-   gg <- ggplot(exp_data)
-   gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
-   gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" ")) + labs(y="log1p(FPKM-UQ)")
+   #gg <- ggplot(exp_data)
+   #gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
+   #gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" ")) + labs(y="log1p(FPKM-UQ)")
    #print(gg)
 
-   p <- ggboxplot(exp_data, x = "median", y = "geneexp",
-          color = "median",
-         palette = mypal[c(4,1)], title = paste(get_name(gene_name), "Expression", canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], sep=" "), 
-          add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
+   #p <- ggboxplot(exp_data, x = "median", y = "geneexp",
+          #color = "median",
+         #palette = mypal[c(4,1)], title = paste(get_name(gene_name), "Expression", canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], sep=" "), 
+         # add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
         # Change method
-  p = p + stat_compare_means(method = "wilcox.test") + stat_n_text() + scale_color_npg() 
+  #p = p + stat_compare_means(method = "wilcox.test") + stat_n_text() + scale_color_npg() 
   #print(p)
 }
 
@@ -380,6 +398,30 @@ tcga_results1$clinical_only_concordance = NULL
 tcga_results1$num_events = NULL
 tcga_results1$perc_wevents = NULL
 tcga_results1 = as.data.table(tcga_results1)
+saveRDS(tcga_results1, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+
+
+#--------------------------------------------------------------------
+#DONT RUN BELOW#
+#--------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #z = which(tcga_results1$combo %in% robust$combo)
 #tcga_results1 = tcga_results1[z,]
@@ -392,7 +434,7 @@ cands$combo = paste(cands$gene, cands$canc, sep="_")
 #z = which(cands$combo %in% robust$combo)
 #cands = cands[z,]
 
-pcawg_data = readRDS("lncRNA_clinical_data_PCAWG_May2.rds")
+pcawg_data = readRDS("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNA_clinical_data_PCAWG_May2.rds")
 pcawg_data$combo = paste(pcawg_data$canc, pcawg_data$histo)
 
 pcawg_data$canc[pcawg_data$combo == "Uterus Adenocarcinoma, endometrioid"] = "Uterine Corpus Endometrial Carcinoma" 
@@ -550,7 +592,7 @@ get_survival_models = function(dtt){
   #m = expected total number of events over both groups.
   mval = length(which(newdat$status == 1))
 
-  power = powerCT.default0(k=kval,m=mval, RR=2, alpha=0.05)
+  #power = powerCT.default0(k=kval,m=mval, RR=2, alpha=0.05)
 
   hr = summary(lncs)$coefficients[1,c(1,2,5)][2]
   if(hr >1){
@@ -642,7 +684,7 @@ get_survival_models = function(dtt){
     if(num_pats >= (0.01 * nrow(exp_data))){
     print(s)
     row <- c(gene_name, summary(lncs)$coefficients[1,c(1,2)], pval,  summary(lncs)$conf.int[1,c(3,4)], dtt$canc[1], 
-    lnc_test_ph, global, risk_num, perc, power, median_nonzero,
+    lnc_test_ph, global, risk_num, perc, median_nonzero,
     sd_nonzero,
     min_nonzero,
     max_nonzero, cmulti, clnconly)
@@ -754,7 +796,7 @@ saveRDS(pcawg_results1, file="PCAWG_external_validation_lncCands_feb19.rds")
 
 #plot power versus Hazard Ratio 
 pcawg_results1$pval = as.numeric(pcawg_results1$pval)
-pcawg_results1$power = as.numeric(pcawg_results1$power)
+#pcawg_results1$power = as.numeric(pcawg_results1$power)
 
 ggscatter(pcawg_results1, x = "power", y = "pval",
    color = "black", shape = 21, size = 3, # Points color, shape and size

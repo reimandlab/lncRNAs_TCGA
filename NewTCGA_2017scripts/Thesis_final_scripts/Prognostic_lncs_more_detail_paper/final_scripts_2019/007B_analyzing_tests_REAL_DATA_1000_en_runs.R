@@ -161,6 +161,7 @@ median(filter(all_res, hr <1)$hr)
 
 saveRDS(all_res, file="/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript/lncRNAs_selected_by_EN_april14.rds")
 
+qsub -cwd -b y -N CVs -l h_vmem=75g "module load R/3.4.0;Rscript Figure2c_analysis.R"
 
 
 
