@@ -16,6 +16,7 @@ library(EnvStats)
 source("check_lnc_exp_cancers.R")
 
 #------FEATURES-----------------------------------------------------
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 allCands = subset(allCands, data == "TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
@@ -45,7 +46,6 @@ get_canc_dat = function(canc){
   return(canc_d)
 }
 cancer_data = llply(cancers, get_canc_dat)
-
 
 get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates 
@@ -128,17 +128,13 @@ add_clin_vars = function(dtt){
 #saved file --- below
 #saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
 
-#clin = readRDS("clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
+clin = readRDS("clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
 
-#gbm = clin_data_lncs[[10]]
-#z = which(str_detect(colnames(gbm), "ENSG"))
-#gbm = gbm[,-z]
-#lgg = clin_data_lncs[[2]]
-#z = which(str_detect(colnames(lgg), "ENSG"))
-#lgg = lgg[,-z]
-#saveRDS(lgg, file="TCGA_lgg_wsubtype_info_biolinks.rds")
-#saveRDS(gbm, file="TCGA_gbm_wsubtype_info_biolinks.rds")
+lgg = clin[[1]]
+gbm = clin[[12]]
 
+saveRDS(lgg, file="TCGA_lgg_wsubtype_info_biolinks.rds")
+saveRDS(gbm, file="TCGA_gbm_wsubtype_info_biolinks.rds")
 
 #--------LOOK AT ASSOCIATIONS BETWEEN EXPRESSION-------------------------------
 
@@ -433,7 +429,7 @@ get_clin_lnc_cors = function(dtt){
 #d13 = get_clin_lnc_cors(clin_data_lncs[[13]])
 #d14 = get_clin_lnc_cors(clin_data_lncs[[14]])
 
-#all_clin = list(d1, d2,d3,d4,d5,d7, d9,d11,d12,d13,d14, d10)
+#all_clin = list(d1, d2,d3,d4,d5,d6, d7, d8, d9,d10, d11,d12,d13)
 #saveRDS(all_clin, file="13_data_sets_biolinks_results.rds")
 
 #--------FDR & Summarize Results-------------------------------------
@@ -442,7 +438,16 @@ all_clin = readRDS("13_data_sets_biolinks_results.rds")
 fdr_sum = function(dtt){
 
   #first add fdr for p-values
-  dtt$fdr = p.adjust(dtt$pval, method="fdr")
+  dtt$fdr = p.adjust(dtt$pval, method="fdr") #<- this fdr is the for the correlation test p-value
+  #look at just chisq tests
+  dtt$chisq = as.numeric(dtt$chisq)
+  dtt$chisq_fdr = p.adjust(dtt$chisq, method="fdr")
+  dtt$clin_pval_fdr = as.numeric(dtt$clin_pval)
+  dtt$clin_pval_fdr = p.adjust(dtt$clin_pval, method="fdr")
+
+  dtt$clin_vs_combo_anova_fdr = as.numeric(dtt$clin_vs_combo_anova)
+  dtt$clin_vs_combo_anova_fdr = p.adjust(dtt$clin_vs_combo_anova, method="fdr")
+
   dtt = as.data.table(dtt)
   #dtt = filter(dtt, fdr < 0.05)
 
@@ -472,10 +477,11 @@ clean_up = ldply(clean_up, data.table)
 clean_up = as.data.table(clean_up)
 clean_up = clean_up[order(fdr)]
 
-#look at just chisq tests
-clean_up$chisq = as.numeric(clean_up$chisq)
-z = which(clean_up$chisq <= 0.05)
-clean_up$sig_chisq[z] = "*"
+#keep going with those associations where either spearman fdr or chisq fdr is sig 
+
+z = which((clean_up$chisq_fdr < 0.05) | (clean_up$fdr < 0.05))
+clean_up$sig_tests[z] = "*"
+clean_up = as.data.table(filter(clean_up, sig_tests == "*"))
 
 canc_conv = rna[,c("type", "Cancer")]
 canc_conv = unique(canc_conv)
@@ -487,24 +493,26 @@ clean_up$type = factor(clean_up$type, levels=unique(clean_up$type))
 clean_up$colname[which(str_detect(clean_up$colname, "age_at"))] = "Age"
 clean_up$colname[clean_up$colname == "age"] = "Age"
 
-fdr = as.data.table(filter(clean_up, fdr < 0.05))
+#fdr = as.data.table(filter(clean_up, fdr < 0.05))
+fdr = clean_up
 fdr$cor = as.numeric(fdr$cor)
 fdr$kw_pval = as.numeric(fdr$kw_pval)
-fdr = filter(fdr, (is.na(cor) | (abs(cor) >= 0.3)), kw_pval < 0.05)
+#fdr = filter(fdr, (is.na(cor) | (abs(cor) >= 0.3)), kw_pval < 0.05)
 
 write.csv(fdr, file="cleaned_clinical_variables_associations_data_sept19_precleanup.csv", quote=F, row.names=F)
 
-pdf("summary_biolinks_subtypes_lncRNA_exp.pdf", height=10)
+#pdf("summary_biolinks_subtypes_lncRNA_exp.pdf", height=10)
 #make geom_tile plot
-ggplot(clean_up, aes(type, colname)) +
-  geom_tile(aes(fill = sig_chisq), colour = "grey50") +
-  theme_bw() +
-  theme(axis.text.x = element_text(size = 7),
-          axis.text.y = element_text(size=5))
-dev.off()
+#ggplot(clean_up, aes(type, colname)) +
+#  geom_tile(aes(fill = sig_chisq), colour = "grey50") +
+#  theme_bw() +
+#  theme(axis.text.x = element_text(size = 7),
+#          axis.text.y = element_text(size=5))
+#dev.off()
 
-#saveRDS(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolinks.rds")
-#write.table(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolnks.txt", row.names=F, quote=F)
+fdr = clean_up
+saveRDS(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolinks.rds")
+write.table(clean_up, file="correlation_results_clinical_lncRNA_exp_July19_using_biolnks.txt", row.names=F, quote=F)
 
 #-------PLOT summary results-------------------------------------------
 
@@ -513,13 +521,13 @@ clin_results = read.csv("cleaned_clinical_variables_associations_data_sept19_pre
 clin_results$combo = paste(clin_results$lnc, clin_results$type, sep="_")
 clean_up = clin_results
 
-clean_up = as.data.table(filter(clean_up, fdr < 0.05))
+#clean_up = as.data.table(filter(clean_up, fdr < 0.05))
 clean_up$cor = as.numeric(clean_up$cor)
 clean_up$kw_pval = as.numeric(clean_up$kw_pval)
 
-clean_up = filter(clean_up, (is.na(cor) | (abs(cor) >= 0.3)), kw_pval < 0.05)
+#clean_up = filter(clean_up, (is.na(cor) | (abs(cor) >= 0.3)), kw_pval < 0.05)
 clean_up$better = ""
-z = which((clean_up$concordance_combo_model > clean_up$lnc_concordance) & (clean_up$anova_both_vs_lnc < 0.05))
+z = which((clean_up$concordance_combo_model > clean_up$clin_concordance) & (clean_up$clin_vs_combo_anova_fdr < 0.05))
 clean_up$better[z] = "V"
 
 get_name = function(ensg){
@@ -569,27 +577,29 @@ dev.off()
 
 clean_up$combo = paste(clean_up$name, clean_up$type, sep = " ")
 clean_up$sig_tag = ""
-clean_up$clin_pval = p.adjust(clean_up$clin_pval, method="fdr")
-clean_up$sig_tag[clean_up$clin_pval < 0.05] = "V"
-clean_up$sig_tag[clean_up$clin_pval > 0.05] = ""
+clean_up$sig_tag[clean_up$clin_pval_fdr < 0.05] = "V"
+clean_up$sig_tag[clean_up$clin_pval_fdr > 0.05] = ""
 
-write.csv(clean_up, file="cleaned_clinical_variables_associations_data_sept28_post_cleanup.csv", quote=F, row.names=F)
-
+#write.csv(clean_up, file="cleaned_clinical_variables_associations_data_sept28_post_cleanup.csv", quote=F, row.names=F)
 
 ############## POST MANUAL CLEANUP ###################################################################################
 
 #post manual cleanup of variables 
 clin_results = read.csv("cleaned_clinical_variables_associations_data_sept28_post_cleanup.csv")
+#clin_results$clin_pval = as.numeric(clin_results$clin_pval)
+#clin_results$clin_pval_fdr = p.adjust(clin_results$clin_pval, method="fdr")
+
 clin_results = as.data.table(clin_results)
-clin_results$clin_vs_combo_anova_fdr = p.adjust(clin_results$clin_vs_combo_anova, method="fdr")
+#clin_results$clin_vs_combo_anova_fdr = p.adjust(clin_results$clin_vs_combo_anova, method="fdr")
 
 #keep only those with significant chisq associations 
-clin_results = as.data.table(filter(clin_results, chisq < 0.05, kw_pval < 0.05)) #113 left 
+clin_results = as.data.table(filter(clin_results, chisq_fdr < 0.05 | (!(is.na(cor) & fdr < 0.05)))) #245 left
 
 clin_results$canc_lnc_clin = paste(clin_results$combo, clin_results$colname)
+
 dups = unique(clin_results$canc_lnc_clin[which(duplicated(clin_results$canc_lnc_clin))])
 
-new_dat = as.data.table(filter(clin_results, !(canc_lnc_clin %in% dups)))
+#new_dat = as.data.table(filter(clin_results, !(canc_lnc_clin %in% dups)))
 new_dat = clin_results
 
 #for(i in 1:length(dups)){
@@ -617,7 +627,7 @@ new_dat = as.data.table(filter(new_dat, combo %in% allCands$combo))
 #[17] "Chr.7.gain.Chr.10.loss"         "Chr.19.20.co.gain"       
 
 #10 cancer types 
-length(which(new_dat$clin_pval < 0.05)) #123 also significnatly associated with survival 
+length(which(new_dat$clin_pval_fdr < 0.05)) #194/245 also significnatly associated with survival 
 clin_results = new_dat
 
 #113 unique associations between a lncRNA and a clinical variable 
@@ -625,9 +635,13 @@ clin_results = new_dat
 #which combos are better once lncRNA is used
 #look at only those where clinical variable also associated with survival
 clin_results$combo = paste(clin_results$name, clin_results$type)
-clinsig = as.data.table(filter(clin_results, sig_tag == "V")) #clin also sig
-clinsig_cause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova < 0.05)) #97/101
-clinsig_notcause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova > 0.05)) #4/101
+#clinsig = as.data.table(filter(clin_results, sig_tag == "V")) #clin also sig
+#clinsig_cause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova < 0.05)) #97/101
+#clinsig_notcause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova > 0.05)) #4/101
+
+z = which(str_detect(clin_results$colname, "PAM5"))
+clin_results$colname[z] = "PAM50"
+clin_results$name[clin_results$name == "HOXA-AS4"] = "HOXA10-AS"
 
 #get order - 113 unique combos
 t = as.data.table(table(clin_results$colname))
@@ -637,54 +651,52 @@ t = t[order(-N)]
 clin_results$colname = factor(clin_results$colname, levels = t$V1)
 
 #get order 
-t = as.data.table(table(clin_results$combo))
+t = as.data.table(table(clin_results$name))
+t = as.data.table(filter(t, N > 0))
+t = t[order(-N)]
+clin_results$name = factor(clin_results$name, levels = t$V1)
+
+#get order 
+t = as.data.table(table(clin_results$type))
 t = as.data.table(filter(t, N > 0))
 t = t[order(-N)]
 
-clin_results$combo = factor(clin_results$combo, levels = t$V1)
+clin_results$type = factor(clin_results$type, levels = t$V1)
+
 clin_results$concordance_combo_model = as.numeric(clin_results$concordance_combo_model)
 clin_results$clin_concordance = as.numeric(clin_results$clin_concordance)
 
-clin_results$clin_vs_combo_anova = as.numeric(clin_results$clin_vs_combo_anova)
-z = which((clin_results$concordance_combo_model > clin_results$clin_concordance) & (clin_results$clin_vs_combo_anova < 0.05))
+z = which((clin_results$concordance_combo_model > clin_results$clin_concordance) & (clin_results$clin_vs_combo_anova_fdr < 0.05))
 clin_results$better[z] = "V"
+
 #mark the clinical variables that are also associated with survival 
-z = which(clin_results$clin_pval < 0.05)
+z = which(clin_results$clin_pval_fdr < 0.05)
 clin_results$clin_sig[z] = "V"
+clin_results$fdr_fig = ""
+clin_results$fdr_fig[!(is.na(clin_results$chisq_fdr))] = clin_results$chisq_fdr[!(is.na(clin_results$chisq_fdr))]
+clin_results$fdr_fig[(is.na(clin_results$chisq_fdr))] = clin_results$fdr[(is.na(clin_results$chisq_fdr))]
+clin_results$fdr_fig = as.numeric(clin_results$fdr_fig)
+clin_results$fdr_fig[clin_results$fdr_fig == 0] = 0.00000000001
 
 pdf("summary_biolinks_subtypes_lncRNA_exp_April18.pdf", height=6, width=10)
 #make geom_tile plot
-ggplot(clin_results, aes(combo, colname)) +
-  geom_tile(aes(fill = -log10(fdr)), colour = "grey50") +
+ggplot(clin_results, aes(name, colname)) +
+  geom_tile(aes(fill = -log10(fdr_fig), color=clin_sig, width=0.7, height=0.7), size=0.55) +
   theme_bw() + geom_text(aes(label = better), size=2.5) + 
   theme(legend.title=element_blank(), legend.position="bottom", axis.title.x=element_blank(), 
-    axis.text.x = element_text(angle = 45, hjust = 1, size=7)) +
-    scale_fill_gradient(low = "tan1", high = "darkred")
+    axis.text.x = element_text(angle = 45, hjust = 1, size=8)) +
+    scale_fill_gradient(low = "tan1", high = "darkred")+
+    facet_grid(cols = vars(type), scales = "free", space = "free")+
+     theme(strip.background = element_rect(colour="black", fill="white", 
+                                       size=1.5, linetype="solid"))+
+     scale_color_manual(values=c("black", "white"))
     #+ scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
 
 dev.off()
 
 write.csv(clin_results, file="cleaned_clinical_variables_associations_data_sept28_post_cleanup_final_figure_data.csv", quote=F, row.names=F)
 
-#barplot comparing concordance 
-#combo 
-#y-axis concordance 
-#fill bars by lncRNA only/clinical only/combined 
-#clinsig = as.data.table(filter(clin_results, sig_tag == "V"))
-clinsig = clin_results
-clinsig_cause_lnc = as.data.table(filter(clinsig, clin_vs_combo_anova < 0.05)) #106/113
-clinsig_cause_lnc = clinsig
-clinsig_cause_lnc$combo_clin = paste(clinsig_cause_lnc$combo, clinsig_cause_lnc$colname)
-clinsig_cause_lnc$anova_both_vs_lnc = as.numeric(clinsig_cause_lnc$anova_both_vs_lnc)
-clinsig_cause_lnc$better_than_clin = ""
-z = which((clinsig_cause_lnc$concordance_combo_model > clinsig_cause_lnc$clin_concordance) & (clinsig_cause_lnc$clin_vs_combo_anova < 0.05))
-clinsig_cause_lnc$better_than_clin[z] = "V"
-
-#z = which(clinsig_cause_lnc$colname %in% c("treatment_outcome_first_course"))
-#clinsig_cause_lnc = clinsig_cause_lnc[-z,]
-#z = which(clinsig_cause_lnc$lnc_concordance > 0.5)
-#clinsig_cause_lnc= clinsig_cause_lnc[z,]
-
+clinsig_cause_lnc = clin_results
 clinsig_cause_lnc = clinsig_cause_lnc[order(-concordance_combo_model)] #103 associations remain 
 #97 of them are still better survival models that with clinical variale alone 
 
@@ -728,7 +740,7 @@ g = ggplot(clinsig_cause_lnc, aes(lnc_concordance, concordance_combo_model, labe
     theme(legend.position = "top", axis.text = element_text(size=12), 
       legend.text=element_text(size=10), legend.title=element_text(size=10)) +
      xlim(0.5,1) + ylim(0.5,1) + geom_abline(intercept=0) + 
-     geom_text_repel(data = subset(clinsig_cause_lnc, combo_clin == "MAPT-AS1 BRCA PAM50.mRNA"), size=2, nudge_y = 0.1,
+     geom_text_repel(data = subset(clinsig_cause_lnc, name %in% c("RP11-279F6.3 ", "RP5-1086K13.1")), size=2, nudge_y = 0.1,
       direction = "x",segment.color = "grey50",
       segment.size = 0.05)
      
@@ -771,37 +783,40 @@ clinsig_cause_lnc$imp_concord = (clinsig_cause_lnc$concordance_combo_model - cli
 clinsig_cause_lnc = clinsig_cause_lnc[order(-better_than_clin,-imp_concord )]
 
 #make KM plot for TERT promoter status
-lgg = clin_data_lncs[[13]]
+#lgg = clin_data_lncs[[13]]
 #lgg = clin_data_lncs[[1]] #gbm
 
+head(lgg)
+
+lgg = clin[[1]]
+gbm = clin[[12]]
+
 g=subset(allCands, cancer== "Brain Lower Grade Glioma")
-g=g[1:2,1]
+g=g[c(1,3),1]
 
-
-lgg = lgg[,which(colnames(lgg) %in% c("patient", "ENSG00000240889", "OS", "OS.time", "IDH.status"))]
-med = median(lgg$ENSG00000240889)
+lgg = lgg[,which(colnames(lgg) %in% c("patient", "ENSG00000253187", "OS", "OS.time", "IDH.status"))]
+med = median(lgg$ENSG00000253187)
 #median = 0
 if(med==0){
 lgg$med = ""
-lgg$med[which(lgg$ENSG00000240889 > 0)] = "High"
-lgg$med[which(lgg$ENSG00000240889 == 0)] = "Low"
+lgg$med[which(lgg$ENSG00000253187 > 0)] = "High"
+lgg$med[which(lgg$ENSG00000253187 == 0)] = "Low"
 }
 if(!(med==0)){
 lgg$med = ""
-lgg$med[which(lgg$ENSG00000240889 >= med)] = "High"
-lgg$med[which(lgg$ENSG00000240889 < med)] = "Low"
+lgg$med[which(lgg$ENSG00000253187 >= med)] = "High"
+lgg$med[which(lgg$ENSG00000253187 < med)] = "Low"
 }
 
 z = which(is.na(lgg$Original.Subtype))
 if(!(length(z)==0)){
 lgg = lgg[-z,]}
 
-
 pdf("lgg_idh_status_vs_HOXBAS2_km_plots.pdf", width=9)
 
   lgg$OS = as.numeric(lgg$OS)
   lgg$OS.time = as.numeric(lgg$OS.time)
-  lgg$OS.time = lgg$OS.time/365
+  #lgg$OS.time = lgg$OS.time/365
   lgg$med = factor(lgg$med, levels = c("Low","High"))
 
     ####
@@ -906,7 +921,7 @@ pdf("lgg_idh_status_vs_HOXBAS2_km_plots.pdf", width=9)
           pval = TRUE,             # show p-value of log-rank test.
           conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-          xlim = c(0,10),        # present narrower X axis, but not affect
+          #xlim = c(0,10),        # present narrower X axis, but not affect
                             # survival estimates.
           break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
