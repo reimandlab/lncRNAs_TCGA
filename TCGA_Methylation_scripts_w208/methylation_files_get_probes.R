@@ -8,13 +8,18 @@ library(stringr)
 
 #Data
 #1. Probes 450 
-probe_coordinates = fread("hm450.hg19.manifest")
+#probe_coordinates = fread("hm450.hg19.manifest")
 #strand is 6th column 
-probe_coordinates = probe_coordinates[,c(1:3, 5,9,4)]
-write.table(probe_coordinates, file="450meth_probe_coordinates.bed", quote=F, row.names=F, col.names=F, sep="\t")
+#probe_coordinates = probe_coordinates[,c(1:3, 5,9,4)]
+#write.table(probe_coordinates, file="450meth_probe_coordinates.bed", quote=F, row.names=F, col.names=F, sep="\t")
+
+#new probe file --> hg38 --> 450meth_probes_liftover_hglft_genome_90e_e56a20.bed
 
 #2. GENCODE V27 lncRNAs GTF file
-lncrnas = fread("gencode.v27lift37.long_noncoding_RNAs.gtf")
+#lncrnas = fread("gencode.v27lift37.long_noncoding_RNAs.gtf")
+#gencode.v30.long_noncoding_RNAs.gtf
+lncrnas = fread("gencode.v30.long_noncoding_RNAs.gtf")
+
 coords = lncrnas[,1:8]
 genes = lncrnas[,9]
 genelist = as.list(genes$V9)
@@ -75,7 +80,6 @@ lncs_coords = llply(lncs, shorten, .progress="text")
 lncs_coords <- ldply(lncs_coords, data.frame)
 
 #candidate lncrnas 
-
 cands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 colnames(cands)[7] = "canc"
 cands = filter(cands, data == "TCGA")
@@ -85,7 +89,7 @@ write.table(lncs_coords, file="lncrna_coords_bed.bed", quote=F, row.names=F, col
 
 #################BEDTOOLS#########################################################################
 
-bedtools intersect -a 450meth_probe_coordinates.bed -b lncrna_coords_bed.bed -wa -wb -s > fantom_lncrnas_mapped_to450_probes.bed
+bedtools intersect -a 450meth_probes_liftover_hglft_genome_90e_e56a20.bed -b lncrna_coords_bed.bed -wa -wb -s > fantom_lncrnas_mapped_to450_probes.bed
 
 #3. OV Methylation 
 #ov_meth = fread("OV.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt")

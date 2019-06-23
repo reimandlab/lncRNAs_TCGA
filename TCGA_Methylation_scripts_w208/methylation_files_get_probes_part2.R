@@ -16,16 +16,16 @@ write.table(probes, file="unique_cgprobes_mapping_to_lncRNA_cands.txt", quote=F,
 
 #############in command line###################################################################################################################################
 #1
-head -n 1 OV.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > OV_patients.txt
-grep -f unique_cgprobes_mapping_to_lncRNA_cands.txt OV.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > OV_lnc_probes.txt
+#head -n 1 OV.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > OV_patients.txt
+#grep -f unique_cgprobes_mapping_to_lncRNA_cands.txt OV.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > OV_lnc_probes.txt
 
 #1in R
-ov_pats = read.table("OV_patients.txt")
-ov_pats = ov_pats[,3:ncol(ov_pats)]
-ov_pats = as.character(unlist(ov_pats))
-ov_meth = fread("OV_lnc_probes.txt")
-colnames(ov_meth) = c("probe", ov_pats)
-saveRDS(ov_meth, file="OV_methylation_data_all_methylation.rds")
+#ov_pats = read.table("OV_patients.txt")
+#ov_pats = ov_pats[,3:ncol(ov_pats)]
+#ov_pats = as.character(unlist(ov_pats))
+#ov_meth = fread("OV_lnc_probes.txt")
+#colnames(ov_meth) = c("probe", ov_pats)
+#saveRDS(ov_meth, file="OV_methylation_data_all_methylation.rds")
 
 #2
 head -n 1 PAAD.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > PAAD_patients.txt
@@ -40,7 +40,7 @@ colnames(paad_meth) = c("probe", paad_pats)
 saveRDS(paad_meth, file="PAAD_methylation_data_lncs_cands.rds")
 
 #3
-head -n 1 KIRC.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > KIRC_patients.txt
+head -n 1 KIRC-FFPE.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > KIRC_patients.txt
 grep -f unique_cgprobes_mapping_to_lncRNA_cands.txt KIRC.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > KIRC_lnc_probes.txt
 
 #in R
@@ -66,7 +66,7 @@ saveRDS(lihc_meth, file="LIHC_methylation_data_lncs_cands.rds")
 #LUAD.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt
 
 #5
-head -n 1 LUAD.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > LUAD_patients.txt
+head -n 1 LUAD-FFPE.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > LUAD_patients.txt
 grep -f unique_cgprobes_mapping_to_lncRNA_cands.txt LUAD.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > LUAD_lnc_probes.txt
 
 luad_pats = read.table("LUAD_patients.txt")
@@ -80,7 +80,7 @@ saveRDS(luad_meth, file="LUADmethylation_data_lncs_cands.rds")
 #BRCA.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt
 
 #6
-head -n 1 BRCA.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > BRCA_patients.txt
+head -n 1 BRCA-FFPE.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > BRCA_patients.txt
 grep -f unique_cgprobes_mapping_to_lncRNA_cands.txt BRCA.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > BRCA_lnc_probes.txt
 
 brca_pats = read.table("BRCA_patients.txt")
@@ -164,7 +164,7 @@ saveRDS(brca_meth, file="MESOmethylation_data_lncs_cands.rds")
 
 #13 READ
 
-head -n 1 READ.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > READ_patients.txt
+head -n 1 COADREAD-FFPE.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > READ_patients.txt
 grep -f unique_cgprobes_mapping_to_lncRNA_cands.txt READ.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > READ_lnc_probes.txt
 
 brca_pats = read.table("READ_patients.txt")
@@ -176,15 +176,15 @@ saveRDS(brca_meth, file="READmethylation_data_lncs_cands.rds")
 
 #14 THCA 
 
-head -n 1 THCA.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > THCA_patients.txt
-grep -f unique_cgprobes_mapping_to_lncRNA_cands.txt THCA.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > THCA_lnc_probes.txt
+#head -n 1 THCA.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > THCA_patients.txt
+#grep -f unique_cgprobes_mapping_to_lncRNA_cands.txt THCA.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > THCA_lnc_probes.txt
 
-brca_pats = read.table("THCA_patients.txt")
-brca_pats = brca_pats[,3:ncol(brca_pats)]
-brca_pats = as.character(unlist(brca_pats))
-brca_meth = fread("THCA_lnc_probes.txt")
-colnames(brca_meth) = c("probe", brca_pats)
-saveRDS(brca_meth, file="THCAmethylation_data_lncs_cands.rds")
+#brca_pats = read.table("THCA_patients.txt")
+#brca_pats = brca_pats[,3:ncol(brca_pats)]
+#brca_pats = as.character(unlist(brca_pats))
+#brca_meth = fread("THCA_lnc_probes.txt")
+#colnames(brca_meth) = c("probe", brca_pats)
+#saveRDS(brca_meth, file="THCAmethylation_data_lncs_cands.rds")
 
 #15 UVM 
 
@@ -248,7 +248,7 @@ saveRDS(brca_meth, file="LUSCmethylation_data_lncs_cands.rds")
 
 #20 BLCA 
 
-head -n 1 BLCA.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > BLCA_patients.txt
+head -n 1 BLCA-FFPE.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > BLCA_patients.txt
 grep -f unique_cgprobes_mapping_to_lncRNA_cands.txt BLCA.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > BLCA_lnc_probes.txt
 
 brca_pats = read.table("BLCA_patients.txt")
@@ -260,7 +260,7 @@ saveRDS(brca_meth, file="BLCAmethylation_data_lncs_cands.rds")
 
 #21 COAD 
 
-head -n 1 COAD.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > COAD_patients.txt
+head -n 1 COADREAD-FFPE.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > COAD_patients.txt
 grep -f unique_cgprobes_mapping_to_lncRNA_cands.txt COAD.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > COAD_lnc_probes.txt
 
 brca_pats = read.table("COAD_patients.txt")

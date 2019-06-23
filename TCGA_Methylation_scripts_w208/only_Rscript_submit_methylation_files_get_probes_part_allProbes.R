@@ -121,7 +121,7 @@ brca_meth = fread("HNSC.methylation__humanmethylation450__jhu_usc_edu__Level_3__
 colnames(brca_meth) = c("probe", brca_pats)
 saveRDS(brca_meth, file="HNSCmethylation_data_ALLprobes.rds")
 
-#11 LGG 
+#11 LGG keep 
 
 #head -n 1 LGG.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > LGG_patients.txt
 #grep -f unique_cgprobes_mapping_to_lncRNA_cands.txt LGG.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > LGG_lnc_probes.txt
@@ -159,23 +159,23 @@ saveRDS(brca_meth, file="READmethylation_data_ALLprobes.rds")
 
 #head -n 1 THCA.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > THCA_patients.txt
 
-brca_pats = read.table("THCA_patients.txt")
-brca_pats = brca_pats[,3:ncol(brca_pats)]
-brca_pats = as.character(unlist(brca_pats))
-brca_meth = fread("THCA.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt")
-colnames(brca_meth) = c("probe", brca_pats)
-saveRDS(brca_meth, file="THCAmethylation_data_ALLprobes.rds")
+#brca_pats = read.table("THCA_patients.txt")
+#brca_pats = brca_pats[,3:ncol(brca_pats)]
+#brca_pats = as.character(unlist(brca_pats))
+#brca_meth = fread("THCA.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt")
+#colnames(brca_meth) = c("probe", brca_pats)
+#saveRDS(brca_meth, file="THCAmethylation_data_ALLprobes.rds")
 
 #15 UVM 
 
 #head -n 1 UVM.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt > UVM_patients.txt
 
-brca_pats = read.table("UVM_patients.txt")
-brca_pats = brca_pats[,3:ncol(brca_pats)]
-brca_pats = as.character(unlist(brca_pats))
-brca_meth = fread("UVM.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt")
-colnames(brca_meth) = c("probe", brca_pats)
-saveRDS(brca_meth, file="UVMmethylation_data_ALLprobes.rds")
+#brca_pats = read.table("UVM_patients.txt")
+#brca_pats = brca_pats[,3:ncol(brca_pats)]
+#brca_pats = as.character(unlist(brca_pats))
+#brca_meth = fread("UVM.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt")
+#colnames(brca_meth) = c("probe", brca_pats)
+#saveRDS(brca_meth, file="UVMmethylation_data_ALLprobes.rds")
 
 #16 CESC
 

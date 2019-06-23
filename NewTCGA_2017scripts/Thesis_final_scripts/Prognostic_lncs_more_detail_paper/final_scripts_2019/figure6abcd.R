@@ -18,6 +18,7 @@ source("check_lnc_exp_cancers.R")
 
 #------FEATURES-----------------------------------------------------
 
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 allCands = subset(allCands, data == "TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
@@ -31,15 +32,15 @@ allCands$combo = paste(allCands$gene, allCands$type)
 all_de_results = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
 all_de_results = as.data.table(all_de_results)
 
-z = which(all_de_results$cancer == "LGG")
-all_de_results = all_de_results[-z,]
+#z = which(all_de_results$cancer == "LGG")
+#all_de_results = all_de_results[-z,]
 
-all_de_results_lgg = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_lgg_nov30.rds")
-all_de_results_lgg = as.data.table(all_de_results_lgg)
-all_de_results = rbind(all_de_results, all_de_results_lgg)
+#all_de_results_lgg = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_lgg_nov30.rds")
+#all_de_results_lgg = as.data.table(all_de_results_lgg)
+#all_de_results = rbind(all_de_results, all_de_results_lgg)
 
 all_de_results$combo = paste(all_de_results$lnc, all_de_results$cancer) #148/158 unique combos across 22 unique cancer types 
-all_de_results = as.data.table(filter(all_de_results, combo %in% allCands$combo))
+all_de_results = as.data.table(filter(all_de_results, combo %in% allCands$combo, adj.P.Val <= 0.05))
 
 full_diff_exp = all_de_results
 
@@ -70,7 +71,7 @@ make_matrix_for_ap = function(canc){
   dat_all_matrix = acast(dat_all, ID~lnc, value.var="P.Value")
 	dat_all_matrix[is.na(dat_all_matrix)] = 1
 
-	file = paste("Aug22_DE_genes_fActivePathways/", canc, "all_up_down_genes_fActivepathways_March25_updFC.rds", sep="_")
+	file = paste(canc, "all_up_down_genes_fActivepathways_March25_updFC.rds", sep="_")
 	saveRDS(dat_all_matrix, file)
 
 	lncs = unique(dat$lnc)
@@ -94,7 +95,7 @@ make_matrix_for_ap = function(canc){
 		combined_paths <- combined_paths[c(reac, go), ]
 		combined_paths <- combined_paths[,c(9,12, 3, 3, 1, 14)]
 		colnames(combined_paths) <- c("GO.ID", "Description", "p.Val", "FDR", "Phenotype", "Genes")
-		file = paste("Aug22_DE_genes_gProfiler_results/", ln, canc, "all_Sept14_pathways.txt", sep="_")
+		file = paste(ln, canc, "all_Sept14_pathways.txt", sep="_")
 		write.table(combined_paths, sep= "\t", file, quote=F, row.names=F)
 		up_path = length(unique(combined_paths$Description))
 		if(!(dim(combined_paths)[1]==0)){
@@ -116,10 +117,9 @@ make_matrix_for_ap = function(canc){
 	}
 }
 
-#all_lnc_pathways = llply(cancers, make_matrix_for_ap, .progress="text")
-#all_lnc_pathways_df = ldply(all_lnc_pathways)
+all_lnc_pathways = llply(cancers, make_matrix_for_ap, .progress="text")
+all_lnc_pathways_df = ldply(all_lnc_pathways)
 #done gave Marta matriced produced by this code for ActivePathways 
-
 
 ###---------------Summary figure-------------------------------###
 
@@ -165,7 +165,8 @@ sig_des = as.data.table(filter(sig_des, combo %in% sig_paths_sum$combo))
 all_lnc_pathways_df = as.data.table(filter(all_lnc_pathways_df, combo %in% sig_paths_sum$combo))
 
 #COSMIC cancer gene census
-census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
+
+census = read.csv("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/Census_allFri_Jul_13_16_55_59_2018.csv")
 #get ensg
 get_census_ensg = function(genes){
   glist = unlist(strsplit(genes, ","))

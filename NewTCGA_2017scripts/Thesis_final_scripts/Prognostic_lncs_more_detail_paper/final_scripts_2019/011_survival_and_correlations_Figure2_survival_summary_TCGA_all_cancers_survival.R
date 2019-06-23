@@ -23,6 +23,8 @@ library(caret)
 library(Rtsne)
 library(data.table)
 
+#final script used to generate survival information in figure 1 
+
 #------DATA---------------------------------------------------------
 #UCSC gene info
 ucsc <- fread("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)

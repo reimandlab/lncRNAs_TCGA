@@ -51,6 +51,8 @@ z <- which(fantom$CAT_geneName %in% rm)
 fantom <- fantom[-z,]
 colnames(fantom)[1] = "gene"
 
+probes_check = fread("unique_cgprobes_mapping_to_lncRNA_cands.txt")
+
 #############################################################
 #----EDITED SEPT 11TH KI-------------------------------------
 #############################################################
@@ -232,8 +234,12 @@ probes$canc[probes$canc=="Thyroid carcinoma"] = "THCA"
 probes$canc[probes$canc=="Glioblastoma multiforme"] = "GBM"
 probes$canc[probes$canc=="Esophageal carcinoma"] = "ESCA"
 
+#check probes that the new ones are still there 
+z = which(probes$cgid %in% unlist(probes_check[,1]))
+probes = probes[z,]
+#######
 
-rna = readRDS("5919_lncRNAs_tcga_all_cancers_March13_wclinical_dataalldat.rds")
+rna = readRDS("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript/5919_lncRNAs_tcga_all_cancers_March13_wclinical_dataalldat.rds")
 table(rna$type)
 
 z = which(rna$vital_status == "[Discrepancy]")
@@ -244,22 +250,22 @@ z = which(is.na(as.numeric(rna$OS.time)))
 rna = rna[-z,]
 z = which(as.numeric(rna$OS.time) == 0)
 rna = rna[-z,]
-
 table(rna$type)
 
 get_data = function(lnc){
 	comb = lnc
-
   print(lnc)
   cancer = cands$canc[which(cands$combo == lnc)][1]
-	lnc = unlist(strsplit(lnc, "_"))[1]
+	lnc=as.character(lnc)
+  lnc = unlist(strsplit(lnc, "_"))[1]
   dat = dplyr::filter(probes, canc == cancer, ensg == lnc)
 	
 	if(!(dim(dat)[1]==0)){
 	z = which(cancers_order == cancer)
 	meth_dat = methylation_data[[z]]
 	z = which(meth_dat$probe %in% dat$cgid)
-	meth_dat = meth_dat[z,]
+	if(!(length(z)==0)){
+  meth_dat = meth_dat[z,]
 
 	#break up patients into individual rows
 	#also only want tumours 
@@ -382,7 +388,8 @@ get_data = function(lnc){
       "risk_met", "nonrisk_met", "other", "nonrisk_unmet", "risk_not_met", "risk_other", "nonrisk_other", "cox_p")
 	
 	for(k in 1:probecount){
-	new = subset(df, df$probe == unique(df$probe)[k])
+	print(k)
+  new = subset(df, df$probe == unique(df$probe)[k])
 	new$geneExp = as.numeric(new$geneExp)
 	new$beta = as.numeric(new$beta)
 
@@ -544,7 +551,7 @@ get_data = function(lnc){
 
     print("pass3")
 
-    if(!(length(unique(as.character(new$group)))) == 1) {
+    if(!(length(unique(as.character(new$group)))) == 1){
 
     #check if prognostic 
     cox_p = glance(coxph(Surv(OS.time, OS) ~ group, data = new))[8]
@@ -644,8 +651,8 @@ get_data = function(lnc){
       print(lnc)
       print(probe)
     #print(lnc)
-    }
     results_all_probes = rbind(results_all_probes, results)
+  }
   }
   }
   }
@@ -926,14 +933,21 @@ get_data = function(lnc){
 		results = as.data.frame(matrix(ncol = 18)) ; colnames(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
       "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "rop", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test", "cox_p")
   }  
+
+  if((dim(results)[1] <1)){
+    results = as.data.frame(matrix(ncol = 18)) ; colnames(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
+      "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "rop", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test", "cox_p")
+  }  
+
   return(results)
+}
 }
 }
 }
 }
 
 #pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
-#genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% probes$combo)]))) #88/166 have methylation probes overlapping them 
+#genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% probes$combo)]))) #77/179 have methylation probes overlapping them 
 #lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
 #dev.off()
 
@@ -941,7 +955,7 @@ get_data = function(lnc){
 #lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
 #lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
 #z= which(is.na(lnc_meth_cancer_data2$cancer))
-#lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #255 lncRNA-probe pairs evaluated 
+#lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #141 lncRNA-probe pairs evaluated 
 #lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer)
 #saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Nov1.rds")
 #73 unique lncRNA-cancer pairs evaluated 
@@ -959,23 +973,29 @@ lnc_meth_cancer_data2$wilcoxon_pval = as.numeric(lnc_meth_cancer_data2$wilcoxon_
 lnc_meth_cancer_data2$ks_test = as.numeric(as.character(lnc_meth_cancer_data2$ks_test))
 lnc_meth_cancer_data2$stat_exp_cor = as.numeric(as.character(lnc_meth_cancer_data2$stat_exp_cor))
 lnc_meth_cancer_data2$stat_exp_pval = as.numeric(as.character(lnc_meth_cancer_data2$stat_exp_pval))
+lnc_meth_cancer_data2$cox_p = as.numeric(as.character(lnc_meth_cancer_data2$cox_p))
+
+lnc_meth_cancer_data2$rop_fdr = p.adjust(lnc_meth_cancer_data2$rop)
+lnc_meth_cancer_data2$cox_p_fdr = p.adjust(lnc_meth_cancer_data2$cox_p)
+lnc_meth_cancer_data2$ks_test_fdr = p.adjust(lnc_meth_cancer_data2$ks_test)
 
 #get fdr by cancer type - if only one test then there weren't multiple tests done
-dats = split(lnc_meth_cancer_data2, by="cancer")
-add_fdr = function(dat){
-  if(dim(dat)[1]>5){
-  dat$fdr = p.adjust(dat$ks_test, method="fdr")
-  }
-  if(dim(dat)[1] <=5){
-    dat$fdr = dat$ks_test
-  }
-  return(dat)
-}
-lnc_meth_cancer_data2 = llply(dats, add_fdr)
-lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
-sig_diff = filter(lnc_meth_cancer_data2, fdr <=0.05) #31 with sig wilcoxon pval 
+#dats = split(lnc_meth_cancer_data2, by="cancer")
+#add_fdr = function(dat){
+#  if(dim(dat)[1]>5){
+#  dat$fdr = p.adjust(dat$ks_test, method="fdr")
+#  }
+#  if(dim(dat)[1] <=5){
+#    dat$fdr = dat$ks_test
+#  }
+#  return(dat)
+#}
+#lnc_meth_cancer_data2 = llply(dats, add_fdr)
+#lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
+
+sig_diff = filter(lnc_meth_cancer_data2, ks_test_fdr <=0.05, rop_fdr <= 0.05) #31 with sig wilcoxon pval 
 sig_diff = as.data.table(sig_diff)
-sig_diff = as.data.table(filter(sig_diff, abs(overall_correlation) >= 0.2))
+#sig_diff = as.data.table(filter(sig_diff, abs(overall_correlation) >= 0.2))
 
 #keep only ones with sig correlation
 sig_diff = as.data.table(filter(sig_diff, rop < 0.05)) #17 sig positive correlation and fdr sig difference in dist

@@ -39,9 +39,10 @@ cnas_bed$patient = unlist(cnas_bed$patient)
 cnas_bed$source = unlist(cnas_bed$source)
 
 #2. GENCODE V27 lncRNAs GTF file
-lncrnas = fread("gencode.v27lift37.long_noncoding_RNAs.gtf")
+#lncrnas = fread("gencode.v27lift37.long_noncoding_RNAs.gtf")
+lncrnas = fread("gencode.v30.long_noncoding_RNAs.gtf")
 
-gtf <- rtracklayer::import("gencode.v27lift37.long_noncoding_RNAs.gtf")
+gtf <- rtracklayer::import("gencode.v30.long_noncoding_RNAs.gtf")
 gtf_df=as.data.frame(gtf)
 
 coords = lncrnas[,1:8]
@@ -127,7 +128,7 @@ write.table(lncs_coords, file="lncrna_coords_bed.bed", col.names=F, row.names=F,
 
 #################BEDTOOLS#########################################################################
 
-bedtools intersect -a lncrna_coords_bed.bed -b cnas_bed_TCGA.bed -f 0.75 -wa -wb > fantom_lncrnas_wTCGA_CNAs_23cancers.bed
+bedtools intersect -a lncrna_coords_bed.bed -b cnas_bed_TCGA_bed_only_hglft_genome_3f59e_e4a2f0.bed -f 0.75 -wa -wb > fantom_lncrnas_wTCGA_CNAs_23cancers.bed
 
 
 

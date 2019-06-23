@@ -12,6 +12,7 @@
 
 source("source_file.R")
 library(stringr)
+#final script for processing raw count data part 2
 
 ###---------------------------------------------------------------
 ###Load Data 
@@ -83,7 +84,7 @@ norm_conversion = readRDS("counts_tcga_id_NORMAL_samples_type_conversion.txt")
 met_conversion = readRDS("counts_tcga_id_Metastatic_samples_type_conversion.txt")
 
 #6. List of TCGA IDs used in PCAWG - to remove
-ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
+#ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
 
 #norm
 z = which(colnames(norm) %in% c(colnames(rna), colnames(pcg)))
@@ -117,7 +118,6 @@ change = function(rowname){
   return(new)  
 }
 rownames(met) = sapply(rownames(met), change)
-
 
 #Keep only those patients with both RNA-Seq AND clinical data
 z <- which(rownames(rna) %in% clin$bcr_patient_barcode)

@@ -10,6 +10,7 @@
 ###Load Libraries
 ###---------------------------------------------------------------
 
+#final script for processing raw count data 
 source("source_file.R")
 
 ###---------------------------------------------------------------
@@ -17,7 +18,7 @@ source("source_file.R")
 ###---------------------------------------------------------------
 
 #1. List of TCGA IDs used in PCAWG - to remove
-ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
+#ids_remove = fread("TCGA_IDs_usedinPCAWG.txt")
 
 #2. TCGA Tumour Codes Table
 tss_codes = read.csv(" TCGA_TissueSourceSite_Codes2017 .csv"     )
@@ -134,13 +135,13 @@ normals_keep$id = ""
 normals_keep[,4] = apply(normals_keep, 1, clean_tcga_id) 
 
 #remove those patients already used in PCAWG
-ids_remove = unique(clin$bcr_patient_barcode[which(clin$bcr_patient_barcode %in% ids_remove$bcr_patient_barcode)]) 
-z = which(cancers_keep$id %in% ids_remove)
-cancers_keep = cancers_keep[-z,]
-z = which(normals_keep$id %in% ids_remove)
-normals_keep = normals_keep[-z,]
-z = which(metastatic_keep$id %in% ids_remove)
-metastatic_keep = metastatic_keep[-z,]
+#ids_remove = unique(clin$bcr_patient_barcode[which(clin$bcr_patient_barcode %in% ids_remove$bcr_patient_barcode)]) 
+#z = which(cancers_keep$id %in% ids_remove)
+#cancers_keep = cancers_keep[-z,]
+#z = which(normals_keep$id %in% ids_remove)
+#normals_keep = normals_keep[-z,]
+#z = which(metastatic_keep$id %in% ids_remove)
+#metastatic_keep = metastatic_keep[-z,]
 
 #remove duplciated patient samples = all kidney clear cell for some reason
 dups = cancers_keep[which(duplicated(cancers_keep[,4])),4]

@@ -45,15 +45,16 @@ table(pcg_counts$type)
 
 #------FEATURES-----------------------------------------------------
 
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
-val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
-val_cands = as.data.table(val_cands)
-val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
-val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
-val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+#val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
+#val_cands = as.data.table(val_cands)
+#val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+#val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
+#val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
 
 #------------------------------------------------------------------
 #Within each tissue type, rank lncRNAs by which percentile of 
@@ -61,8 +62,8 @@ val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer 
 #------------------------------------------------------------------
 
 #1. log1p
-z = which(str_detect(colnames(all), "ENSG"))	
-all[,z] <- log1p(all[,z])
+#z = which(str_detect(colnames(all), "ENSG"))	
+#all[,z] <- log1p(all[,z])
 
 #2. Get lncRNA - median within each tissue type
 allCands$combo = paste(allCands$gene, allCands$cancer, sep="_")
@@ -266,7 +267,7 @@ diffEresults = llply(all_canc_lnc_data, diffE, .progress="text")
 
 diffEresults1 = ldply(diffEresults, data.frame)
 diffEresults1 = as.data.table(diffEresults1)
-saveRDS(diffEresults1, file="diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
+#saveRDS(diffEresults1, file="diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
 #saveRDS(diffEresults1, file="diff_expressed_PCGs_lncRNA_risk_groups_lgg_nov30.rds")
 
 ##########
