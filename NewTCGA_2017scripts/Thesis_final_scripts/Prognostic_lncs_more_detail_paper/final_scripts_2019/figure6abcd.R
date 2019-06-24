@@ -117,8 +117,8 @@ make_matrix_for_ap = function(canc){
 	}
 }
 
-all_lnc_pathways = llply(cancers, make_matrix_for_ap, .progress="text")
-all_lnc_pathways_df = ldply(all_lnc_pathways)
+#all_lnc_pathways = llply(cancers, make_matrix_for_ap, .progress="text")
+#all_lnc_pathways_df = ldply(all_lnc_pathways)
 #done gave Marta matriced produced by this code for ActivePathways 
 
 ###---------------Summary figure-------------------------------###
@@ -303,7 +303,12 @@ dev.off()
 #stopped here Jan 25
 
 #make barplot just for LGG candidates found in the network
-keep = c("ENSG00000253187", "ENSG00000239552", "ENSG00000224950", "ENSG00000254635", "ENSG00000250360", "ENSG00000256482", "ENSG00000257261")
+#keep = c("ENSG00000253187", "ENSG00000239552", "ENSG00000224950", "ENSG00000254635", "ENSG00000250360", "ENSG00000256482", "ENSG00000257261")
+
+keep = c("ENSG00000215196", "ENSG00000224950","ENSG00000225511", "ENSG00000228021",
+ "ENSG00000231265" ,"ENSG00000239552" ,"ENSG00000253187" ,"ENSG00000254271",
+ "ENSG00000254635", "ENSG00000255020", "ENSG00000256482", "ENSG00000261889")
+
 lgg_res = as.data.table(filter(full_diff_exp, cancer == "LGG", adj.P.Val <= 0.05, (logFC >= 1) | (logFC < -1), lnc %in% keep)) 
 lgg_res$type[lgg_res$logFC >= 1] = "UpregulatedRisk"
 lgg_res$type[lgg_res$logFC < -1] = "DownregulatedRisk"
@@ -341,6 +346,9 @@ dev.off()
 #liver gluco related pathways 
 
 load("_LGG_all_up_down_genes_.2018-12-13.rdata")
+
+res = readRDS("LGG_all_up_down_genes_activepathways.rds")
+
 colnames(res)
 #canc = subset(res, res$term.name %in% canc_paths_paths)
 canc_paths_paths = res[which(str_detect(res$term.name, "brain")),]$term.name
@@ -348,7 +356,7 @@ canc = subset(res, term.name %in% canc_paths_paths)
 
 #1. get all PCGs that are in these pathways 
 pcgs_brain = unique(unlist(canc$overlap)) #50 unique PCGs
-lncs_brain = unique(unlist(canc$evidence))[1:2] #2 unique lncRNAs to be used as covariates high vs low 
+lncs_brain = unique(unlist(canc$evidence))[3:4] #2 unique lncRNAs to be used as covariates high vs low 
 
 evi = c()
 for(i in 1:nrow(res)){
@@ -378,7 +386,8 @@ for(i in 1:nrow(res_all_brain)){
 res_all_brain$overlap = as.character(res_all_brain$overlap)
 res_all_brain$evidence = as.character(res_all_brain$evidence)
 
-write.csv(res_all_brain, file="all_brain_pathways_lgg_march26.csv", quote=F, row.names=F)
+brain_dev = as.data.table(filter(res, term.name %in% canc_paths_paths))
+saveRDS(brain_dev, file="brain_development_pathways_lgg_JUNE2019.rds")
 
 #get counts of pathway per lcnRNA
 res_all_brain = res[,c("term.id", "term.name", "adjusted.p.val", "overlap", "evidence")]
@@ -415,7 +424,7 @@ res_all_brain$evidence = as.character(res_all_brain$evidence)
   #which genes are cancer gene census genes?
   pcgs = unique(rownames(heat))
   #COSMIC cancer gene census
-  census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
+  census = read.csv("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/Census_allFri_Jul_13_16_55_59_2018.csv")
   #get ensg
   get_census_ensg = function(genes){
   glist = unlist(strsplit(genes, ","))
@@ -446,6 +455,15 @@ get_ensg_pcg = function(pcg){
     z = z[1]
   }
   return(ucsc$hg19.ensGene.name2[z])
+}
+
+
+get_name_pcg = function(pcg){
+  z = which(ucsc$hg19.ensGene.name2 == pcg)
+  if(length(z)>1){
+    z = z[1]
+  }
+  return(ucsc$hg19.ensemblToGeneName.value[z])
 }
 
 development_genes = sapply(development_genes, get_ensg_pcg)
@@ -499,7 +517,7 @@ clin_subtypes <- TCGAquery_subtype(tumor = "LGG")
 lgg_idh=clin_subtypes
 lgg_idh = lgg_idh[,c("IDH.status", "patient")]
 
-gb_idh = readRDS("gbm_clin_subtypes_glioblastoma.rds")
+gb_idh = readRDS("TCGA_gbm_wsubtype_info_biolinks.rds")
 gb_idh = gb_idh[,c("IDH.status", "patient")]
 all_brain = rbind(lgg_idh, gb_idh)
 
@@ -643,7 +661,7 @@ ha = HeatmapAnnotation(relative_risk = anno_points(values, gp = gpar(size=0.3), 
 pdf("developmental_genes_lgg_gbm_all_small_version_genes_new_april11.pdf", width=9, height=7)
 Heatmap(mat, column_names_gp = gpar(fontsize = 1), top_annotation = ha, show_column_names = FALSE,
   heatmap_legend_param = list(legend_height = unit(2, "cm"), legend_width = unit(2, "cm")),
-  top_annotation_height = unit(3, "cm"), row_names_gp = gpar(fontsize = 5), clustering_distance_rows = "pearson", clustering_distance_columns = "pearson")
+  top_annotation_height = unit(3, "cm"), row_names_gp = gpar(fontsize = 2), clustering_distance_rows = "pearson", clustering_distance_columns = "pearson")
 dev.off()
 
 
@@ -693,7 +711,7 @@ colnames(lgg)[2] = "HOXA10-AS"
 
 #get km plots
 
-lgg$OS.time = lgg$OS.time/365
+lgg$OS.time = lgg$OS.time
 
 gene_name = colnames(lgg)[2]
 colnames(lgg)[2] = "gene"
@@ -707,7 +725,7 @@ pdf("lgg_two_lncRNAs_cands_figure6d.pdf", width=8, height=7)
 s <- ggsurvplot(
           title = gene_name, 
           fit, 
-          xlab = "Time (Years)", 
+          xlab = "Time (Days)", 
           #surv.median.line = "hv",
           font.main = c(14, "bold", "black"),
           font.x = c(12, "plain", "black"),
@@ -722,9 +740,9 @@ s <- ggsurvplot(
           pval = TRUE,             # show p-value of log-rank test.
           conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-          xlim = c(0,5),        # present narrower X axis, but not affect
+          #xlim = c(0,5),        # present narrower X axis, but not affect
                             # survival estimates.
-          break.time.by = 1,     # break X axis in time intervals by 500.
+          #break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
           #palette = mypal[c(4,1)],
           palette = "npg", 
@@ -749,7 +767,7 @@ fit <- survfit(Surv(OS.time, OS) ~ gene + IDH.status, data = lgg)
 s <- ggsurvplot(
           title = gene_name, 
           fit, 
-          xlab = "Time (Years)", 
+          xlab = "Time (Days)", 
           #surv.median.line = "hv",
           font.main = c(14, "bold", "black"),
           font.x = c(12, "plain", "black"),
@@ -764,9 +782,9 @@ s <- ggsurvplot(
           pval = TRUE,             # show p-value of log-rank test.
           conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-          xlim = c(0,5),        # present narrower X axis, but not affect
+          #xlim = c(0,5),        # present narrower X axis, but not affect
                             # survival estimates.
-          break.time.by = 1,     # break X axis in time intervals by 500.
+          #break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
           #palette = mypal[c(4,1)],
           palette = "npg", 
@@ -779,8 +797,6 @@ s <- ggsurvplot(
 print(s)
 
 dev.off()
-
-
 
 lgg = as.data.table(subset(rna, type == "LGG"))
 lgg = lgg[,c("ENSG00000253187", "ENSG00000239552", "patient", "type", "OS", "OS.time")]
@@ -831,6 +847,52 @@ dev.off()
 
 
 
+lgg = as.data.table(subset(rna, type == "GBM"))
+lgg = lgg[,c("ENSG00000253187", "ENSG00000239552", "patient", "type", "OS", "OS.time")]
+colnames(gbm)[1] = "patient"  
+colnames(gbm)[6] = "patientt"
+lgg = merge(lgg, gbm, by="patient")
+
+z = which(is.na(lgg$IDH.status))
+lgg = lgg[-z,]
+
+lgg$ENSG00000253187 = log1p(lgg$ENSG00000253187)
+lgg$ENSG00000253187_tag[lgg$ENSG00000253187 > 0] = "High"
+lgg$ENSG00000253187_tag[lgg$ENSG00000253187 == 0] = "Low"
+lgg$ENSG00000253187_tag = factor(lgg$ENSG00000253187_tag, levels=c("Low", "High"))
+
+lgg$ENSG00000239552 = log1p(lgg$ENSG00000239552)
+lgg$ENSG00000239552_tag[lgg$ENSG00000239552 > 0] = "High"
+lgg$ENSG00000239552_tag[lgg$ENSG00000239552 == 0] = "Low"
+lgg$ENSG00000239552_tag = factor(lgg$ENSG00000239552_tag, levels=c("Low", "High"))
+
+lgg$IDH.status = factor(lgg$IDH.status, levels=c("WT", "Mutant"))
+lgg$ENSG00000253187_tag = paste(lgg$ENSG00000253187_tag, lgg$IDH.status)
+lgg$ENSG00000253187_tag = factor(lgg$ENSG00000253187_tag, levels=c("High WT", "High Mutant", "Low WT", "Low Mutant"))
+
+lgg$ENSG00000239552_tag = paste(lgg$ENSG00000239552_tag, lgg$IDH.status)
+lgg$ENSG00000239552_tag = factor(lgg$ENSG00000239552_tag, levels=c("High WT", "High Mutant", "Low WT", "Low Mutant"))
+
+pdf("gbm_two_lncRNAs_cands_figure6d_boxplots.pdf", width=6, height=6)
+
+#make boxplots
+   p <- ggboxplot(lgg, x = "ENSG00000253187_tag", y = "ENSG00000253187",
+          color = "ENSG00000253187_tag",
+         palette = "npg", title = "HOXA10-AS expression", 
+          add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
+        # Change method
+  p = p + stat_n_text() + scale_color_npg() + theme(legend.position="none")+xlab("HOXA10-AS expression & IDH mutation status")
+  ggpar(p, font.tickslab = c(12, "plain", "black")) 
+
+#make boxplots
+   p <- ggboxplot(lgg, x = "ENSG00000239552_tag", y = "ENSG00000239552",
+          color = "ENSG00000239552_tag",
+         palette = "npg", title = "HOXB-AS2 expression", 
+          add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
+        # Change method
+  p = p + stat_n_text() + scale_color_npg() + theme(legend.position="none") +xlab("HOXB-AS2 expression & IDH mutation status")
+  ggpar(p, font.tickslab = c(12, "plain", "black")) 
+dev.off()
 
 
 

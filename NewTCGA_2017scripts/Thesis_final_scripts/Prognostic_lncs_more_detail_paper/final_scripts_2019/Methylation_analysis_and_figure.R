@@ -706,7 +706,7 @@ get_data = function(lnc){
     			}
        #overall correlation
        ro = rcorr(df$beta, df$geneExp, type="spearman")$r[2]
-
+       rop = rcorr(df$beta, df$geneExp, type="spearman")$P[2]
 
     #get_chisq_pval
     t = table(df$median, df$mut_status)
@@ -934,10 +934,10 @@ get_data = function(lnc){
       "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "rop", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test", "cox_p")
   }  
 
-  if((dim(results)[1] <1)){
-    results = as.data.frame(matrix(ncol = 18)) ; colnames(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
+  if((length(unique(as.character(new$group)))) == 1){
+       results = as.data.frame(matrix(ncol = 18)) ; colnames(results) = c("cancer", "gene", "num_patients", "wilcoxon_pval", "chi_pval", "fc", "risk_type", "num_risk_pats",  
       "risk_group_correlation", "nonrisk_group_correlation", "overall_correlation", "rop", "probe", "risk_pat_bal", "stat_exp_cor", "stat_exp_pval", "ks_test", "cox_p")
-  }  
+  }
 
   return(results)
 }
@@ -951,12 +951,12 @@ get_data = function(lnc){
 #lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
 #dev.off()
 
-#lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
-#lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
-#lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
-#z= which(is.na(lnc_meth_cancer_data2$cancer))
-#lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #141 lncRNA-probe pairs evaluated 
-#lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer)
+lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
+lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
+lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
+z= which(is.na(lnc_meth_cancer_data2$cancer))
+lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #141 lncRNA-probe pairs evaluated 
+lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer)
 #saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Nov1.rds")
 #73 unique lncRNA-cancer pairs evaluated 
 
@@ -993,7 +993,7 @@ lnc_meth_cancer_data2$ks_test_fdr = p.adjust(lnc_meth_cancer_data2$ks_test)
 #lnc_meth_cancer_data2 = llply(dats, add_fdr)
 #lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
 
-sig_diff = filter(lnc_meth_cancer_data2, ks_test_fdr <=0.05, rop_fdr <= 0.05) #31 with sig wilcoxon pval 
+sig_diff = filter(lnc_meth_cancer_data2, rop_fdr <= 0.05, abs(stat_exp_cor) >= 0.15) #31 with sig wilcoxon pval 
 sig_diff = as.data.table(sig_diff)
 #sig_diff = as.data.table(filter(sig_diff, abs(overall_correlation) >= 0.2))
 
@@ -1024,7 +1024,7 @@ sig_diff$stat[sig_diff$HR < 1] = "Favourable"
 #order 
 sig_diff = as.data.table(sig_diff)
 sig_diff = sig_diff[order(stat, abs(overall_correlation))]
-sig_diff$CAT_geneName = factor(sig_diff$CAT_geneName, levels=unique(sig_diff$CAT_geneName))
+sig_diff$gene_name = factor(sig_diff$gene_name, levels=unique(sig_diff$gene_name))
 sig_diff$canc = factor(sig_diff$canc, levels=unique(sig_diff$canc))
 sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
 
@@ -1056,13 +1056,13 @@ keep_dat = rbind(keep_dat, sig_diff[z,])
 sig_diff = keep_dat
 sig_diff = sig_diff[order(stat, -(abs(stat_exp_cor)))]
 
-sig_diff$CAT_geneName = factor(sig_diff$CAT_geneName, levels=unique(sig_diff$CAT_geneName))
+sig_diff$gene_name = factor(sig_diff$gene_name, levels=unique(sig_diff$gene_name))
 sig_diff$canc = factor(sig_diff$canc, levels=unique(sig_diff$canc))
 sig_diff$stat = factor(sig_diff$stat, levels=c("Unfavourable", "Favourable"))
-sig_diff = as.data.table(filter(sig_diff, stat_exp_pval < 0.05))
+#sig_diff = as.data.table(filter(sig_diff, stat_exp_pval < 0.05))
 write.csv(sig_diff, file="29_lncRNAs_wmethylation_relationship.csv", quote=F, row.names=F)
 
-sig_diff = as.data.table(filter(sig_diff, abs(stat_exp_cor) >= 0.2))
+#sig_diff = as.data.table(filter(sig_diff, abs(stat_exp_cor) >= 0.2))
 
 table(sig_diff$cor)
 summary(abs(as.numeric(sig_diff$dist_toTSS))[sig_diff$cor == "Negative"])
@@ -1070,7 +1070,7 @@ summary(abs(as.numeric(sig_diff$dist_toTSS))[sig_diff$cor == "Positive"])
 
 pdf("Methylation_figure_partB_sep27.pdf", width=10, height=8)
 
-g = ggplot(sig_diff, aes(canc, CAT_geneName)) +
+g = ggplot(sig_diff, aes(canc, gene_name)) +
   geom_tile(aes(fill = ks_test)) + geom_point(aes(size=abs(stat_exp_cor), color=cor))+
     scale_fill_gradient(low = "lightgrey", high = "black", na.value = 'transparent') +
     scale_colour_manual(values = c("blue", "red")) + 
@@ -1086,12 +1086,12 @@ g = ggpar(g,
  xtickslab.rt = 45)
 
 #covariate favourable vs unfavoubrale
-cov = ggplot(sig_diff, aes(CAT_geneName, 1)) + geom_tile(aes(fill = stat)) +
+cov = ggplot(sig_diff, aes(gene_name, 1)) + geom_tile(aes(fill = stat)) +
 theme_void() + coord_flip() + theme(legend.position="none")
 
 cov + g + plot_layout(ncol = 2, widths = c(1,15))
 
-ggplot(sig_diff, aes(CAT_geneName, 1)) + geom_tile(aes(fill = stat)) +
+ggplot(sig_diff, aes(gene_name, 1)) + geom_tile(aes(fill = stat)) +
 theme_void() + coord_flip() 
  
 dev.off()
@@ -1144,10 +1144,10 @@ wilcox.test(abs(as.numeric(corsit$dist_toTSS))[corsit$cor == "Negative"], abs(as
 ###stacked barplot#############
 ###############################
 
-sig_diff$combo = paste(sig_diff$CAT_geneName, sig_diff$canc)
+sig_diff$combo = paste(sig_diff$gene_name, sig_diff$canc)
 sig_diff$met_impact = (unlist(sig_diff$risk_met) + unlist(sig_diff$nonrisk_unmet)) /sig_diff$num_patients
 sig_diff = sig_diff[order(-met_impact)]
-sig_diff$combo = paste(sig_diff$CAT_geneName, sig_diff$type)
+sig_diff$combo = paste(sig_diff$gene_name, sig_diff$type)
 
 for_plot = sig_diff[,c("combo", "risk_met", "nonrisk_met", "other", "nonrisk_unmet", "risk_not_met", "risk_other", "nonrisk_other", "stat", "cor")]
 cols = c("risk_met", "nonrisk_met", "other", "nonrisk_unmet", "risk_not_met", "risk_other", "nonrisk_other")

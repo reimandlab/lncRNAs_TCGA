@@ -1,0 +1,326 @@
+term.id	term.name	adjusted.p.val
+GO:0001505	regulation of neurotransmitter levels	2.32107416169897e-05
+GO:0001655	urogenital system development	0.00779678938909482
+GO:0001656	metanephros development	0.00133341738404362
+GO:0001819	positive regulation of cytokine production	6.27811187456161e-05
+GO:0002009	morphogenesis of an epithelium	0.0085273583439554
+GO:0002237	response to molecule of bacterial origin	6.98969826950832e-05
+GO:0002279	mast cell activation involved in immune response	1.58826021965317e-05
+GO:0002283	neutrophil activation involved in immune response	1.52315851333182e-05
+GO:0002286	T cell activation involved in immune response	0.00263531594105403
+GO:0002446	neutrophil mediated immunity	2.16598081690891e-05
+GO:0002448	mast cell mediated immunity	2.51070818248919e-05
+GO:0002478	antigen processing and presentation of exogenous peptide antigen	1.64987202189808e-05
+GO:0002495	antigen processing and presentation of peptide antigen via MHC class II	2.2729490040763e-07
+GO:0002504	antigen processing and presentation of peptide or polysaccharide antigen via MHC class II	5.8900062042026e-08
+GO:0002526	acute inflammatory response	0.000154473070861248
+GO:0002685	regulation of leukocyte migration	0.000369546189050881
+GO:0002695	negative regulation of leukocyte activation	0.000181226071704447
+GO:0002696	positive regulation of leukocyte activation	6.92148583373259e-07
+GO:0002697	regulation of immune effector process	4.47156024827969e-05
+GO:0002699	positive regulation of immune effector process	0.000453458191652554
+GO:0002703	regulation of leukocyte mediated immunity	6.57946073050091e-05
+GO:0002791	regulation of peptide secretion	5.8311693997275e-05
+GO:0002886	regulation of myeloid leukocyte mediated immunity	1.79347764439021e-06
+GO:0003002	regionalization	9.29238991109259e-16
+GO:0006813	potassium ion transport	5.66309431280584e-10
+GO:0006816	calcium ion transport	2.60795395704452e-08
+GO:0006821	chloride transport	6.07005190999624e-05
+GO:0006836	neurotransmitter transport	2.00629177617011e-10
+GO:0006865	amino acid transport	0.00301356483011459
+GO:0006874	cellular calcium ion homeostasis	2.45765742882042e-09
+GO:0006968	cellular defense response	1.34521129728967e-05
+GO:0007159	leukocyte cell-cell adhesion	3.89924338532513e-10
+GO:0007187	G protein-coupled receptor signaling pathway, coupled to cyclic nucleotide second messenger	3.58519296395565e-11
+GO:0007188	adenylate cyclase-modulating G protein-coupled receptor signaling pathway	8.69694566264985e-10
+GO:0007189	adenylate cyclase-activating G protein-coupled receptor signaling pathway	0.000576751151581558
+GO:0007200	phospholipase C-activating G protein-coupled receptor signaling pathway	1.26085788928969e-07
+GO:0007204	positive regulation of cytosolic calcium ion concentration	4.92479879470018e-07
+GO:0007214	gamma-aminobutyric acid signaling pathway	4.20340374105683e-06
+GO:0007215	glutamate receptor signaling pathway	1.90595521243821e-09
+GO:0007218	neuropeptide signaling pathway	4.76220984236667e-09
+GO:0007229	integrin-mediated signaling pathway	0.00799979520185906
+GO:0007269	neurotransmitter secretion	6.33275758124503e-06
+GO:0007389	pattern specification process	7.4956060000784e-13
+GO:0007409	axonogenesis	4.96425234968154e-05
+GO:0007416	synapse assembly	9.5787448543195e-05
+GO:0007605	sensory perception of sound	0.00465106572329011
+GO:0007611	learning or memory	1.86893710182606e-16
+GO:0007612	learning	1.77538892007811e-08
+GO:0007613	memory	6.19957209722835e-10
+GO:0007626	locomotory behavior	4.31142280778379e-08
+GO:0007631	feeding behavior	0.000979257727666399
+GO:0008344	adult locomotory behavior	0.0053209203416043
+GO:0009914	hormone transport	5.02177695056307e-05
+GO:0009952	anterior/posterior pattern specification	4.54501507436639e-18
+GO:0009954	proximal/distal pattern formation	2.16037549877068e-06
+GO:0010038	response to metal ion	8.1749789026214e-06
+GO:0010959	regulation of metal ion transport	0.000119298786985537
+GO:0010975	regulation of neuron projection development	0.00803860191731713
+GO:0014047	glutamate secretion	0.00349301789400538
+GO:0015698	inorganic anion transport	0.00657213827568902
+GO:0015837	amine transport	0.000120897337086005
+GO:0015844	monoamine transport	3.64858258166195e-05
+GO:0016079	synaptic vesicle exocytosis	0.000126725741513572
+GO:0017156	calcium ion regulated exocytosis	2.33453137912888e-06
+GO:0017157	regulation of exocytosis	9.24307657408053e-15
+GO:0017158	regulation of calcium ion-dependent exocytosis	2.66679088955349e-05
+GO:0018108	peptidyl-tyrosine phosphorylation	0.00761476162328381
+GO:0018212	peptidyl-tyrosine modification	0.00967544360801987
+GO:0019233	sensory perception of pain	0.00167347617670413
+GO:0019722	calcium-mediated signaling	0.00595872410195112
+GO:0019882	antigen processing and presentation	4.59989566832193e-05
+GO:0019884	antigen processing and presentation of exogenous antigen	5.69299992859518e-05
+GO:0019886	antigen processing and presentation of exogenous peptide antigen via MHC class II	1.17687758866349e-07
+GO:0019932	second-messenger-mediated signaling	6.20395433154497e-11
+GO:0019933	cAMP-mediated signaling	0.000352343672085765
+GO:0019935	cyclic-nucleotide-mediated signaling	1.1718092826489e-05
+GO:0021537	telencephalon development	1.57475279543979e-05
+GO:0021549	cerebellum development	0.00386369934601009
+GO:0021700	developmental maturation	0.00422395761607445
+GO:0021871	forebrain regionalization	0.00532164100539264
+GO:0022037	metencephalon development	0.00278983255376207
+GO:0022407	regulation of cell-cell adhesion	3.5835093102433e-08
+GO:0022409	positive regulation of cell-cell adhesion	2.30135224210388e-09
+GO:0022898	regulation of transmembrane transporter activity	9.40271368847235e-07
+GO:0023061	signal release	1.46632338152999e-09
+GO:0030072	peptide hormone secretion	0.00103688456506519
+GO:0030073	insulin secretion	0.00682193397539292
+GO:0030098	lymphocyte differentiation	2.10282477123784e-05
+GO:0030198	extracellular matrix organization	2.12931477726675e-14
+GO:0030199	collagen fibril organization	0.00126430389647056
+GO:0030217	T cell differentiation	2.47939234831236e-05
+GO:0030326	embryonic limb morphogenesis	4.78534818889308e-07
+GO:0030534	adult behavior	1.37071946121063e-07
+GO:0030595	leukocyte chemotaxis	0.000907232510762725
+GO:0030878	thyroid gland development	0.000719648751313434
+GO:0030900	forebrain development	2.21256283312445e-06
+GO:0030902	hindbrain development	0.000251338800467788
+GO:0031644	regulation of neurological system process	7.50817538835385e-05
+GO:0032409	regulation of transporter activity	1.95839809867376e-06
+GO:0032412	regulation of ion transmembrane transporter activity	1.61059205301914e-06
+GO:0032418	lysosome localization	0.00387293445231042
+GO:0032496	response to lipopolysaccharide	0.000579676341575193
+GO:0032609	interferon-gamma production	0.000483725372791351
+GO:0032623	interleukin-2 production	0.00185701713503217
+GO:0032633	interleukin-4 production	0.00211080869977386
+GO:0032640	tumor necrosis factor production	0.000553389620843746
+GO:0032680	regulation of tumor necrosis factor production	0.000384336599725286
+GO:0032760	positive regulation of tumor necrosis factor production	0.00056708793225882
+GO:0032943	mononuclear cell proliferation	2.24833767192604e-09
+GO:0032944	regulation of mononuclear cell proliferation	3.7544227413444e-10
+GO:0032946	positive regulation of mononuclear cell proliferation	6.4202661035074e-08
+GO:0033003	regulation of mast cell activation	0.00129750165435838
+GO:0033006	regulation of mast cell activation involved in immune response	0.00619499323046064
+GO:0033555	multicellular organismal response to stress	0.000159766622515728
+GO:0033627	cell adhesion mediated by integrin	0.00744952415072054
+GO:0034341	response to interferon-gamma	8.5271426684693e-05
+GO:0034765	regulation of ion transmembrane transport	4.08036702000645e-17
+GO:0035107	appendage morphogenesis	2.65884048458289e-06
+GO:0035108	limb morphogenesis	2.65884048458289e-06
+GO:0035113	embryonic appendage morphogenesis	4.78534818889308e-07
+GO:0035115	embryonic forelimb morphogenesis	0.00247119710298938
+GO:0035136	forelimb morphogenesis	0.000395185833521008
+GO:0035249	synaptic transmission, glutamatergic	2.48513570639814e-09
+GO:0035270	endocrine system development	0.0028430961025942
+GO:0035418	protein localization to synapse	5.60894321435408e-06
+GO:0035637	multicellular organismal signaling	0.000103433273432385
+GO:0035640	exploration behavior	0.000298118208414082
+GO:0042035	regulation of cytokine biosynthetic process	0.00106715314028247
+GO:0042089	cytokine biosynthetic process	0.000737418012401938
+GO:0042098	T cell proliferation	9.60756793085409e-10
+GO:0042102	positive regulation of T cell proliferation	5.6123462695094e-07
+GO:0042107	cytokine metabolic process	0.000906642873586796
+GO:0042108	positive regulation of cytokine biosynthetic process	0.000749576350565683
+GO:0042110	T cell activation	5.14529870057195e-13
+GO:0042116	macrophage activation	4.23159036843358e-05
+GO:0042119	neutrophil activation	3.69736674159754e-06
+GO:0042129	regulation of T cell proliferation	1.16183549352107e-08
+GO:0042391	regulation of membrane potential	8.29762678084939e-21
+GO:0042596	fear response	0.00380798860681563
+GO:0043062	extracellular structure organization	6.78043876662768e-13
+GO:0043270	positive regulation of ion transport	6.50326537005834e-05
+GO:0043300	regulation of leukocyte degranulation	1.46944312097729e-06
+GO:0043303	mast cell degranulation	9.87785642505947e-06
+GO:0043304	regulation of mast cell degranulation	0.00384086915505213
+GO:0043312	neutrophil degranulation	2.44391497803221e-05
+GO:0043524	negative regulation of neuron apoptotic process	0.00952676212921988
+GO:0043583	ear development	0.000316591787437602
+GO:0045165	cell fate commitment	0.00178258770431571
+GO:0045576	mast cell activation	9.06063852600562e-06
+GO:0045582	positive regulation of T cell differentiation	0.00669511496517421
+GO:0045621	positive regulation of lymphocyte differentiation	0.00549363169790419
+GO:0045785	positive regulation of cell adhesion	1.13544106904779e-09
+GO:0045921	positive regulation of exocytosis	0.000119741422024642
+GO:0046631	alpha-beta T cell activation	9.67323003159707e-06
+GO:0046632	alpha-beta T cell differentiation	0.00198705817729965
+GO:0046635	positive regulation of alpha-beta T cell activation	0.00335114151864863
+GO:0046641	positive regulation of alpha-beta T cell proliferation	0.0065192130832387
+GO:0046651	lymphocyte proliferation	1.5806161749158e-09
+GO:0046879	hormone secretion	7.33778278247888e-05
+GO:0048002	antigen processing and presentation of peptide antigen	3.08114408230578e-05
+GO:0048167	regulation of synaptic plasticity	1.22368327676206e-17
+GO:0048168	regulation of neuronal synaptic plasticity	1.64889563589042e-08
+GO:0048172	regulation of short-term neuronal synaptic plasticity	7.14400269391545e-06
+GO:0048489	synaptic vesicle transport	7.10374665393229e-05
+GO:0048562	embryonic organ morphogenesis	4.82827331229514e-11
+GO:0048568	embryonic organ development	2.36564087394703e-09
+GO:0048704	embryonic skeletal system morphogenesis	2.99590435493263e-18
+GO:0048705	skeletal system morphogenesis	4.38970930146424e-14
+GO:0048706	embryonic skeletal system development	7.66544321857591e-19
+GO:0048732	gland development	0.00381156697874133
+GO:0048736	appendage development	1.21306131411238e-06
+GO:0048791	calcium ion-regulated exocytosis of neurotransmitter	0.000269601425182909
+GO:0048839	inner ear development	0.00244372854662477
+GO:0050432	catecholamine secretion	7.41842467320354e-05
+GO:0050433	regulation of catecholamine secretion	3.65620928062914e-05
+GO:0050663	cytokine secretion	0.00135022527183512
+GO:0050670	regulation of lymphocyte proliferation	3.02883729093438e-10
+GO:0050671	positive regulation of lymphocyte proliferation	4.9882400924832e-08
+GO:0050707	regulation of cytokine secretion	0.000986326966454842
+GO:0050708	regulation of protein secretion	0.000122834565334964
+GO:0050729	positive regulation of inflammatory response	0.00511932240247436
+GO:0050764	regulation of phagocytosis	6.96570454728862e-05
+GO:0050766	positive regulation of phagocytosis	0.00126374689228475
+GO:0050803	regulation of synapse structure or activity	8.30076154218931e-10
+GO:0050804	modulation of chemical synaptic transmission	1.09142663892432e-23
+GO:0050806	positive regulation of synaptic transmission	3.41104005846021e-09
+GO:0050807	regulation of synapse organization	4.79313976739231e-08
+GO:0050808	synapse organization	1.96023295243705e-15
+GO:0050863	regulation of T cell activation	3.25713340515978e-11
+GO:0050866	negative regulation of cell activation	0.000250524261806359
+GO:0050867	positive regulation of cell activation	3.80013455928143e-08
+GO:0050868	negative regulation of T cell activation	0.00403294147472255
+GO:0050870	positive regulation of T cell activation	8.83885480026101e-09
+GO:0050890	cognition	1.0491571970667e-15
+GO:0050900	leukocyte migration	1.42983879640432e-07
+GO:0050954	sensory perception of mechanical stimulus	0.000365963177794824
+GO:0051047	positive regulation of secretion	7.40823237325427e-07
+GO:0051048	negative regulation of secretion	5.39141965492771e-05
+GO:0051216	cartilage development	0.00070720072525045
+GO:0051249	regulation of lymphocyte activation	1.84625111474563e-05
+GO:0051251	positive regulation of lymphocyte activation	0.0026360127563538
+GO:0051480	regulation of cytosolic calcium ion concentration	8.80097769836102e-12
+GO:0051588	regulation of neurotransmitter transport	8.64861344674923e-05
+GO:0051592	response to calcium ion	0.00811615598847779
+GO:0051656	establishment of organelle localization	0.00139065300377528
+GO:0051668	localization within membrane	0.00184197827926897
+GO:0051932	synaptic transmission, GABAergic	0.00013566707288933
+GO:0051937	catecholamine transport	0.000830653960574938
+GO:0051952	regulation of amine transport	1.67947550031368e-05
+GO:0051963	regulation of synapse assembly	0.000168646733563813
+GO:0051965	positive regulation of synapse assembly	0.00540070652483175
+GO:0051966	regulation of synaptic transmission, glutamatergic	2.63679659956005e-05
+GO:0051968	positive regulation of synaptic transmission, glutamatergic	0.00503352680580938
+GO:0055074	calcium ion homeostasis	6.03523028775757e-10
+GO:0060078	regulation of postsynaptic membrane potential	5.51430377178823e-17
+GO:0060079	excitatory postsynaptic potential	1.53521964174807e-06
+GO:0060173	limb development	1.21306131411238e-06
+GO:0060272	embryonic skeletal joint morphogenesis	0.000145619970969437
+GO:0060291	long-term synaptic potentiation	0.000450085445157714
+GO:0060326	cell chemotaxis	0.00526289916459677
+GO:0060333	interferon-gamma-mediated signaling pathway	2.09257351402633e-06
+GO:0060359	response to ammonium ion	0.000103959292918795
+GO:0060627	regulation of vesicle-mediated transport	4.61250159257241e-12
+GO:0061448	connective tissue development	0.00877173134828634
+GO:0070371	ERK1 and ERK2 cascade	0.000921086600937841
+GO:0070372	regulation of ERK1 and ERK2 cascade	0.00230681810896981
+GO:0070588	calcium ion transmembrane transport	4.39735606537956e-05
+GO:0070661	leukocyte proliferation	8.54407711325145e-09
+GO:0070663	regulation of leukocyte proliferation	2.94156950567433e-09
+GO:0070665	positive regulation of leukocyte proliferation	2.75013977316235e-07
+GO:0070838	divalent metal ion transport	9.72541979038552e-07
+GO:0071216	cellular response to biotic stimulus	0.00599439032916413
+GO:0071219	cellular response to molecule of bacterial origin	0.00266279030357937
+GO:0071241	cellular response to inorganic substance	0.000170781876347606
+GO:0071242	cellular response to ammonium ion	0.000176446116842931
+GO:0071248	cellular response to metal ion	0.000247817018582682
+GO:0071346	cellular response to interferon-gamma	0.000212382913579232
+GO:0071706	tumor necrosis factor superfamily cytokine production	0.000459997681027945
+GO:0071805	potassium ion transmembrane transport	9.08942423097942e-10
+GO:0072498	embryonic skeletal joint development	0.000614988405746526
+GO:0072503	cellular divalent inorganic cation homeostasis	5.08674980555675e-09
+GO:0072511	divalent inorganic cation transport	1.82003006712525e-06
+GO:0072606	interleukin-8 secretion	0.000398553569507151
+GO:0097120	receptor localization to synapse	0.00206670758196099
+GO:0097479	synaptic vesicle localization	3.85413296270639e-05
+GO:0097480	establishment of synaptic vesicle localization	7.10374665393229e-05
+GO:0097529	myeloid leukocyte migration	0.00433263611494235
+GO:0099003	vesicle-mediated transport in synapse	3.73089253600225e-06
+GO:0099177	regulation of trans-synaptic signaling	3.66819101461724e-24
+GO:0099504	synaptic vesicle cycle	1.27205102864805e-07
+GO:0099565	chemical synaptic transmission, postsynaptic	3.5371223464459e-06
+GO:0099601	regulation of neurotransmitter receptor activity	0.00118595517596391
+GO:0099632	protein transport within plasma membrane	0.00112050263355602
+GO:0099637	neurotransmitter receptor transport	0.00112050263355602
+GO:0099643	signal release from synapse	6.33275758124503e-06
+GO:0110110	positive regulation of animal organ morphogenesis	0.00264572852814386
+GO:1900449	regulation of glutamate receptor signaling pathway	8.4178952399315e-06
+GO:1902107	positive regulation of leukocyte differentiation	0.00131586926605527
+GO:1903037	regulation of leukocyte cell-cell adhesion	5.16837811710663e-09
+GO:1903039	positive regulation of leukocyte cell-cell adhesion	1.54853477170906e-09
+GO:1903305	regulation of regulated secretory pathway	2.61734674308248e-13
+GO:1903307	positive regulation of regulated secretory pathway	1.13329928153049e-06
+GO:1903522	regulation of blood circulation	0.000964474843147227
+GO:1903531	negative regulation of secretion by cell	9.55322871783465e-06
+GO:1903532	positive regulation of secretion by cell	3.50546556480772e-06
+GO:1903555	regulation of tumor necrosis factor superfamily cytokine production	0.000223092442263008
+GO:1903557	positive regulation of tumor necrosis factor superfamily cytokine production	0.000256445488581893
+GO:1904062	regulation of cation transmembrane transport	5.33929538124378e-06
+GO:1904645	response to amyloid-beta	0.00162732160415633
+GO:2000311	regulation of AMPA receptor activity	0.000151691078993272
+GO:2000463	positive regulation of excitatory postsynaptic potential	0.00210495492504552
+GO:2000482	regulation of interleukin-8 secretion	0.000462613753935786
+GO:2000484	positive regulation of interleukin-8 secretion	0.00279189803116903
+GO:2001257	regulation of cation channel activity	2.05256377924019e-07
+REAC:R-HSA-112308	Presynaptic depolarization and calcium channel opening	0.00432812896011235
+REAC:R-HSA-112310	Neurotransmitter release cycle	6.16285430504271e-05
+REAC:R-HSA-112314	Neurotransmitter receptors and postsynaptic signal transmission	3.43368940723542e-15
+REAC:R-HSA-112315	Transmission across Chemical Synapses	1.20670695452043e-23
+REAC:R-HSA-112316	Neuronal System	4.63887839132243e-44
+REAC:R-HSA-1296071	Potassium Channels	2.93174587379429e-14
+REAC:R-HSA-1296072	Voltage gated Potassium channels	1.9060636257648e-08
+REAC:R-HSA-1442490	Collagen degradation	0.000907232510762725
+REAC:R-HSA-1474228	Degradation of the extracellular matrix	0.00282801300574238
+REAC:R-HSA-1474244	Extracellular matrix organization	7.41741555947034e-11
+REAC:R-HSA-1474290	Collagen formation	1.04183271003802e-06
+REAC:R-HSA-1650814	Collagen biosynthesis and modifying enzymes	0.000119463989917882
+REAC:R-HSA-181429	Serotonin Neurotransmitter Release Cycle	6.22851631124914e-06
+REAC:R-HSA-181430	Norepinephrine Neurotransmitter Release Cycle	0.00195862086344199
+REAC:R-HSA-198933	Immunoregulatory interactions between a Lymphoid and a non-Lymphoid cell	7.36857206413156e-09
+REAC:R-HSA-2022090	Assembly of collagen fibrils and other multimeric structures	2.6952275387025e-07
+REAC:R-HSA-202427	Phosphorylation of CD3 and TCR zeta chains	2.36225724697369e-09
+REAC:R-HSA-202430	Translocation of ZAP-70 to Immunological synapse	9.74095311865373e-11
+REAC:R-HSA-202433	Generation of second messenger molecules	2.77782150224045e-08
+REAC:R-HSA-210500	Glutamate Neurotransmitter Release Cycle	1.83797493522355e-05
+REAC:R-HSA-212676	Dopamine Neurotransmitter Release Cycle	0.000306291777879511
+REAC:R-HSA-2132295	MHC class II antigen presentation	1.20565134104457e-05
+REAC:R-HSA-216083	Integrin cell surface interactions	6.74590422172278e-06
+REAC:R-HSA-2243919	Crosslinking of collagen fibrils	0.000505132880797874
+REAC:R-HSA-264642	Acetylcholine Neurotransmitter Release Cycle	0.000940969325510883
+REAC:R-HSA-3000171	Non-integrin membrane-ECM interactions	0.00337470872394716
+REAC:R-HSA-3000178	ECM proteoglycans	2.85109621252012e-05
+REAC:R-HSA-373076	Class A/1 (Rhodopsin-like receptors)	3.00768099013051e-13
+REAC:R-HSA-373760	L1CAM interactions	0.00266000100847863
+REAC:R-HSA-375276	Peptide ligand-binding receptors	3.18461693137631e-07
+REAC:R-HSA-375280	Amine ligand-binding receptors	0.00763244134239478
+REAC:R-HSA-388841	Costimulation by the CD28 family	4.56200876107412e-05
+REAC:R-HSA-389948	PD-1 signaling	2.42445602525034e-10
+REAC:R-HSA-397014	Muscle contraction	4.75792744238581e-07
+REAC:R-HSA-416476	G alpha (q) signalling events	0.000607412300658356
+REAC:R-HSA-418594	G alpha (i) signalling events	1.58970821008981e-09
+REAC:R-HSA-449147	Signaling by Interleukins	0.00012570284124049
+REAC:R-HSA-500792	GPCR ligand binding	2.60636811338997e-18
+REAC:R-HSA-5576891	Cardiac conduction	6.11478908148276e-09
+REAC:R-HSA-5576892	Phase 0 - rapid depolarisation	2.17854585568537e-05
+REAC:R-HSA-5617472	Activation of anterior HOX genes in hindbrain development during early embryogenesis	0.00302064470576659
+REAC:R-HSA-5619507	Activation of HOX genes during differentiation	0.00302064470576659
+REAC:R-HSA-6783783	Interleukin-10 signaling	2.57649573566999e-07
+REAC:R-HSA-6785807	Interleukin-4 and Interleukin-13 signaling	4.77805050812097e-06
+REAC:R-HSA-6794361	Neurexins and neuroligins	0.000560953094891029
+REAC:R-HSA-6794362	Protein-protein interactions at synapses	4.93680347005642e-06
+REAC:R-HSA-6798695	Neutrophil degranulation	6.23355626154215e-05
+REAC:R-HSA-877300	Interferon gamma signaling	1.03178410000836e-08
+REAC:R-HSA-888590	GABA synthesis, release, reuptake and degradation	0.000508574404795479
+REAC:R-HSA-8948216	Collagen chain trimerization	3.46722181931687e-05
+REAC:R-HSA-977443	GABA receptor activation	2.15029598964744e-05

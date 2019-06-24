@@ -480,6 +480,7 @@ lnc_cna_cancer_data2 = readRDS("new_results_CNAs_April17.rds") #evaluated 120/17
   lnc_cna_cancer_data2$overall_correlation = as.numeric(as.character(lnc_cna_cancer_data2$overall_correlation))
   lnc_cna_cancer_data2$overall_correlation_p_fdr = p.adjust(lnc_cna_cancer_data2$overall_correlation_p)
   lnc_cna_cancer_data2$ks_test_fdr = p.adjust(lnc_cna_cancer_data2$ks_test)
+  lnc_cna_cancer_data2$cox_p_fdr = p.adjust(lnc_cna_cancer_data2$cox_p)
 
   #get fdr by cancer type - if only one test then there weren't multiple tests done
   #dats = split(lnc_cna_cancer_data2, by="cancer")
