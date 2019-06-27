@@ -19,7 +19,7 @@ library(wesanderson)
 results = list.files()
 print(length(results))
 
-results = results[which(str_detect(results, "cindices_.rds"))]
+results = results[which(str_detect(results, "cindices_10000_.rds"))]
 
 #break into cancer types 
 get_canc = function(file){
@@ -55,7 +55,7 @@ canc_conv$type = factor(canc_conv$type, levels = res$type)
 
 mypal = wes_palette("FantasticFox")
 
-pdf("cindices_real_march2019_1000.pdf", width=9, height=3)
+pdf("cindices_real_march2019_10000.pdf", width=9, height=3)
 g = ggboxplot(canc_conv, "type", "cindex", bxp.errorbar	=TRUE, 
 fill="all_res", color="black", error.plot = "errorbar", notch = TRUE, width = 0.5, palette=c("grey", "dodgerblue4", "orange"))
 g =  g + theme_minimal()
@@ -63,7 +63,7 @@ g = ggpar(g, x.text.angle = 65, legend.title="Predictors")
 print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red"))
 dev.off()
 
-saveRDS(all_res, file="all_res_REAL_EN_1000_runs_0606.rds")
+saveRDS(all_res, file="all_res_REAL_EN_10000_runs_0606.rds")
 #scp all_res_REAL_EN_1000_runs_0606.rds /u/kisaev/
 #scp kisaev@chickenwire.oicr.on.ca:/u/kisaev/all_res_REAL_EN_1000_runs_0606.rds /Users/kisaev/Documents/lncRNAs
 
@@ -130,12 +130,12 @@ dev.off()
 
 results = list.files()
 print(length(results))
-genes = results[which(str_detect(results, "genes_.rds"))]
+genes = results[which(str_detect(results, "genes_10000_.rds"))]
 
 #break into cancer types 
 get_canc = function(file){
   dat = readRDS(file)
-  dat = as.data.table(filter(dat, num_rounds_selected >=500))
+  dat = as.data.table(filter(dat, num_rounds_selected >=5000))
   return(dat)
 }
 
@@ -159,9 +159,18 @@ dim(filter(all_res, hr <1))
 all_res$hr = as.numeric(all_res$hr)
 median(filter(all_res, hr <1)$hr)
 
-saveRDS(all_res, file="/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript/lncRNAs_selected_by_EN_april14.rds")
+saveRDS(all_res, file="/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript/lncRNAs_selected_by_EN_april14_10000.rds")
 
 #qsub -cwd -b y -N CVs -l h_vmem=75g "module load R/3.4.0;Rscript Figure2c_analysis.R"
+
+#compare to 1000 version
+old = readRDS("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript/lncRNAs_selected_by_EN_april14.rds")
+
+old_test = merge(old, all_res, by="gene")
+all_res = merge(all_res, old, by="gene") #176/180 in 10000 present in 1000 version
+
+
+
 
 
 
