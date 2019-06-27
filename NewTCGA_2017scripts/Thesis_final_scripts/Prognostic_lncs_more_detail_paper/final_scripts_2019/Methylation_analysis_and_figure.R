@@ -252,6 +252,8 @@ z = which(as.numeric(rna$OS.time) == 0)
 rna = rna[-z,]
 table(rna$type)
 
+genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% probes$combo)]))) #77/179 have methylation probes overlapping them 
+
 get_data = function(lnc){
 	comb = lnc
   print(lnc)
@@ -522,10 +524,11 @@ get_data = function(lnc){
     geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
     stat_n_text(size = 6) + 
     xlab("lncRNA Methylation status") +
-    ylab("log1p(FPKM-UQ)") + stat_compare_means()+
+    ylab("log1p(FPKM-UQ)") + #stat_compare_means()+
     geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15))+
-    annotate("text", x = 1.3, y =ycord , label = text_add)+
-    scale_colour_manual(values=c("royalblue1", "gainsboro", "brown3"))
+        scale_colour_manual(values=c("royalblue1", "grey", "brown3"))
+
+    #annotate("text", x = 1.3, y =ycord , label = text_add)+
 
     pat_dat = new
     pat_dat$median = as.character(pat_dat$median)
@@ -556,8 +559,14 @@ get_data = function(lnc){
     #check if prognostic 
     cox_p = glance(coxph(Surv(OS.time, OS) ~ group, data = new))[8]
     newdat = new
-    newdat$OS.time = newdat$OS.time/365
-    newdat$group = factor(newdat$group, levels=c("RISK","nonRISK"))
+    #newdat$OS.time = newdat$OS.time/365
+    
+    if(med_risk == "Low"){
+    newdat$group = factor(newdat$group, levels=c("RISK","nonRISK"))}
+
+    if(med_risk == "High"){
+    newdat$group = factor(newdat$group, levels=c("nonRISK","RISK"))}    
+
     fit <- survfit(Surv(OS.time, OS) ~ group, data = newdat)
           s <- ggsurvplot(
           title = paste(cancer, name),
@@ -577,9 +586,9 @@ get_data = function(lnc){
           pval = TRUE,             # show p-value of log-rank test.
           conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-          xlim = c(0,5),        # present narrower X axis, but not affect
+          #xlim = c(0,5),        # present narrower X axis, but not affect
                             # survival estimates.
-          break.time.by = 1,     # break X axis in time intervals by 500.
+          #break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
           #palette = mypal[c(4,1)],
           palette = "npg", 
@@ -790,11 +799,11 @@ get_data = function(lnc){
     geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
     stat_n_text(size = 6) + 
     xlab("lncRNA Methylation status") +
-    ylab("log1p(FPKM-UQ)") + stat_compare_means()+
+    ylab("log1p(FPKM-UQ)") + #stat_compare_means()+
     geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15))+
-    annotate("text", x = 1.3, y =ycord , label = text_add)+
-    scale_colour_manual(values=c("royalblue1", "gainsboro", "brown3"))
+        scale_colour_manual(values=c("royalblue1", "grey", "brown3"))
 
+    #annotate("text", x = 1.3, y =ycord , label = text_add)
     #+
     #colScale +
 
@@ -827,8 +836,14 @@ get_data = function(lnc){
     #check if prognostic 
     cox_p = glance(coxph(Surv(OS.time, OS) ~ group, data = new))[8]
     newdat = new
-    newdat$OS.time = newdat$OS.time/365
-    newdat$group = factor(newdat$group, levels=c("RISK","nonRISK"))
+    #newdat$OS.time = newdat$OS.time/365
+    
+    if(med_risk == "Low"){
+    newdat$group = factor(newdat$group, levels=c("RISK","nonRISK"))}
+
+    if(med_risk == "High"){
+    newdat$group = factor(newdat$group, levels=c("nonRISK","RISK"))}  
+
     fit <- survfit(Surv(OS.time, OS) ~ group, data = newdat)
           s <- ggsurvplot(
           title = paste(cancer, name),
@@ -848,9 +863,9 @@ get_data = function(lnc){
           pval = TRUE,             # show p-value of log-rank test.
           conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-          xlim = c(0,5),        # present narrower X axis, but not affect
+          #xlim = c(0,5),        # present narrower X axis, but not affect
                             # survival estimates.
-          break.time.by = 1,     # break X axis in time intervals by 500.
+          #break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
           #palette = mypal[c(4,1)],
           palette = "npg", 
@@ -946,10 +961,9 @@ get_data = function(lnc){
 }
 }
 
-#pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
-#genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% probes$combo)]))) #77/179 have methylation probes overlapping them 
-#lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
-#dev.off()
+pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
+lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
+dev.off()
 
 lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
 lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
@@ -957,7 +971,7 @@ lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
 z= which(is.na(lnc_meth_cancer_data2$cancer))
 lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #141 lncRNA-probe pairs evaluated 
 lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer)
-#saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Nov1.rds")
+saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Nov1.rds")
 #73 unique lncRNA-cancer pairs evaluated 
 
 lnc_meth_cancer_data2 = readRDS("new_results_methylation_Nov1.rds")

@@ -358,8 +358,14 @@ get_data = function(lnc){
     print(ggsurvplot(fit, data = df, pval = TRUE, title=paste(cancer, df$name2[1])))
 
     newdat = df
-    newdat$OS.time = newdat$OS.time/365
-    newdat$group = factor(newdat$group, levels=c("RISK","nonRISK"))
+    #newdat$OS.time = newdat$OS.time/365
+    
+    if(risk == "high_expression"){
+    newdat$group = factor(newdat$group, levels=c("RISK","nonRISK"))}
+
+    if(risk == "low_expression"){
+    newdat$group = factor(newdat$group, levels=c("nonRISK","RISK"))}    
+    
     fit <- survfit(Surv(OS.time, OS) ~ group, data = newdat)
           s <- ggsurvplot(
           title = paste(cancer, df$name2[1]),
@@ -379,9 +385,9 @@ get_data = function(lnc){
           pval = TRUE,             # show p-value of log-rank test.
           conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-          xlim = c(0,5),        # present narrower X axis, but not affect
+          #xlim = c(0,5),        # present narrower X axis, but not affect
                             # survival estimates.
-          break.time.by = 1,     # break X axis in time intervals by 500.
+          #break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
           #palette = mypal[c(4,1)],
           palette = "npg", 
@@ -396,10 +402,10 @@ get_data = function(lnc){
     geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +
     stat_n_text(size = 6) + 
     xlab("lncRNA CNA status") +
-    ylab("log1p(FPKM-UQ)") + stat_compare_means()+
+    ylab("log1p(FPKM-UQ)") + #stat_compare_means()+
     geom_boxplot(width=.1) + theme(text = element_text(size=15), axis.text = element_text(size=15))+
-    scale_colour_manual(values=c("royalblue1", "gainsboro", "brown3")) +
-    annotate("text", x = 1.3, y =ycord , label = text_add)
+    scale_colour_manual(values=c("royalblue1", "grey", "brown3")) #+
+    #annotate("text", x = 1.3, y =ycord , label = text_add)
 
       #print(sp1)
       #print(sp2)
@@ -456,13 +462,13 @@ get_data = function(lnc){
 }
 }
 
-#pdf("candidate_lncRNAs_CNA_versus_Expression_Nov1_new_plots.pdf")
-#lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
-#dev.off()
+pdf("candidate_lncRNAs_CNA_versus_Expression_Nov1_new_plots.pdf")
+lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
+dev.off()
 
-#lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
-#lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
-#saveRDS(lnc_cna_cancer_data2, file="new_results_CNAs_April17.rds")
+lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
+lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
+saveRDS(lnc_cna_cancer_data2, file="new_results_CNAs_April17.rds")
 
 #lnc_cna_cancer_data2 = readRDS("new_results_CNAs_Sept27.rds") #evaluated 120/179 lncRNA-cancer combos
 lnc_cna_cancer_data2 = readRDS("new_results_CNAs_April17.rds") #evaluated 120/179 lncRNA-cancer combos
