@@ -462,13 +462,13 @@ get_data = function(lnc){
 }
 }
 
-pdf("candidate_lncRNAs_CNA_versus_Expression_Nov1_new_plots.pdf")
-lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
-dev.off()
+#pdf("candidate_lncRNAs_CNA_versus_Expression_Nov1_new_plots.pdf")
+#lnc_cna_cancer_data = llply(genes, get_data, .progress="text")
+#dev.off()
 
-lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
-lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
-saveRDS(lnc_cna_cancer_data2, file="new_results_CNAs_April17.rds")
+#lnc_cna_cancer_data2 = as.data.frame(do.call("rbind", lnc_cna_cancer_data))
+#lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
+#saveRDS(lnc_cna_cancer_data2, file="new_results_CNAs_April17.rds")
 
 #lnc_cna_cancer_data2 = readRDS("new_results_CNAs_Sept27.rds") #evaluated 120/179 lncRNA-cancer combos
 lnc_cna_cancer_data2 = readRDS("new_results_CNAs_April17.rds") #evaluated 120/179 lncRNA-cancer combos
@@ -506,7 +506,7 @@ lnc_cna_cancer_data2 = as.data.table(lnc_cna_cancer_data2)
 #lnc_cna_cancer_data2 = as.data.table(filter(lnc_cna_cancer_data2, abs(overall_correlation) >= 0.2))
 
 #check which have sig overall correlation and sig kruskal wallis 
-sig_diff = as.data.table(filter(lnc_cna_cancer_data2, overall_correlation_p_fdr <=0.05, ks_test_fdr <=0.05))
+sig_diff = as.data.table(filter(lnc_cna_cancer_data2, overall_correlation_p_fdr <=0.05))
 #positive correlation
 sig_diff = as.data.table(filter(sig_diff, stat_exp_cor > 0))
 
@@ -639,15 +639,21 @@ write.table(data1, file=paste(date, "lncRNAs_sig_associated_with_CNAs.csv", sep=
 summary(sig_diff$overall_correlation)
 table(sig_diff$stat)
 
+write.csv(data1, file=paste(date, "final_14_cnas_candidates.csv", sep="_"), quote=F, row.names=F)
+
+meth= fread("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_WINTER2018_Methylation/2019-07-08_final_8_methylation_candidates.csv")
+
+#2 in both CNAs and methylation 
+#so 6 unique methylation
+#12 unique cnas 
+
+#20 total genes 
 
 
-
-
-
-
-
-
-
+lnc_meth_cancer_data2 = readRDS("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_WINTER2018_Methylation/new_results_methylation_Nov1.rds")
+all_meth = unique(lnc_meth_cancer_data2$gene) #33
+all_cnas = unique(unlist(lnc_cna_cancer_data2$gene))
+all = unique(c(all_meth, all_cnas))
 
 
 

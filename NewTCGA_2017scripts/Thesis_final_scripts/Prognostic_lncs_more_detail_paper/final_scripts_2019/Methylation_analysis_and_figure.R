@@ -961,17 +961,17 @@ get_data = function(lnc){
 }
 }
 
-pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
-lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
-dev.off()
+#pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
+#lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
+#dev.off()
 
-lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
-lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
-lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
-z= which(is.na(lnc_meth_cancer_data2$cancer))
-lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #141 lncRNA-probe pairs evaluated 
-lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer)
-saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Nov1.rds")
+#lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
+#lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
+#lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
+#z= which(is.na(lnc_meth_cancer_data2$cancer))
+#lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #141 lncRNA-probe pairs evaluated 
+#lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer)
+#saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Nov1.rds")
 #73 unique lncRNA-cancer pairs evaluated 
 
 lnc_meth_cancer_data2 = readRDS("new_results_methylation_Nov1.rds")
@@ -1230,8 +1230,8 @@ saveRDS(barplot, file="methylation_data_23_candidates_final_figure_oct10.rds")
 
 date = Sys.Date()
 
-write.table(barplot, file=paste(date, "methylation_data_23_candidates_final_figure.csv", sep="_"), row.names=FALSE, na="", col.names = FALSE, sep=",")
-
+write.table(barplot, file=paste(date, "methylation_data_8_candidates_final_figure.csv", sep="_"), row.names=FALSE, na="", col.names = FALSE, sep=",")
+write.csv(sig_diff, file=paste(date, "final_8_methylation_candidates.csv", sep="_"), quote=F, row.names=F)
 
 
 
