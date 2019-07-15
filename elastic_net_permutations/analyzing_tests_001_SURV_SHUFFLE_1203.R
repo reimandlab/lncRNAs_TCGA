@@ -1,4 +1,4 @@
-setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/surv_shuffle_0315")
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript/surv_shuffle_0315")
 
 library(data.table)
 library(dplyr)
@@ -10,7 +10,7 @@ library(ggplot2)
 library(stringr)
 
 #read in real files 
-real_dat = readRDS("all_res_REAL_EN_runs_2203.rds")
+real_dat = readRDS("all_res_REAL_EN_10000_runs_0606.rds")
 
 ########################################################################
 #1. evaluate c-indicies 

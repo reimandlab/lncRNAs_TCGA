@@ -6,6 +6,8 @@ library(glmnet)
 library(survcomp)
 library(caret)
 library(stringr)
+library(EnvStats)
+library(patchwork)
 
 source("universal_LASSO_survival_script.R")
 
@@ -15,16 +17,44 @@ library(viridis)
 library(patchwork)
 library(caret)  
 library(Rtsne)
-library("FactoMineR")
+library(data.table)
+library(GenomicRanges)
 
+#------DATA---------------------------------------------------------
+#UCSC gene info
+ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
+#z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
+#ucsc <- ucsc[z,]
+#z <- which(duplicated(ucsc[,8]))
+#ucsc <- ucsc[-z,]
+
+#fantom 
+fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
+extract3 <- function(row){
+  gene <- as.character(row[[1]])
+  ens <- gsub("\\..*","",gene)
+  return(ens)
+}
+fantom[,1] <- apply(fantom[,1:2], 1, extract3)
+#remove duplicate gene names (gene names with multiple ensembl ids)
+z <- which(duplicated(fantom$CAT_geneName))
+rm <- fantom$CAT_geneName[z]
+z <- which(fantom$CAT_geneName %in% rm)
+fantom <- fantom[-z,]
+
+#save RNA and PCG files locally
+#saveRDS(rna, file="rna_lncRNAs_expression_data_june29.rds")
+#saveRDS(pcg, file="rna_pcg_expression_data_june29.rds")
+
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
 #------FEATURES-----------------------------------------------------
 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = filter(allCands, data=="TCGA") #168 unique lncRNA-cancer combos, #166 unique lncRNAs 
+#allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_Aug8.rds")
+allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
-canc_conv = rna[,which(colnames(rna) %in% c("Cancer", "type"))]
-canc_conv = canc_conv[!duplicated(canc_conv), ]
 
 mypal = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
   "#72A93B", "#74DAE3" ,"#49B98D" ,"#D97B8F" ,"#70A2A4", "#64709B" ,"#DFBF38" ,"#61EA4F" ,

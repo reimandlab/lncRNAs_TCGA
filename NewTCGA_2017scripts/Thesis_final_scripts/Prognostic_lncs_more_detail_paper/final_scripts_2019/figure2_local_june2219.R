@@ -10,9 +10,9 @@ date = Sys.Date()
 
 
 #figure 2 
-res = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+res = readRDS("Documents/final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 res = as.data.table(filter(res, data=="TCGA"))
-canc_conv = readRDS("canc_conv.rds")
+canc_conv = readRDS("Documents/canc_conv.rds")
 colnames(canc_conv)[2] = "cancer"
 z=which(res$gene_name == "HOXA-AS4")
 res$gene_name[z] = "HOXA10-AS"
