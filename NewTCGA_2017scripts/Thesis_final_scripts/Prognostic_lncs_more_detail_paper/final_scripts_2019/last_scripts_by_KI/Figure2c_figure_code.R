@@ -406,8 +406,8 @@ random_lncs_vs_cand1$wp_lnc_clinical_fdr = p.adjust(random_lncs_vs_cand1$wp_lnc_
 random_lncs_vs_cand1$wp_lnc_clinical_fdr = -log10(random_lncs_vs_cand1$wp_lnc_clinical_fdr)
 random_lncs_vs_cand1$wp_lnc_clinical_combo = p.adjust(random_lncs_vs_cand1$wp_lnc_clinical_combo, method="fdr")
 
-z = which(random_lncs_vs_cand1$wp_lnc_clinical_fdr == "Inf")
-random_lncs_vs_cand1 = random_lncs_vs_cand1[-z,]
+#z = which(random_lncs_vs_cand1$wp_lnc_clinical_fdr == "Inf")
+#random_lncs_vs_cand1 = random_lncs_vs_cand1[-z,]
 
 #random_lncs_vs_cand1$wp_lnc_random_fdr = p.adjust(random_lncs_vs_cand1$wp_lnc_random, method="fdr")
 #random_lncs_vs_cand1$wp_lnc_random_fdr = -log10(random_lncs_vs_cand1$wp_lnc_random_fdr)
@@ -447,6 +447,9 @@ random_lncs_vs_cand1$sig[random_lncs_vs_cand1$wp_lnc_clinical_fdr >= -log10(0.05
 random_lncs_vs_cand1$sig[random_lncs_vs_cand1$wp_lnc_clinical_fdr < -log10(0.05)] = "No"
 random_lncs_vs_cand1$sig = factor(random_lncs_vs_cand1$sig, levels=c("Yes", "No"))
 random_lncs_vs_cand1$type = as.factor(random_lncs_vs_cand1$type)
+
+#supp table 4
+write.csv(random_lncs_vs_cand1, file="SuppTable4_final_cands_wcindices.csv", quote=F, row.names=F)
 
 #part a
 pdf("figure2_e_lncRNA_cands_vs_clinical_variables.pdf", width=6, height=6)

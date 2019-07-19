@@ -571,7 +571,7 @@ get_data = function(lnc){
           s <- ggsurvplot(
           title = paste(cancer, name),
           fit, 
-          xlab = "Time (Years)", 
+          xlab = "Time (Days)", 
           #surv.median.line = "hv",
           font.main = c(14, "bold", "black"),
           font.x = c(12, "plain", "black"),
@@ -848,7 +848,7 @@ get_data = function(lnc){
           s <- ggsurvplot(
           title = paste(cancer, name),
           fit, 
-          xlab = "Time (Years)", 
+          xlab = "Time (Days)", 
           #surv.median.line = "hv",
           font.main = c(14, "bold", "black"),
           font.x = c(12, "plain", "black"),
@@ -961,17 +961,17 @@ get_data = function(lnc){
 }
 }
 
-#pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
-#lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
-#dev.off()
+pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
+lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
+dev.off()
 
-#lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
-#lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
-#lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
-#z= which(is.na(lnc_meth_cancer_data2$cancer))
-#lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #141 lncRNA-probe pairs evaluated 
-#lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer)
-#saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Nov1.rds")
+lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
+lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
+lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
+z= which(is.na(lnc_meth_cancer_data2$cancer))
+lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #141 lncRNA-probe pairs evaluated 
+lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer)
+saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Nov1.rds")
 #73 unique lncRNA-cancer pairs evaluated 
 
 lnc_meth_cancer_data2 = readRDS("new_results_methylation_Nov1.rds")
