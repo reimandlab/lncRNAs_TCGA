@@ -135,8 +135,8 @@ clin = readRDS("clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
 lgg = clin[[1]]
 gbm = clin[[12]]
 
-saveRDS(lgg, file="TCGA_lgg_wsubtype_info_biolinks.rds")
-saveRDS(gbm, file="TCGA_gbm_wsubtype_info_biolinks.rds")
+#saveRDS(lgg, file="TCGA_lgg_wsubtype_info_biolinks.rds")
+#saveRDS(gbm, file="TCGA_gbm_wsubtype_info_biolinks.rds")
 
 #--------LOOK AT ASSOCIATIONS BETWEEN EXPRESSION-------------------------------
 
@@ -695,11 +695,13 @@ dups_dat = ldply(llply(dups, get_unique))
 clin_results = rbind(dups_dat, unique)
 length(unique(clin_results$canc_lnc_clin))
 
+clin_results$better[clin_results$better == "V"] = "*"
+
 pdf("summary_biolinks_subtypes_lncRNA_exp_April18.pdf", height=6, width=10)
 #make geom_tile plot
 ggplot(clin_results, aes(name, colname)) +
   geom_tile(aes(fill = -log10(fdr_fig), color=clin_sig, width=0.7, height=0.7), size=0.55) +
-  theme_bw() + geom_text(aes(label = better), size=2.5) + 
+  theme_bw() + #geom_text(aes(label = better), size=2.5) + 
   theme(legend.title=element_blank(), legend.position="bottom", axis.title.x=element_blank(), 
     axis.text.x = element_text(angle = 45, hjust = 1, size=8)) +
     scale_fill_gradient(low = "tan1", high = "darkred")+
@@ -713,14 +715,17 @@ dev.off()
 
 write.csv(clin_results, file="cleaned_clinical_variables_associations_data_sept28_post_cleanup_final_figure_data.csv", quote=F, row.names=F)
 
-pdf("summary_clinical_concordances_vs_lnc_scatterplot_april18.pdf", width=5, height=5)
+clin_results$anova_sig_combo_clin = ""
+clin_results$anova_sig_combo_clin[clin_results$clin_vs_combo_anova_fdr < 0.05] = "Sig"
+
+pdf("summary_clinical_concordances_vs_lnc_scatterplot_april18_wide.pdf", width=10, height=10)
 g = ggplot(clin_results, aes(clin_concordance, concordance_combo_model, label=canc_lnc_clin)) +
-  geom_point(aes(fill=type), 
-       colour="black", pch=21, size=1.75) +
+  geom_point(aes(colour=type, 
+       shape=anova_sig_combo_clin), fill="white", size=1.75) +
  #scale_size(range = c(0, 3))+
     #scale_colour_manual(values = mypal[c(2:5, 9,8)]) +
     #scale_fill_manual(values = sample(mypal5,9)) +  
-    scale_fill_brewer(palette="Set1")+
+    scale_colour_brewer(palette="Set1")+
     xlab("Clinical Concordance") + ylab("lncRNA & Clinical Combined Concordance") + theme_classic() +
     theme(legend.position = "top", axis.text = element_text(size=12), 
       legend.text=element_text(size=10), legend.title=element_text(size=10)) +
