@@ -596,7 +596,7 @@ canc_results_pairs_types2$HR_pair = factor(canc_results_pairs_types2$HR_pair, le
 
 cols = RColorBrewer::brewer.pal(8, "Set1")
 
-pdf("final_figure_1B_parttwoa.pdf", width=5, height=5)
+pdf("final_figure_1B_parttwoa_2019.pdf", width=5, height=5)
 # Change density plot fill colors by groups
 g1 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both \nUnfavourable"], aes(x=cor, fill=HR_pair), color="black") +
   geom_density(alpha=0.4, aes(x=cor, y=..scaled..)) + xlab("") + scale_fill_manual(values=cols[1]) +
@@ -604,9 +604,10 @@ g1 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both
 g1 = ggpar(g1, 
       font.tickslab = c(15,"plain", "black"), font.legend=c(4, "plain", "black"), xlim=c(-1,1))+
 theme(legend.position="none")
+print(g1)
 dev.off()
 
-pdf("final_figure_1B_parttwob.pdf", width=5, height=5)
+pdf("final_figure_1B_parttwob_2019.pdf", width=5, height=5)
 
 # Change density plot fill colors by groups
 g2 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Opposite \nHRs"], aes(x=cor, fill=HR_pair), color="black") +
@@ -616,9 +617,10 @@ g2 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Oppo
 g2 = ggpar(g2, 
       font.tickslab = c(15,"plain", "black"), font.legend=c(4, "plain", "black"), xlim=c(-1,1))+
 theme(legend.position="none")
+print(g2)
 dev.off()
 
-pdf("final_figure_1B_parttwoc.pdf", width=5, height=5)
+pdf("final_figure_1B_parttwoc_2019.pdf", width=5, height=5)
 # Change density plot fill colors by groups
 g3 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both \nFavourable"], aes(x=cor, fill=HR_pair), color="black") +
   geom_density(alpha=0.4, aes(x=cor, y=..scaled..)) + xlab("Spearman Correlation") + scale_fill_manual(values=cols[3]) + 
@@ -627,6 +629,7 @@ g3 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both
 g3 = ggpar(g3, 
       font.tickslab = c(15,"plain", "black"), font.legend=c(4, "plain", "black"), xlim=c(-1,1))+
 theme(legend.position="none")
+print(g3)
 dev.off()
 
 pdf("final_figure2b_2019.pdf")

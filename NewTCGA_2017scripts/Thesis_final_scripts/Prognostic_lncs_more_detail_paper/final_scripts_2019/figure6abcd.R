@@ -43,6 +43,8 @@ all_de_results$combo = paste(all_de_results$lnc, all_de_results$cancer) #148/158
 all_de_results = as.data.table(filter(all_de_results, combo %in% allCands$combo, adj.P.Val <= 0.05))
 
 full_diff_exp = all_de_results
+hoxa10as = as.data.table(filter(full_diff_exp, cancer == "LGG", lnc == "ENSG00000253187"))
+saveRDS(hoxa10as, file="2019_08_hoxa10as_diff_exp_genes_TCGA.rds")
 
 #------make matrix of lncRNA candidates within each cancer type
 #and their associated PCGs
@@ -146,6 +148,9 @@ all_lnc_pathways_df$combo = paste(all_lnc_pathways_df$lnc, all_lnc_pathways_df$c
 all_lnc_pathways_df = as.data.table(filter(all_lnc_pathways_df, FDR <= 0.01))
 sig_paths_sum = as.data.table(table(all_lnc_pathways_df$combo))
 sig_paths_sum = sig_paths_sum[order(N)]
+
+hoxa10as_paths = as.data.table(filter(all_lnc_pathways_df, lnc == "ENSG00000253187", canc=="LGG"))
+saveRDS(hoxa10as_paths, file="2019_08_hoxa10as_diff_exp_pathways_TCGA.rds")
 
 #keep those with least 5 pathways 
 #sig_paths_sum = as.data.table(filter(sig_paths_sum, N > 5))
@@ -345,7 +350,7 @@ dev.off()
 
 #liver gluco related pathways 
 
-load("_LGG_all_up_down_genes_.2018-12-13.rdata")
+#load("_LGG_all_up_down_genes_.2018-12-13.rdata")
 
 res = readRDS("LGG_all_up_down_genes_activepathways.rds")
 
