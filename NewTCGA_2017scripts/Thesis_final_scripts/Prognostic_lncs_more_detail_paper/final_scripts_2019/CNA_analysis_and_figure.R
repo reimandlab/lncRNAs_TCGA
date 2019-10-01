@@ -358,13 +358,13 @@ get_data = function(lnc){
     print(ggsurvplot(fit, data = df, pval = TRUE, title=paste(cancer, df$name2[1])))
 
     newdat = df
-    #newdat$OS.time = newdat$OS.time/365
+    newdat$OS.time = newdat$OS.time/365
     
     if(risk == "high_expression"){
-    newdat$group = factor(newdat$group, levels=c("RISK","nonRISK"))}
+    newdat$group = factor(newdat$group, levels=c("nonRISK","RISK"))}
 
     if(risk == "low_expression"){
-    newdat$group = factor(newdat$group, levels=c("nonRISK","RISK"))}    
+    newdat$group = factor(newdat$group, levels=c("RISK","nonRISK"))}    
     
     fit <- survfit(Surv(OS.time, OS) ~ group, data = newdat)
           s <- ggsurvplot(
@@ -385,9 +385,9 @@ get_data = function(lnc){
           pval = TRUE,             # show p-value of log-rank test.
           conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-          #xlim = c(0,5),        # present narrower X axis, but not affect
+          xlim = c(0,10),        # present narrower X axis, but not affect
                             # survival estimates.
-          #break.time.by = 1,     # break X axis in time intervals by 500.
+          break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
           #palette = mypal[c(4,1)],
           palette = "npg", 
@@ -397,6 +397,10 @@ get_data = function(lnc){
                             # in legend of risk table
           )
           print(s)
+
+    pdf("WACAS1_LGG_CNAs_KM_plot.pdf")
+    print(s)
+    dev.off()      
 
     sp6 = ggplot(df, aes(x=cna_status, y=geneexp, color=cna_status)) + ggtitle(paste(df$name2[1], cancer)) + 
     geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +

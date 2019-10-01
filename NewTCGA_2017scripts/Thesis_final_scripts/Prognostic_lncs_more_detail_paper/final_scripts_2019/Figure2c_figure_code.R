@@ -407,7 +407,7 @@ random_lncs_vs_cand1$wp_lnc_clinical_fdr = -log10(random_lncs_vs_cand1$wp_lnc_cl
 random_lncs_vs_cand1$wp_lnc_clinical_combo = p.adjust(random_lncs_vs_cand1$wp_lnc_clinical_combo, method="fdr")
 
 z = which(random_lncs_vs_cand1$wp_lnc_clinical_fdr == "Inf")
-random_lncs_vs_cand1 = random_lncs_vs_cand1[-z,]
+random_lncs_vs_cand1$wp_lnc_clinical_fdr[z] = -log10(0.0000001)
 
 #random_lncs_vs_cand1$wp_lnc_random_fdr = p.adjust(random_lncs_vs_cand1$wp_lnc_random, method="fdr")
 #random_lncs_vs_cand1$wp_lnc_random_fdr = -log10(random_lncs_vs_cand1$wp_lnc_random_fdr)
@@ -430,7 +430,7 @@ z = which(random_lncs_vs_cand1$lncRNA == "HOXA-AS4")
 random_lncs_vs_cand1$lncRNA[z] = "HOXA10-AS"
 
 #known lncRNAs 
-known_lncs = c("HOXB-AS2", "HOXA10-AS")
+known_lncs = c("HOXB-AS2", "HOXA10-AS", "CCAT1", "BZRAP1-AS1", "AC114803.3", "AC097468.7")
 
 #part a
 pdf("figure2_e_lncRNA_cands_vs_clinical_variables.pdf", width=6, height=6)

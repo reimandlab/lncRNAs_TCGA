@@ -75,8 +75,9 @@ med_lnc = median(dat$cindex[dat$all_res=="lncRNAs"])
 med_clin =  median(dat$cindex[dat$all_res=="clinical"])
 med_combo = median(dat$cindex[dat$all_res=="combined"])
 w_combo_clin = wilcox.test(dat$cindex[dat$all_res=="combined"], dat$cindex[dat$all_res=="clinical"], alternative="greater")
+w_combo_lncRNA = wilcox.test(dat$cindex[dat$all_res=="combined"], dat$cindex[dat$all_res=="lncRNAs"], alternative="greater")
 
- t = tidy(w)
+  t = tidy(w)
   t$cancer = cancer
   t$med_lnc = med_lnc
   t$med_clin = med_clin
@@ -86,7 +87,7 @@ w_combo_clin = wilcox.test(dat$cindex[dat$all_res=="combined"], dat$cindex[dat$a
   t$imp = imp
   t$imp_combo_clin = imp_combo_clin
   t$w_combo_clin = w_combo_clin$p.value
-
+  t$w_combo_lncRNA = w_combo_lncRNA$p.value
   return(t)
 }
 
@@ -96,10 +97,11 @@ cancers = unique(new_res$canc)
 wil = llply(cancers, check_perform)
 wil = ldply(wil)
 wil = as.data.table(wil)
-colnames(wil)[2] = "pval"
-wil = wil[order(pval, -imp)]
-wil$fdr = p.adjust(wil$pval, method="fdr")
+colnames(wil)[2] = "lncRNA_vs_clinical_pval"
+wil = wil[order(lncRNA_vs_clinical_pval, -imp)]
+wil$fdr = p.adjust(wil$lncRNA_vs_clinical_pval, method="fdr")
 wil$fdr_w_combo_clin = p.adjust(wil$w_combo_clin, method="fdr")
+wil$fdr_w_combo_lncRNA = p.adjust(wil$w_combo_lncRNA, method="fdr")
 
 wil_sig = wil
 
@@ -125,6 +127,12 @@ canc_conv$sig[z] = "V"
 canc_conv = canc_conv[z,]
 
 canc_conv$all_res = factor(canc_conv$all_res, levels = c("clinical", "lncRNAs", "combined"))
+
+colnames(sig) = c("W_statistic", "lncRNA_vs_clinical_pval", "method", "alternative", 
+  "cancer", "median_lnc_cindex", "median_clin_cindex", "median_combo_cindex", "imp", "imp_combo_clin", 
+  "combo_vs_clin_pval", "combo_vs_lncRNA_pval", "lncRNA_vs_clinical_fdr", "combo_vs_clin_fdr", "combo_vs_lncRNA_fdr",
+  "stars_combo", "stars_clin")
+write.table(sig, file="nine_cancers_in_figure_2a_sig_diff_combo_vs_clin.txt", quote=F, row.names=F, sep="\t")
 
 pdf("cindices_real_march2019_1000_pvalues.pdf", width=10, height=3)
 g = ggplot(canc_conv, aes(type, cindex, fill=all_res)) +

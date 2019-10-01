@@ -374,7 +374,8 @@ r = readRDS("final_set_126_lncRNAPCG_pairs_nov16.rds")
 filter(r, combo %in% allCands$combo)
 
 
-
+#127_cis_antisense_pairs_survival_results_10kb_nov16.rds
+#lncRNA_cands_wPCGs_that_are_in_cis_10kb_nov16.rds
 
 
 

@@ -5,6 +5,8 @@
 #relationship 
 #------------------------------------------------------------------------------
 
+#FINAL FIGURE 2B
+
 set.seed(911)
 
 #load all libraries and functions 
@@ -405,6 +407,8 @@ random_lncs_vs_cand1 = random_lncs_vs_cand1[order(wp_lnc_clinical, diff_meds_lnc
 random_lncs_vs_cand1$wp_lnc_clinical_fdr = p.adjust(random_lncs_vs_cand1$wp_lnc_clinical, method="fdr")
 random_lncs_vs_cand1$wp_lnc_clinical_fdr = -log10(random_lncs_vs_cand1$wp_lnc_clinical_fdr)
 random_lncs_vs_cand1$wp_lnc_clinical_combo = p.adjust(random_lncs_vs_cand1$wp_lnc_clinical_combo, method="fdr")
+z = which(random_lncs_vs_cand1$wp_lnc_clinical_fdr == "Inf")
+random_lncs_vs_cand1$wp_lnc_clinical_fdr[z] = -log10(0.0000001)
 
 #z = which(random_lncs_vs_cand1$wp_lnc_clinical_fdr == "Inf")
 #random_lncs_vs_cand1 = random_lncs_vs_cand1[-z,]
@@ -430,7 +434,7 @@ z = which(random_lncs_vs_cand1$lncRNA == "HOXA-AS4")
 random_lncs_vs_cand1$lncRNA[z] = "HOXA10-AS"
 
 #known lncRNAs 
-known_lncs = c("HOXB-AS2", "HOXA10-AS")
+known_lncs = c("HOXB-AS2", "HOXA10-AS", "CCAT1", "BZRAP1-AS1", "AC114803.3", "AC097468.7")
 colnames(random_lncs_vs_cand1)[2] = "name"
 allCands$name[allCands$name == "HOXA-AS4"] = "HOXA10-AS"
 random_lncs_vs_cand1 = merge(random_lncs_vs_cand1, allCands, by = c("cancer", "name"))
@@ -455,8 +459,9 @@ write.csv(random_lncs_vs_cand1, file="SuppTable4_final_cands_wcindices.csv", quo
 pdf("figure2_e_lncRNA_cands_vs_clinical_variables.pdf", width=6, height=6)
 g1 = ggplot(random_lncs_vs_cand1, aes(x=HR, y=diff_meds_lnc_clinical, label=name)) + geom_point(aes(fill=type, colour=sig), 
        pch=21, size=2)+
-geom_text_repel(data = subset(random_lncs_vs_cand1, name %in% known_lncs), size=3, 
-      segment.color = "grey50")+ labs(fill = "Cancer") + 
+geom_text_repel(data = subset(random_lncs_vs_cand1, name %in% known_lncs),  
+      min.segment.length = unit(0, 'lines'), 
+                     nudge_y = .2)+ labs(fill = "Cancer") + 
 geom_hline(yintercept=0, linetype="dashed", color = "black")+
 geom_vline(xintercept=0, linetype="dashed", color = "black")+
 labs(x="log2(HR)", y="med lncRNA c-index - med clinical c-index")+

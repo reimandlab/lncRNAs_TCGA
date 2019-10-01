@@ -390,10 +390,10 @@ get_data = function(lnc){
       "risk_met", "nonrisk_met", "other", "nonrisk_unmet", "risk_not_met", "risk_other", "nonrisk_other", "cox_p")
 	
 	for(k in 1:probecount){
-	print(k)
+  print(k)
   new = subset(df, df$probe == unique(df$probe)[k])
-	new$geneExp = as.numeric(new$geneExp)
-	new$beta = as.numeric(new$beta)
+  new$geneExp = as.numeric(new$geneExp)
+  new$beta = as.numeric(new$beta)
 
 	#everything else the same as if it was just one probe
 	#get wilcoxon p-value stored between low and high exp patients - get avg beta value for each group 
@@ -565,13 +565,14 @@ get_data = function(lnc){
     newdat$group = factor(newdat$group, levels=c("RISK","nonRISK"))}
 
     if(med_risk == "High"){
-    newdat$group = factor(newdat$group, levels=c("nonRISK","RISK"))}    
+    newdat$group = factor(newdat$group, levels=c("RISK","nonRISK"))}    
+    newdat$OS.time = newdat$OS.time/365
 
     fit <- survfit(Surv(OS.time, OS) ~ group, data = newdat)
           s <- ggsurvplot(
           title = paste(cancer, name),
           fit, 
-          xlab = "Time (Days)", 
+          xlab = "Time (Years)", 
           #surv.median.line = "hv",
           font.main = c(14, "bold", "black"),
           font.x = c(12, "plain", "black"),
@@ -579,16 +580,16 @@ get_data = function(lnc){
           font.tickslab = c(11, "plain", "black"),
           font.legend = 10,
           risk.table.fontsize = 5, 
-          legend.labs = c("Risk Methylation group", "Non-risk \nMethylation groups"),             # survfit object with calculated statistics.
+          #legend.labs = c("Risk Methylation group", "Non-risk \nMethylation groups"),             # survfit object with calculated statistics.
           data = newdat,      # data used to fit survival curves. 
           risk.table = TRUE,       # show risk table.
           legend = "right", 
           pval = TRUE,             # show p-value of log-rank test.
           conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-          #xlim = c(0,5),        # present narrower X axis, but not affect
+          xlim = c(0,10),        # present narrower X axis, but not affect
                             # survival estimates.
-          #break.time.by = 1,     # break X axis in time intervals by 500.
+          break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
           #palette = mypal[c(4,1)],
           palette = "npg", 
@@ -599,6 +600,10 @@ get_data = function(lnc){
           )
           print(s)
 
+    pdf("LGG_RP51086K13.1_methylation.pdf")
+    print(s)
+    dev.off()
+          
     print("pass 4")
     risk = pat_dat$risk[1]
 
@@ -961,17 +966,17 @@ get_data = function(lnc){
 }
 }
 
-pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
-lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
-dev.off()
+#pdf("candidate_lncRNAs_methylation_versus_Expression_only_NOFDR_candidates_Nov1.pdf")
+#lnc_meth_cancer_data = llply(genes, get_data, .progress="text")
+#dev.off()
 
-lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
-lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
-lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
-z= which(is.na(lnc_meth_cancer_data2$cancer))
-lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #141 lncRNA-probe pairs evaluated 
-lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer)
-saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Nov1.rds")
+#lnc_meth_cancer_data2 = Filter(Negate(is.null), lnc_meth_cancer_data)
+#lnc_meth_cancer_data2 = ldply(lnc_meth_cancer_data2)
+#lnc_meth_cancer_data2 = as.data.table(lnc_meth_cancer_data2)
+#z= which(is.na(lnc_meth_cancer_data2$cancer))
+#lnc_meth_cancer_data2 = lnc_meth_cancer_data2[-z,] #141 lncRNA-probe pairs evaluated 
+#lnc_meth_cancer_data2$combo = paste(lnc_meth_cancer_data2$gene, lnc_meth_cancer_data2$cancer)
+#saveRDS(lnc_meth_cancer_data2, file="new_results_methylation_Nov1.rds")
 #73 unique lncRNA-cancer pairs evaluated 
 
 lnc_meth_cancer_data2 = readRDS("new_results_methylation_Nov1.rds")
@@ -1173,23 +1178,23 @@ for(i in 1:nrow(for_plot)){
   #check which one is large 
   check = for_plot$risk_met[i] >= for_plot$risk_not_met[i]
   
-  if(check){
+  if(risk == "Favourable"){
     #met group is larger check how many risk = met how many non risk = unmet
     #everyone else is other 
-    risk_wmet = for_plot$risk_met[i]
-    nonrisk_wmet = for_plot$nonrisk_unmet[i]
-    other = for_plot$nonrisk_met[i] + for_plot$risk_not_met[i] + for_plot$risk_other[i] + for_plot$nonrisk_other[i]
+    nonrisk_wmet = for_plot$risk_not_met[i] + for_plot$nonrisk_unmet[i]
+    risk_wmet = for_plot$nonrisk_met[i] + for_plot$risk_met[i]
+    other = for_plot$risk_other[i] + for_plot$nonrisk_other[i] 
   }
 
-  if(!(check)){
+  if(risk == "Unfavourable"){
     #unmet group is larger, how many risk = unmet, how many non risk = met
     #everyone else other
-    risk_wmet = for_plot$risk_not_met[i]
-    nonrisk_wmet = for_plot$nonrisk_met[i]
-    other = for_plot$nonrisk_unmet[i] + for_plot$risk_met[i] +  for_plot$risk_other[i] + for_plot$nonrisk_other[i]
+    risk_wmet = for_plot$risk_not_met[i] + for_plot$nonrisk_unmet[i]
+    nonrisk_wmet = for_plot$nonrisk_met[i] + for_plot$risk_met[i]
+    other = for_plot$risk_other[i] + for_plot$nonrisk_other[i] 
   }
 
-  for_plot$riskwmet[i] = risk_wmet
+  for_plot$riskwmet[i] = risk_wmet 
   for_plot$nonrisk_wmet[i] = nonrisk_wmet
   for_plot$other_met[i] = other
 
@@ -1204,15 +1209,18 @@ for(i in 1:nrow(for_plot)){
 
 #barplot = merge(barplot, sig_diff, by=c("combo"))
 barplot = for_plot
-barplot$met_impact = barplot$riskwmet  + barplot$nonrisk_wmet 
+#barplot$met_impact = barplot$riskwmet  + barplot$nonrisk_wmet 
 barplot$total_pats = barplot$riskwmet  + barplot$nonrisk_wmet + barplot$other_met
-barplot$met_impact = barplot$met_impact/barplot$total_pats
+#barplot$met_impact = barplot$met_impact/barplot$total_pats
 
 barplot = melt(barplot, measure.vars = c("riskwmet", "nonrisk_wmet", "other_met"))
 barplot = as.data.table(filter(barplot, value >0))
-barplot = barplot[,c("combo", "variable", "value", "met_impact", "total_pats")]
+barplot = barplot[,c("combo", "variable", "value", "total_pats")]
 barplot$values = barplot$value/barplot$total_pats
-barplot = barplot[order(-met_impact)]
+barplot = barplot[order(-value)]
+barplot = barplot[order(-variable, -value)]
+
+barplot = barplot[order(variable, -values)]
 barplot$combo = factor(barplot$combo, levels=unique(barplot$combo))
 barplot$variable = factor(barplot$variable, levels = c("other_met", "nonrisk_wmet", "riskwmet"))
 

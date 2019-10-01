@@ -722,6 +722,7 @@ gene_name = colnames(lgg)[2]
 colnames(lgg)[2] = "gene"
 
 lgg$IDH.status = factor(lgg$IDH.status, levels=c("WT", "Mutant"))
+lgg$OS.time = lgg$OS.time/365
 
 fit <- survfit(Surv(OS.time, OS) ~ gene + IDH.status, data = lgg)
 
@@ -730,7 +731,7 @@ pdf("lgg_two_lncRNAs_cands_figure6d.pdf", width=8, height=7)
 s <- ggsurvplot(
           title = gene_name, 
           fit, 
-          xlab = "Time (Days)", 
+          xlab = "Time (Years)", 
           #surv.median.line = "hv",
           font.main = c(14, "bold", "black"),
           font.x = c(12, "plain", "black"),
@@ -745,9 +746,9 @@ s <- ggsurvplot(
           pval = TRUE,             # show p-value of log-rank test.
           conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-          #xlim = c(0,5),        # present narrower X axis, but not affect
+          xlim = c(0,10),        # present narrower X axis, but not affect
                             # survival estimates.
-          #break.time.by = 1,     # break X axis in time intervals by 500.
+          break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
           #palette = mypal[c(4,1)],
           palette = "npg", 
@@ -772,7 +773,7 @@ fit <- survfit(Surv(OS.time, OS) ~ gene + IDH.status, data = lgg)
 s <- ggsurvplot(
           title = gene_name, 
           fit, 
-          xlab = "Time (Days)", 
+          xlab = "Time (Years)", 
           #surv.median.line = "hv",
           font.main = c(14, "bold", "black"),
           font.x = c(12, "plain", "black"),
@@ -787,9 +788,9 @@ s <- ggsurvplot(
           pval = TRUE,             # show p-value of log-rank test.
           conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-          #xlim = c(0,5),        # present narrower X axis, but not affect
+          xlim = c(0,10),        # present narrower X axis, but not affect
                             # survival estimates.
-          #break.time.by = 1,     # break X axis in time intervals by 500.
+          break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
           #palette = mypal[c(4,1)],
           palette = "npg", 

@@ -729,8 +729,10 @@ g = ggplot(clin_results, aes(clin_concordance, concordance_combo_model, label=ca
     xlab("Clinical Concordance") + ylab("lncRNA & Clinical Combined Concordance") + theme_classic() +
     theme(legend.position = "top", axis.text = element_text(size=12), 
       legend.text=element_text(size=10), legend.title=element_text(size=10)) +
-     xlim(0.5,0.9) + ylim(0.5,0.9) + geom_abline(intercept=0) #+ 
-     #geom_text_repel(data = subset(clin_results, canc_lnc_clin %in% c("RP11-279F6.3 KIRP Stage", "RP5-1086K13.1 LGG X1p.19q.codeletion")))
+     xlim(0.5,1) + ylim(0.5,1) + geom_abline(intercept=0) + 
+     geom_text_repel(data = subset(clin_results, 
+      canc_lnc_clin %in% c("RP11-279F6.3 KIRP Stage", "RP5-1086K13.1 LGG X1p.19q.codeletion")),min.segment.length = unit(0, 'lines'), 
+                     nudge_y = .2)
 g
 dev.off()
 

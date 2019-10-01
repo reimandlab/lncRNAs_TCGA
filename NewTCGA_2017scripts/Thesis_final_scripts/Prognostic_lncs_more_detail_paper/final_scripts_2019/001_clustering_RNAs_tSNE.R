@@ -90,10 +90,59 @@ rna = rna[,c(z1, z2)]
 z1 = which(str_detect(colnames(rna), "ENSG"))
 sums = apply(rna[,z1], 2, var) #get 500 most variables genes 
 sums = sums[order(-sums)]
-keep = sums[1:1000] 
+#keep = sums[1:1000] #1000 most variable lncRNAs 
+keep = sums #1000 most variable lncRNAs 
 keep = names(keep)
 z = which(colnames(rna) %in% c("type", keep))
 rna = rna[,z]
+z1 = which(str_detect(colnames(rna), "ENSG"))
+rna[,z1] = log1p(rna[,z1])
+
+library(umap)
+
+set.seed(100)
+
+cancer.labels = rna$type
+df = rna 
+df$type = NULL
+embedding = umap(df)
+head(embedding) 
+
+layout = as.data.table(embedding$layout) ; colnames(layout)=c("x", "y")
+layout$col = cancer.labels
+
+z = which(duplicated(layout$col))
+layout$label[z] ="no"
+layout$label[-z] = "yes"
+
+z = (which(layout$label == "yes"))
+for(i in 1:length(z)){
+	canc = layout$col[z[i]]
+	layout$label[z[i]] = canc
+}
+
+pdf("UMAP_29_cancer_types_logged_fpkmuq_all_lncs.pdf", width=9)
+ggplot(layout,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col)) + scale_colour_manual(values=mypal)+
+geom_text_repel(data = subset(layout, !(label == "no")))
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #2. remove those with MAD < 0? 
 #1. remove those not expressed at all
