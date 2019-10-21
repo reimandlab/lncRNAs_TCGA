@@ -366,6 +366,8 @@ get_data = function(lnc){
     if(risk == "low_expression"){
     newdat$group = factor(newdat$group, levels=c("RISK","nonRISK"))}    
     
+    lgg_clin = readRDS("TCGA_lgg_wsubtype_info_biolinks.rds")
+
     fit <- survfit(Surv(OS.time, OS) ~ group, data = newdat)
           s <- ggsurvplot(
           title = paste(cancer, df$name2[1]),
@@ -401,6 +403,79 @@ get_data = function(lnc){
     pdf("WACAS1_LGG_CNAs_KM_plot.pdf")
     print(s)
     dev.off()      
+
+    if(lnc == "ENSG00000254635"){
+      newdat = merge(newdat, lgg_clin, by ="patient")
+      fit <- survfit(Surv(OS.time.x, OS.x) ~ group + IDH.status, data = newdat)
+          s <- ggsurvplot(
+          title = paste(cancer, df$name2[1]),
+          fit, 
+          xlab = "Time (Years)", 
+          #surv.median.line = "hv",
+          font.main = c(14, "bold", "black"),
+          font.x = c(12, "plain", "black"),
+          font.y = c(12, "plain", "black"),
+          font.tickslab = c(11, "plain", "black"),
+          font.legend = 10,
+          risk.table.fontsize = 5, 
+          #legend.labs = c("Risk CNA group", "Non-risk CNA groups"),             # survfit object with calculated statistics.
+          data = newdat,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,10),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          #palette = mypal[c(4,1)],
+          palette = "npg", 
+          #ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          
+          pdf("WACAS1_LGG_CNAs_KM_plot_wIDH_mutation_status.pdf", width=12)
+          print(s)
+          dev.off()
+
+          newdattert = as.data.table(filter(newdat, IDH.status == "Mutant"))
+          fit <- survfit(Surv(OS.time.x, OS.x) ~ group + TERT.promoter.status, data = newdattert)
+          s <- ggsurvplot(
+          title = paste(cancer, df$name2[1]),
+          fit, 
+          xlab = "Time (Years)", 
+          #surv.median.line = "hv",
+          font.main = c(14, "bold", "black"),
+          font.x = c(12, "plain", "black"),
+          font.y = c(12, "plain", "black"),
+          font.tickslab = c(11, "plain", "black"),
+          font.legend = 10,
+          risk.table.fontsize = 5, 
+          #legend.labs = c("Risk CNA group", "Non-risk CNA groups"),             # survfit object with calculated statistics.
+          data = newdattert,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,10),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          #palette = mypal[c(4,1)],
+          palette = "npg", 
+          #ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          #print(s)
+
+          write.table(newdat, file="WAC-AS1_CNA_molecular_data.txt", quote=F, row.names=F, sep=";")
+    }
 
     sp6 = ggplot(df, aes(x=cna_status, y=geneexp, color=cna_status)) + ggtitle(paste(df$name2[1], cancer)) + 
     geom_violin() + geom_jitter(shape=16, position=position_jitter(0.2)) +

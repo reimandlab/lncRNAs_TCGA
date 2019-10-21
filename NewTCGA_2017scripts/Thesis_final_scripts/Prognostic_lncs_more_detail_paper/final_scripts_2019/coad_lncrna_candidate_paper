@@ -1,0 +1,51 @@
+library(survAUC)
+require(caTools)
+#check if this person is in my analysis: TCGA-61-2095
+library(glmnet)
+library(survcomp)
+library(caret)
+library(stringr)
+library(ggpubr)
+library(ggrepel)
+library(viridis)
+library(patchwork)
+library(caret)  
+library(Rtsne)
+library(EnvStats)
+library(reshape2)
+
+source("check_lnc_exp_cancers.R")
+
+#------FEATURES-----------------------------------------------------
+
+setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = subset(allCands, data == "TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
+cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
+colnames(allCands)[7] = "Cancer"
+allCands = merge(allCands, canc_conv, by="Cancer")
+allCands$combo = paste(allCands$gene, allCands$type)
+
+coad_dataset = as.data.table(filter(all, type =="COAD"))
+
+z = which(colnames(coad_dataset) %in% c("ENSG00000235024", "ENSG00000163501", "ENSG00000187736"))
+coad_dataset = coad_dataset[,..z]
+coad_dataset = log1p(coad_dataset)
+
+library("ggpubr")
+
+pdf("AC097468.7_COAD_correlations_wIHH_NHEJ1.pdf")
+
+ggscatter(coad_dataset, x = "ENSG00000235024", y = "ENSG00000163501", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "AC097468.7", ylab = "IHH")
+
+ggscatter(coad_dataset, x = "ENSG00000235024", y = "ENSG00000187736", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "AC097468.7", ylab = "NHEJ1")
+
+dev.off()
+

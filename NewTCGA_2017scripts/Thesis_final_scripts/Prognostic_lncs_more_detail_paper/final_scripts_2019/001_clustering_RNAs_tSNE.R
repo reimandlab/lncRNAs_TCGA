@@ -122,12 +122,12 @@ for(i in 1:length(z)){
 }
 
 pdf("UMAP_29_cancer_types_logged_fpkmuq_all_lncs.pdf", width=9)
-ggplot(layout,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col)) + scale_colour_manual(values=mypal)+
+ggplot(layout,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col),alpha=0.5, stroke=0) + scale_colour_manual(values=mypal)+
 geom_text_repel(data = subset(layout, !(label == "no")))
 dev.off()
 
 
-
+write.table(layout, file="umap_29_cancers_data_for_figure.txt", quote=F, row.names=F, col.names=T, sep="\t")
 
 
 

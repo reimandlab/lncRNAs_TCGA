@@ -136,6 +136,8 @@ t = as.data.table(filter(all_de_results, adj.P.Val <= 0.05))
 t = as.data.table(filter(t, (logFC >= 1) | (logFC < -1)))
 sig_des=t
 sig_des$combo = paste(sig_des$lnc, sig_des$canc, sep="_")
+write.table(sig_des, file="SUPP_TABLE_9_DIFF_EXP_GENES.csv", quote=F, row.names=F, sep=";")
+
 sig_des_sum = as.data.table(table(sig_des$combo))
 sig_des_sum = sig_des_sum[order(N)]
 
@@ -148,6 +150,9 @@ all_lnc_pathways_df$combo = paste(all_lnc_pathways_df$lnc, all_lnc_pathways_df$c
 all_lnc_pathways_df = as.data.table(filter(all_lnc_pathways_df, FDR <= 0.01))
 sig_paths_sum = as.data.table(table(all_lnc_pathways_df$combo))
 sig_paths_sum = sig_paths_sum[order(N)]
+
+all_lnc_pathways_df = as.data.table(filter(all_lnc_pathways_df, FDR < 0.05))
+write.table(all_lnc_pathways_df, file="SUPP_TABLE_10_PATHWAYS_GPROFILER.csv", quote=F, row.names=F, sep=";")
 
 hoxa10as_paths = as.data.table(filter(all_lnc_pathways_df, lnc == "ENSG00000253187", canc=="LGG"))
 saveRDS(hoxa10as_paths, file="2019_08_hoxa10as_diff_exp_pathways_TCGA.rds")
@@ -335,6 +340,8 @@ barplot = rbind(barplot1, barplot2)
 colnames(barplot) = c("type", "lncRNA", "num")
 barplot = as.data.table(filter(barplot, num >0))
 barplot$lncRNA = factor(barplot$lncRNA, levels = ttt$V1)
+
+write.table(barplot, file="figure_5A_data_LGG_DE_genes.txt", quote=F, row.names=F, sep="\t")
 
 pdf("figure6A_lgg_only.pdf", width=5, height=6)
 g = ggplot(barplot, aes(x=lncRNA, y=num, fill=type)) + theme_classic() + 
@@ -808,8 +815,8 @@ lgg = as.data.table(subset(rna, type == "LGG"))
 lgg = lgg[,c("ENSG00000253187", "ENSG00000239552", "patient", "type", "OS", "OS.time")]
 lgg = merge(lgg, lgg_idh, by="patient")
 
-z = which(is.na(lgg$IDH.status))
-lgg = lgg[-z,]
+#z = which(is.na(lgg$IDH.status))
+#lgg = lgg[-z,]
 
 lgg$ENSG00000253187 = log1p(lgg$ENSG00000253187)
 lgg$ENSG00000253187_tag[lgg$ENSG00000253187 > 0] = "High"
@@ -827,6 +834,8 @@ lgg$ENSG00000253187_tag = factor(lgg$ENSG00000253187_tag, levels=c("High WT", "H
 
 lgg$ENSG00000239552_tag = paste(lgg$ENSG00000239552_tag, lgg$IDH.status)
 lgg$ENSG00000239552_tag = factor(lgg$ENSG00000239552_tag, levels=c("High WT", "High Mutant", "Low WT", "Low Mutant"))
+
+lgg_idh_dat = lgg
 
 pdf("lgg_two_lncRNAs_cands_figure6d_boxplots.pdf", width=6, height=6)
 
@@ -849,10 +858,6 @@ pdf("lgg_two_lncRNAs_cands_figure6d_boxplots.pdf", width=6, height=6)
   ggpar(p, font.tickslab = c(12, "plain", "black")) 
 dev.off()
 
-
-
-
-
 lgg = as.data.table(subset(rna, type == "GBM"))
 lgg = lgg[,c("ENSG00000253187", "ENSG00000239552", "patient", "type", "OS", "OS.time")]
 colnames(gbm)[1] = "patient"  
@@ -860,7 +865,7 @@ colnames(gbm)[6] = "patientt"
 lgg = merge(lgg, gbm, by="patient")
 
 z = which(is.na(lgg$IDH.status))
-lgg = lgg[-z,]
+#lgg = lgg[-z,]
 
 lgg$ENSG00000253187 = log1p(lgg$ENSG00000253187)
 lgg$ENSG00000253187_tag[lgg$ENSG00000253187 > 0] = "High"
@@ -878,6 +883,18 @@ lgg$ENSG00000253187_tag = factor(lgg$ENSG00000253187_tag, levels=c("High WT", "H
 
 lgg$ENSG00000239552_tag = paste(lgg$ENSG00000239552_tag, lgg$IDH.status)
 lgg$ENSG00000239552_tag = factor(lgg$ENSG00000239552_tag, levels=c("High WT", "High Mutant", "Low WT", "Low Mutant"))
+
+gbm_idh_dat = lgg
+z = which(colnames(gbm_idh_dat) %in% colnames(lgg_idh_dat))
+gbm_idh_dat = gbm_idh_dat[,..z]
+
+z = which(colnames(lgg_idh_dat) %in% colnames(gbm_idh_dat))
+lgg_idh_dat = lgg_idh_dat[,..z]
+
+lgg_idh_dat$type = "LGG"
+gbm_idh_dat$type = "GBM"
+
+all_idh_dat = rbind(gbm_idh_dat, lgg_idh_dat)
 
 pdf("gbm_two_lncRNAs_cands_figure6d_boxplots.pdf", width=6, height=6)
 
@@ -900,9 +917,115 @@ pdf("gbm_two_lncRNAs_cands_figure6d_boxplots.pdf", width=6, height=6)
   ggpar(p, font.tickslab = c(12, "plain", "black")) 
 dev.off()
 
+#GBM KM plots
 
+lgg = as.data.table(subset(rna, type == "GBM"))
+lgg = lgg[,c("ENSG00000253187", "ENSG00000239552", "patient", "type", "OS", "OS.time")]
 
+med = median(lgg$ENSG00000253187)
 
+lgg$ENSG00000253187[lgg$ENSG00000253187 >= med] = "High"
+lgg$ENSG00000253187[lgg$ENSG00000253187 < med] = "Low"
+
+lgg$ENSG00000239552 = as.numeric(lgg$ENSG00000239552)
+med = median(lgg$ENSG00000239552)
+
+z1 = which(lgg$ENSG00000239552 >= med)
+z2 = which(lgg$ENSG00000239552 < med)
+
+lgg$ENSG00000239552[z1] = "High"
+lgg$ENSG00000239552[z2] = "Low"
+
+colnames(lgg)[2] = "HOXB-AS2"
+colnames(lgg)[1] = "HOXA10-AS"
+
+#get km plots
+
+lgg$OS.time = lgg$OS.time
+
+gene_name = colnames(lgg)[1]
+colnames(lgg)[1] = "gene"
+
+#lgg$IDH.status = factor(lgg$IDH.status, levels=c("WT", "Mutant"))
+lgg$OS.time = lgg$OS.time/365
+
+fit <- survfit(Surv(OS.time, OS) ~ gene, data = lgg)
+
+pdf("gbm_two_lncRNAs_cands_figure6d.pdf", width=8, height=7)
+
+s <- ggsurvplot(
+          title = gene_name, 
+          fit, 
+          xlab = "Time (Years)", 
+          #surv.median.line = "hv",
+          font.main = c(14, "bold", "black"),
+          font.x = c(12, "plain", "black"),
+          font.y = c(12, "plain", "black"),
+          font.tickslab = c(12, "plain", "black"),
+          font.legend = 10,
+          risk.table.fontsize = 5, 
+          #legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
+          data = lgg,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,10),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          #palette = mypal[c(4,1)],
+          palette = "npg", 
+           legend.labs = c("High exp", "Low exp"), 
+          #ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+
+print(s)
+
+gene_name = colnames(lgg)[2]
+colnames(lgg)[1] = "lnc"
+
+colnames(lgg)[2] = "gene"
+
+fit <- survfit(Surv(OS.time, OS) ~ gene, data = lgg)
+
+s <- ggsurvplot(
+          title = gene_name, 
+          fit, 
+          xlab = "Time (Years)", 
+          #surv.median.line = "hv",
+          font.main = c(14, "bold", "black"),
+          font.x = c(12, "plain", "black"),
+          font.y = c(12, "plain", "black"),
+          font.tickslab = c(12, "plain", "black"),
+          font.legend = 10,
+          risk.table.fontsize = 5, 
+          #legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
+          data = lgg,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,10),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          #palette = mypal[c(4,1)],
+          palette = "npg", 
+           legend.labs = c("High exp","Low exp"), 
+          #ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+print(s)
+
+dev.off()
 
 
 

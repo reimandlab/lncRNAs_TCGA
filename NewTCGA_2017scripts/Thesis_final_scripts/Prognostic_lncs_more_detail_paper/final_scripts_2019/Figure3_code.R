@@ -340,6 +340,7 @@ tcga_results1$perc_wevents = as.numeric(tcga_results1$perc_wevents)
 tcga_results1$num_events = as.numeric(tcga_results1$num_events)
 tcga_results1$lnc_better = ""
 z= which(tcga_results1$lnc_only_concordance >= tcga_results1$clinical_only_concordance)
+tcga_results1$lnc_better[z] = "yes"
 
 tcga_results1 = as.data.table(tcga_results1)
 tcga_results1 = tcga_results1[order(fdr_pval)]
@@ -375,7 +376,9 @@ tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
 tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
 saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
 
-write.table(tcga_results1, file="SuppTable6.txt", quote=F, row.names=F)
+colnames(fantom)[1] = "gene"
+tcga_results1 = merge(fantom, tcga_results1, by="gene")
+write.table(tcga_results1, file="SuppTable4.txt", quote=F, row.names=F, sep=";")
 
 tcga_results1 = as.data.table(tcga_results1)
 

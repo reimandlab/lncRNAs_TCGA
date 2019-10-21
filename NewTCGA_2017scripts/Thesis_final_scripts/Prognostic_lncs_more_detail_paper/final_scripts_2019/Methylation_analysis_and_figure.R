@@ -254,6 +254,8 @@ table(rna$type)
 
 genes = as.list(unique(as.character(cands$combo[which(cands$combo %in% probes$combo)]))) #77/179 have methylation probes overlapping them 
 
+lgg_clin = readRDS("TCGA_lgg_wsubtype_info_biolinks.rds")
+
 get_data = function(lnc){
 	comb = lnc
   print(lnc)
@@ -599,6 +601,45 @@ get_data = function(lnc){
                             # in legend of risk table
           )
           print(s)
+
+    if(probe == "cg11225405"){
+      newdat = merge(newdat, lgg_clin, by ="patient")
+      fit <- survfit(Surv(OS.time.x, OS.x) ~ group + MGMT.promoter.status, data = newdat)
+          s <- ggsurvplot(
+          title = paste(cancer, name),
+          fit, 
+          xlab = "Time (Years)", 
+          #surv.median.line = "hv",
+          font.main = c(14, "bold", "black"),
+          font.x = c(12, "plain", "black"),
+          font.y = c(12, "plain", "black"),
+          font.tickslab = c(11, "plain", "black"),
+          font.legend = 10,
+          risk.table.fontsize = 5, 
+          #legend.labs = c("Risk Methylation group", "Non-risk \nMethylation groups"),             # survfit object with calculated statistics.
+          data = newdat,      # data used to fit survival curves. 
+          risk.table = TRUE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+                            # point estimaes of survival curves.
+          xlim = c(0,10),        # present narrower X axis, but not affect
+                            # survival estimates.
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          #palette = colorRampPalette(mypal)(14), 
+          #palette = mypal[c(4,1)],
+          palette = "npg", 
+          #ggtheme = theme_bw(), # customize plot and risk table with a theme.
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
+                            # in legend of risk table
+          )
+          pdf("LGG_RP51086K13.1_methylation_wMGMT_promoter_status.pdf", width=10)
+          print(s)
+          dev.off()
+          newdat = newdat[,c("patient", "geneExp", "group", "OS.time.x", "OS.x", "median", "probe", "beta", "coord", "risk", "mut_status", "IDH.status", "X1p.19q.codeletion" , "MGMT.promoter.status", "Chr.7.gain.Chr.10.loss", "Chr.19.20.co.gain", "TERT.promoter.status", "ATRX.status", "BRAF.V600E.status" , "Original.Subtype" , "Transcriptome.Subtype")]
+          write.table(newdat, file="RP5-1086K13.1_MGMT_methylation_clin.txt", quote=F, row.names=F, sep=";")
+    }
 
     pdf("LGG_RP51086K13.1_methylation.pdf")
     print(s)

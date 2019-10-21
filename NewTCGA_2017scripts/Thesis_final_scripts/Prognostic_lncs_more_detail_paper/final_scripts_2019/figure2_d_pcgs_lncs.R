@@ -346,7 +346,8 @@ prog_pcgs$lnc_pcg = paste(prog_pcgs$lnc, prog_pcgs$pcg, prog_pcgs$type, sep="/")
 prog_pcgs$type_lnc = ""
 for(i in 1:nrow(prog_pcgs)){
   lnc = prog_pcgs$combo[i]
-  lnc_type = allCands$CAT_geneClass[which(allCands$combo == lnc)]
+  lnc = unlist(strsplit(lnc, "_"))[1]
+  lnc_type = fantom$CAT_geneClass[which(fantom$CAT_geneID == lnc)]
   prog_pcgs$type_lnc[i] = lnc_type
 }
 
@@ -377,5 +378,31 @@ filter(r, combo %in% allCands$combo)
 #127_cis_antisense_pairs_survival_results_10kb_nov16.rds
 #lncRNA_cands_wPCGs_that_are_in_cis_10kb_nov16.rds
 
+#BOXPLOT
+#SUMMARY PCG C-INDICES VS LNCRNA C-INDICDES
 
+boxplot=prog_pcgs[,c("pcgConcordance", "lncConcordance", "type_lnc")]
+pcg = boxplot
+pcg$concordance = pcg$pcgConcordance
+pcg$concordance_type = "PCG"
+pcg = pcg[,c("concordance", "concordance_type", "type_lnc")]
+
+lnc = boxplot
+lnc$concordance = lnc$lncConcordance
+lnc$concordance_type = "lncRNA"
+lnc = lnc[,c("concordance", "concordance_type", "type_lnc")]
+
+boxplot = rbind(lnc, pcg)
+
+pdf("SUPP_FIGURE_BOXPLOT_lncRNAs_vs_NEARBY_PCGs.pdf")
+g = ggplot(boxplot, aes(concordance_type, concordance)) +
+geom_boxplot(aes(fill=concordance_type), outlier.colour="black", outlier.shape=16,
+             outlier.size=2, notch=FALSE)+
+    scale_colour_manual(values = c("blue", "dimgrey", "red", "purple")) + 
+    xlab("Predictor of Survival") + ylab("Concordance") + 
+    theme(legend.box = "horizontal", axis.text = element_text(size=13), 
+      legend.text=element_text(size=10), legend.title=element_text(size=10)) + ylim(0,1)+ 
+    geom_hline(yintercept=0.5, linetype="dashed", color = "red") 
+g
+dev.off()
 
