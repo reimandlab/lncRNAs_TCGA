@@ -736,7 +736,8 @@ g = ggplot(clin_results, aes(clin_concordance, concordance_combo_model, label=ca
 g
 dev.off()
 
-
+z = which((clin_results$concordance_combo_model > clin_results$clin_concordance) & (clin_results$clin_vs_combo_anova_fdr < 0.05))
+clin_results$better[z] = "V"
 
 
 

@@ -1,17 +1,16 @@
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ")
-
 source("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/universal_LASSO_survival_script.R")
-
 print("done source script")
-
- #survival script
+#survival script
 source("survival_script_march14_already_labelled_highlow.R")
 
+#additional libraries 
 library(doParallel)
 library(curl)
 library(RCurl)
 library(selectiveInference)
 
+#new data saved here (after adding back PCAWG samples from analysis)
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
 #####################################################################
@@ -20,7 +19,7 @@ setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCES
 
 #####################################################################
 #THIS SCRIPT USES REAL DATA FOR EACH CANCER TYPE 
-#TO RUN ELASTIC NET USING 100 CROSS-VALIDATIONS
+#TO RUN ELASTIC NET USING 1000 CROSS-VALIDATIONS
 #AND RETURN LNCRNAS THAT WERE SELECTED IN EACH ROUND 
 #ONCE THESE ARE ACQUIRED A FULL MODEL IS FIT 
 #SHOULD USE PROPER INFERENCE METRICS FOR MODELS THAT ALREADY UNDERWENT

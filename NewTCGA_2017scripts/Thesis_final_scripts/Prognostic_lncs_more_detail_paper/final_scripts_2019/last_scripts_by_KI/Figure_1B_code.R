@@ -414,27 +414,18 @@ write.csv(all_cancers_genes_surv_comb, file="SuppTable3_survival_Associated_lncs
 #FIGURE 1B PART 1---------------------
 ######################################
 
+write.table(summ, file="figure1B_data_table.txt", quote=F, row.names=F, sep="\t")
+
 pdf("final_figure_1B.pdf", height=6, width=6)
 g = ggbarplot(summ, "Cancer", "N",
           fill = "Risk", color = "Risk", 
           palette = "npg")
 g = ggpar(g, yticks.by = 250, 
       font.xtickslab = c(9,"plain", "black"),
-      xtickslab.rt = 45) + labs(x="Cancer type", y="Number of prognostic lncRNAs") + 
-ggtitle("Number of Univariate Significant lncRNAs, adjusted CoxPH p-val < 0.1")
-print(g)
-
-summ$new_n = summ$N/5785 * 100 
-k = ggbarplot(summ, "Cancer", "new_n",
-          fill = "Risk", color = "Risk", 
-          palette = "npg")
-k = ggpar(k, 
-      font.xtickslab = c(9,"plain", "black"),
-      xtickslab.rt = 45) + labs(x="Cancer type", y="Number of prognostic lncRNAs") + 
-ggtitle("Number of Univariate Significant lncRNAs, adjusted CoxPH p-val < 0.1")
-print(k)
-
+      xtickslab.rt = 45) + labs(x="Cancer type", y="Number of prognostic lncRNAs") + scale_y_continuous(trans='log10')
+print(g) 
 dev.off()
+
 
 #---------------------------------------------------------------------------------
 ### Figure 1 part 2 - correlations between prognostic lncRNAs in each cancer type 
@@ -525,6 +516,7 @@ get_pairs_results = function(cancer){
     res2 = as.data.table(res2)
     res2 = res2[order(fdr)]
     tot_pairs = nrow(res2)
+    print(tot_pairs)
     #res2 = as.data.table(dplyr::filter(res2, fdr <= 0.05))
     sig_pairs = nrow(res2)  
     #check if lncRNA-lncRNA correlations match HRs 
@@ -593,6 +585,10 @@ canc_results_pairs_types2 = readRDS("correlation_lnc_lnc_results_april10_res2.rd
 #FIGURE 1B PART 2---------------------
 ######################################
 canc_results_pairs_types2$HR_pair = factor(canc_results_pairs_types2$HR_pair, levels = c("Both \nUnfavourable", "Opposite \nHRs", "Both \nFavourable"))
+canc_results_pairs_types2$fdr_sig = ""
+z = which(((canc_results_pairs_types2$fdr < 0.05) & (abs(canc_results_pairs_types2$cor) >= 0.3)))
+canc_results_pairs_types2$fdr_sig[z]= "sig"
+
 
 cols = RColorBrewer::brewer.pal(8, "Set1")
 

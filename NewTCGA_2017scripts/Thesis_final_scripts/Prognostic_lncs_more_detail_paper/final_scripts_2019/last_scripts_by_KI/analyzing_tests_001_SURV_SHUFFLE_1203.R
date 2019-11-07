@@ -137,13 +137,15 @@ get_comp = function(cancer){
   rounds = unique(fake$round)
   fake_meds = unlist(llply(rounds, get_med))
   t = as.data.table(fake_meds)
+  print(paste(cancer, dim(t)[1]))
 
-  pval = wilcox.test(fake$lncRNAs, real$lncRNAs)$p.value
+  #pval = wilcox.test(fake$lncRNAs, real$lncRNAs)$p.value
+  pval = wilcox.test(t$fake_meds, lncrna_med_real)$p.value
 
   p = ggplot(t, aes(x=fake_meds)) + 
   geom_histogram() + xlim(0,1)+
   geom_vline(xintercept=lncrna_med_real, linetype="dashed", color = "red")+
-  annotate("text", x = 0.5, y = 5, label = paste("P-val=",round(pval, digits=3)), size=1)+
+  annotate("text", x = 0.5, y = 5, label = paste("P-val=",round(pval, digits=4)), size=4)+
   ggtitle(cancer)
   print(pval)
   print(cancer)

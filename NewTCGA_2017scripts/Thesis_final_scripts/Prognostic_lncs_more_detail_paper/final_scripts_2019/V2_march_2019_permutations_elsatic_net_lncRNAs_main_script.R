@@ -12,14 +12,21 @@ library(curl)
 library(RCurl)
 library(selectiveInference)
 
+#####################################################################
 #READ ME
+#####################################################################
 
-#in this version, shuffle al clinical variables but not genes 
-#end
+#####################################################################
+#THIS SCRIPT USES SAMPLED SURVIVAL DATASETS FOR EACH CANCER TYPE 
+#TO RUN ELASTIC NET USING 100 CROSS-VALIDATIONS
+#AND RETURN LNCRNAS THAT WERE SELECTED IN EACH ROUND 
+#100 RANDOM DATASETS ARE GENERATED FOR EACH CANCER TYPE
+#WHERE EACH SAMPLE IS USED TO RUN 100 CRO0SS-VALIDATIONS
 
-#set.seed(911)
 
-#can we turn this into a function?
+#RESULTS ARE SAVED IN "surv_shuffle_0315"
+
+#####################################################################
 
 #registerDoParallel(cores=28)
 

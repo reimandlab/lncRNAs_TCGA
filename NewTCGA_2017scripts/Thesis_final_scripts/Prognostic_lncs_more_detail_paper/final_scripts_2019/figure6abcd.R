@@ -865,17 +865,19 @@ colnames(gbm)[6] = "patientt"
 lgg = merge(lgg, gbm, by="patient")
 
 z = which(is.na(lgg$IDH.status))
-#lgg = lgg[-z,]
+lgg = lgg[-z,]
 
-lgg$ENSG00000253187 = log1p(lgg$ENSG00000253187)
-lgg$ENSG00000253187_tag[lgg$ENSG00000253187 > 0] = "High"
-lgg$ENSG00000253187_tag[lgg$ENSG00000253187 == 0] = "Low"
-lgg$ENSG00000253187_tag = factor(lgg$ENSG00000253187_tag, levels=c("Low", "High"))
+lgg$ENSG00000253187 = as.numeric(lgg$ENSG00000253187)
+med = median(lgg$ENSG00000253187)
+lgg$ENSG00000253187_tag[lgg$ENSG00000253187 >= med] = "High"
+lgg$ENSG00000253187_tag[lgg$ENSG00000253187 < med] = "Low"
 
-lgg$ENSG00000239552 = log1p(lgg$ENSG00000239552)
-lgg$ENSG00000239552_tag[lgg$ENSG00000239552 > 0] = "High"
-lgg$ENSG00000239552_tag[lgg$ENSG00000239552 == 0] = "Low"
-lgg$ENSG00000239552_tag = factor(lgg$ENSG00000239552_tag, levels=c("Low", "High"))
+lgg$ENSG00000239552 = as.numeric(lgg$ENSG00000239552)
+med = median(lgg$ENSG00000239552)
+z1 = which(lgg$ENSG00000239552 >=med)
+z2 = which(lgg$ENSG00000239552 < med)
+lgg$ENSG00000239552_tag[z1] = "High"
+lgg$ENSG00000239552_tag[z2] = "Low"
 
 lgg$IDH.status = factor(lgg$IDH.status, levels=c("WT", "Mutant"))
 lgg$ENSG00000253187_tag = paste(lgg$ENSG00000253187_tag, lgg$IDH.status)
@@ -883,6 +885,9 @@ lgg$ENSG00000253187_tag = factor(lgg$ENSG00000253187_tag, levels=c("High WT", "H
 
 lgg$ENSG00000239552_tag = paste(lgg$ENSG00000239552_tag, lgg$IDH.status)
 lgg$ENSG00000239552_tag = factor(lgg$ENSG00000239552_tag, levels=c("High WT", "High Mutant", "Low WT", "Low Mutant"))
+
+lgg$ENSG00000253187 = log1p(lgg$ENSG00000253187)
+lgg$ENSG00000239552 = log1p(lgg$ENSG00000239552)
 
 gbm_idh_dat = lgg
 z = which(colnames(gbm_idh_dat) %in% colnames(lgg_idh_dat))
