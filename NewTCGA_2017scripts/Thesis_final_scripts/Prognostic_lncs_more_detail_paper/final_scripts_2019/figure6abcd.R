@@ -733,6 +733,12 @@ lgg$OS.time = lgg$OS.time/365
 
 fit <- survfit(Surv(OS.time, OS) ~ gene + IDH.status, data = lgg)
 
+#lgg$IDH.status = factor(lgg$IDH.status, levels=c("Mutant", "WT"))
+#fit <- survfit(Surv(OS.time, OS) ~ gene + IDH.status, data = lgg)
+#lgg$gene = factor(lgg$gene, levels = c("Low", "High"))
+#fit <- coxph(Surv(OS.time, OS) ~ gene + IDH.status, data = lgg)
+
+
 pdf("lgg_two_lncRNAs_cands_figure6d.pdf", width=8, height=7)
 
 s <- ggsurvplot(
@@ -773,7 +779,9 @@ colnames(lgg)[2] = "lnc"
 
 colnames(lgg)[3] = "gene"
 
-lgg$IDH.status = factor(lgg$IDH.status, levels=c("WT", "Mutant"))
+#lgg$IDH.status = factor(lgg$IDH.status, levels=c("WT", "Mutant"))
+#lgg$gene = factor(lgg$gene, levels = c("Low", "High"))
+#fit <- coxph(Surv(OS.time, OS) ~ gene + IDH.status, data = lgg)
 
 fit <- survfit(Surv(OS.time, OS) ~ gene + IDH.status, data = lgg)
 

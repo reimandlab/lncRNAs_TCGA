@@ -101,6 +101,9 @@ get_canc_data_for_plot = function(dtt){
 }
 
 filtered_data = llply(cancer_data, get_canc_data_for_plot)
+all_tcga_cancers = as.data.table(ldply(filtered_data))
+all_tcga_cancers = unique(all_tcga_cancers[,c("patient", "type", "age_at_initial_pathologic_diagnosis", "gender", "race", "clinical_stage", "histological_grade", "new_tumor_event_type", "treatment_outcome_first_course", "OS", "OS.time", "Cancer")])
+write.csv(all_tcga_cancers, file="TCGA_clinical_data_patients_used_external_survival_analysis.csv", quote=F, row.names=F)
 
 add_tags = function(dtt){
   print(dtt$Cancer[1])
@@ -403,28 +406,11 @@ tcga_results1$perc_wevents = NULL
 tcga_results1 = as.data.table(tcga_results1)
 saveRDS(tcga_results1, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 
-
 #--------------------------------------------------------------------
 #DONT RUN BELOW#
 #--------------------------------------------------------------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+pcawg_clin = readRDS("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/top5_cancers_pcawg_thesis_jult2017/raw/Jan26_PCAWG_clinical")
 
 #z = which(tcga_results1$combo %in% robust$combo)
 #tcga_results1 = tcga_results1[z,]
@@ -456,6 +442,12 @@ pcawg_data$canc[pcawg_data$canc == "Stomach"] = "Stomach adenocarcinoma"
 pcawg_data$canc[pcawg_data$canc == "Head/Neck"] = "Head and Neck squamous cell carcinoma"
 pcawg_data$canc[pcawg_data$canc == "Cervix"] = "Cervical squamous cell carcinoma and endocervical adenocarcinoma"
 
+#remove those already used in TCGA cohort - aka those with a TCGA id 
+ids = unique(pcawg_clin[,c("icgc_donor_id", "submitted_donor_id.y")])
+colnames(ids) = c("patient", "TCGA_id")
+pcawg_data = merge(pcawg_data, ids, by= "patient")
+z = which(str_detect(pcawg_data$TCGA_id, "TCGA"))
+pcawg_data = pcawg_data[-z,]
 
 #add more pcawg people
 cancers_tests = as.list(unique(tcga_results1$cancer[which(tcga_results1$cancer %in% pcawg_data$canc)]))
@@ -463,19 +455,22 @@ cancers_tests = as.list(unique(tcga_results1$cancer[which(tcga_results1$cancer %
 get_matched_data = function(cancer){
     dtt = subset(pcawg_data, canc == cancer)
     z = which(colnames(dtt) %in% c(as.character(cands$gene[cands$canc == dtt$canc[1]]), "canc", 
-    "histo", "time", "status", "sex", "donor_age_at_diagnosis"))
+    "histo", "time", "status", "sex", "donor_age_at_diagnosis", "patient"))
     dtt = dtt[,z]
-    if(nrow(dtt) >= 30){
+    if(nrow(dtt) >= 20){
     return(dtt)}
 }
 
 filtered_data = llply(cancers_tests, get_matched_data)
 #remove nulls from list
-
 filtered_data = Filter(Negate(is.null), filtered_data) #12 cancers left
 getnames = ldply(filtered_data)
 getnames =  unique(getnames$canc)
 names(filtered_data) = getnames
+
+all_pcawg_cancers = as.data.table(ldply(filtered_data))
+all_pcawg_cancers = unique(all_pcawg_cancers[,c("canc", "status", "time", "sex", "histo", "donor_age_at_diagnosis", "patient")])
+write.csv(all_pcawg_cancers, file="PCAWG_clinical_data_patients_used_external_survival_analysis.csv", quote=F, row.names=F)
 
 add_tags = function(dtt){
   print(head(dtt))
@@ -622,7 +617,7 @@ get_survival_models = function(dtt){
   
   fit <- survfit(Surv(time, status) ~ gene, data = newdat)
           s <- ggsurvplot(
-          title = paste(get_name(gene_name), canc_conv$type[canc_conv$Cancer == dtt$canc[1]][1], "HR =", round(hr, digits=2)),
+          title = paste(gene_name, canc_conv$type[canc_conv$Cancer == dtt$canc[1]][1], "HR =", round(hr, digits=2)),
           fit, 
           xlab = "Time (Years)", 
           #surv.median.line = "hv",
@@ -639,7 +634,7 @@ get_survival_models = function(dtt){
           pval = TRUE,             # show p-value of log-rank test.
           conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-          xlim = c(0,5),        # present narrower X axis, but not affect
+          xlim = c(0,10),        # present narrower X axis, but not affect
                             # survival estimates.
           break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
@@ -721,12 +716,12 @@ get_survival_models = function(dtt){
 
     exp_data$geneexp = log1p(exp_data$geneexp)
   
-    gg <- ggplot(exp_data)
-    gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
-    gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" "))
+    #gg <- ggplot(exp_data)
+    #gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
+    #gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" "))
     #print(gg)
 
-      exp_data$geneexp = log1p(exp_data$geneexp)
+      #exp_data$geneexp = log1p(exp_data$geneexp)
       p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
           color = "gene",
          palette = mypal[c(4,1)], title = paste(gene_name, "Expression", dtt$canc[1] , sep=" "), 
@@ -737,11 +732,11 @@ get_survival_models = function(dtt){
 
   p <- ggboxplot(exp_data, x = "median", y = "geneexp",
           color = "median",
-         palette = mypal[c(4,1)], title = paste(get_name(gene_name), "Expression", canc_conv$type[canc_conv$Cancer == dtt$canc[1]][1], sep=" "), 
+         palette = mypal[c(4,1)], title = paste(gene_name, "Expression", canc_conv$type[canc_conv$Cancer == dtt$canc[1]][1], sep=" "), 
           add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
         # Change method
   p = p + stat_compare_means(method = "wilcox.test") + stat_n_text() + scale_color_npg() 
-  #print(p)
+  print(p)
 
 
 }
@@ -770,23 +765,26 @@ return(results_cox1)
 }
 
 #pdf("PCAWG_validating_individual_TCGA_candidates_survival_plots_final_cands_May3rd_full_lifespan.pdf")
-#pdf("PCAWG_validating_individual_TCGA_candidates_survival_plots_Oct3_five_year_survival.pdf", width=6, height=5)
+pdf("PCAWG_validating_individual_TCGA_candidates_survival_plots_Nov262019_five_year_survival.pdf", width=6, height=5)
 pcawg_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
-#dev.off()
+dev.off()
 
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 pcawg_results1 = ldply(pcawg_results, data.frame)
 
-z = which(pcawg_results1$lnc_only_concordance == "na")
-clinical_concs = pcawg_results1[z,]
-pcawg_results1 = pcawg_results1[-z,]
+#z = which(pcawg_results1$lnc_only_concordance == "na")
+#clinical_concs = pcawg_results1[z,]
+#pcawg_results1 = pcawg_results1[-z,]
 pcawg_results1$pval = as.numeric(pcawg_results1$pval)
 pcawg_results1$fdr_pval = p.adjust(pcawg_results1$pval, method="fdr")
+z = which(pcawg_results1$gene == "clin")
+clin= pcawg_results1[z,]
+pcawg_results1 = pcawg_results1[-z,]
 
 #combine results from TCGA and PCAWG
 pcawg_results1$data = "PCAWG"
 pcawg_results1$num_risk = as.numeric(pcawg_results1$num_risk)
-pcawg_results1 = filter(pcawg_results1, num_risk >=5)
+#pcawg_results1 = filter(pcawg_results1, num_risk >=5)
 pcawg_results1 = as.data.table(pcawg_results1)
 filter(pcawg_results1, pval < 0.05)
 
@@ -799,18 +797,7 @@ saveRDS(pcawg_results1, file="PCAWG_external_validation_lncCands_feb19.rds")
 
 #plot power versus Hazard Ratio 
 pcawg_results1$pval = as.numeric(pcawg_results1$pval)
-#pcawg_results1$power = as.numeric(pcawg_results1$power)
-
-ggscatter(pcawg_results1, x = "power", y = "pval",
-   color = "black", shape = 21, size = 3, # Points color, shape and size
-   add = "reg.line",  # Add regressin line
-   add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
-   conf.int = TRUE, # Add confidence interval
-   cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
-   cor.coeff.args = list(method = "spearman", label.sep = "\n")
-   )
-dev.off()
-
+write.table(pcawg_results1, file="all_lncRNAs_evaluated_by_PCAWG_KI_Nov262019.txt", quote=F, row.names=F, sep="\t")
 
 #all-results
 #tcga_results1$lnc_test_ph =NULL
@@ -824,7 +811,7 @@ all_results = as.data.table(rbind(tcga_results1, pcawg_results1))
 all_results = all_results[order(gene, cancer)]
 
 #add more info on lncRNAs
-lnc_info = read.csv("fantom_genebased_evidence_supp_table_17.csv")
+lnc_info = read.csv("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/fantom_genebased_evidence_supp_table_17.csv")
 lnc_info = lnc_info[which(str_detect(lnc_info$CAT_geneID, "ENSG")),]
 
 #shorten the gene names 
@@ -842,17 +829,11 @@ all_results = all_results[order(data, pval)]
 all_results$best_cell_trait_fdr = NULL
 all_results$CAT_browser_link = NULL
 
-#this file was created without first filtering to only include the robust lncRNAs
-#so contains results for all 173 lncRNAs 
-saveRDS(all_results, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-
-#this file was created by FIRST filtering to inlclude ONLY robust lncRNAs
-#saveRDS(all_results, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_Aug8.rds")
+write.table(all_results, file="TCGA_PCAWG_prognostic_lncRNAs.txt", quote=F, row.names=F, sep="\t")
 
 #-----check which actually match---------------------------------------------------------------------------
 
-all_results_orig = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-#all_results_orig = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_Aug8.rds")
+all_results_orig = fread("TCGA_PCAWG_prognostic_lncRNAs.txt")
 
 all_results = all_results_orig[!duplicated(all_results_orig), ]
 all_results = filter(all_results, pval <= 0.05)
