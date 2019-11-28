@@ -488,12 +488,12 @@ add_tags = function(dtt){
     if(med ==0){
     #if median = 0 then anyone greater than zero is 1
     #but first check if non-zero group has a median higher than 0.1  
-    l1 = which(dtt[,k] > 0)
-    l2 = which(dtt[,k] ==0)
-    check = median(dtt[l1,k])
+    l1 = which(dtt[,k+1] > 0)
+    l2 = which(dtt[,k+1] ==0)
+    check = median(dtt[l1,k+1])
     if((check >= 0.05) & (length(l1) >= 5)){
-    dtt[l1,k] = 1
-    dtt[l2, k] = 0
+    dtt[l1,k+1] = 1
+    dtt[l2, k+1] = 0
       }
     if((!(check >= 0.05)) | is.na(check)){
       del = c(del, names(medians)[k])
@@ -506,10 +506,10 @@ add_tags = function(dtt){
     #check if meidan is greater than 0.1 otherwise save gene for deletion
     if(!(med ==0)){
     if(med >= 0.05){
-    l1 = which(dtt[,k] >= med)
-    l2 = which(dtt[,k] < med)
-    dtt[l1,k] = 1
-    dtt[l2, k] = 0
+    l1 = which(dtt[,k+1] >= med)
+    l2 = which(dtt[,k+1] < med)
+    dtt[l1,k+1] = 1
+    dtt[l2, k+1] = 0
     }
     if(med < 0.05){
       del = c(del, names(medians)[k])
