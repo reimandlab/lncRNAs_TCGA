@@ -148,10 +148,10 @@ rounds = unique(all_res$round)
 
 #remove candidates that are duplicated 
 #dups = all_res$gene[which(duplicated(all_res$gene))]
-all_res = as.data.table(filter(all_res, !(gene %in% dups)))
-all_res = subset(all_res, canc == "Brain Lower Grade Glioma" )
+#all_res = as.data.table(filter(all_res, !(gene %in% dups)))
+all_res = subset(all_res, canc == "Glioblastoma multiforme")
 all_res = all_res[,c("gene", "type", "cancer", "num_rounds_selected")]
-write.csv(all_res, file="lgg_min10perc_rounds_candidates.csv", quote=F, row.names=F)
+write.csv(all_res, file="gbm_min10perc_rounds_candidates.csv", quote=F, row.names=F)
 
 #for j in `seq 1 29`; do qsub -cwd -b y -N real10000$j -l h_vmem=55g "module load R/3.4.0;Rscript V1_10000new_runsmarch_2019_REAL_elsatic_net_lncRNAs_main_script.R $j"; done
 

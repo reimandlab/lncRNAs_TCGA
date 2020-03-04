@@ -28,6 +28,14 @@ ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
 #z <- which(duplicated(ucsc[,8]))
 #ucsc <- ucsc[-z,]
 
+hg38 = fread("hg38_genes.bed")
+hg38$V1 = paste("chr", hg38$V1, sep="")
+ucsc = ucsc[,-c(2,4,5)]
+colnames(hg38)[4] = "#hg19.ensGene.name"
+ucsc= merge(hg38, ucsc)
+colnames(ucsc)[2:4] =  c("hg19.ensGene.chrom", "hg19.ensGene.txStart", 
+  "hg19.ensGene.txEnd")
+
 #fantom 
 fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
 extract3 <- function(row){
@@ -96,7 +104,7 @@ lncs = (unique(allCands$gene))
   #missing lncRNA 
   lncs_cords = as.data.table(lncs_cords)
   lncs_cords = lncs_cords[,c("chr", "start", "end", "name", "strand", "type")]
-  write.table(lncs_cords, file="lncs_cords_158_cands.bed", quote=F, row.names=F, col.names=F, sep="\t")
+  write.table(lncs_cords, file="lncs_cords_179_cands.bed", quote=F, row.names=F, col.names=F, sep="\t")
 
 
 #2. Get coordinates of all PCGs 
@@ -109,10 +117,10 @@ lncs = (unique(allCands$gene))
   "hg19.ensemblSource.source")]
   pcgs_cords = as.data.table(pcgs_cords)
   colnames(pcgs_cords) = c("chr", "start", "end", "strand", "name", "type")
-  z = which(str_detect(pcgs_cords$chr, "_"))
-  pcgs_cords = pcgs_cords[-z]
+  #z = which(str_detect(pcgs_cords$chr, "_"))
+  #pcgs_cords = pcgs_cords[-z]
   pcgs_cords = pcgs_cords[,c("chr", "start", "end", "name", "strand", "type")]
-  write.table(pcgs_cords, file="pcgs_cords_allPCGs_aug8.bed", quote=F, row.names=F, col.names=F, sep="\t")
+  write.table(pcgs_cords, file="pcgs_cords_179_cands.bed", quote=F, row.names=F, col.names=F, sep="\t")
 
 
 ##--------------------------------------------------------------------

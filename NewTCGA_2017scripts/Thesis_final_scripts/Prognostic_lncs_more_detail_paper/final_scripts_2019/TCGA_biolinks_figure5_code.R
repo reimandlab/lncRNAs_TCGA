@@ -982,7 +982,6 @@ lgg = clin[[6]]
 g=subset(allCands, cancer== "Breast invasive carcinoma")
 g=g[3,]
 
-
 lgg = lgg[,which(colnames(lgg) %in% c("patient", "ENSG00000264589", "OS", "OS.time", "ER.Status"))]
 med = median(lgg$ENSG00000264589)
 #median = 0
