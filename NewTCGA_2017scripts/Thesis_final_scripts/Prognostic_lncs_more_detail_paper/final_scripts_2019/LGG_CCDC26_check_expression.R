@@ -33,6 +33,8 @@ lnc = all[,z]
 lnc=subset(lnc, Cancer %in% c("Brain Lower Grade Glioma", "Glioblastoma multiforme"))
 lnc$CCDC26_log1p = log1p(lnc$ENSG00000229140)
 
+#maf <- GDCquery_Maf("LGG", pipelines = "muse")
+
 #boxplot
 
 pdf("lgg_CCDC26_expresion.pdf", width=10, height=10)
