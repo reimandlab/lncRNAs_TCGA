@@ -113,18 +113,8 @@ get_bar = function(canc){
 	#which is the best model?
 	meds = meds[order(median_cindex)]
 	all$label = factor(all$label, levels=meds$label)
-
-
-	# Change error plot type and add mean points
-	g = ggerrorplot(all, x = "label", y = "cindex", size=1, 
-            desc_stat = "median_mad", palette="npg", 
-            error.plot = "errorbar",            # Change error plot type
-            add = "median" , color="type" ,                   # Add mean points
-            ) + theme_bw() + ggtitle(all$Cancer[1])
-	g=ggpar(g, font.xtickslab=c(7, "plain", "black"), font.ytickslab=c(6, "plain", "black")) + ylim(c(0,1))+
-	geom_hline(yintercept=0.5, linetype="dashed", color = "red") + stat_compare_means(label = "p.signif", 
-                     ref.group = "clinical variables", hide.ns = TRUE)  + coord_flip()
-	print(g)
+	all$type[all$lncRNA == "all_lncs"] = "all_lncs"
+	all$type[all$label == "all lncRNAs + clinical"] = "all_lncs_clin"
 
 	meds = meds[order(-median_cindex)]
 
@@ -133,23 +123,15 @@ get_bar = function(canc){
 	all$round=NULL
 	all = unique(all)
 	all$diff_meds_lnc_clinical_combo = all$combo_med - all$lnc_med
-
+	all=merge(meds, all, by="label")
+	all=all[order(-median_cindex)]
+	all$value_order = 1:nrow(all)
+	all$value = 1/nrow(all)
 	return(all)
 
 }
 
-pdf("/u/kisaev/cancers_multivaraite_models.pdf", width=6, height=5)
-res=as.data.table(ldply(llply(cancers, get_bar)))
-dev.off()
-res$full_lnc_clin_fdr = p.adjust(res$full_lnc_clin_pval, method="fdr")
-write.csv(res, file="/u/kisaev/all_lncRNA_cands_single_multi_models_performance.csv", quote=F, row.names=F)
-
-#for each cancer, extract model with highest  c-index
-#get risk score for each patient 
-#use continuous risk score as predictor
-#split patients into KM plot by  score 
-
-get_super_lncs = function(canc){
+get_multi_plot = function(canc){
 	
 	multi_dat = as.data.table(filter(multivariate_lncs, Cancer == canc))
 	single_dat = as.data.table(filter(single_lncs, Cancer == canc, !(type=="clinical_variables")))
@@ -199,22 +181,124 @@ get_super_lncs = function(canc){
 		names(pvals) = lncs_test
 		names(med_diffs) = lncs_test
 
-		super_lncs=as.data.frame(matrix(ncol=3, nrow=length(lncs_test)))
-		colnames(super_lncs)=c("lnc", "pval", "med_diff")
-		super_lncs$lnc = lncs_test
-		super_lncs$pval = pvals
-		super_lncs$med_diff = med_diffs
+		super_lncs = rbind(lncs_test, pvals, med_diffs)
+		super_lncs=super_lncs[-1,]
+		super_lncs=as.data.frame(super_lncs)
 		super_lncs$cancer = all$Cancer[1]
+		print(super_lncs)
 	}
 
-	return(super_lncs)
+	#which is the best model?
+	meds = meds[order(median_cindex)]
+	all$label = factor(all$label, levels=meds$label)
+	all$type[all$lncRNA == "all_lncs"] = "all_lncs"
+	all$type[all$label == "all lncRNAs + clinical"] = "all_lncs_clin"
+
+	# Change error plot type and add mean points
+	g = ggerrorplot(all, x = "label", y = "cindex", size=1, 
+            desc_stat = "median_mad", palette="npg", 
+            error.plot = "errorbar",            # Change error plot type
+            add = "median" , color="type" ,                   # Add mean points
+            ) + theme_bw() + ggtitle(all$Cancer[1])
+	g=ggpar(g, font.legend = c(3, "plain", "black") ,legend="bottom", font.xtickslab=c(4, "plain", "black"), font.ytickslab=c(4, "plain", "black")) + ylim(c(0.3,1))+
+	geom_hline(yintercept=0.5, linetype="dashed", color = "red") + stat_compare_means(label = "p.signif", 
+                     ref.group = "clinical variables", hide.ns = TRUE)  + coord_flip()
+	return(g)
 
 }
 
+
+list_plots = llply(cancers, get_multi_plot)
+library(gridExtra)
+n <- length(list_plots)
+nCol <- floor(sqrt(n))
+
+pdf("/u/kisaev/cancers_multivaraite_models.pdf", width=14, height=18)
+do.call("grid.arrange", c(list_plots, ncol=nCol))
+dev.off()
+
+res=as.data.table(ldply(llply(cancers, get_bar)))
+res$full_lnc_clin_fdr = p.adjust(res$full_lnc_clin_pval, method="fdr")
+write.csv(res, file="/u/kisaev/all_lncRNA_cands_single_multi_models_performance.csv", quote=F, row.names=F)
+
+colnames(canc_conv)[1] = "cancer_name"
+res = merge(res, canc_conv,  by = "Cancer")
+res=res[order(-median_cindex)]
+res$cancer_name = factor(res$cancer_name, levels=unique(res$cancer_name))
+
+pdf("/u/kisaev/summary_figure2c_multivariate_single_models.pdf", height=6,width=8)
+g=ggerrorplot(res, x= "cancer_name", y="value_order", color="type", add.params = list(size = 0.5), palette="npg")+theme_bw()+coord_flip() + ylim(c(1,45))
+ggpar(g, legend="top")
+dev.off()
+
+#for each cancer, extract model with highest  c-index
+#get risk score for each patient 
+#use continuous risk score as predictor
+#split patients into KM plot by  score 
+
+	get_super_lncs = function(canc){
+		
+		multi_dat = as.data.table(filter(multivariate_lncs, Cancer == canc))
+		single_dat = as.data.table(filter(single_lncs, Cancer == canc, !(type=="clinical_variables")))
+
+		#make input for plot 
+		multi_dat$analysis="multi"
+		single_dat$analysis="single"
+		
+		multi_dat = multi_dat[,c("lncRNA",  "Cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo" , 
+			"lnc_med", "clin_med", "combo_med")]
+		single_dat = single_dat[,c("lncRNA",  "Cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo", 
+			"lnc_med", "clin_med", "combo_med")]
+
+		all = rbind(multi_dat, single_dat)
+		all = as.data.table(filter(all, !(is.na(cindex))))
+
+		z = which(str_detect(all$lncRNA, "ENSG"))
+		all$lncRNA[z] = sapply(all$lncRNA[z], get_name)
+
+		all$lncRNA[all$type=="clinical_variables"] = "clin"
+		all$type[all$type=="clinical_variables"] = "clinical"
+		all$type[all$type=="lncRNA_canc"] = "lncRNA"
+
+		all$label =  paste(all$lncRNA, all$type)
+		all$label[all$label=="all_lncs lncRNA"] = "all lncRNAs"
+		all$label[all$label=="clin clinical"] = "clinical variables"
+		all$label[all$label=="all_lncs lncRNA&clin"] = "all lncRNAs + clinical"
+
+		#full lnc model vs full lnc model + clin 
+		full_lnc_clin = tidy(wilcox.test(all$cindex[all$label =="all lncRNAs + clinical"], all$cindex[all$label == "all lncRNAs"]))[2]
+		full_lnc_clin_diff = median(all$cindex[all$label =="all lncRNAs"]) - median(all$cindex[all$label == "all lncRNAs + clinical"])
+
+		all$full_lnc_clin_pval = full_lnc_clin
+		all$full_lnc_clin_diff = full_lnc_clin_diff
+		
+		#get median c-index by labl
+		meds = as.data.table(all %>% 
+			group_by(label) %>% summarise(median_cindex = median(cindex)))
+
+		#test individual lncRNAs that are better than model with all lncRNAs s
+		lncs_test = filter(meds, median_cindex > meds$median_cindex[meds$label == "all lncRNAs"])$label
+		if(!(length(lncs_test)==0)){
+			pvals = unlist(sapply(lncs_test, function(x){tidy(wilcox.test(all$cindex[which(all$label == x)], all$cindex[all$label == "all lncRNAs"]))[2]}))
+			med_diffs = unlist(sapply(lncs_test, function(x){median(all$cindex[which(all$label == x)]) - median(all$cindex[all$label == "all lncRNAs"])}))
+
+			names(lncs_test) = lncs_test
+			names(pvals) = lncs_test
+			names(med_diffs) = lncs_test
+
+			super_lncs=as.data.frame(matrix(ncol=3, nrow=length(lncs_test)))
+			colnames(super_lncs)=c("lnc", "pval", "med_diff")
+			super_lncs$lnc = lncs_test
+			super_lncs$pval = pvals
+			super_lncs$med_diff = med_diffs
+			super_lncs$cancer = all$Cancer[1]
+			print(super_lncs)
+			return(super_lncs)
+		}
+	}
+
 super_lncs = as.data.table(ldply(llply(cancers, get_super_lncs)))
 super_lncs = as.data.table(filter(super_lncs, !(lnc == "all lncRNAs + clinical")))
-z=which(duplicated(super_lncs$lnc))
-super_lncs = super_lncs[-z,]
 super_lncs$fdr = p.adjust(super_lncs$pval, method="fdr")
 
 fig = unique(res[,c("Cancer", "full_lnc_clin_fdr", "full_lnc_clin_diff")])

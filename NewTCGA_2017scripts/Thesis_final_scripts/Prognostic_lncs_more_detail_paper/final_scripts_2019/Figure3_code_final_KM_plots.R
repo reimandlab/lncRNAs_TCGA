@@ -93,7 +93,7 @@ get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates 
   z = which(colnames(dtt) %in% c(as.character(cands$gene[cands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
-    "new_tumor_event_type", "Cancer", "type", "PFI", "PFI.time"))
+    "new_tumor_event_type", "Cancer", "type"))
   print(dtt$type[1])
   #print(cands$cancer[1])
   dtt = dtt[,z]
@@ -142,9 +142,9 @@ filtered_data_tagged = llply(filtered_data, add_tags, .progress="text")
 saveRDS(filtered_data_tagged, file="22_cancer_types_with_lncRNA_candidates_labelled_high_low.rds")
 
 get_survival_models = function(dtt){
-  results_cox1 <- as.data.frame(matrix(ncol=20)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer", 
+  results_cox1 <- as.data.frame(matrix(ncol=21)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer", 
     "lnc_test_ph", 'global_test_ph', "num_risk", "perc_risk", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero", "multi_model_concordance", 
-    "lnc_only_concordance", "clinical_only_concordance", "num_events", "perc_wevents")
+    "lnc_only_concordance", "clinical_only_concordance", "num_events", "perc_wevents", "anova_pval")
 
   dat = dtt
   dat$Cancer = NULL
@@ -162,10 +162,8 @@ get_survival_models = function(dtt){
   
   dat = dat[,c(which(colnames(dat) %in% names(keep)))]
 
-  dat$OS = as.numeric(dat$PFI)
-  dat$OS.time = as.numeric(dat$PFI.time)
-  dat$PFI=NULL
-  dat$PFI.time=NULL
+  dat$OS = as.numeric(dat$OS)
+  dat$OS.time = as.numeric(dat$OS.time)
   dat$age_at_initial_pathologic_diagnosis = as.numeric(dat$age_at_initial_pathologic_diagnosis)
   #num events
   num_events = length(which(dat$OS == 1))
@@ -184,15 +182,17 @@ get_survival_models = function(dtt){
 
   #mutlvariate concordance 
   cmulti = as.numeric(glance(lncs)[11])
-  lnc_only = coxph(Surv(OS.time, OS)  ~ newdat[,1], data = newdat)
-  clnconly = as.numeric(glance(lnc_only)[11])
+  lnc_only_model = coxph(Surv(OS.time, OS)  ~ newdat[,1], data = newdat)
+  lnc_only = as.numeric(glance(lnc_only_model)[11])
   
-  hr = summary(lnc_only)$coefficients[2]
+  hr = summary(lnc_only_model)$coefficients[2]
 
   z = which(str_detect(colnames(newdat), "ENSG"))
   clin_only = newdat[,-z]
-  clinical_only = coxph(Surv(OS.time, OS)  ~ ., data = clin_only)
-  clinical_only = as.numeric(glance(clinical_only)[11])
+  clinical_only_model = coxph(Surv(OS.time, OS)  ~ ., data = clin_only)
+  clinical_only = as.numeric(glance(clinical_only_model)[11])
+  lr = anova(clinical_only_model, lncs)
+  lr_pval = lr[2,4]
 
   #calculate power
   #k is ratio of participants in group E (experimental group) compared to group C (controlgroup).
@@ -214,7 +214,6 @@ get_survival_models = function(dtt){
   }
 
   gene_name = colnames(newdat)[1]
-  print(gene_name)
   gene = colnames(newdat)[1]
   colnames(newdat)[1] = "gene"
   newdat$OS.time = newdat$OS.time/365
@@ -283,7 +282,7 @@ get_survival_models = function(dtt){
     lnc_test_ph, global, risk_num, perc, median_nonzero,
     sd_nonzero,
     min_nonzero,
-    max_nonzero, cmulti, clnconly, clinical_only, num_events, perc_events)
+    max_nonzero, cmulti, clnconly, clinical_only, num_events, perc_events, lr_pval)
 
    names(row) <- names(results_cox1) 
    results_cox1 = rbind(results_cox1, row)
@@ -329,7 +328,7 @@ return(results_cox1)
 #-----------------------------------------------------------------------------------------------------------
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_lifespan_May3rd.pdf")
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_oct3.pdf")
-pdf("TCGA_candidates_survival_plots_final_cands_FULL_10year_surv_2019_PFI.pdf", width=6, height=5)
+pdf("TCGA_candidates_survival_plots_final_cands_FULL_10year_surv_2019.pdf", width=6, height=5)
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
 dev.off()
 
@@ -339,8 +338,10 @@ tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
 tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
 
 tcga_results1$fdr_pval = p.adjust(as.numeric(tcga_results1$pval), method="fdr")
+tcga_results1$fdr_anova_lr = p.adjust(as.numeric(tcga_results1$anova_pval), method="fdr")
+
 tcga_results1 = as.data.table(tcga_results1)
-#tcga_results1 = as.data.table(filter(tcga_results1, fdr_pval < 0.05))
+tcga_results1 = as.data.table(filter(tcga_results1, fdr_pval < 0.05))
 
 tcga_results1$perc_wevents = as.numeric(tcga_results1$perc_wevents)
 tcga_results1$num_events = as.numeric(tcga_results1$num_events)
@@ -378,13 +379,13 @@ pdf("Dist_perc_risk_patients_per_lncRNA.pdf", width=10)
 riskplot
 dev.off()
 
-#tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
+tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
 tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
-#saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
+saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
 
 colnames(fantom)[1] = "gene"
 tcga_results1 = merge(fantom, tcga_results1, by="gene")
-write.table(tcga_results1, file="PFI_candidates_survival_times.txt", quote=F, row.names=F, sep=";")
+write.table(tcga_results1, file="SuppTable4.txt", quote=F, row.names=F, sep=";")
 
 tcga_results1 = as.data.table(tcga_results1)
 

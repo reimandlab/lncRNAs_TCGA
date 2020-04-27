@@ -79,6 +79,8 @@ allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #1
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 cis_pcgs  =readRDS("lncRNA_cands_wPCGs_that_are_in_cis_10kb_nov16.rds")
+colnames(cis_pcgs)[c(4,5)] = c("lnc_strand", "lnc")
+
 #convert to ensgs
 get_ensg = function(name){
   z = which(ucsc$hg19.ensemblToGeneName.value == name)
@@ -351,6 +353,8 @@ for(i in 1:nrow(prog_pcgs)){
   prog_pcgs$type_lnc[i] = lnc_type
 }
 
+prog_pcgs$diff_cindices = prog_pcgs$lncConcordance - prog_pcgs$pcgConcordance
+
 pdf("figure2E_summary_lncs_pcgs_antisense_10kb_nov16.pdf", width=5,height=5)
 g = ggplot(prog_pcgs, aes(pcgConcordance, lncConcordance, label=lnc_pcg)) +
  geom_point(color = "black")+
@@ -367,13 +371,53 @@ g = ggplot(prog_pcgs, aes(pcgConcordance, lncConcordance, label=lnc_pcg)) +
 g
 dev.off()
 
+prog_pcgs$sig_spearman = ""
+prog_pcgs$sig_spearman[prog_pcgs$rho_fdr < 0.05] = "sig"
+prog_pcgs$lnc_better = ""
+prog_pcgs$lnc_better[(prog_pcgs$fdr_res2 < 0.05) & (prog_pcgs$lncConcordance > prog_pcgs$pcgConcordance)] = "lnc_better"
+prog_pcgs$lnc_better[is.na(prog_pcgs$lnc_better)] = ""
+
+pdf("/u/kisaev/figure2E_summary_lncs_pcgs_antisense_10kb_wSpearmanRho.pdf", width=5,height=5)
+g = ggplot(prog_pcgs, aes(diff_cindices, rho, label=lnc_pcg)) +
+ geom_point(aes(shape= sig_spearman, color=lnc_better), alpha=0.6, size=2)+
+    scale_colour_manual(values = c("black", "blue", "red", "purple")) + 
+    ylab("Spearman rho") + xlab("lncRNA cindex - PCG cindex") + 
+    theme(legend.box = "horizontal", axis.text = element_text(size=13), 
+      legend.text=element_text(size=10), legend.title=element_text(size=10))+
+  geom_vline(xintercept=0, linetype="dashed", color = "red")+
+      geom_hline(yintercept=0, linetype="dashed", color = "red")
+ggpar(g, legend="bottom")
+dev.off()
+
+plot = as.data.table(filter(prog_pcgs, Cancer == "Brain Lower Grade Glioma"))
+plot$sig_rho = ""
+plot$sig_rho[plot$rho_fdr < 0.05] = "*"
+plot$diff = plot$lncConcordance-plot$pcgConcordance
+z = which((plot$diff > 0) & (plot$fdr_res2< 0.05))
+plot$lncbetter = ""
+plot$lncbetter[z] = "lnc"
+
+t=as.data.table(table(plot$lnc))
+t=t[order(-N)]
+plot$lnc = factor(plot$lnc, levels=t$V1)
+
+pdf("/u/kisaev/figure2X_LGG_lncs_pcgs_correlations.pdf", width=6, height=6)
+gene_exp = ggplot(plot, aes(lnc, pcg)) +
+  geom_tile(aes(fill = rho, colour =lncbetter, width=0.7, height=0.7), size=1) + theme_bw()
+gene_exp = ggpar(gene_exp, x.text.angle = 45) + 
+scale_fill_gradient(low = "grey", high = "red", na.value = 'white') + ylab("Protein-coding gene")+
+xlab("lncRNA") + coord_equal()+ scale_color_manual(values=c("white", "black"))+
+theme(legend.position="bottom") + geom_text(aes(label = sig_rho), size=4)+
+theme(text = element_text(size=10)) 
+gene_exp
+dev.off()
+
 #saveRDS(prog_pcgs, file="final_set_126_lncRNAPCG_pairs_nov16.rds")
 #write.csv(prog_pcgs, file="126_cis_antisense_pairs_survival_results_10kb_nov16.csv", quote=F, row.names=F)
 
 #make sure it's only updated list of candidates 
 r = readRDS("final_set_126_lncRNAPCG_pairs_nov16.rds")
 filter(r, combo %in% allCands$combo)
-
 
 #127_cis_antisense_pairs_survival_results_10kb_nov16.rds
 #lncRNA_cands_wPCGs_that_are_in_cis_10kb_nov16.rds

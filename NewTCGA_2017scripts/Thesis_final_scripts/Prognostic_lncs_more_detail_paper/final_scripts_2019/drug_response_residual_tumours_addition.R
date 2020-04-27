@@ -58,6 +58,19 @@ rna$margin_status[rna$margin_status == "#N/A"] = "NA"
 rna$margin_status[rna$margin_status == "[Unknown]"] = "NA"
 rna$margin_status[rna$margin_status == "[Not Available]"] = "NA"
 
+rna$residual_tumor[rna$residual_tumor == "R0"] = 1 
+rna$residual_tumor[rna$residual_tumor == "R1"] = 2
+rna$residual_tumor[rna$residual_tumor == "R2"] = 3 
+rna$residual_tumor[rna$residual_tumor == "RX"] = "NA"
+
+rna$treatment_outcome_first_course[rna$treatment_outcome_first_course == "Complete Remission/Response"] = 1
+rna$treatment_outcome_first_course[rna$treatment_outcome_first_course == "Progressive Disease"] = 4
+rna$treatment_outcome_first_course[rna$treatment_outcome_first_course == "Stable Disease"] = 3
+rna$treatment_outcome_first_course[rna$treatment_outcome_first_course == "Partial Remission/Response"] = 2
+rna$treatment_outcome_first_course[rna$treatment_outcome_first_course == "No Measureable Tumor or Tumor Markers"] = 1
+rna$treatment_outcome_first_course[rna$treatment_outcome_first_course == "Persistent Disease"] = 4
+rna$treatment_outcome_first_course[rna$treatment_outcome_first_course == "Normalization of Tumor Markers, but Residual Tumor Mass"] = 3
+
 cancers = unique(allCands$canc)
 get_canc_dat = function(canc){
   canc_d = subset(rna, Cancer == canc)
@@ -135,13 +148,21 @@ get_clin_lnc_cors = function(dtt){
       if(!(length(z)==0)){
         check_dat=check_dat[-z,]
       }
+      
+      if(!(dim(table(check_dat$lncRNA_tag))==1)){
+      check_dat[,1] = as.numeric(check_dat[,1])
+      check_dat$lncRNA_tag = as.numeric(check_dat$lncRNA_tag)
+
       tb=table(check_dat[,1], check_dat$lncRNA_tag)
       if(!(dim(tb)[1]==0)){
       chisq_pval = as.numeric(tidy(chisq.test(tb))[2])
+      colnames(check_dat)[1]="variable"
       answer = c(lnc, canc, check, chisq_pval, hr)
       return(answer)
       }
     }
+    }
+
     variables_checked = as.data.table(ldply(llply(variables_check, get_assoc)))
     return(variables_checked)
     }
@@ -154,7 +175,7 @@ all_cancers_cell_types = as.data.table(ldply(llply(filtered_data, get_clin_lnc_c
 colnames(all_cancers_cell_types) = c("lnc", "canc", "check", "chisq_pval", "hr")
 all_cancers_cell_types$chisq_pval = as.numeric(all_cancers_cell_types$chisq_pval)
 all_cancers_cell_types$chisq_fdr = p.adjust(all_cancers_cell_types$chisq_pval, method="fdr")
-write.csv(all_cancers_cell_types, file="cands_treatment_outcome_residual_tumor_analysis.csv", row.names=F, quote=F)
+write.csv(all_cancers_cell_types, file="/u/kisaev/cands_treatment_outcome_residual_tumor_analysis.csv", row.names=F, quote=F)
 
 
 

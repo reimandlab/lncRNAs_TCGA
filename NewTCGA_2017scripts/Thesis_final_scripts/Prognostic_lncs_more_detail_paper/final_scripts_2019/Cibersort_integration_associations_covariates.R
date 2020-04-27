@@ -41,10 +41,11 @@ check=function(pat){
   return(pat_new)
 }
 
-#colnames(xcell)[2:ncol(xcell)] =  llply(colnames(xcell)[2:ncol(xcell)], check)
-#saveRDS(xcell, file="xcell_new_colnames.rds")
-
-xcell=readRDS("xcell_new_colnames.rds")
+#xcell=fread("TCGA.Kallisto.fullIDs.cibersort.relative-1.tsv")
+#xcell$SampleID = unlist(xcell$SampleID)
+#xcell[,1] = llply(xcell$SampleID, check)
+#saveRDS(xcell, file="cibersort_dat.rds")
+xcell=readRDS("cibersort_dat.rds")
 
 #--------This script ------------------------------------------------
 
@@ -113,38 +114,47 @@ get_clin_lnc_cors = function(dtt){
     if(hr <1){new_dat$risk = "LowExp"}
     
     #get xcell data 
-    z = which(colnames(xcell) %in% new_dat$patient)
-    canc_xcell = t(xcell[,c(1, z)])
-    colnames(canc_xcell)=canc_xcell[1,]
-    canc_xcell=canc_xcell[-1,]
+    z = which(xcell$SampleID %in% new_dat$patient)
+    canc_xcell = xcell[z,]
+    #colnames(canc_xcell)=canc_xcell[1,]
+    #canc_xcell=canc_xcell[-1,]
 
     #now for each cell type get comparison 
     canc_xcell = as.data.frame(canc_xcell)
-    canc_xcell$patient = rownames(canc_xcell)
+    canc_xcell$patient = canc_xcell$SampleID
     canc_xcell = as.data.table(canc_xcell)
+    canc_xcell$patient = unlist(canc_xcell$patient)
     canc_xcell = merge(canc_xcell, new_dat, by="patient")
+
+    cell_types=colnames(canc_xcell)[4:25]
 
     #check cell type enrichment between low/high groups
     get_enrich = function(cell_type){
+      colnames(canc_xcell)[29]="lnc"
       cell_dat  = as.data.frame(canc_xcell)
-      cell_dat = cell_dat[,c(cell_type, 77)]
+      z = which(colnames(cell_dat) %in% c(cell_type, "lncRNA_tag", "lnc"))
+      cell_dat = cell_dat[,z]
       cell_t=colnames(cell_dat)[1]
       colnames(cell_dat)[1]="cell_type"
       cell_dat$cell_type = as.numeric(cell_dat$cell_type)
       cell_dat$lncRNA_tag = as.numeric(cell_dat$lncRNA_tag)
-      wilcox.test(cell_dat$lncRNA_tag, cell_dat$cell_type, alternative = "g") 
-      g = ggboxplot(cell_dat, x="lncRNA_tag", y="cell_type") + stat_compare_means() + ggtitle(paste(lnc, cell_t, canc))
-      #print(g)
+      
+      if(summary(cell_dat$cell_type)[5] > 0.1){
+      g = ggboxplot(cell_dat, x="lncRNA_tag", y="cell_type", fill="lncRNA_tag", palette="npg", add = "jitter") + stat_compare_means() + 
+      ggtitle(paste(lnc, cell_t, canc)) + stat_n_text()
+      print(g)
       cell_dat$lncRNA_tag = as.factor(cell_dat$lncRNA_tag)
       pval_w = as.numeric(tidy(wilcox.test(cell_type ~ lncRNA_tag, data = cell_dat))[2])
       pval_t = as.numeric(tidy(t.test(cell_type ~ lncRNA_tag, data = cell_dat))[2])
+      spear=rcorr(cell_dat$cell_type, cell_dat$lnc)$r[2]
+      spear_p=rcorr(cell_dat$cell_type, cell_dat$lnc)$P[2]
       res = c(lnc, cell_t, pval_w, pval_t, mean(cell_dat$cell_type[cell_dat$lncRNA_tag==1]),mean(cell_dat$cell_type[cell_dat$lncRNA_tag==0]),
-       median(cell_dat$cell_type[cell_dat$lncRNA_tag==1]),median(cell_dat$cell_type[cell_dat$lncRNA_tag==0]), canc)
-      names(res)=c("lnc", "cell_type", "pval_w", "pval_t", "mean_high_lnc", "mean_low_lnc", "median_high_lnc", "median_low", "canc")
-      return(res)
+       median(cell_dat$cell_type[cell_dat$lncRNA_tag==1]),median(cell_dat$cell_type[cell_dat$lncRNA_tag==0]), canc, spear, spear_p)
+      names(res)=c("lnc", "cell_type", "pval_w", "pval_t", "mean_high_lnc", "mean_low_lnc", "median_high_lnc", "median_low", "canc", "spear", "spear_p")
+      return(res)}
     }
 
-    lnc_all_immune = as.data.table(ldply(llply(2:65, get_enrich)))
+    lnc_all_immune = as.data.table(ldply(llply(cell_types, get_enrich)))
     lnc_all_immune$lnc_name= sapply(lnc_all_immune$lnc, get_name)
     lnc_all_immune$median_high_lnc = as.numeric(lnc_all_immune$median_high_lnc)
     lnc_all_immune$mean_high_lnc = as.numeric(lnc_all_immune$mean_high_lnc)
@@ -163,33 +173,6 @@ get_clin_lnc_cors = function(dtt){
     lnc_all_immune$hr = hr
 
     lnc_all_immune = lnc_all_immune[order(abs(median_high_lnc), abs(mean_high_lnc))]
-    canc_xcell_lnc = canc_xcell[,c(1:65,77)]
-    heatmap = melt(canc_xcell_lnc, id.vars = c("lncRNA_tag", "patient"))
-    heatmap$value=as.numeric(heatmap$value)
-
-    canc_xcell_lnc = canc_xcell[,c(1:65)]
-    tags=canc_xcell[,c(1,77)]
-    canc_xcell_lnc = as.data.frame(canc_xcell_lnc)
-    rownames(canc_xcell_lnc) = canc_xcell_lnc$patient
-    canc_xcell_lnc$patient = NULL 
-
-    canc_xcell_lnc[] <- lapply(canc_xcell_lnc, function(x) {
-    if(is.character(x)) as.numeric(x) else x
-    })
-    canc_xcell_lnc = as.matrix(canc_xcell_lnc)
-
-    # Example: grouping from the first letter:
-    my_group <- as.character(tags$lncRNA_tag)
-    
-    library(ComplexHeatmap)
-
-    ha = HeatmapAnnotation(lncrna = my_group, 
-    col = list(type = c("0" = "limegreen", "1" = "mistyrose2")), 
-    show_annotation_name = TRUE,
-    annotation_name_offset = unit(3, "mm"))
-    
-    heat=Heatmap(t(canc_xcell_lnc), top_annotation = ha, column_names_gp = gpar(fontsize = 1), name=paste(canc, get_name(lnc)))
-    print(heat)
     return(lnc_all_immune)
     } #end get_cor
 
@@ -197,17 +180,19 @@ get_clin_lnc_cors = function(dtt){
     return(canc_results)
 }
 
-pdf("all_lncs_cancers_cell_types_boxplots.pdf", width=15, height=12)
+pdf("/u/kisaev/cell_types_immune_lncRNAs.pdf")
 all_cancers_cell_types = as.data.table(ldply(llply(filtered_data, get_clin_lnc_cors)))
-all_cancers_cell_types$fdr = p.adjust(all_cancers_cell_types$pval_w, method="fdr")
-saveRDS(all_cancers_cell_types, file="all_cancers_cell_types_xcell_results.rds")
 dev.off()
+all_cancers_cell_types$fdr = p.adjust(all_cancers_cell_types$pval_w, method="fdr")
+saveRDS(all_cancers_cell_types, file="all_cancers_cell_types_cibersort_results.rds")
 
 all_cancers_cell_types$pair = paste(all_cancers_cell_types$cell_type, all_cancers_cell_types$lnc_name)
+all_cancers_cell_types$diff_meds = all_cancers_cell_types$median_high_lnc - all_cancers_cell_types$median_low
+all_cancers_cell_types$spear_fdr = p.adjust(all_cancers_cell_types$spear_p, method="fdr")
+
 sig_hits = as.data.table(filter(all_cancers_cell_types, fdr < 0.05))
-sig_hits$diff_meds = sig_hits$median_high_lnc - sig_hits$median_low
 sig_hits = sig_hits[order(-abs(diff_meds))]
-write.csv(all_cancers_cell_types, file="/u/kisaev/xCell_associations_all.csv", quote=F, row.names=F)
+write.csv(all_cancers_cell_types, file="/u/kisaev/cibersort_associations_all.csv", quote=F, row.names=F)
 
 #summarize sig_hits
 #x=lncRNA
@@ -217,17 +202,9 @@ colnames(canc_conv)[2] = "canc"
 sig_hits = merge(sig_hits, canc_conv)
 sig_hits$name = paste(sig_hits$lnc_name, sig_hits$type)
 
-cells = as.data.table(table(sig_hits$cell_type))
-lncs=as.data.table(table(sig_hits$name))
-cells = cells[order(-N)]
-lncs = lncs[order(-N)]
-
-sig_hits$name = factor(sig_hits$name, levels=lncs$V1)
-sig_hits$cell_type = factor(sig_hits$cell_type, levels=cells$V1)
-
 #make it easier so filling is either enrichment in high-risk or enrichment in low-risk
-z = which((sig_hits$hr== "high_exp_bad") & (sig_hits$diff_meds >0))
 sig_hits$enrichment = ""
+z = which((sig_hits$hr== "high_exp_bad") & (sig_hits$diff_meds >0))
 sig_hits$enrichment[z] = "EHR"
 z = which((sig_hits$hr== "low_exp_bad") & (sig_hits$diff_meds >0))
 sig_hits$enrichment[z] = "ELR"
@@ -236,14 +213,23 @@ sig_hits$enrichment[z] = "ELR"
 z = which((sig_hits$hr== "low_exp_bad") & (sig_hits$diff_meds <0))
 sig_hits$enrichment[z] = "EHR"
 
-gene_exp = ggplot(sig_hits, aes(name, cell_type)) +
-  geom_tile(aes(fill = diff_meds, colour = enrichment)) + theme_bw()
-gene_exp = ggpar(gene_exp, x.text.angle = 90) + 
-scale_fill_gradient(low = "grey", high = "red", na.value = 'white') + ylab("Cell-type")+
-xlab("lncRNA") + coord_equal()+ scale_color_manual(values=c("red", "blue"))+
-theme(legend.position="bottom") + theme(text = element_text(size=3)) 
+sig_hits = as.data.table(filter(sig_hits , !(enrichment=="")))
+cells = as.data.table(table(sig_hits$cell_type))
+lncs=as.data.table(table(sig_hits$name))
+cells = cells[order(-N)]
+lncs = lncs[order(-N)]
 
-pdf("/u/kisaev/figure4X_xCell.pdf", width=5, height=4)
+sig_hits$name = factor(sig_hits$name, levels=lncs$V1)
+sig_hits$cell_type = factor(sig_hits$cell_type, levels=cells$V1)
+
+gene_exp = ggplot(sig_hits, aes(name, cell_type)) +
+  geom_tile(aes(fill = abs(diff_meds), colour = enrichment, width=0.8, height=0.8), size=1)+ theme_bw()
+gene_exp = ggpar(gene_exp, x.text.angle = 90) + 
+scale_fill_gradient(low = "white", high = "black", na.value = 'white') + ylab("Cell-type")+
+xlab("lncRNA") + coord_equal()+ scale_color_manual(values=c("red", "blue"))+
+theme(legend.position="bottom") + theme(text = element_text(size=7)) 
+
+pdf("/u/kisaev/figure4X_xCell.pdf", width=9, height=8)
 #+ geom_text(aes(label = sig_rho), size=4)+
 gene_exp
 dev.off()

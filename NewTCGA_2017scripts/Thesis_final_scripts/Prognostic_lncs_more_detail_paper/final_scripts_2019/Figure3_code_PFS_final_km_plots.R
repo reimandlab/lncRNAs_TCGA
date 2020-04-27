@@ -93,7 +93,7 @@ get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates 
   z = which(colnames(dtt) %in% c(as.character(cands$gene[cands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
-    "new_tumor_event_type", "Cancer", "type"))
+    "new_tumor_event_type", "Cancer", "type", "PFI", "PFI.time"))
   print(dtt$type[1])
   #print(cands$cancer[1])
   dtt = dtt[,z]
@@ -162,8 +162,10 @@ get_survival_models = function(dtt){
   
   dat = dat[,c(which(colnames(dat) %in% names(keep)))]
 
-  dat$OS = as.numeric(dat$OS)
-  dat$OS.time = as.numeric(dat$OS.time)
+  dat$OS = as.numeric(dat$PFI)
+  dat$OS.time = as.numeric(dat$PFI.time)
+  dat$PFI=NULL
+  dat$PFI.time=NULL
   dat$age_at_initial_pathologic_diagnosis = as.numeric(dat$age_at_initial_pathologic_diagnosis)
   #num events
   num_events = length(which(dat$OS == 1))
@@ -212,6 +214,7 @@ get_survival_models = function(dtt){
   }
 
   gene_name = colnames(newdat)[1]
+  print(gene_name)
   gene = colnames(newdat)[1]
   colnames(newdat)[1] = "gene"
   newdat$OS.time = newdat$OS.time/365
@@ -326,7 +329,7 @@ return(results_cox1)
 #-----------------------------------------------------------------------------------------------------------
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_lifespan_May3rd.pdf")
 #pdf("TCGA_candidates_survival_plots_final_cands_FULL_5year_surv_oct3.pdf")
-pdf("TCGA_candidates_survival_plots_final_cands_FULL_10year_surv_2019.pdf", width=6, height=5)
+pdf("TCGA_candidates_survival_plots_final_cands_FULL_10year_surv_2019_PFI.pdf", width=6, height=5)
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
 dev.off()
 
@@ -337,7 +340,7 @@ tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
 
 tcga_results1$fdr_pval = p.adjust(as.numeric(tcga_results1$pval), method="fdr")
 tcga_results1 = as.data.table(tcga_results1)
-tcga_results1 = as.data.table(filter(tcga_results1, fdr_pval < 0.05))
+#tcga_results1 = as.data.table(filter(tcga_results1, fdr_pval < 0.05))
 
 tcga_results1$perc_wevents = as.numeric(tcga_results1$perc_wevents)
 tcga_results1$num_events = as.numeric(tcga_results1$num_events)
@@ -375,15 +378,15 @@ pdf("Dist_perc_risk_patients_per_lncRNA.pdf", width=10)
 riskplot
 dev.off()
 
-tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
+#tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
 tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
-saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
+#saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
 
 colnames(fantom)[1] = "gene"
 tcga_results1 = merge(fantom, tcga_results1, by="gene")
-write.table(tcga_results1, file="SuppTable4.txt", quote=F, row.names=F, sep=";")
-
 tcga_results1 = as.data.table(tcga_results1)
+
+write.table(tcga_results1, file="PFI_candidates_survival_times.txt", quote=F, row.names=F, sep=";")
 
 dim(filter(tcga_results1, HR >1))
 tcga_results1$HR = as.numeric(tcga_results1$HR)
