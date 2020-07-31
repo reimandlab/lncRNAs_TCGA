@@ -16,7 +16,8 @@ z = which(data$gene_id == "ENSG00000141510")
 
 saveRDS(data, file="LGG_copy_number_variation.rds")
 
-maf <- GDCquery_Maf("LGG", pipelines = "muse")
+maf= GDCquery_Maf(tumor = "LGG", pipelines = "mutect2")
+
 maf=as.data.table(maf)
 maf$Tumor_Sample_Barcode = sapply(maf$Tumor_Sample_Barcode, function(x){paste(unlist(strsplit(x, "-"))[1:3], collapse="-")})
 maf = as.data.table(subset(maf, Hugo_Symbol %in% c("IDH1", "IDH2", "TP53")))
