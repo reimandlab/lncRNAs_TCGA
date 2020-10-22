@@ -133,10 +133,10 @@ get_num_peaks_den = function(lnc){
   return(c(lnc, lnc_type))
 }
 
-pdf("pca3_expression_across_cancers.pdf")
-get_exp_plots("ENSG00000225937")
-get_num_peaks_den("ENSG00000225937")
-dev.off()
+#pdf("pca3_expression_across_cancers.pdf")
+#get_exp_plots("ENSG00000225937")
+#get_num_peaks_den("ENSG00000225937")
+#dev.off()
 
 
 #######
@@ -227,8 +227,8 @@ get_pcg_enrich = function(lnc, pcg, canc){
 ##[5]##-------------------------------------------------------------
 #######
 
-gene = "ENSG00000225937" #PCA3
-cancer = "PAAD"
+#gene = "ENSG00000225937" #PCA3
+#cancer = "PAAD"
 
 ###EASY WAY TO MAKE KM PLOT
 get_km_plot = function(gene, cancer){
