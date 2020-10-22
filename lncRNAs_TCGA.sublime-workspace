@@ -8,19 +8,10 @@
 	"buffers":
 	[
 		{
-			"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/figure6abcd.R",
+			"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/LGG_HOXA10as_check_expression_vsIDH_1pq19.R",
 			"settings":
 			{
-				"buffer_size": 30656,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/Figure5_analysis_figure.R",
-			"settings":
-			{
-				"buffer_size": 44188,
+				"buffer_size": 19559,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -66,10 +57,11 @@
 	],
 	"file_history":
 	[
+		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/figure6abcd.R",
+		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/Figure5_analysis_figure.R",
 		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/011_survival_and_correlations_Figure2_survival_summary_TCGA_all_cancers_survival.R",
 		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/Figure2_code.R",
 		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/007B_analyzing_tests_REAL_DATA_1000_en_runs.R",
-		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/Figure5_analysis_figure.R",
 		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/TCGA_biolinks_figure5_code.R",
 		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/figure2_d_pcgs_lncs.R",
 		"/Users/kisaev/lncRNAs_TCGA/elastic_net_permutations/001_main_elastic_net_1000_runs_analyzing.R",
@@ -116,6 +108,11 @@
 		"height": 101.0,
 		"where_history":
 		[
+			"/Users/kisaev/lncRNAs_TCGA",
+			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts",
+			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts",
+			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper",
+			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019"
 		]
 	},
 	"find_state":
@@ -123,6 +120,13 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"11052rnaSEQfiles",
+			"11052rnaSEQfiles.rds",
+			"save",
+			"11052rnaSEQfiles.rds",
+			"factor",
+			"coxph",
+			"tidy",
 			"biol",
 			"save",
 			"matrix",
@@ -144,54 +148,24 @@
 	"groups":
 	[
 		{
-			"selected": 1,
+			"selected": 0,
 			"sheets":
 			[
 				{
 					"buffer": 0,
-					"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/figure6abcd.R",
+					"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/LGG_HOXA10as_check_expression_vsIDH_1pq19.R",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 30656,
+						"buffer_size": 19559,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								22795,
-								22862
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/R/R.sublime-syntax",
-							"tab_size": 2,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 6031.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 1,
-					"type": "text"
-				},
-				{
-					"buffer": 1,
-					"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/Figure5_analysis_figure.R",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 44188,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								708,
-								730
+								0,
+								1309
 							]
 						],
 						"settings":
@@ -212,7 +186,7 @@
 	],
 	"incremental_find":
 	{
-		"height": 24.0
+		"height": 23.0
 	},
 	"input":
 	{
@@ -249,7 +223,7 @@
 	"project": "lncRNAs_TCGA.sublime-project",
 	"replace":
 	{
-		"height": 44.0
+		"height": 42.0
 	},
 	"save_all_on_build": true,
 	"select_file":
