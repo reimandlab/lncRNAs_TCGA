@@ -1,6 +1,8 @@
 set.seed(911)
 
-source("load_data.R")
+source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/load_data.R")
+
+#source("load_data.R")
 
 #load all libraries and functions 
 source("check_lnc_exp_cancers.R")
