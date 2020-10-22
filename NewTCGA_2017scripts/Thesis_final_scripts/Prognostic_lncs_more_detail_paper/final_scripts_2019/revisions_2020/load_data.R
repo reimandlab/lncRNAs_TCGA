@@ -4,7 +4,10 @@ source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognost
 #1. lncRNA expression in different cancers
 rna = readRDS("lncRNAs_2019_manuscript/5919_lncRNAs_tcga_all_cancers_March13_wclinical_dataalldat.rds") #<- updated gbm cohort
 
-#2. Fantom data
+#2. Protein coding genes expression in different cancers
+pcg = readRDS("lncRNAs_2019_manuscript/19438_lncRNAs_tcga_all_cancers_March13_wclinical_dataalldat.rds")
+
+#3. Fantom data
 fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs
 extract3 <- function(row){
         gene <- as.character(row[[1]])
@@ -18,9 +21,6 @@ rm <- fantom$CAT_geneName[z]
 z <- which(fantom$CAT_geneName %in% rm)
 fantom <- fantom[-z,]
 colnames(fantom)[1] = "gene"
-
-#3. Protein coding genes expression in different cancers
-pcg = readRDS("lncRNAs_2019_manuscript/19438_lncRNAs_tcga_all_cancers_March13_wclinical_dataalldat.rds")
 
 ###---------------------------------------------------------------
 ###Get lncRNAs for each cancer
@@ -37,20 +37,18 @@ pcg = merge(pcg, canc_conversion, by="patient")
 
 cancers = as.list(unique(rna$Cancer)) #18 cancers wtih at least 90 patients in each cohort
 
-#3. Remove any lncRNAs that are not expressed in any of the patients
+#Remove any lncRNAs that are not expressed in any of the patients
 sums = apply(rna[,2:(ncol(rna)-34)], 2, sum) #134 with 0 expression in ALL patients
 zeroes = names(sums[which(sums ==0)]) #what are they?
-#in pcawg
 z <- which(colnames(rna) %in% zeroes)
 rna = rna[,-z]
 
-#4. Now within each cancer get mean and variance for each gene
 rna = as.data.table(rna)
 
 dim(rna)
 dim(pcg)
 
-#function that tests each lncRNA's survival
+#clean up data 
 
 #1. remove discrepancy
 z = which(rna$vital_status == "[Discrepancy]")
@@ -112,20 +110,5 @@ pats_num = as.data.table(table(all$type))
 pats_num = filter(pats_num, N <50)
 canc_rm = pats_num$V1
 all = all[-which(all$type %in% canc_rm),]
-
-#lncRNA candidates, n = 166, n=173 combos
-allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
-allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
-
-#cindices
-r = readRDS("lncs_cross_validations_Results_nov20.rds")
-
-z = which(duplicated(all$patient))
-if(!(length(z)==0)){
-  dups = all$patient[z]
-  k = which(all$patient %in% dups)
-  all = all[-k,]
-}
 
 print(table(all$type))
