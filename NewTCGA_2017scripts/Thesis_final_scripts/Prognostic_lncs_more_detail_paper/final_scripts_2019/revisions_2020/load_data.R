@@ -112,3 +112,30 @@ canc_rm = pats_num$V1
 all = all[-which(all$type %in% canc_rm),]
 
 print(table(all$type))
+
+
+#fix clinical variables so only one level per variable has NA
+z = which(rna$race %in% c("[Not Available]", "[Not Evaluated]", "[Unknown]"))
+rna$race[z] = "unknown"
+
+z = which(rna$clinical_stage %in% c("[Not Applicable]", "[Not Available]"))
+rna$clinical_stage[z] = "unknown"
+
+z = which(rna$histological_grade %in% c("[Unknown]", "[Not Available]", "[Discrepancy]"))
+rna$histological_grade[z] = "unknown"
+
+print(table(rna$race))
+
+#fix clinical variables so only one level per variable has NA
+z = which(pcg$race %in% c("[Not Available]", "[Not Evaluated]", "[Unknown]"))
+pcg$race[z] = "unknown"
+
+z = which(pcg$clinical_stage %in% c("[Not Applicable]", "[Not Available]"))
+pcg$clinical_stage[z] = "unknown"
+
+z = which(pcg$histological_grade %in% c("[Unknown]", "[Not Available]", "[Discrepancy]"))
+pcg$histological_grade[z] = "unknown"
+
+print(table(pcg$race))
+
+print("done loading everything YAY")
