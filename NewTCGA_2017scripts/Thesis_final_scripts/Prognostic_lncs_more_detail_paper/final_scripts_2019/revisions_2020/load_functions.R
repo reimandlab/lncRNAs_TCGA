@@ -159,7 +159,8 @@ get_num_peaks_den = function(lnc){
 #(because we want at least 15 patients with 100FPKM expression)
 
 get_num_pats = function(lnc, canc, exp_cut){
-        dat = rna[,which(colnames(rna) %in% c("Cancer", lnc))]
+        z = which(colnames(rna) %in% c("Cancer", lnc))
+        dat = rna[,..z]
         dat = dat[which(dat$Cancer == canc),]
         colnames(dat)[1] = "lncRNAExp"
         num_pats = length(which(dat[,1] > exp_cut))
