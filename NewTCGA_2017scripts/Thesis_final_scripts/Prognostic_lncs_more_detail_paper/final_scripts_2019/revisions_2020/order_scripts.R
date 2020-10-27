@@ -26,4 +26,7 @@ Rscript $main/003_survival_KM_OS_vs_PFI.R
 Rscript $main/003_pcawg_validation_simple.R #just make KM plots for all PCAWG candidates as we did for TCGA 
 Rscript $main/003_pcawg_validation_risk_scores_TCGA_model.R #use TCGA model fit on lncRNA and apply to PCAWG data
 
+#lncRNA versus pcgs correlation and survival model comparisons 
+Rscript $main/004_lncRNA_pcg_correlation_analysis.R #just make KM plots for all PCAWG candidates as we did for TCGA 
+Rscript $main/004_lncRNA_pcg_correlation.R #just make KM plots for all PCAWG candidates as we did for TCGA 
 

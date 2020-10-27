@@ -41,6 +41,7 @@ library(survcomp)
 library(caret)
 library(stringr)
 library(factoextra)
+library(GenomicRanges)
 
 mypal = pal_npg("nrc", alpha = 0.7)(10)
 mypal5 = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,

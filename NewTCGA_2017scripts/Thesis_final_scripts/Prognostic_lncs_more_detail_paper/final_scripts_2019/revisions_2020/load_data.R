@@ -105,6 +105,18 @@ rm <- fantom$CAT_geneName[z]
 z <- which(fantom$CAT_geneName %in% rm)
 fantom <- fantom[-z,]
 
+#hg38 = fread("hg38_genes.bed")
+hg38 = readRDS("/u/kisaev/grch38_dat_annotables.rds")
+hg38$chr = paste("chr", hg38$chr, sep="")
+
+manual_missing_lncs = as.data.frame(matrix(ncol=9, nrow=3))
+manual_missing_lncs[1,]=c("ENSG00000247844", "na", "CCAT1", "chr8", 127207866, 127219088, "-1",  "lincRNA", "na")
+manual_missing_lncs[2,]=c("ENSG00000233800", "na", "RP11-295G24.4", "chr20", 44448777, 44450092, "1",  "sense_intronic", "na")
+manual_missing_lncs[3,]=c("ENSG00000237907", "na", "LINC01430", "chr8", 127207866, 127219088, "-1",  "antisense_RNA", "na")
+colnames(manual_missing_lncs)=colnames(hg38)
+
+hg38 = rbind(hg38, manual_missing_lncs)
+
 #remove cancer types with less than 50 patients
 pats_num = as.data.table(table(all$type))
 pats_num = filter(pats_num, N <50)

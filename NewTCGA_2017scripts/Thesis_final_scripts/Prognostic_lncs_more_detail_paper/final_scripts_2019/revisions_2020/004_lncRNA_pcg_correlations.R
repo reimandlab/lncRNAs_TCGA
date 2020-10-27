@@ -1,13 +1,13 @@
-
 #------------------------------------------------------------------------------
 #Check if the cis pcg of antisense lncRNA is also prognostic 
 #in the same way or not 
 #------------------------------------------------------------------------------
 
-#source code
-source("check_lnc_exp_cancers.R")
 library(corrplot)
 
+set.seed(911)
+
+source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/load_data.R")
 #COSMIC cancer gene census
 census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
 #get ensg
@@ -19,9 +19,6 @@ get_census_ensg = function(genes){
 }
 census$ensg = sapply(census$Synonyms, get_census_ensg)
 
-set.seed(911)
-
-source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/load_data.R")
 #setWD
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
@@ -42,36 +39,8 @@ flattenCorrMatrix <- function(cormat, pmat) {
     )
 }
 
-#--------This script ------------------------------------------------
-
-#summarize results from co-expression analysis of PCGs
-#how many per lcnRNA
-#how many pathways per lncRNA
-#how many cancer genes, RBPs, TFs...
-
-#--------------------------------------------------------------------
-
-#write function that adds tag to whole data group 
-#and does survival analysis on whole group
-
-cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
-
-#--------------------------------------------------------------------
-#RESULTS-------------------------------------------------------------
-#--------------------------------------------------------------------
-
-#coexp = readRDS("coexpression_results_processed_july24.rds")
-#coexp$combo1 = paste(coexp$lnc, coexp$pcg, sep="_")
-#coexp$combo2 = paste(coexp$pcg, coexp$lnc, sep="_")
 
 #-------------------ANALYSIS--------------------------------------------
-##3-----------------get correlation pairs-----------------------------------
-
-#prog_pcgs = readRDS("mRNAs_Survival_Results_prognostic_pcgs_July19.rds")
-#prog_pcgs = as.data.table(prog_pcgs)
-#cis_pcgs = readRDS("lncRNA_cands_wPCGs_that_are_in_cis_aug8.rds")
-
-setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
 #------FEATURES-----------------------------------------------------
 
@@ -93,6 +62,7 @@ cis_pcgs$combo = paste(cis_pcgs$lnc, cis_pcgs$pcg, sep="_")
 
 #check all lncRNA-cis PCG pairs 
 combos = unique(cis_pcgs$combo)
+
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 
@@ -322,20 +292,6 @@ cands_pairs$census[z] = "YES"
 cands_pairs$pcg = unlist(llply(cands_pairs$pcg, get_name_pcg))
 cands_pairs$lnc = unlist(llply(cands_pairs$lnc, get_name))
 
-#get pcg HR and p-value?
-#prog_pcgs$pcg_combo = paste(prog_pcgs$gene, prog_pcgs$canc, sep="_")
-#prog_pcgs = prog_pcgs[which(prog_pcgs$pcg_combo %in% cands_pairs$pcg_combo),]
-#prog_pcgs$pval = as.numeric(prog_pcgs$pval)
-#prog_pcgs = prog_pcgs[order(pval)]
-
-#prog_pcgs = merge(prog_pcgs, cands_pairs, by=c("pcg_combo"))
-#colnames(prog_pcgs)[12] = "type"
-#prog_pcgs = prog_pcgs[order(fdr_res)]
-
-#x-axis lnc concordance 
-#y-axis pcg concordance 
-#color of point - +/- correlation red or blue 
-#size of point - Spearman FDR
 prog_pcgs = cands_pairs
 
 prog_pcgs$cor[prog_pcgs$rho <0] = "Negative"
@@ -377,6 +333,21 @@ prog_pcgs$sig_spearman[prog_pcgs$rho_fdr < 0.05] = "sig"
 prog_pcgs$lnc_better = ""
 prog_pcgs$lnc_better[(prog_pcgs$fdr_res2 < 0.05) & (prog_pcgs$lncConcordance > prog_pcgs$pcgConcordance)] = "lnc_better"
 prog_pcgs$lnc_better[is.na(prog_pcgs$lnc_better)] = ""
+prog_pcgs$improv_perc = round((prog_pcgs$lncConcordance - prog_pcgs$pcgConcordance)/ prog_pcgs$pcgConcordance*100, digits=2)
+
+pdf("/u/kisaev/figu2_lncs_pcgs_histogram_spearman_rho.pdf", width=6, height=5)
+gghistogram(prog_pcgs, x = "rho",
+   add = "mean", 
+   color = "sig_spearman", fill = "sig_spearman",
+   palette = c("grey", "black"))+theme_bw()+xlim(-0.5,1)
+dev.off()
+
+pdf("/u/kisaev/figu2_lncs_pcgs_histogram_cindex_improvement.pdf", width=6, height=5)
+gghistogram(prog_pcgs, x = "improv_perc",
+   add = "mean", 
+   color = "sig_spearman", fill = "sig_spearman",
+   palette = c("grey", "black"))+theme_bw()+xlim(-15,60)
+dev.off()
 
 pdf("/u/kisaev/figure2E_summary_lncs_pcgs_antisense_10kb_wSpearmanRho.pdf", width=5,height=5)
 g = ggplot(prog_pcgs, aes(diff_cindices, rho, label=lnc_pcg)) +
