@@ -7,60 +7,6 @@
 	},
 	"buffers":
 	[
-		{
-			"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/order_scripts.R",
-			"settings":
-			{
-				"buffer_size": 1439,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/004_lncRNA_pcg_correlations.R",
-			"settings":
-			{
-				"buffer_size": 15650,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/004_lncRNA_pcg_correlations_analysis.R",
-			"settings":
-			{
-				"buffer_size": 4436,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/002_risk_scores_all_models_summary_figure.R",
-			"settings":
-			{
-				"buffer_size": 4423,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/Figure4_clinical_molecular_variables_analysis_figure.R",
-			"settings":
-			{
-				"buffer_size": 30528,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/load_data.R",
-			"settings":
-			{
-				"buffer_size": 5455,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		}
 	],
 	"build_system": "",
 	"build_system_choices":
@@ -92,17 +38,6 @@
 		"side_bar_visible": false,
 		"status_bar_visible": false
 	},
-	"expanded_folders":
-	[
-		"/Users/kisaev/lncRNAs_TCGA",
-		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts",
-		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts",
-		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper",
-		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/Figures_Codes",
-		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019",
-		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/last_scripts_by_KI",
-		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020"
-	],
 	"file_history":
 	[
 		"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/load_packages.R",
@@ -174,25 +109,6 @@
 		"height": 101.0,
 		"where_history":
 		[
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/last_scripts_by_KI",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/last_scripts_by_KI",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts",
-			"/Users/kisaev/lncRNAs_TCGA",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/last_scripts_by_KI",
-			"/Users/kisaev/lncRNAs_TCGA",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper",
-			"/Users/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019"
 		]
 	},
 	"find_state":
@@ -200,47 +116,6 @@
 		"case_sensitive": false,
 		"find_history":
 		[
-			"get_cor",
-			"365",
-			"lncRNA_cands_wPCGs_that_are_in_cis_10kb_nov16.rds",
-			"hic_data",
-			"figure2E_summary_lncs_pcgs_antisense_10kb_wSpearmanRho",
-			"set.seed(911)\n\nsource(\"/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/load_data.R\")\n#setWD\nsetwd(\"/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript\")\n\n#get candidates files\n\n#Data--------------------------------------------\nallCands = readRDS(\"final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds\")\nallCands = filter(allCands, data==\"TCGA\") #179 unique lncRNA-cancer combos, #166 unique lncRNAs \n\n#which cancer types are the non-unique lncRNAs from?\nallCands$Combo = NULL\nallCands = allCands[,c(\"gene\", \"coef\", \"HR\", \"pval\", \"cancer\", \"gene_name\")]\nallCands = allCands[!duplicated(allCands), ]\ncands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])\n",
-			"os",
-			"SuppTable4.txt",
-			"figure4X_PFI_vs_OS",
-			"PFI_cands_analysis",
-			"c-index",
-			"summary_clinical_concordances_vs_lnc_scatterplot_april18_wide.pdf",
-			"all",
-			"summary_cross_validation_clinical_multivariate_models_lncRNAs_Nov1.csv",
-			"lncRNAs_1000_internal_CVs_individual_cands_multivariate_feb25.rds",
-			"summary_cross_validation_clinical_multivariate_models_lncRNAs_Nov1.csv",
-			"cancers_multivaraite_models",
-			"summary_cross_validation_clinical_multivariate_models_lncRNAs_Nov1.csv",
-			"cancers_multivaraite_models.pdf",
-			"summary_figure2c_multivariate_single_models.pdf",
-			".pdf",
-			"summary_cross_validation_clinical_multivariate_models_lncRNAs_Nov1.csv",
-			"summary_figure2c_multivariate_single_models",
-			"pcawg",
-			"bootstrap",
-			"risk score",
-			"predict",
-			"external",
-			"externa",
-			"risk",
-			"11052rnaSEQfiles",
-			"11052rnaSEQfiles.rds",
-			"save",
-			"11052rnaSEQfiles.rds",
-			"factor",
-			"coxph",
-			"tidy",
-			"biol",
-			"save",
-			"matrix",
-			"print"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -258,184 +133,8 @@
 	"groups":
 	[
 		{
-			"selected": 4,
 			"sheets":
 			[
-				{
-					"buffer": 0,
-					"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/order_scripts.R",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 1439,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								1439,
-								1439
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/R/R.sublime-syntax"
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 5,
-					"type": "text"
-				},
-				{
-					"buffer": 1,
-					"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/004_lncRNA_pcg_correlations.R",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 15650,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								13510,
-								13510
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/R/R.sublime-syntax",
-							"tab_size": 2,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 3,
-					"type": "text"
-				},
-				{
-					"buffer": 2,
-					"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/004_lncRNA_pcg_correlations_analysis.R",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 4436,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								4263,
-								4343
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/R/R.sublime-syntax",
-							"tab_size": 2,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 2,
-					"type": "text"
-				},
-				{
-					"buffer": 3,
-					"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/002_risk_scores_all_models_summary_figure.R",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 4423,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								4277,
-								4422
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/R/R.sublime-syntax",
-							"translate_tabs_to_spaces": false
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 1,
-					"type": "text"
-				},
-				{
-					"buffer": 4,
-					"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/Figure4_clinical_molecular_variables_analysis_figure.R",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 30528,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								15866,
-								16369
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/R/R.sublime-syntax",
-							"tab_size": 2,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 5428.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 0,
-					"type": "text"
-				},
-				{
-					"buffer": 5,
-					"file": "NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/load_data.R",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 5455,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								4559,
-								4559
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/R/R.sublime-syntax"
-						},
-						"translation.x": 0.0,
-						"translation.y": 1302.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 4,
-					"type": "text"
-				}
 			]
 		}
 	],

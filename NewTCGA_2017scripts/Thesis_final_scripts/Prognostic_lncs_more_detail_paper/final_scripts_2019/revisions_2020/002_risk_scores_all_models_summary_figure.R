@@ -85,13 +85,15 @@ get_multi_plot = function(canc){
 	all$type_canc = canc_conv$type[canc_conv$Cancer == all$Cancer[1]]
 
 	# Change error plot type and add mean points
-	g = ggplot(all, aes(x=label, y=HR, colour=type, group=type)) + 
-    geom_errorbar(aes(ymin=ci05, ymax=ci95), colour="black", width=.1) +
+	g = ggplot(all, aes(x=label, y=cindex, colour=type, group=type)) + 
     geom_point(size=3)+ theme(plot.title = element_text(hjust = 0.5))+ theme_bw()+ ggtitle(all$type_canc[1])
 	g=ggpar(g, font.legend = c(5, "plain", "black") ,legend="bottom", font.xtickslab=c(5, "plain", "black"), font.ytickslab=c(5, "plain", "black")) + 
-	ylim(c(-1,6))+
-	geom_hline(yintercept=0, linetype="dashed", color = "black")+
-    coord_flip()+ylab("log2(HR)")+rremove("legend")
+	ylim(c(0,1))+
+    coord_flip()+ylab("c-index")+rremove("legend")
+
+    #geom_errorbar(aes(ymin=ci05, ymax=ci95), colour="black", width=.1) +
+	#geom_hline(yintercept=0, linetype="dashed", color = "black")+
+    
 	return(g)
 
 }
