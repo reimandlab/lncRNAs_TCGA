@@ -13,7 +13,6 @@ allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166
 allCands$Combo = NULL
 allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_name")]
 allCands = allCands[!duplicated(allCands), ]
-cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 
 #-----------------------------------------------------------------------------------------------------------------------------------
 #1 - read in data  
@@ -83,18 +82,18 @@ get_multi_plot = function(canc){
 	all=all[order(-type)]
 	all$label = factor(all$label, levels=all$label)
 	all$type_canc = canc_conv$type[canc_conv$Cancer == all$Cancer[1]]
+	all$cindex=as.numeric(all$cindex)
 
 	# Change error plot type and add mean points
 	g = ggplot(all, aes(x=label, y=cindex, colour=type, group=type)) + 
     geom_point(size=3)+ theme(plot.title = element_text(hjust = 0.5))+ theme_bw()+ ggtitle(all$type_canc[1])
-	g=ggpar(g, font.legend = c(5, "plain", "black") ,legend="bottom", font.xtickslab=c(5, "plain", "black"), font.ytickslab=c(5, "plain", "black")) + 
+	g=ggpar(g, font.xtickslab=c(5, "plain", "black"), font.ytickslab=c(5, "plain", "black")) + 
 	ylim(c(0,1))+
-    coord_flip()+ylab("c-index")+rremove("legend")
+    coord_flip()+ylab("c-index")+rremove("legend")+
+	geom_hline(yintercept=0.5, linetype="dashed", color = "black")
 
     #geom_errorbar(aes(ymin=ci05, ymax=ci95), colour="black", width=.1) +
-	#geom_hline(yintercept=0, linetype="dashed", color = "black")+
-    
-	return(g)
+    return(g)
 
 }
 
