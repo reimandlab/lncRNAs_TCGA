@@ -80,25 +80,28 @@ get_multi_plot = function(canc){
 	all$HR = log2(all$HR)
 	all$ci05 = log2(all$ci05)
 	all$ci95 = log2(all$ci95)
+	all=all[order(-type)]
+	all$label = factor(all$label, levels=all$label)
+	all$type_canc = canc_conv$type[canc_conv$Cancer == all$Cancer[1]]
 
 	# Change error plot type and add mean points
 	g = ggplot(all, aes(x=label, y=HR, colour=type, group=type)) + 
     geom_errorbar(aes(ymin=ci05, ymax=ci95), colour="black", width=.1) +
-    geom_point(size=3)+ theme_bw() + ggtitle(all$Cancer[1])
-	g=ggpar(g, font.legend = c(8, "plain", "black") ,legend="bottom", font.xtickslab=c(8, "plain", "black"), font.ytickslab=c(8, "plain", "black")) + 
+    geom_point(size=3)+ theme(plot.title = element_text(hjust = 0.5))+ theme_bw()+ ggtitle(all$type_canc[1])
+	g=ggpar(g, font.legend = c(5, "plain", "black") ,legend="bottom", font.xtickslab=c(5, "plain", "black"), font.ytickslab=c(5, "plain", "black")) + 
 	ylim(c(-1,6))+
-    coord_flip()+ylab("log2(HR)")
+	geom_hline(yintercept=0, linetype="dashed", color = "black")+
+    coord_flip()+ylab("log2(HR)")+rremove("legend")
 	return(g)
 
 }
-
 
 list_plots = llply(cancers, get_multi_plot)
 library(gridExtra)
 n <- length(list_plots)
 nCol <- floor(sqrt(n))
 
-pdf("/u/kisaev/cancers_multivaraite_models_via_risk_scores.pdf", width=14, height=18)
+pdf("/u/kisaev/cancers_multivaraite_models_via_risk_scores.pdf", width=11, height=9)
 do.call("grid.arrange", c(list_plots, ncol=nCol))
 dev.off()
 

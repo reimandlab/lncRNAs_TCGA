@@ -49,12 +49,11 @@ allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #1
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 cis_pcgs  =readRDS("lncRNA_cands_wPCGs_that_are_in_cis_10kb_nov16.rds")
-colnames(cis_pcgs)[c(4,5)] = c("lnc_strand", "lnc")
 
 #convert to ensgs
 get_ensg = function(name){
-  z = which(ucsc$hg19.ensemblToGeneName.value == name)
-  return(ucsc$hg19.ensGene.name2[z][1])
+  z = which(hg38$symbol == name)
+  return(hg38$ensgene[z][1])
 }
 cis_pcgs$lnc = sapply(cis_pcgs$lnc, get_ensg)
 cis_pcgs$pcg = sapply(cis_pcgs$pcg, get_ensg)
@@ -81,43 +80,43 @@ check_cis_pcg = function(combo){
 
   #get surv and exp data for these genes 
   z = which(colnames(all) %in% c(lnc, pcgg, "OS", "OS.time", "type", "patient", "Cancer"))
-  exp_dat = all[,z]
+  exp_dat = all[,..z]
   exp_dat = subset(exp_dat, Cancer == cancer)
 
   #label patients by binary variable 
   z = which(colnames(exp_dat) ==pcgg)
-  med = median(exp_dat[,z])
+  med = median(unlist(exp_dat[,..z]))
   exp_dat$pcg_median = ""
        if(med ==0){
         #if median = 0 then anyone greater than zero is 1 
-        l1 = which(exp_dat[,z] > 0)
-        l2 = which(exp_dat[,z] ==0)
+        l1 = which(exp_dat[,..z] > 0)
+        l2 = which(exp_dat[,..z] ==0)
         exp_dat$pcg_median[l1] = 1
         exp_dat$pcg_median[l2] = 0
         }
 
       if(!(med ==0)){
-        l1 = which(exp_dat[,z] >= med)
-        l2 = which(exp_dat[,z] < med)
+        l1 = which(exp_dat[,..z] >= med)
+        l2 = which(exp_dat[,..z] < med)
         exp_dat$pcg_median[l1] = 1
         exp_dat$pcg_median[l2] = 0
         }
   
   #lncRNA 
   z = which(colnames(exp_dat) ==lnc)
-  med = median(exp_dat[,z])
+  med = median(unlist(exp_dat[,..z]))
   exp_dat$lnc_median = ""
        if(med ==0){
         #if median = 0 then anyone greater than zero is 1 
-        l1 = which(exp_dat[,z] > 0)
-        l2 = which(exp_dat[,z] ==0)
+        l1 = which(exp_dat[,..z] > 0)
+        l2 = which(exp_dat[,..z] ==0)
         exp_dat$lnc_median[l1] = 1
         exp_dat$lnc_median[l2] = 0
         }
 
       if(!(med ==0)){
-        l1 = which(exp_dat[,z] >= med)
-        l2 = which(exp_dat[,z] < med)
+        l1 = which(exp_dat[,..z] >= med)
+        l2 = which(exp_dat[,..z] < med)
         exp_dat$lnc_median[l1] = 1
         exp_dat$lnc_median[l2] = 0
       }
@@ -138,11 +137,11 @@ check_cis_pcg = function(combo){
   exp_dat$OS.time = as.numeric(exp_dat$OS.time)
 
   z = which(colnames(exp_dat) == pcgg)
-  exp_dat[,z] = log1p(exp_dat[,z])
+  exp_dat[,z] = log1p(exp_dat[,..z])
   colnames(exp_dat)[z] = "PCG"
 
   z = which(colnames(exp_dat) == lnc)
-  exp_dat[,z] = log1p(exp_dat[,z])
+  exp_dat[,z] = log1p(exp_dat[,..z])
   colnames(exp_dat)[z] = "LNC"
 
   #get correlation between them (1)
@@ -163,11 +162,6 @@ check_cis_pcg = function(combo){
 
   #does lnc improve pcg?
   res2 = as.numeric(tidy(anova(cox_pcg, cox_both))[2,4]) #if sig, then yes 
-
-  #compare coefficeints
-  #lnc_plot = print(ggforest(cox_lnc, data=exp_dat))
-  #pcg_plot = print(ggforest(cox_pcg, data=exp_dat))
-  #both_plot = print(ggforest(cox_both, data=exp_dat))
 
   #arrange
   library(patchwork)
@@ -198,37 +192,38 @@ check_cis_pcg = function(combo){
   res$lncConcordance = as.data.table(glance(cox_lnc))$concordance
   res$pcgAIC= as.data.table(glance(cox_pcg))$AIC
   res$pcgConcordance = as.data.table(glance(cox_pcg))$concordance
+  res$combo_concord = as.data.table(glance(cox_both))$concordance
 
   exp_dat$OS.time = exp_dat$OS.time/365
-  fit <- survfit(Surv(OS.time, OS) ~ lnc_median + pcg_median, data = exp_dat)
-          s <- ggsurvplot(
-          title = paste(get_name(lnc), get_name(pcgg), exp_dat$type[1]),
-          fit, 
-          xlab = "Time (Years)", 
-          surv.median.line = "hv",
-          font.main = c(16, "bold", "black"),
-          font.x = c(14, "plain", "black"),
-          font.y = c(14, "plain", "black"),
-          font.tickslab = c(14, "plain", "black"),
-          font.legend = 12,
-          risk.table.fontsize = 5, 
+  #fit <- survfit(Surv(OS.time, OS) ~ lnc_median + pcg_median, data = exp_dat)
+  #        s <- ggsurvplot(
+  #        title = paste(get_name(lnc), get_name(pcgg), exp_dat$type[1]),
+  #        fit, 
+  #        xlab = "Time (Years)", 
+  #        surv.median.line = "hv",
+  #        font.main = c(16, "bold", "black"),
+  #        font.x = c(14, "plain", "black"),
+  #        font.y = c(14, "plain", "black"),
+  #        font.tickslab = c(14, "plain", "black"),
+  #        font.legend = 12,
+  #        risk.table.fontsize = 5, 
           #legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
-          data = exp_dat,      # data used to fit survival curves. 
-          risk.table = TRUE,       # show risk table.
-          legend = "right", 
-          pval = TRUE,             # show p-value of log-rank test.
-          conf.int = FALSE,        # show confidence intervals for 
+  #        data = exp_dat,      # data used to fit survival curves. 
+  #        risk.table = TRUE,       # show risk table.
+  #        legend = "right", 
+  #        pval = TRUE,             # show p-value of log-rank test.
+  #        conf.int = FALSE,        # show confidence intervals for 
                             # point estimaes of survival curves.
-          xlim = c(0,5),        # present narrower X axis, but not affect
+  #        xlim = c(0,5),        # present narrower X axis, but not affect
                             # survival estimates.
-          break.time.by = 1,     # break X axis in time intervals by 500.
+  #        break.time.by = 1,     # break X axis in time intervals by 500.
           #palette = colorRampPalette(mypal)(14), 
           #palette = mypal[c(4,1)],
-          ggtheme = theme_bw(), # customize plot and risk table with a theme.
-          risk.table.y.text.col = T, # colour risk table text annotations.
-          risk.table.y.text = FALSE # show bars instead of names in text annotations
-                            # in legend of risk table
-          )
+  #        ggtheme = theme_bw(), # customize plot and risk table with a theme.
+  #        risk.table.y.text.col = T, # colour risk table text annotations.
+  #        risk.table.y.text = FALSE # show bars instead of names in text annotations
+  #                          # in legend of risk table
+  #        )
           #print(s)
 
   return(res)        
@@ -248,9 +243,9 @@ results2$rho_fdr = p.adjust(results2$rho_p, method="fdr")
 results2 = as.data.table(results2)
 results2 = results2[order(fdr_res)]
 
-length(which(results2$res <= 0.05)) #in 16/127 pairs , the lncRNA benefits from the signal from its neigboring gene 
-length(which(results2$fdr_res <= 0.05)) #2/127 pairs, the lncRNA beneifts from signal from neighboring gene when accounting for multiple testing correction
-length(which(results2$fdr_res2 <= 0.05)) #even after multiple testing correction, 124/127 pairs improve from adding lncRNA expression to PCG expression 
+length(which(results2$res <= 0.05)) #in 18/152 pairs , the lncRNA benefits from the signal from its neigboring gene 
+length(which(results2$fdr_res <= 0.05)) #1/152 pairs, the lncRNA beneifts from signal from neighboring gene when accounting for multiple testing correction
+length(which(results2$fdr_res2 <= 0.05)) #even after multiple testing correction, 151/152 pairs improve from adding lncRNA expression to PCG expression 
 
 #saveRDS(results2, file="110_cis_antisense_pairs_survival_results_aug28.rds")
 saveRDS(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.rds")
@@ -312,7 +307,7 @@ for(i in 1:nrow(prog_pcgs)){
 
 prog_pcgs$diff_cindices = prog_pcgs$lncConcordance - prog_pcgs$pcgConcordance
 
-pdf("figure2E_summary_lncs_pcgs_antisense_10kb_nov16.pdf", width=5,height=5)
+pdf("/u/kisaev/figure2E_summary_lncs_pcgs_antisense_10kb_nov16.pdf", width=5,height=5)
 g = ggplot(prog_pcgs, aes(pcgConcordance, lncConcordance, label=lnc_pcg)) +
  geom_point(color = "black")+
     scale_colour_manual(values = c("blue", "dimgrey", "red", "purple")) + 

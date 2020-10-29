@@ -111,7 +111,7 @@ hits_overlap$distance = abs(as.numeric(hits_overlap$pcg_start) - as.numeric(hits
 z = which(duplicated(hits_overlap$pair))
 hits_overlap = hits_overlap[-z,]
 
-#96/179 lncRNAs have at least 1 nearby PCG (152 unique PCGs)
+#95/179 lncRNAs have at least 1 nearby PCG (152 unique PCGs)
 saveRDS(hits_overlap, file="lncRNA_cands_wPCGs_that_are_in_cis_10kb_nov16.rds")
 
 #all the lncRNA candidates that are not in the above ^ file are "trans lncRNAs"

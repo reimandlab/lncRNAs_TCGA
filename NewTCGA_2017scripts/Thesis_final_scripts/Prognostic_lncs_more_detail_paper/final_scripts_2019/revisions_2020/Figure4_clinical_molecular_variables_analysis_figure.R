@@ -25,7 +25,6 @@ setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCES
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 allCands = subset(allCands, data == "TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
-cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 
 #library(TCGAbiolinks)
 
@@ -390,18 +389,39 @@ get_clin_lnc_cors = function(dtt){
 
         if((kw_pval < 0.05) | (chisq_pval < 0.05)){
 
-        p <- ggboxplot(new_dat_plot, x = "Clinical", y = "lncRNA_exp",
-          color = "Clinical",
-          title = paste(cancer_type, get_name(lnc), col), 
-          add = "jitter", ylab = "lncRNA expression",  ggtheme = theme_bw()) +
-          stat_compare_means() + geom_hline(yintercept=med, linetype="dashed", color = "red") + 
-          stat_n_text(size=5)
+        #p <- ggboxplot(new_dat_plot, x = "Clinical", y = "lncRNA_exp",
+        #  color = "Clinical",
+        #  title = paste(cancer_type, get_name(lnc), col), 
+        #  add = "jitter", ylab = "lncRNA expression",  ggtheme = theme_bw()) +
+        #  stat_compare_means() + geom_hline(yintercept=med, linetype="dashed", color = "red") + 
+        #  stat_n_text(size=5)
 
-        p = ggpar(p,
-          font.xtickslab = c(14,"plain", "black"),font.tickslab=c(14,"plain", "black"), 
-          xtickslab.rt = 55, legend="none")
-        print(p)} #only print plot if significant
-          
+        #p = ggpar(p,
+        #  font.xtickslab = c(14,"plain", "black"),font.tickslab=c(14,"plain", "black"), 
+        #  xtickslab.rt = 55, legend="none")
+        #print(p)} #only print plot if significant
+        
+        #barplot order patients by increasing lncRNA expression 
+        #plotting the lncRNA values smallest to largest in every subgroup, separate the subgroups by color 
+        #and facet. like this, except that this is very post-processed. This visual may help us better deal with zeroes than boxplots.
+        
+        new_dat_plot = as.data.table(new_dat_plot)
+        new_dat_plot = new_dat_plot[order(lncRNA_exp)]
+        new_dat_plot$patient = factor(new_dat_plot$patient, levels=new_dat_plot$patient)
+        new_dat_plot$lncRNA_tag = factor(new_dat_plot$lncRNA_tag, levels=c(1,0))
+
+         #facet_grid(Clinical ~ , scales = "free", space = "free") +
+         g <- ggplot(new_dat_plot, aes(patient, lncRNA_exp)) +  geom_col(aes(fill = Clinical))+
+           facet_grid(~lncRNA_tag+Clinical, space="free", scales="free") + theme_bw()+
+           theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), 
+            strip.text.x = element_text(size = 3, colour = "black"),
+            legend.position = "none")+ggtitle(get_name(lnc))
+
+#           facet_wrap(~ lncRNA_tag+Clinical, scales = "free_x", nrow=1) + theme_bw() +
+
+          print(g)
+
+        }
           }
           } #check >1 
         }
@@ -415,13 +435,13 @@ get_clin_lnc_cors = function(dtt){
 
   } #end get_cor
 
-  pdf(paste("/u/kisaev/", cancer_type, "clinical_plots.pdf", sep="_"))
-  all_canc_lncs_results = llply(lncs, get_cor)
-  all_canc_lncs_results = do.call(rbind.data.frame, all_canc_lncs_results)
-  dev.off()
-  return(all_canc_lncs_results)
+    pdf(paste("/u/kisaev/", cancer_type, "clinical_plots.pdf", sep="_"))
+    all_canc_lncs_results = llply(lncs, get_cor)
+    all_canc_lncs_results = do.call(rbind.data.frame, all_canc_lncs_results)
+    dev.off()
+    return(all_canc_lncs_results)
 
-} #end get_clin_lnc_cors
+  } #end get_clin_lnc_cors
 
 #clin_data_lncs_cors = llply(clin_data_lncs, get_clin_lnc_cors)
 clin_data_lncs = clin

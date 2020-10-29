@@ -122,9 +122,10 @@ pats_num = as.data.table(table(all$type))
 pats_num = filter(pats_num, N <50)
 canc_rm = pats_num$V1
 all = all[-which(all$type %in% canc_rm),]
+rna = rna[-which(rna$type %in% canc_rm),]
+pcg = pcg[-which(pcg$type %in% canc_rm),]
 
 print(table(all$type))
-
 
 #fix clinical variables so only one level per variable has NA
 z = which(rna$race %in% c("[Not Available]", "[Not Evaluated]", "[Unknown]"))
