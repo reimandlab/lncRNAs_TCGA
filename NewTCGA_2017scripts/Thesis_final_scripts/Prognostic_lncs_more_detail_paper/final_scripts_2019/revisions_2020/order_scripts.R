@@ -13,7 +13,10 @@ module load rstats
 #using lncRNA candidates and clinical variables available run 1000 cross-validations using 
 #lncRNA only, lncRNA+clinical or clinical only models to get c-index distribution 
 Rscript $main/002_univariate_cross_validations_candidates.R
+Rscript $main/Figure2c_figure_code.R 
 Rscript $main/002_multivariate_cross_validations_candidates.R
+Rscript $main/002_multivariate_prepare_for_figure.R
+
 
 #comparing univariate and multivariate models using lncRNAs and clinical variables 
 Rscript $main/002_risk_scores_multivariate_models_forrestplot.R

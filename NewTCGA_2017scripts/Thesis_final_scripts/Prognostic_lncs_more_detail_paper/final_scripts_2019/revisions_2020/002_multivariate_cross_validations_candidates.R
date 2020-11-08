@@ -10,7 +10,6 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June1
 allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs 
 
 #which cancer types are the non-unique lncRNAs from?
-allCands$Combo = NULL
 allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_name")]
 allCands = allCands[!duplicated(allCands), ]
 cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
@@ -52,9 +51,10 @@ cancer_data = llply(cancers, get_canc)
 
 get_canc_data = function(dtt){
   #get cancer specific candidates 
+  dtt=as.data.frame(dtt)
   z = which(colnames(dtt) %in% c(as.character(allCands$gene[allCands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
-    "new_tumor_event_type", "Cancer", "PFI", "PFI.time"))
+    "new_tumor_event_type", "Cancer"))
   dtt = dtt[,z]
   #check that all cands have exp >100 in at least 15 patients 
   z = which(str_detect(colnames(dtt), "ENSG"))
@@ -342,7 +342,6 @@ run_cv = function(dtt){
 			trainlncs$OS = as.numeric(trainlncs$OS)
 			trainlncs$OS.time = as.numeric(trainlncs$OS.time)
 			trainlncs$age_at_initial_pathologic_diagnosis = as.numeric(trainlncs$age_at_initial_pathologic_diagnosis)
-			#model trained on 70% of the data for one lncRNA + clinical data 
 			lnc_clin = coxph(Surv(OS.time, OS)  ~., data = trainlncs)
 	
 			#TEST

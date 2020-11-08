@@ -1,25 +1,17 @@
-#------------------------------------------------------------------------------
-#This script takes all the PCGs that are significantly differentially expressed
-#between lncRNA risk groups and calculates their correlation 
-#plots heatmap of this data as well as lncRNA and pcg prognostic
-#relationship 
-#------------------------------------------------------------------------------
-
 set.seed(911)
 
-#load all libraries and functions 
-source("check_lnc_exp_cancers.R")
-source("survival_script_march14_already_labelled_highlow.R")
-#COSMIC cancer gene census
-census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
-
+source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/load_data.R")
 #setWD
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
-#------FEATURES-----------------------------------------------------
-
+#get candidates files
+#Data--------------------------------------------
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs 
+
+#which cancer types are the non-unique lncRNAs from?
+allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_name")]
+allCands = allCands[!duplicated(allCands), ]
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 #old = readRDS("old_168_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
@@ -134,7 +126,14 @@ get_bar = function(canc){
 get_multi_plot = function(canc){
 	
 	multi_dat = as.data.table(filter(multivariate_lncs, Cancer == canc))
-	single_dat = as.data.table(filter(single_lncs, Cancer == canc, !(type=="clinical_variables")))
+
+	z = which(single_lncs$cancer == canc)
+	single_dat = single_lncs[z,]
+
+	z = which(!(single_dat$type == "clinical_variables"))
+	single_dat = single_dat[z,]
+	
+	#single_dat = as.data.table(filter(single_lncs, cancer == canc, !(type=="clinical_variables")))
 
 	#make input for plot 
 	multi_dat$analysis="multi"
@@ -142,8 +141,10 @@ get_multi_plot = function(canc){
 	
 	multi_dat = multi_dat[,c("lncRNA",  "Cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo" , 
 		"lnc_med", "clin_med", "combo_med")]
-	single_dat = single_dat[,c("lncRNA",  "Cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo", 
-		"lnc_med", "clin_med", "combo_med")]
+	single_dat = single_dat[,c("lncRNA",  "cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo", 
+		"median_lncRNA", "median_clinical", "clin_combo_cind_med")]
+
+	colnames(single_dat) = colnames(multi_dat)
 
 	all = rbind(multi_dat, single_dat)
 	all = as.data.table(filter(all, !(is.na(cindex))))

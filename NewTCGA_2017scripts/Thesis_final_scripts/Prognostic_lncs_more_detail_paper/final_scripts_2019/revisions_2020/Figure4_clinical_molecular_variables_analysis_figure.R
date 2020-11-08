@@ -136,8 +136,11 @@ clin = readRDS("clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
 lgg = clin[[1]]
 gbm = clin[[12]]
 
-#saveRDS(lgg, file="TCGA_lgg_wsubtype_info_biolinks.rds")
-#saveRDS(gbm, file="TCGA_gbm_wsubtype_info_biolinks.rds")
+saveRDS(lgg, file="/u/kisaev/TCGA_lgg_wsubtype_info_biolinks.rds")
+saveRDS(gbm, file="/u/kisaev/TCGA_gbm_wsubtype_info_biolinks.rds")
+
+saveRDS(lgg, file="TCGA_lgg_wsubtype_info_biolinks.rds")
+saveRDS(gbm, file="TCGA_gbm_wsubtype_info_biolinks.rds")
 
 #--------LOOK AT ASSOCIATIONS BETWEEN EXPRESSION-------------------------------
 

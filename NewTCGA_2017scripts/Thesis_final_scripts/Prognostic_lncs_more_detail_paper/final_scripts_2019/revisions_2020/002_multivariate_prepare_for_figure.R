@@ -1,25 +1,17 @@
-#------------------------------------------------------------------------------
-#This script takes all the PCGs that are significantly differentially expressed
-#between lncRNA risk groups and calculates their correlation 
-#plots heatmap of this data as well as lncRNA and pcg prognostic
-#relationship 
-#------------------------------------------------------------------------------
-
 set.seed(911)
 
-#load all libraries and functions 
-source("check_lnc_exp_cancers.R")
-source("survival_script_march14_already_labelled_highlow.R")
-#COSMIC cancer gene census
-census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
-
+source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/load_data.R")
 #setWD
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
-#------FEATURES-----------------------------------------------------
-
+#get candidates files
+#Data--------------------------------------------
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs 
+
+#which cancer types are the non-unique lncRNAs from?
+allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_name")]
+allCands = allCands[!duplicated(allCands), ]
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 #------DATA-----------------------------------------------------
@@ -143,7 +135,7 @@ lnc_clin_cindices = r
 #compare distribution of cindices via two-sided U test between lncRNA candidate
 #and random lncRNAs 
 
-allCands = filter(allCands, data == "TCGA")
+#allCands = filter(allCands, data == "TCGA")
 combos = (unique(allCands$cancer))
 
 get_comparison = function(comboo){
