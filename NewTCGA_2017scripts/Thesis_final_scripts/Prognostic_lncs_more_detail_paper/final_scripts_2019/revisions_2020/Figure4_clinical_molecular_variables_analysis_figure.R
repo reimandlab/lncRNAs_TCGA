@@ -28,6 +28,28 @@ allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 #library(TCGAbiolinks)
 
+clean_cols=c(
+"Age"         ,                   "ARID1A mutation",
+"ATRX status"   ,                 "CDKN2A Epigenetically Silenced",
+"Chr.19.20.co.gain",              "Chr.7.gain.Chr.10.loss",
+"ER Status"      ,                "Ethnicity",
+"Expression subtype",            "FAT1 mutation",
+"Grade"              ,            "Height",
+"HER2 Status"         ,           "Histology",
+"IDH Status"           ,          "Immune infiltration (ESTIMATE)",
+"Karnofsky Performance Score",    "MGMT Promoter Status",
+"Molecular Subtype"           ,   "MSI status",
+"Mutation Count"               ,  "PAM50",
+"PBRM1 Mutation"    ,             "Percent aneuploidy",
+"PIK3CA Mutation"    ,            "Ploidy (ABSOLUTE)",
+"PR Status"   ,                   "Purity (ESTIMATE)",
+"SETD2 Mutation" ,                "Stage",
+"STROMA (ESTIMATE)" ,             "Telomere Maintenance",
+"TERT Promoter Status" ,          "Total Mutation Rate",
+"Tumour Purity  (ABSOLUTE)",      "WHO Class",
+"X1p.19q.codeletion")
+
+
 #--------This script ------------------------------------------------
 
 #include additional clinical variables from more detailed
@@ -455,7 +477,7 @@ d3 = get_clin_lnc_cors(clin_data_lncs[[3]])
 d4 = get_clin_lnc_cors(clin_data_lncs[[4]])
 d5 = get_clin_lnc_cors(clin_data_lncs[[5]])
 d6 = get_clin_lnc_cors(clin_data_lncs[[6]]) 
-d7 = get_clin_lnc_cors(clin_data_lncs[[7]])
+#d7 = get_clin_lnc_cors(clin_data_lncs[[7]]) #uterine didnt work 
 d8 = get_clin_lnc_cors(clin_data_lncs[[8]]) 
 d9 = get_clin_lnc_cors(clin_data_lncs[[9]])
 d10 = get_clin_lnc_cors(clin_data_lncs[[10]]) 
@@ -464,8 +486,8 @@ d12 = get_clin_lnc_cors(clin_data_lncs[[12]])
 d13 = get_clin_lnc_cors(clin_data_lncs[[13]])
 #d14 = get_clin_lnc_cors(clin_data_lncs[[14]])
 
-#all_clin = list(d1, d2,d3,d4,d5,d6, d7, d8, d9,d10, d11,d12,d13)
-#saveRDS(all_clin, file="13_data_sets_biolinks_results.rds")
+all_clin = list(d1, d2,d3,d4,d5,d6, d8, d9,d10, d11,d12,d13)
+saveRDS(all_clin, file="13_data_sets_biolinks_results.rds")
 
 #--------FDR & Summarize Results-------------------------------------
 all_clin = readRDS("13_data_sets_biolinks_results.rds")
