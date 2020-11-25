@@ -47,6 +47,7 @@ cancers= cancers[order(N)]
 cancers = unique(cancers$V1)
 print(cancers)
 
+print(args[1])
 canc = cancers[as.integer(args[1])]
 print(canc)
 date = Sys.Date()

@@ -10,4 +10,4 @@
 #for j in `seq 1 28`; do qsub -cwd -b y -N real1000$j -l h_vmem=45g "module load R/3.4.0;Rscript V1_1000_runsmarch_2019_REAL_elsatic_net_lncRNAs_main_script.R $j"; done
 #for j in `seq 23 23`; do qsub -cwd -b y -N real1000$j -l h_vmem=45g "module load R/3.4.0;Rscript V1_1000_runsmarch_2019_REAL_elsatic_net_lncRNAs_main_script.R $j"; done
 
-for j in `seq 1 29`; do qsub -cwd -b y -N real1000$j -l h_vmem=55g "module load rstats;Rscript /u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/elastic_net_pfi/V1_1000_runsmarch_2019_REAL_elsatic_net_lncRNAs_main_script.R $j"; done
+for j in `seq 1 29`; do qsub -cwd -V -P reimandlab -b y -N real1000$j -l h_vmem=55g "module load rstats;Rscript /u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/elastic_net_pfi/V1_1000_runsmarch_2019_REAL_elsatic_net_lncRNAs_main_script.R $j"; done
