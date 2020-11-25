@@ -62,4 +62,3 @@ write.csv(merged, "/u/kisaev/supp_table_input_XX_PFI_wOStimes.csv", quote=F, row
 #2. get numbers of lncs that remain significant in PFI for LGG, READ and BRCA
 
 #save supplementary table 
-

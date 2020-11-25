@@ -47,3 +47,6 @@ Rscript $main/Figure4_run_TCGAbiolinks_main_analysis.R
 
 #lncRNAs versus TCGAbiolinks summarize results and figure 
 Rscript $main/Figure4_run_TCGAbiolinks_summarize_results_figure.R
+
+#lncRNAs versus TCGAbiolinks individual plots 
+Rscript $main/Figure4_run_TCGAbiolinks_individual_plots.R

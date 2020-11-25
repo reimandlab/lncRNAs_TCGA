@@ -230,12 +230,14 @@ get_pcg_enrich = function(lnc, pcg, canc){
 
 #gene = "ENSG00000225937" #PCA3
 #cancer = "PAAD"
+pal = pal_npg("nrc")(10)
 
 ###EASY WAY TO MAKE KM PLOT
-get_km_plot = function(gene, cancer){
+get_km_plot_os = function(gene, cancer){
   all_g = all
   all_g = as.data.frame(all_g)
-  dat = all[,c(which(colnames(all) %in% c("type", gene, "OS", "OS.time")))]
+  z = which(colnames(all) %in% c("type", gene, "OS", "OS.time"))
+  dat = all_g[,z]
   z = which(str_detect(colnames(dat), "ENSG"))
   if(!(length(z)==0)){
   colnames(dat)[z] = "gene"
@@ -269,39 +271,108 @@ get_km_plot = function(gene, cancer){
   cox_mod = coxph(Surv(OS.time, OS) ~ gene, data = dat)
   print(glance(cox_mod)$concordance)
   conc = round(glance(cox_mod)$concordance, digits=2)
-  fit <- survfit(Surv(OS.time, OS) ~ gene, data = dat)
-          s <- ggsurvplot(
-          title = paste(gene_name, dat$type[1], "\nConcordance=", conc),
-          fit,
-          xlab = "Time (Years)",
-          surv.median.line = "hv",
-          font.main = c(16, "bold", "black"),
-          font.x = c(14, "plain", "black"),
-           font.y = c(14, "plain", "black"),
-          font.tickslab = c(14, "plain", "black"),
-          font.legend = 12,
-          risk.table.fontsize = 5,
-          legend.labs = c("Low Expression", "High Expression"),             # survfit object with calculated statistics.
-          data = dat,      # data used to fit survival curves.
-          risk.table = TRUE,       # show risk table.
-          legend = "right",
+  hr = summary(cox_mod)$coefficients[2]
+  dtt = dat
+
+  fit <- survfit(Surv(OS.time, OS) ~ gene, data = dtt)
+  
+  s <- ggsurvplot(
+          title = paste(get_name(gene), cancer, "HR =", round(hr, digits=2)),
+          fit, 
+          ylab = "Survival Probability" ,
+          xlab = "Time (Years)", 
+          #surv.median.line = "hv",
+          font.main = c(4, "bold", "black"),
+          font.x = c(3, "plain", "black"),
+          font.y = c(3, "plain", "black"),
+          font.tickslab = c(3, "plain", "black"),
+          font.legend = 3,
+          risk.table.fontsize = 1, 
+          #legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
+          data = dtt,      # data used to fit survival curves. 
+          risk.table = FALSE,       # show risk table.
+          legend = "right", 
           pval = TRUE,             # show p-value of log-rank test.
-          conf.int = FALSE,        # show confidence intervals for
-                            # point estimaes of survival curves.
-          xlim = c(0,5),        # present narrower X axis, but not affect
-                            # survival estimates.
+          conf.int = FALSE,        # show confidence intervals for 
+          xlim = c(0,10),        # present narrower X axis, but not affect
           break.time.by = 1,     # break X axis in time intervals by 500.
-          #palette = colorRampPalette(mypal)(14),
-          palette = mypal[c(4,1)],
-          ggtheme = theme_bw(), # customize plot and risk table with a theme.
-          risk.table.y.text.col = T, # colour risk table text annotations.
-          risk.table.y.text = FALSE # show bars instead of names in text annotations
-                            # in legend of risk table
-          )
-          print(s)
+          palette = pal[c(2,1)]) 
+          #risk.table.y.text.col = T, # colour risk table text annotations.
+          #risk.table.y.text = FALSE )
+          return(s)
 }
 }
 
+get_km_plot_pfi = function(gene, cancer){
+  all_g = all
+  all_g = as.data.frame(all_g)
+  z = which(colnames(all) %in% c("type", gene, "PFI", "PFI.time"))
+  dat = all_g[,z]
+  z = which(str_detect(colnames(dat), "ENSG"))
+  if(!(length(z)==0)){
+  colnames(dat)[z] = "gene"
+  dat = subset(dat, type == cancer)
+  #split patients
+  med = median(dat$gene)
+
+  #add high low tag
+    if(med ==0){
+    #if median = 0 then anyone greater than zero is 1
+    l1 = which(dat[,z] > 0)
+    l2 = which(dat[,z] ==0)
+    dat[l1,z] = 1
+    dat[l2, z] = 0
+    }
+
+    if(!(med ==0)){
+    l1 = which(dat[,z] >= med)
+    l2 = which(dat[,z] < med)
+    dat[l1,z] = 1
+    dat[l2, z] = 0
+    }
+
+  dat$PFI = as.numeric(dat$PFI)
+  dat$PFI.time = as.numeric(dat$PFI.time)
+  dat$PFI.time = dat$PFI.time/365
+  dat$gene = factor(dat$gene, levels = c(0,1))
+  gene_name = get_name(gene)
+  if(is.na(gene_name)){
+    gene_name = get_name_pcg(gene)
+  }
+  cox_mod = coxph(Surv(PFI.time, PFI) ~ gene, data = dat)
+  print(glance(cox_mod)$concordance)
+  conc = round(glance(cox_mod)$concordance, digits=2)
+  hr = summary(cox_mod)$coefficients[2]
+  dtt = dat
+
+  fit <- survfit(Surv(PFI.time, PFI) ~ gene, data = dtt)
+  
+  s <- ggsurvplot(
+          title = paste(get_name(gene), cancer, "HR =", round(hr, digits=2)),
+          fit, 
+          xlab = "Time (Years)", 
+          ylab = "Progression Free Probability" ,
+          #surv.median.line = "hv",
+          font.main = c(4, "bold", "black"),
+          font.x = c(4, "plain", "black"),
+          font.y = c(4, "plain", "black"),
+          font.tickslab = c(3, "plain", "black"),
+          font.legend = 3,
+          risk.table.fontsize = 1, 
+          #legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
+          data = dtt,      # data used to fit survival curves. 
+          risk.table = FALSE,       # show risk table.
+          legend = "right", 
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for 
+          xlim = c(0,10),        # present narrower X axis, but not affect
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          palette = pal[c(2,1)])
+          #risk.table.y.text.col = T, # colour risk table text annotations.
+          #risk.table.y.text = FALSE )
+          return(s)
+}
+}
 
 #######
 ##[7]##-------------------------------------------------------------

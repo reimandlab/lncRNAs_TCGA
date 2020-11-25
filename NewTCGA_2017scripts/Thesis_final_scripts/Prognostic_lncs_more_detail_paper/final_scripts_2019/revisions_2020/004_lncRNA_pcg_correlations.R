@@ -101,7 +101,7 @@ check_cis_pcg = function(combo){
         exp_dat$pcg_median[l1] = 1
         exp_dat$pcg_median[l2] = 0
         }
-  
+  pcg_median = med
   #lncRNA 
   z = which(colnames(exp_dat) ==lnc)
   med = median(unlist(exp_dat[,..z]))
@@ -120,7 +120,8 @@ check_cis_pcg = function(combo){
         exp_dat$lnc_median[l1] = 1
         exp_dat$lnc_median[l2] = 0
       }
-
+  
+  lnc_median = med
   #generate KM plot for one at a time then both combined
   #km plot just lncRNA
   gene = lnc
@@ -148,6 +149,17 @@ check_cis_pcg = function(combo){
   rho = rcorr(exp_dat$LNC, exp_dat$PCG, type="spearman")$r[2]
   rho_p = rcorr(exp_dat$LNC, exp_dat$PCG, type="spearman")$P[2]
 
+
+  g =  ggscatter(exp_dat, x = "LNC", y = "PCG",
+          color = "black", shape = 21, size = 3, # Points color, shape and size
+          add = "reg.line",  # Add regressin line
+          add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
+          conf.int = TRUE, # Add confidence interval
+          cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
+          cor.coeff.args = list(method = "spearman", label.sep = "\n"))+
+  ggtitle(paste(get_name(lnc), get_name_pcg(pcgg), cancer))
+  print(g)
+
   check1 = table(exp_dat$pcg_median)[1] >= 10
   check2 = table(exp_dat$pcg_median)[2] >= 10
   
@@ -169,8 +181,8 @@ check_cis_pcg = function(combo){
   #train model using both of these genes and compare performance to just using lncRNA 
   res = as.data.frame(res)
   res$res2 = res2
-  res$lnc = lnc
-  res$pcg = pcgg
+  res$lnc = get_name(lnc)
+  res$pcg = get_name_pcg(pcgg)
   res$canc = exp_dat$type[1]
   
   res$pcg_improvelnc = ""
@@ -187,12 +199,30 @@ check_cis_pcg = function(combo){
   res$rho = rho
   res$rho_p = rho_p
   
+   #% of people with zero values for lncRNA 
+  exp_dat$lnc_exp = ""
+  exp_dat$lnc_exp[exp_dat$LNC == 0] = "no_exp"
+  exp_dat$lnc_exp[exp_dat$LNC >0] = "exp"
+  exp_dat$pcg_exp = ""
+  exp_dat$pcg_exp[exp_dat$PCG == 0] = "no_exp"
+  exp_dat$pcg_exp[exp_dat$PCG >0] = "exp"
+
+  res$perc_lnc_off = ""
+  res$perc_lnc_off = length(which(exp_dat$lnc_exp == "no_exp"))/dim(exp_dat)[1]
+
+  #% of people with zero values for pcg
+  res$perc_pcg_off = ""
+  res$perc_pcg_off = length(which(exp_dat$pcg_exp == "no_exp"))/dim(exp_dat)[1]
+
   #get concordance and AIC values
   res$lncAIC = as.data.table(glance(cox_lnc))$AIC
   res$lncConcordance = as.data.table(glance(cox_lnc))$concordance
   res$pcgAIC= as.data.table(glance(cox_pcg))$AIC
   res$pcgConcordance = as.data.table(glance(cox_pcg))$concordance
   res$combo_concord = as.data.table(glance(cox_both))$concordance
+
+  res$lnc_median = lnc_median
+  res$pcg_median = pcg_median
 
   exp_dat$OS.time = exp_dat$OS.time/365
   #fit <- survfit(Surv(OS.time, OS) ~ lnc_median + pcg_median, data = exp_dat)
@@ -231,25 +261,36 @@ check_cis_pcg = function(combo){
 }#end function
 
 
-#pdf("all_cis_antisense_lnc_pairs_survival_results_10kb_nov16.pdf", width=10)
+pdf("all_cis_antisense_lnc_pairs_survival_results_10kb_nov16.pdf", width=10)
 results = llply(combos, check_cis_pcg, .progress="text")
-#dev.off()
+dev.off()
+
+#res = does pcg improve lnc
+#res2 = does lnc improve pcg
 
 results2 = ldply(results)
-results2$fdr_res = p.adjust(results2$res, method="fdr")
-results2$fdr_res2 = p.adjust(results2$res2, method="fdr")
+results2$fdr_pcg_improve_lnc_anova = p.adjust(results2$res, method="fdr")
+results2$fdr_lnc_improve_pcg_anova = p.adjust(results2$res2, method="fdr")
 results2$rho_fdr = p.adjust(results2$rho_p, method="fdr")
 
 results2 = as.data.table(results2)
-results2 = results2[order(fdr_res)]
+results2 = results2[order(fdr_pcg_improve_lnc_anova)]
 
 length(which(results2$res <= 0.05)) #in 18/152 pairs , the lncRNA benefits from the signal from its neigboring gene 
-length(which(results2$fdr_res <= 0.05)) #1/152 pairs, the lncRNA beneifts from signal from neighboring gene when accounting for multiple testing correction
-length(which(results2$fdr_res2 <= 0.05)) #even after multiple testing correction, 151/152 pairs improve from adding lncRNA expression to PCG expression 
+length(which(results2$fdr_pcg_improve_lnc_anova <= 0.05)) #1/152 pairs, the lncRNA beneifts from signal from neighboring gene when accounting for multiple testing correction
+length(which(results2$fdr_lnc_improve_pcg_anova <= 0.05)) #even after multiple testing correction, 151/152 pairs improve from adding lncRNA expression to PCG expression 
+
+  results2$pcg_improvelnc = ""
+  results2$pcg_improvelnc[results2$fdr_pcg_improve_lnc_anova <= 0.05] = "yes"
+  results2$pcg_improvelnc[results2$fdr_pcg_improve_lnc_anova > 0.05] = "no"
+  
+  results2$lnc_improvepcg = ""
+  results2$lnc_improvepcg[results2$fdr_lnc_improve_pcg_anova <= 0.05] = "yes"
+  results2$lnc_improvepcg[results2$fdr_lnc_improve_pcg_anova > 0.05] = "no"
 
 #saveRDS(results2, file="110_cis_antisense_pairs_survival_results_aug28.rds")
 saveRDS(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.rds")
-write.csv(results2, file="127_cis_antisense_pairs_survival_results_10kb_nov16.csv", quote=F, row.names=F)
+write.csv(results2, file="/u/kisaev/151_cis_antisense_pairs_survival_results_10kb.csv", quote=F, row.names=F)
 
 ###START HERE###-----------------------------------------------------------------
 
@@ -262,9 +303,9 @@ colnames(cancs) = c("canc", "Cancer")
 r = merge(r, cancs, by="canc")
 r$combo = paste(r$lnc, r$Cancer, sep="_")
 
-z = which(r$combo %in% allCands$combo)
-cands_pairs = r[z,]
-
+#z = which(r$combo %in% allCands$combo)
+#cands_pairs = r[z,]
+cands_pairs = r
 cands_pairs$pcg_combo = paste(cands_pairs$pcg, cands_pairs$Cancer, sep="_")
 
 #make summary plot 
@@ -280,12 +321,12 @@ get_census_ensg = function(genes){
 }
 census$ensg = sapply(census$Synonyms, get_census_ensg)
 
-z = which(cands_pairs$pcg %in% census$ensg)
+z = which(cands_pairs$pcg %in% census$Gene.Symbol)
 cands_pairs$census = ""
 cands_pairs$census[z] = "YES"
 
-cands_pairs$pcg = unlist(llply(cands_pairs$pcg, get_name_pcg))
-cands_pairs$lnc = unlist(llply(cands_pairs$lnc, get_name))
+#cands_pairs$pcg = unlist(llply(cands_pairs$pcg, get_name_pcg))
+#cands_pairs$lnc = unlist(llply(cands_pairs$lnc, get_name))
 
 prog_pcgs = cands_pairs
 
@@ -294,14 +335,20 @@ prog_pcgs$cor[prog_pcgs$rho >0] = "Positive"
 prog_pcgs$cor[prog_pcgs$rho_fdr > 0.05] = "NS"
 
 prog_pcgs$rho_fdr[prog_pcgs$rho_fdr <0.0000000001] = 0.000001
-prog_pcgs$lnc_pcg = paste(prog_pcgs$lnc, prog_pcgs$pcg, prog_pcgs$type, sep="/")
+prog_pcgs$lnc_pcg = paste(prog_pcgs$lnc, prog_pcgs$pcg, prog_pcgs$canc, sep="/")
+
+
+get_ensg = function(name){
+  z = which(fantom$CAT_geneName == name)
+  return(fantom$CAT_geneID[z][1])
+}
 
 #add what kind of lncRNA it is
 prog_pcgs$type_lnc = ""
 for(i in 1:nrow(prog_pcgs)){
   lnc = prog_pcgs$combo[i]
   lnc = unlist(strsplit(lnc, "_"))[1]
-  lnc_type = fantom$CAT_geneClass[which(fantom$CAT_geneID == lnc)]
+  lnc_type = fantom$CAT_geneClass[which(fantom$CAT_geneID == get_ensg(lnc))]
   prog_pcgs$type_lnc[i] = lnc_type
 }
 
@@ -326,22 +373,22 @@ dev.off()
 prog_pcgs$sig_spearman = ""
 prog_pcgs$sig_spearman[prog_pcgs$rho_fdr < 0.05] = "sig"
 prog_pcgs$lnc_better = ""
-prog_pcgs$lnc_better[(prog_pcgs$fdr_res2 < 0.05) & (prog_pcgs$lncConcordance > prog_pcgs$pcgConcordance)] = "lnc_better"
+prog_pcgs$lnc_better[(prog_pcgs$fdr_lnc_improve_pcg_anova < 0.05) & (prog_pcgs$lncConcordance > prog_pcgs$pcgConcordance)] = "lnc_better"
 prog_pcgs$lnc_better[is.na(prog_pcgs$lnc_better)] = ""
 prog_pcgs$improv_perc = round((prog_pcgs$lncConcordance - prog_pcgs$pcgConcordance)/ prog_pcgs$pcgConcordance*100, digits=2)
 
 pdf("/u/kisaev/figu2_lncs_pcgs_histogram_spearman_rho.pdf", width=6, height=5)
 gghistogram(prog_pcgs, x = "rho",
-   add = "mean", 
    color = "sig_spearman", fill = "sig_spearman",
-   palette = c("grey", "black"))+theme_bw()+xlim(-0.5,1)
+   palette = c("grey", "black"))+theme_bw()+xlim(-1,1)+
+geom_vline(xintercept=0, linetype="dashed", color = "black")
 dev.off()
 
 pdf("/u/kisaev/figu2_lncs_pcgs_histogram_cindex_improvement.pdf", width=6, height=5)
-gghistogram(prog_pcgs, x = "improv_perc",
-   add = "mean", 
-   color = "sig_spearman", fill = "sig_spearman",
-   palette = c("grey", "black"))+theme_bw()+xlim(-15,60)
+gghistogram(prog_pcgs, x = "diff_cindices",
+   color = "lnc_better", fill = "lnc_better",
+   palette = c("grey", "black"))+theme_bw()+xlim(-0.5,0.5)+
+geom_vline(xintercept=0, linetype="dashed", color = "black")
 dev.off()
 
 pdf("/u/kisaev/figure2E_summary_lncs_pcgs_antisense_10kb_wSpearmanRho.pdf", width=5,height=5)
@@ -355,6 +402,138 @@ g = ggplot(prog_pcgs, aes(diff_cindices, rho, label=lnc_pcg)) +
       geom_hline(yintercept=0, linetype="dashed", color = "red")
 ggpar(g, legend="bottom")
 dev.off()
+
+#summarize anova 
+
+anvova_plot = prog_pcgs[,c("lnc", "pcg", "fdr_lnc_improve_pcg_anova", "fdr_pcg_improve_lnc_anova", "canc")]
+anvova_plot = melt(anvova_plot)
+anvova_plot$pair = paste(anvova_plot$lnc, anvova_plot$pcg)
+anvova_plot$log10 = -log10(anvova_plot$value)
+anvova_plot = anvova_plot[order(log10)]
+anvova_plot$pair = factor(anvova_plot$pair, levels=unique(anvova_plot$pair))
+#anvova_plot$variable = factor(anvova_plot$variable, levels=unique(anvova_plot$variable))
+
+means=as.data.table(anvova_plot %>% group_by(canc) %>% dplyr::summarize(mean = mean(log10)))
+means = means[order(-mean)]
+anvova_plot$canc = factor(anvova_plot$canc, levels=unique(means$canc))
+anvova_plot = anvova_plot[order(-log10)]
+anvova_plot$pair = factor(anvova_plot$pair, levels=unique(anvova_plot$pair))
+
+pdf("/u/kisaev/lncs_pcgs_antisense_10kb_anova_tests.pdf", width=10,height=5)
+
+g = ggbarplot(anvova_plot, "pair", "log10",
+  fill = "variable", color = "variable",
+  palette = c("#00AFBB", "#E7B800"))
+g = ggpar(g,
+ font.tickslab = c(4,"plain", "black"),
+ xtickslab.rt = 90)+ylab("-log10(anova FDR)")
+g + facet_grid(~canc, scales = "free", space = "free") + theme(text = element_text(size=4))+
+ geom_hline(yintercept=-log10(0.05), linetype="dashed", color = "red")
+
+dev.off()
+
+
+#median on off balance plot how many are binary lncs/pcgs 
+meds_plot = prog_pcgs[,c("lnc", "pcg", "canc", "perc_lnc_off", "perc_pcg_off")]
+meds_plot = melt(meds_plot)
+meds_plot$pair = paste(meds_plot$lnc, meds_plot$pcg)
+meds_plot$canc = factor(meds_plot$canc, levels=unique(means$canc))
+meds_plot$pair = factor(meds_plot$pair, levels=unique(anvova_plot$pair))
+
+pdf("/u/kisaev/lncs_pcgs_antisense_10kb_linearity_fraction_lncs.pdf", width=10,height=3)
+
+g = ggbarplot(filter(meds_plot, variable == "perc_lnc_off"), "pair", "value",
+  fill = "variable", color = "variable",
+  palette = c("#00AFBB"))
+g = ggpar(g,
+ font.tickslab = c(4,"plain", "black"),
+ xtickslab.rt = 90)+ylab("% of patients with no detected expression")
+g + facet_grid(~canc, scales = "free", space = "free") + theme(text = element_text(size=4))
+dev.off()
+
+pdf("/u/kisaev/lncs_pcgs_antisense_10kb_linearity_fraction_pcgs.pdf", width=10,height=3)
+
+g = ggbarplot(filter(meds_plot, variable == "perc_pcg_off"), "pair", "value",
+  fill = "variable", color = "variable",
+  palette = c("#E7B800"))
+g = ggpar(g,
+ font.tickslab = c(4,"plain", "black"),
+ xtickslab.rt = 90)+ylab("% of patients with no detected expression")
+g + facet_grid(~canc, scales = "free", space = "free") + theme(text = element_text(size=4))
+dev.off()
+
+dot_plot=prog_pcgs[,c("lnc", "pcg", "canc", "perc_lnc_off", "perc_pcg_off")]
+dot_plot$max_perc = ""
+
+for(i in 1:nrow(dot_plot)){
+  print(i)
+  max_perc = max(dot_plot[i,4:5])
+  dot_plot$max_perc[i] = max_perc
+}
+dot_plot$max_perc = as.numeric(dot_plot$max_perc)
+
+z= which(dot_plot$lnc == "HOXA-AS4")
+dot_plot$lnc[z] = "HOXA10-AS"
+
+mypal = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
+  "#72A93B", "#74DAE3" ,"#49B98D" ,"#D97B8F" ,"#70A2A4", "#64709B" ,"#DFBF38" ,"#61EA4F" ,
+  "#C7CBE7", "#786DDA",
+"#CFA0E0" ,"#67E9D0" ,"#7C9BE1", "#D94753" ,
+"#AAE6B0", "#D13BDF" ,"#DEAEC7" ,"#BBE6DF" ,"#B2B47A" ,"#E6ECBA", "#C86ED7",
+ "#7BEE95" ,"#6F46E6" ,"#65B9E0", "#C0EC3E",
+"#DE8D54" ,"#DF4FA6")
+
+dot_plot = dot_plot[order(-max_perc)]
+dot_plot$lnc = factor(dot_plot$lnc, levels=unique(dot_plot$lnc))
+dot_plot$pcg = factor(dot_plot$pcg, levels=unique(dot_plot$pcg))
+dot_plot$canc = factor(dot_plot$canc, levels=unique(dot_plot$canc))
+
+#visualize for each pair 
+
+ g = ggplot(dot_plot, aes(y = pcg,
+             x = lnc)) +        ## global aes
+  geom_tile(aes(fill = canc)) +         ## to get the rect filled
+  geom_point(aes(colour = max_perc), size=1)  +    ## geom_point for circle illusion
+  scale_color_gradient(low = "white",  
+                       high = "black")+       ## color of the corresponding aes
+  theme_bw()+scale_fill_manual(values=mypal)
+
+g = ggpar(g, font.tickslab = c(5,"plain", "black"),
+ xtickslab.rt = 90)
+
+#g = ggplot(dot_plot, aes(y = pcg,
+ #            x = lnc)) +        ## global aes
+  #geom_tile(aes(fill = max_perc, colour = canc,, width=0.8, height=0.8), size=1)+ theme_bw()  +
+ # scale_fill_gradient(low = "white", high = "black", na.value = 'white') +
+ # coord_equal()
+ # theme(legend.position="bottom") + theme(text = element_text(size=7)) 
+
+#g = ggpar(g, font.tickslab = c(4,"plain", "black"),
+# xtickslab.rt = 90)
+
+#print(g)
+#dev.off()
+
+pdf("/u/kisaev/lncRNA_PCG_correlations_nonlinearity_dotplot.pdf", width=12, height=9)
+
+g = ggplot(data=dot_plot) +
+  geom_tile(aes(x=lnc, y=pcg, fill=max_perc), color="purple") +
+  theme_bw() +
+  scale_color_gradient(low = "white",  
+                       high = "black")+
+  #facet_grid(~canc, 
+  #           scales="free", space="free") +
+  facet_wrap(vars(canc), scales="free") + 
+  theme(axis.text.x = element_text(angle = 90,vjust=0.5,hjust = 1)) +
+  # switch off clipping
+  coord_cartesian(clip = "off")+
+  scale_fill_gradient(low = "white",  
+                       high = "black")
+g = ggpar(g, font.tickslab = c(5,"plain", "black"),
+ xtickslab.rt = 90) + theme(text = element_text(size=6))
+print(g)
+dev.off()
+
 
 plot = as.data.table(filter(prog_pcgs, Cancer == "Brain Lower Grade Glioma"))
 plot$sig_rho = ""

@@ -9,27 +9,6 @@ allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 #library(TCGAbiolinks)
 
-clean_cols=c(
-"Age"         ,                   "ARID1A mutation",
-"ATRX status"   ,                 "CDKN2A Epigenetically Silenced",
-"Chr.19.20.co.gain",              "Chr.7.gain.Chr.10.loss",
-"ER Status"      ,                "Ethnicity",
-"Expression subtype",            "FAT1 mutation",
-"Grade"              ,            "Height",
-"HER2 Status"         ,           "Histology",
-"IDH Status"           ,          "Immune infiltration (ESTIMATE)",
-"Karnofsky Performance Score",    "MGMT Promoter Status",
-"Molecular Subtype"           ,   "MSI status",
-"Mutation Count"               ,  "PAM50",
-"PBRM1 Mutation"    ,             "Percent aneuploidy",
-"PIK3CA Mutation"    ,            "Ploidy (ABSOLUTE)",
-"PR Status"   ,                   "Purity (ESTIMATE)",
-"SETD2 Mutation" ,                "Stage",
-"STROMA (ESTIMATE)" ,             "Telomere Maintenance",
-"TERT Promoter Status" ,          "Total Mutation Rate",
-"Tumour Purity  (ABSOLUTE)",      "WHO Class",
-"X1p.19q.codeletion")
-
 #--------------------------------------------------------------------
 #Clinical files - use TCGAbiolinks via previous script 
 #--------------------------------------------------------------------
@@ -38,9 +17,11 @@ clin = readRDS("clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
 
 lgg = clin[[1]]
 gbm = clin[[12]]
+kirc = clin[[3]]
 
 saveRDS(lgg, file="/u/kisaev/TCGA_lgg_wsubtype_info_biolinks.rds")
 saveRDS(gbm, file="/u/kisaev/TCGA_gbm_wsubtype_info_biolinks.rds")
+saveRDS(kirc, file="/u/kisaev/TCGA_kirc_wsubtype_info_biolinks.rds")
 
 saveRDS(lgg, file="TCGA_lgg_wsubtype_info_biolinks.rds")
 saveRDS(gbm, file="TCGA_gbm_wsubtype_info_biolinks.rds")
@@ -212,13 +193,19 @@ get_clin_lnc_cors = function(dtt){
         colnames(new_dat_plot)[3] = "lncRNA_exp"
 
         z1 = which(is.na(new_dat_plot[,which(colnames(new_dat_plot) %in% col)]))  
-        z2 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% c("#N/A", "Unknown", "N/A", "NA", "Not Available", "Not performed", "Performed but Not Available"))  
-        z3 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% c("[Unknown]", "[Not Available]", "[Not Evaluated]", "[Discrepancy]"))  
+  
+        if(!(length(z1)==0)){
+        new_dat_plot = new_dat_plot[-z1,]}
 
-        z = unique(c(z1, z2,z3))
-        
-        if(!(length(z)==0)){
-        new_dat_plot = new_dat_plot[-z,]}
+       z2 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% c("[Unknown]", "[Not Available]",
+       "#N/A", "[Not Evaluated]", "[Discrepancy]", "[Not Applicable]", "Unknown", "N/A", "NA", "Not Available", "Not performed", 
+        "Indeterminate", "[Not Available]", "[Unknown]", "Not Performed Clinical", 
+       "Performed but Not Available", "[Not submitted]"))  
+
+       if(!(length(z2)==0)){
+        new_dat_plot = new_dat_plot[-z2,]}
+
+       print(unique(new_dat_plot[,2]))
 
         unq = length(unique(new_dat_plot[,2]))
 
