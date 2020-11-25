@@ -52,14 +52,6 @@ print(canc)
 date = Sys.Date()
 
 cols_keep = c("race", "clinical_stage", "histological_grade")
-z = which(rna$race %in% c("[Not Available]", "[Not Evaluated]", "[Unknown]"))
-rna$race[z] = "unknown"
-
-z = which(rna$clinical_stage %in% c("[Not Applicable]", "[Not Available]"))
-rna$clinical_stage[z] = "unknown"
-
-z = which(rna$histological_grade %in% c("[Unknown]", "[Not Available]", "[Discrepancy]"))
-rna$histological_grade[z] = "unknown"
 
 print(table(rna$histological_grade))
 print(table(rna$clinical_stage))
@@ -125,9 +117,13 @@ main_elastic_net = function(dat){
   ###---------------------------------------------------------------
 
   z_train = which(str_detect(colnames(train), "ENSG"))
+  train=as.data.frame(train)
+  rownames(train) = train$patient
   train[,z_train] = apply(train[,z_train], 2, as.numeric)
 
   z = which(str_detect(colnames(test), "ENSG"))
+  test=as.data.frame(test)
+  rownames(test) = test$patient
   test[,z] = apply(test[,z], 2, as.numeric)
 
   #use training medians to split the test set
@@ -153,10 +149,16 @@ main_elastic_net = function(dat){
       }
       } #end assigning labels to each patient for each gene
 
-
   sums = apply(train[,z_train], 2, sum)
-  zeroes = names(sums[which(sums <10)]) #if less than 50, then unbalanced
-  z <- which(colnames(train) %in% zeroes)
+  perc_10 = dim(dato)[1]*0.1
+
+  #how many lncRNAs have only 10% of cohort or 15 patients (whichever is greater)
+  #with > 0 expression in the cohort
+  z1 = which(sums < perc_10)
+  z2 = which(sums <= 15)
+  all_rm = names(sums)[unique(c(z1,z2))]
+
+  z <- which(colnames(train) %in% all_rm)
 
   if(!(length(z)==0)){
       train = train[,-z]
@@ -278,14 +280,14 @@ main_elastic_net = function(dat){
           genes = as.list(colnames(gene_data))
           x <- model.matrix( ~., gene_data)
           train$PFI = as.numeric(train$PFI)
-          y <- Surv(train$OS.time, train$PFI)
+          y <- Surv(train$PFI.time, train$PFI)
           cvfit = cv.glmnet(x, y, family = "cox", alpha =0.5) #uses cross validation to select
           #the best lamda and then use lambda to see which features remain in model
           cvfit$lambda.min #left vertical line
           cvfit$lambda.1se #right vertical line
           #active covariates and their coefficients
           coef.min = coef(cvfit, s = "lambda.min")
-          active.min = which(coef.min != 0)
+          active.min = which(coef.min[,1] != 0)
           index.min = coef.min[active.min]
           genes_keep = rownames(coef.min)[active.min]
 
@@ -312,9 +314,9 @@ main_elastic_net = function(dat){
             if(!(length(z)==0)){
 
               medians = medians[z]
-              testlncs = test[,c(1,which(colnames(test) %in% colnames(trainlncs)))]
-              rownames(testlncs) = testlncs$patient
-              testlncs$patient = NULL
+              testlncs = test[,c(which(colnames(test) %in% colnames(trainlncs)))]
+              #rownames(testlncs) = testlncs$patient
+              #testlncs$patient = NULL
               #Add high/low tags to each gene
               z = which(str_detect(colnames(testlncs), "ENSG"))
               for(k in 1:length(z)){
@@ -562,6 +564,7 @@ random_permutations = function(canc){ #main permutation cross-validation functio
 
   set.seed(101)
   run_res = replicate(1000, main_elastic_net(dato)) #DOUBLE CHECK number of replciations
+#  run_res = replicate(2, main_elastic_net(dato)) #DOUBLE CHECK number of replciations
 
   print("done permutations")
 
@@ -607,7 +610,7 @@ random_permutations = function(canc){ #main permutation cross-validation functio
   if(!(length(z)==0)){
 
     cols_keep = c(gene, "patient", "age_at_initial_pathologic_diagnosis", "gender", "race", "clinical_stage", "histological_grade", "PFI", "PFI.time")
-    newdat = newdat[,cols_keep]
+    newdat = newdat[,..cols_keep]
     newdat$age_at_initial_pathologic_diagnosis = as.numeric(newdat$age_at_initial_pathologic_diagnosis)
 
               #remove columns with less than 2 contrasts
@@ -620,7 +623,7 @@ random_permutations = function(canc){ #main permutation cross-validation functio
 
     keep = unlist(apply(newdat, 2, check_contrasts))
     z = which(colnames(newdat) %in% names(keep))
-    newdat = newdat[,z]
+    newdat = newdat[,..z]
 
     newdat$PFI = as.numeric(as.character(newdat$PFI))
     newdat$PFI.time = as.numeric(as.character(newdat$PFI.time))
@@ -631,6 +634,7 @@ random_permutations = function(canc){ #main permutation cross-validation functio
 
     rownames(newdat) = newdat$patient
     newdat$patient = NULL
+    newdat=as.data.frame(newdat)
 
     #split patients
     med = median(newdat$gene)
@@ -730,14 +734,14 @@ random_permutations = function(canc){ #main permutation cross-validation functio
 
   perms_surv_results1 = perms_surv_results1[order(num_rounds_selected)]
 
-  file = paste("real_elastic_net_runs_1000/", "round", canc, date, perms_surv_results1$round[1], "genes", ".rds", sep="_")
+  output="/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2020_manuscript/real_elastic_net_runs_1000/"
+  file = paste(output, "round", cancer, date, perms_surv_results1$round[1], "genes", ".rds", sep="_")
   saveRDS(perms_surv_results1, file)
 
   #save c-indices results
   cindices = as.data.frame(cindices)
   cindices$canc = canc
-
-  file = paste("real_elastic_net_runs_1000/", "round", canc, date, "cindices", ".rds", sep="_")
+  file = paste(output, "round", cancer, date, "cindices", ".rds", sep="_")
   saveRDS(cindices, file)
 
   print(head(perms_surv_results1))

@@ -84,7 +84,7 @@ rna = rna[-z,]
 z = which(rna$race %in% c("[Not Available]", "[Not Evaluated]", "[Unknown]"))
 rna$race[z] = "unknown"
 
-z = which(rna$clinical_stage %in% c("[Not Applicable]", "[Not Available]"))
+z = which(rna$clinical_stage %in% c("[Not Applicable]", "[Not Available]", "[Discrepancy]"))
 rna$clinical_stage[z] = "unknown"
 
 z = which(rna$histological_grade %in% c("[Unknown]", "[Not Available]", "[Discrepancy]"))
@@ -96,7 +96,7 @@ print(table(rna$race))
 z = which(pcg$race %in% c("[Not Available]", "[Not Evaluated]", "[Unknown]"))
 pcg$race[z] = "unknown"
 
-z = which(pcg$clinical_stage %in% c("[Not Applicable]", "[Not Available]"))
+z = which(pcg$clinical_stage %in% c("[Not Applicable]", "[Not Available]", "[Discrepancy]"))
 pcg$clinical_stage[z] = "unknown"
 
 z = which(pcg$histological_grade %in% c("[Unknown]", "[Not Available]", "[Discrepancy]"))
