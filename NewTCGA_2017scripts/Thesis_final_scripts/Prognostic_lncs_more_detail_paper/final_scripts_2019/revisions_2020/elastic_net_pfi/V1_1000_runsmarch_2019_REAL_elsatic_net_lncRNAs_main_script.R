@@ -568,7 +568,7 @@ random_permutations = function(canc){ #main permutation cross-validation functio
   print("start permutations")
 
   set.seed(101)
-  run_res = replicate(1000, main_elastic_net(dato)) #DOUBLE CHECK number of replciations
+  run_res = replicate(2, main_elastic_net(dato)) #DOUBLE CHECK number of replciations
 #  run_res = replicate(2, main_elastic_net(dato)) #DOUBLE CHECK number of replciations
 
   print("done permutations")
@@ -738,7 +738,7 @@ random_permutations = function(canc){ #main permutation cross-validation functio
   perms_surv_results1 = merge(perms_surv_results1, genes_list, by="gene")
 
   perms_surv_results1 = perms_surv_results1[order(num_rounds_selected)]
-
+  cancer =canc_conv$type[canc_conv$Cancer==canc]
   output="/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2020_manuscript/real_elastic_net_runs_1000/"
   file = paste(output, "round", cancer, date, perms_surv_results1$round[1], "genes", ".rds", sep="_")
   saveRDS(perms_surv_results1, file)
