@@ -568,7 +568,7 @@ random_permutations = function(canc){ #main permutation cross-validation functio
   print("start permutations")
 
   set.seed(101)
-  run_res = replicate(2, main_elastic_net(dato)) #DOUBLE CHECK number of replciations
+  run_res = replicate(1000, main_elastic_net(dato)) #DOUBLE CHECK number of replciations
 #  run_res = replicate(2, main_elastic_net(dato)) #DOUBLE CHECK number of replciations
 
   print("done permutations")
