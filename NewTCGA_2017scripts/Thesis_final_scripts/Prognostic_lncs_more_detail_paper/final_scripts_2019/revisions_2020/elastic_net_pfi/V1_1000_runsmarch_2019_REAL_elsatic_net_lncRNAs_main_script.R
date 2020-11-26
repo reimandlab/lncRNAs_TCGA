@@ -1,4 +1,5 @@
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ")
+print("hi")
 
 source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/load_data.R")
 
@@ -153,11 +154,12 @@ main_elastic_net = function(dat){
       } #end assigning labels to each patient for each gene
 
   sums = apply(train[,z_train], 2, sum)
-  perc_10 = dim(dato)[1]*0.1
+  perc_10 = dim(dat)[1]*0.1
 
   #how many lncRNAs have only 10% of cohort or 15 patients (whichever is greater)
   #with > 0 expression in the cohort
   z1 = which(sums < perc_10)
+  print(perc_10)
   z2 = which(sums <= 15)
   all_rm = names(sums)[unique(c(z1,z2))]
 
