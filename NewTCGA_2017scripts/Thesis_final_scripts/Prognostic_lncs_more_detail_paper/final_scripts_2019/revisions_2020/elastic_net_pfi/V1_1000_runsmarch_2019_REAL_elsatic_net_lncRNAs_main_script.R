@@ -106,13 +106,13 @@ main_elastic_net = function(dat){
   #print(head(train[,1:10]))
   #print(head(test[,1:10]))
 
-  train$PFI.time = as.numeric(train$PFI.time)
-  z = which(is.na(train$PFI.time))
+  train$OS.time = as.numeric(train$OS.time)
+  z = which(is.na(train$OS.time))
   if(!(length(z)==0)){
     train = train[-z,]}
 
-  test$PFI.time = as.numeric(test$PFI.time)
-  z = which(is.na(test$PFI.time))
+  test$OS.time = as.numeric(test$OS.time)
+  z = which(is.na(test$OS.time))
   if(!(length(z)==0)){
     test = test[-z,]}
 
@@ -188,24 +188,24 @@ main_elastic_net = function(dat){
   if(!(length(z)==0)){
 
   df = as.data.frame(train)
-  cols_keep = c("age_at_initial_pathologic_diagnosis", "gender", "race", "clinical_stage", "histological_grade", "PFI", "PFI.time")
+  cols_keep = c("age_at_initial_pathologic_diagnosis", "gender", "race", "clinical_stage", "histological_grade", "OS", "OS.time")
   z2 = which(colnames(train) %in% cols_keep)
 
   df = df[,c(z,z2)]
 
   gene <- colnames(df)[1]
-  df$PFI <- as.numeric(df$PFI)
-  df$PFI.time <- as.numeric(df$PFI.time)
+  df$OS <- as.numeric(df$OS)
+  df$OS.time <- as.numeric(df$OS.time)
   #df$stage = as.numeric(df$stage)
   #df$grade = as.numeric(df$grade)
   df$age_at_initial_pathologic_diagnosis = as.numeric(df$age_at_initial_pathologic_diagnosis)
 
   colnames(df)[1] = "median"
 
-  if((!(table(df$PFI)[2] <5)) & (!(dim(table(df$PFI)) == 1))){
+  if((!(table(df$OS)[2] <5)) & (!(dim(table(df$OS)) == 1))){
 
   #cox regression
-  res.cox <- coxph(Surv(PFI.time, PFI) ~ median + age_at_initial_pathologic_diagnosis, data = df)
+  res.cox <- coxph(Surv(OS.time, OS) ~ median + age_at_initial_pathologic_diagnosis, data = df)
 
   row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)],  summary(res.cox)$conf.int[1,c(3,4)])
   names(row) <- names(results_cox)
@@ -251,7 +251,7 @@ main_elastic_net = function(dat){
         tests_survival3$coefficient = as.numeric(unlist(tests_survival3$coefficient))
         tests_survival3 = tests_survival3[order(-abs(coefficient))]
 
-        z = table(train$PFI)[2]
+        z = table(train$OS)[2]
         tests_survival3 = as.data.frame(tests_survival3)
 
         #if number of deaths less than sig gene candidates
@@ -284,8 +284,8 @@ main_elastic_net = function(dat){
           gene_data = as.data.frame(train[,z])
           genes = as.list(colnames(gene_data))
           x <- model.matrix( ~., gene_data)
-          train$PFI = as.numeric(train$PFI)
-          y <- Surv(train$PFI.time, train$PFI)
+          train$OS = as.numeric(train$OS)
+          y <- Surv(train$OS.time, train$OS)
           cvfit = cv.glmnet(x, y, family = "cox", alpha =0.5) #uses cross validation to select
           #the best lamda and then use lambda to see which features remain in model
           cvfit$lambda.min #left vertical line
@@ -299,10 +299,10 @@ main_elastic_net = function(dat){
           #print(genes_keep)
           genes_results = list(as.list(genes_keep))
 
-          trainlncs = train[,c(which(colnames(train) %in% c(genes_keep,"PFI", "PFI.time")))]
+          trainlncs = train[,c(which(colnames(train) %in% c(genes_keep,"OS", "OS.time")))]
 
           #fit model using lncRNAs selected by elastic net
-          justlncs = try(coxph(Surv(PFI.time, PFI)  ~ ., data = trainlncs), TRUE)
+          justlncs = try(coxph(Surv(OS.time, OS)  ~ ., data = trainlncs), TRUE)
 
           if(!(inherits(justlncs,"try-error"))){
 
@@ -356,11 +356,11 @@ main_elastic_net = function(dat){
 
               colss = colnames(testlncs)
               colsskeep = which(str_detect(colss, "ENSG"))
-              testlncs$PFI = as.numeric(testlncs$PFI)
+              testlncs$OS = as.numeric(testlncs$OS)
               pred_validation = predict(justlncs_cox_model, newdata = testlncs)
               # Determine concordance
-              cindex_validation = concordance.index(pred_validation, surv.time = testlncs$PFI.time,
-                                                    surv.event=testlncs$PFI, method = "noether")
+              cindex_validation = concordance.index(pred_validation, surv.time = testlncs$OS.time,
+                                                    surv.event=testlncs$OS, method = "noether")
 
               cindex_validation = cindex_validation$c.index
               cinds_justlncs = cindex_validation
@@ -375,7 +375,7 @@ main_elastic_net = function(dat){
           z = which(!(str_detect(colnames(train), "ENSG")))
           clin_train = as.data.frame(train[,z])
           rownames(clin_train) = clin_train$patient
-          cols_keep = c("age_at_initial_pathologic_diagnosis", "gender", "race", "clinical_stage", "histological_grade", "PFI", "PFI.time")
+          cols_keep = c("age_at_initial_pathologic_diagnosis", "gender", "race", "clinical_stage", "histological_grade", "OS", "OS.time")
           clin_train = clin_train[,cols_keep]
           clin_train$age_at_initial_pathologic_diagnosis = as.numeric(clin_train$age_at_initial_pathologic_diagnosis)
 
@@ -401,9 +401,9 @@ main_elastic_net = function(dat){
               keep = c(keep)
               print(keep)
 
-              if(length(which(names(keep) %in% "PFI.time")) == 0){
+              if(length(which(names(keep) %in% "OS.time")) == 0){
                 keep = c(keep, "keep")
-                names(keep)[length(keep)] = "PFI.time"
+                names(keep)[length(keep)] = "OS.time"
               }
 
               clin_train = as.data.frame(clin_train)
@@ -414,12 +414,12 @@ main_elastic_net = function(dat){
 
               print(colnames(clin_train))
 
-              clin_train$PFI = as.numeric(as.character(clin_train$PFI))
-              clin_train$PFI.time = as.numeric(as.character(clin_train$PFI.time))
+              clin_train$OS = as.numeric(as.character(clin_train$OS))
+              clin_train$OS.time = as.numeric(as.character(clin_train$OS.time))
 
               print(head(clin_train))
-              print(summary(clin_train$PFI.time))
-              print(summary(clin_train$PFI))
+              print(summary(clin_train$OS.time))
+              print(summary(clin_train$OS))
 
               #make sure the levels are the same
               for(l in 1:ncol(clin_train)){
@@ -434,7 +434,7 @@ main_elastic_net = function(dat){
 
               print(head(test_clin))
 
-              z = which(!(str_detect(colnames(test_clin), "PFI")))
+              z = which(!(str_detect(colnames(test_clin), "OS")))
               print(z)
 
               for(l in 1:length(z)){
@@ -444,7 +444,7 @@ main_elastic_net = function(dat){
                 }
               }
 
-              trainclin = train[,c(which(colnames(train) %in% c(colnames(clin_train),"PFI", "PFI.time")))]
+              trainclin = train[,c(which(colnames(train) %in% c(colnames(clin_train),"OS", "OS.time")))]
               trainclin$age_at_initial_pathologic_diagnosis = as.numeric(trainclin$age_at_initial_pathologic_diagnosis)
               #make sure there aren't any columns with just one value
               rm = which(sapply(trainclin, function(x) { length(unique(x)) }) == 1)
@@ -452,19 +452,19 @@ main_elastic_net = function(dat){
                 trainclin = trainclin[,-rm]
               }
 
-              justclin = try(coxph(Surv(PFI.time, PFI)  ~ ., data = trainclin), TRUE)
+              justclin = try(coxph(Surv(OS.time, OS)  ~ ., data = trainclin), TRUE)
               print(justclin)
 
               if(!(inherits(justclin,"try-error"))){
 
                 testclin = test_clin
-                testclin$PFI = as.numeric(testclin$PFI)
-                testclin$PFI.time = as.numeric(testclin$PFI.time)
+                testclin$OS = as.numeric(testclin$OS)
+                testclin$OS.time = as.numeric(testclin$OS.time)
                 testclin$age_at_initial_pathologic_diagnosis = as.numeric(testclin$age_at_initial_pathologic_diagnosis)
                 pred_validation = predict(justclin, newdata = testclin)
                 # Determine concordance
-                cindex_validation = concordance.index(pred_validation, surv.time = testlncs$PFI.time,
-                                                      surv.event=testlncs$PFI, method = "noether", na.rm=TRUE)
+                cindex_validation = concordance.index(pred_validation, surv.time = testlncs$OS.time,
+                                                      surv.event=testlncs$OS, method = "noether", na.rm=TRUE)
                 cindex_validation = cindex_validation$c.index
                 cinds_clin = cindex_validation
 
@@ -479,8 +479,8 @@ main_elastic_net = function(dat){
           trainboth$age_at_initial_pathologic_diagnosis = as.numeric(trainboth$age_at_initial_pathologic_diagnosis)
 
           #check if have any nas
-          trainboth$PFI.time = as.numeric(trainboth$PFI.time)
-          trainboth$PFI = as.numeric(trainboth$PFI)
+          trainboth$OS.time = as.numeric(trainboth$OS.time)
+          trainboth$OS = as.numeric(trainboth$OS)
 
           remove = c()
 
@@ -488,7 +488,7 @@ main_elastic_net = function(dat){
           #make sure at least 5% of patients appear in each level of each variable
 
                 for(b in 1:ncol(trainboth)){
-                  if(!(colnames(trainboth)[b] %in% c("age_at_initial_pathologic_diagnosis", "PFI", "PFI.time"))){
+                  if(!(colnames(trainboth)[b] %in% c("age_at_initial_pathologic_diagnosis", "OS", "OS.time"))){
                     dg = as.data.table(table(trainboth[,b]))
                     #print(dg)
                     z = which(dg$N <perc5)
@@ -506,18 +506,18 @@ main_elastic_net = function(dat){
                 print("pass10")
 
 
-                both = try(coxph(Surv(PFI.time, PFI)  ~ ., data = trainboth), TRUE)
+                both = try(coxph(Surv(OS.time, OS)  ~ ., data = trainboth), TRUE)
                 if(!(inherits(both,"try-error"))){
                   testlncs$patient = rownames(testlncs)
                   testclin$patient = rownames(testclin)
-                  testboth = merge(testlncs, testclin, by=c("patient", "PFI", "PFI.time"))
-                  testboth$PFI = as.numeric(testboth$PFI)
-                  testboth$PFI.time = as.numeric(testboth$PFI.time)
+                  testboth = merge(testlncs, testclin, by=c("patient", "OS", "OS.time"))
+                  testboth$OS = as.numeric(testboth$OS)
+                  testboth$OS.time = as.numeric(testboth$OS.time)
                   testboth$age_at_initial_pathologic_diagnosis = as.numeric(testboth$age_at_initial_pathologic_diagnosis)
                   pred_validation = predict(both, newdata = testboth)
                   # Determine concordance
-                  cindex_validation = concordance.index(pred_validation, surv.time = testboth$PFI.time,
-                                                        surv.event=testboth$PFI, method = "noether", na.rm=TRUE)
+                  cindex_validation = concordance.index(pred_validation, surv.time = testboth$OS.time,
+                                                        surv.event=testboth$OS, method = "noether", na.rm=TRUE)
                   cindex_validation = cindex_validation$c.index
                   cinds_combined = cindex_validation
 
@@ -614,7 +614,7 @@ random_permutations = function(canc){ #main permutation cross-validation functio
 
   if(!(length(z)==0)){
 
-    cols_keep = c(gene, "patient", "age_at_initial_pathologic_diagnosis", "gender", "race", "clinical_stage", "histological_grade", "PFI", "PFI.time")
+    cols_keep = c(gene, "patient", "age_at_initial_pathologic_diagnosis", "gender", "race", "clinical_stage", "histological_grade", "OS", "OS.time")
     newdat = newdat[,..cols_keep]
     newdat$age_at_initial_pathologic_diagnosis = as.numeric(newdat$age_at_initial_pathologic_diagnosis)
 
@@ -630,8 +630,8 @@ random_permutations = function(canc){ #main permutation cross-validation functio
     z = which(colnames(newdat) %in% names(keep))
     newdat = newdat[,..z]
 
-    newdat$PFI = as.numeric(as.character(newdat$PFI))
-    newdat$PFI.time = as.numeric(as.character(newdat$PFI.time))
+    newdat$OS = as.numeric(as.character(newdat$OS))
+    newdat$OS.time = as.numeric(as.character(newdat$OS.time))
 
     z = which(colnames(newdat) %in% gene)
     colnames(newdat)[z] = "gene"
@@ -660,7 +660,7 @@ random_permutations = function(canc){ #main permutation cross-validation functio
     newdat[l2, z] = 0
     }
 
-    cox_mod = coxph(Surv(PFI.time, PFI) ~ ., data = newdat)
+    cox_mod = coxph(Surv(OS.time, OS) ~ ., data = newdat)
 
     #fit <- survfit(Surv(newdat$OS.time, newdat$OS) ~ gene,
     #           data = newdat)
@@ -669,7 +669,7 @@ random_permutations = function(canc){ #main permutation cross-validation functio
 
     print(glance(cox_mod)$concordance)
 
-    lnc_only = glance(coxph(Surv(PFI.time, PFI) ~ gene, data = newdat))$concordance
+    lnc_only = glance(coxph(Surv(OS.time, OS) ~ gene, data = newdat))$concordance
 
     conc = round(glance(cox_mod)$concordance, digits=2)
     wald_p = summary(cox_mod)$coefficients[1,5]
