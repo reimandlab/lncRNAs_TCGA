@@ -9,16 +9,16 @@ setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCES
 #cands -- should be this file
 #cands = readRDS("genes_keep_100CV_No_FDR_May2nd2018.rds")
 
-cands = readRDS("lncRNAs_selected_by_EN_april14.rds") #1000 runs of cross-validations using new updated dataset (GBM=124, OV and LUAD)
+cands = readRDS("lncRNAs_selected_by_EN_april14.rds") #1000 runs of cross-validations using new updated dataset (GBM=150, OV and LUAD)
 
 #--------This script ------------------------------------------------
 
-#just make KM plots for TCGA 
+#just make KM plots for TCGA
 #whatever data is available for PCAWG
-#make them KM plots as well 
+#make them KM plots as well
 #just get list of genes that are significant in both data sets
 #also check Cox PH assumptions within each data-set
-#fantom 
+#fantom
 
 #--------------------------------------------------------------------
 
@@ -28,12 +28,12 @@ get_canc = function(canc){
   return(rna_dat)
 }
 
-cancer_data = llply(cancers, get_canc) #cancers list and canc_datas list should be the same 
+cancer_data = llply(cancers, get_canc) #cancers list and canc_datas list should be the same
 
 get_canc_data_for_plot = function(dtt){
-  #get cancer specific candidates 
-  z = which(colnames(dtt) %in% c(as.character(cands$gene[cands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
-    "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
+  #get cancer specific candidates
+  z = which(colnames(dtt) %in% c(as.character(cands$gene[cands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis",
+    "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course",
     "new_tumor_event_type", "Cancer", "type"))
   print(dtt$type[1])
   #print(cands$cancer[1])
@@ -74,7 +74,7 @@ add_tags = function(dtt){
   rownames(dtt) = dtt$patient
   dtt$patient = NULL
 
-  #log1p 
+  #log1p
   z = which(str_detect(colnames(dtt), "ENSG"))
   if(length(z)>1){
   medians = apply(dtt[,z], 2, median)}
@@ -85,7 +85,7 @@ add_tags = function(dtt){
   for(k in 1:length(medians)){
     med = medians[k]
     if(med ==0){
-    #if median = 0 then anyone greater than zero is 1 
+    #if median = 0 then anyone greater than zero is 1
     l1 = which(dtt[,k] > 0)
     l2 = which(dtt[,k] ==0)
     dtt[l1,k] = 1
@@ -98,7 +98,7 @@ add_tags = function(dtt){
     dtt[l1,k] = 1
     dtt[l2, k] = 0
     }
-  }  
+  }
   return(dtt)
 }
 
@@ -109,8 +109,8 @@ get_survival_models = function(dtt){
 
   print(dtt$Cancer[1])
 
-  results_cox1 <- as.data.frame(matrix(ncol=21)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer", 
-    "lnc_test_ph", 'global_test_ph', "num_risk", "perc_risk", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero", "multi_model_concordance", 
+  results_cox1 <- as.data.frame(matrix(ncol=21)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer",
+    "lnc_test_ph", 'global_test_ph', "num_risk", "perc_risk", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero", "multi_model_concordance",
     "lnc_only_concordance", "clinical_only_concordance", "num_events", "perc_wevents", "anova_pval")
 
   dat = dtt
@@ -126,7 +126,7 @@ get_survival_models = function(dtt){
         }
   }
   keep = unlist(apply(dat, 2, check_contrasts))
-  
+
   dat = dat[,c(which(colnames(dat) %in% names(keep)))]
 
   dat$OS = as.numeric(dat$OS)
@@ -137,7 +137,7 @@ get_survival_models = function(dtt){
   perc_events = num_events/nrow(dtt)
 
   for(i in 1:length(num_genes)){
-  gene = num_genes[i]  
+  gene = num_genes[i]
   print(gene)
   k = which(!(str_detect(colnames(dat), "ENSG")))
 
@@ -148,7 +148,7 @@ get_survival_models = function(dtt){
   lnc_test_ph = test.ph$table[1,3]
   global = test.ph$table[nrow(test.ph$table),3]
 
-  #mutlvariate concordance 
+  #mutlvariate concordance
   cmulti = as.numeric(glance(lncs)[13])
   lnc_only_model = coxph(Surv(OS.time, OS)  ~ newdat[,1], data = newdat)
   lnc_only = as.numeric(glance(lnc_only_model)[13])
@@ -186,28 +186,28 @@ get_survival_models = function(dtt){
   fit <- survfit(Surv(OS.time, OS) ~ gene, data = newdat)
           s <- ggsurvplot(
           title = paste(get_name(gene_name), canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], "HR =", round(hr, digits=2)),
-          fit, 
-          xlab = "Time (Years)", 
+          fit,
+          xlab = "Time (Years)",
           #surv.median.line = "hv",
           font.main = c(14, "bold", "black"),
           font.x = c(12, "plain", "black"),
           font.y = c(12, "plain", "black"),
           font.tickslab = c(11, "plain", "black"),
           font.legend = 10,
-          risk.table.fontsize = 5, 
+          risk.table.fontsize = 5,
           legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
-          data = newdat,      # data used to fit survival curves. 
+          data = newdat,      # data used to fit survival curves.
           risk.table = TRUE,       # show risk table.
-          legend = "right", 
+          legend = "right",
           pval = TRUE,             # show p-value of log-rank test.
-          conf.int = FALSE,        # show confidence intervals for 
+          conf.int = FALSE,        # show confidence intervals for
                             # point estimaes of survival curves.
           xlim = c(0,10),        # present narrower X axis, but not affect
                             # survival estimates.
           break.time.by = 1,     # break X axis in time intervals by 500.
-          #palette = colorRampPalette(mypal)(14), 
+          #palette = colorRampPalette(mypal)(14),
           #palette = mypal[c(4,1)],
-          palette = "npg", 
+          palette = "npg",
           #ggtheme = theme_bw(), # customize plot and risk table with a theme.
           risk.table.y.text.col = T, # colour risk table text annotations.
           risk.table.y.text = FALSE # show bars instead of names in text annotations
@@ -215,17 +215,17 @@ get_survival_models = function(dtt){
           )
           print(s)
 
-   #generate boxplot 
+   #generate boxplot
    z = which(rna$Cancer == dtt$Cancer[1])
    exp_data = rna[z,]
    exp_data = as.data.frame(exp_data)
    exp_data = exp_data[,which(colnames(exp_data) %in% c(gene, "patient"))]
-   
+
    newdat$patient = rownames(newdat)
    exp_data = merge(exp_data, newdat, by="patient")
    colnames(exp_data)[2] = "geneexp"
 
-   #get median non-zero expression and SD 
+   #get median non-zero expression and SD
    if(perc < 0.45){
       median_nonzero = median(exp_data[which(!(exp_data[,2] == 0)),2])
       sd_nonzero = sd(exp_data[which(!(exp_data[,2] == 0)),2])
@@ -243,29 +243,29 @@ get_survival_models = function(dtt){
       max_nonzero = "notavail"
    }
 
-   row <- c(gene_name, summary(lncs)$coefficients[1,c(1,5)], hr,  summary(lncs)$conf.int[1,c(3,4)], dtt$Cancer[1], 
+   row <- c(gene_name, summary(lncs)$coefficients[1,c(1,5)], hr,  summary(lncs)$conf.int[1,c(3,4)], dtt$Cancer[1],
     lnc_test_ph, global, risk_num, perc, median_nonzero,
     sd_nonzero,
     min_nonzero,
     max_nonzero, cmulti, lnc_only, clinical_only, num_events, perc_events, lr_pval)
 
-   names(row) <- names(results_cox1) 
+   names(row) <- names(results_cox1)
    results_cox1 = rbind(results_cox1, row)
 
    #make density plot using FPKM-UQ values and logged values
-   #visualize bimodality 
+   #visualize bimodality
    exp_data$median=""
    exp_data$median[exp_data$gene==0] = "Low"
    exp_data$median[exp_data$gene==1] = "High"
    exp_data$median = factor(exp_data$median, levels=c("High", "Low"))
-   
+
    #gg <- ggplot(exp_data)
    #gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
    #gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" "))
    #print(gg)
 
    exp_data$geneexp = log1p(exp_data$geneexp)
-  
+
    gg <- ggplot(exp_data)
    gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
    gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" ")) + labs(y="log1p(FPKM-UQ)")
@@ -273,15 +273,15 @@ get_survival_models = function(dtt){
 
    p <- ggboxplot(exp_data, x = "median", y = "geneexp",
           color = "median",
-         palette = mypal[c(4,1)], title = paste(get_name(gene_name), "Expression", canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], sep=" "), 
+         palette = mypal[c(4,1)], title = paste(get_name(gene_name), "Expression", canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], sep=" "),
           add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
         # Change method
-  p = p + stat_compare_means(method = "wilcox.test") + stat_n_text() + scale_color_npg() 
+  p = p + stat_compare_means(method = "wilcox.test") + stat_n_text() + scale_color_npg()
   print(p)
 }
 
 results_cox1 = results_cox1[-1,]
-#fdr on p-values 
+#fdr on p-values
 results_cox1$pval = as.numeric(results_cox1$pval)
 results_cox1$fdr_pval = p.adjust(results_cox1$pval, method="fdr")
 
@@ -314,17 +314,17 @@ tcga_results1 = as.data.table(tcga_results1)
 tcga_results1 = tcga_results1[order(fdr_pval)]
 
 #check which models violate the PH assumption
-#to those models add age * survival time interaction 
+#to those models add age * survival time interaction
 which(tcga_results1$global_test_ph <= 0.05)
 tcga_results1$num_risk = as.numeric(tcga_results1$num_risk)
 
-#plot distribution, cut number of risk patients 
-tcga_results1$groupy = cut(tcga_results1$num_risk, breaks =c(1, 20, 40, 60, 80, 100, 200, 300, 
+#plot distribution, cut number of risk patients
+tcga_results1$groupy = cut(tcga_results1$num_risk, breaks =c(1, 20, 40, 60, 80, 100, 200, 300,
   400, 500, 600, 700, 800, 900, 1000))
 
 #SUMMARIZE
 # Change line color and fill color
-riskplot = gghistogram(tcga_results1, x = "groupy", y = "..count..", stat="count", 
+riskplot = gghistogram(tcga_results1, x = "groupy", y = "..count..", stat="count",
    fill = "white", color="black",  palette = c("#00AFBB", "#E7B800")) + xlab("Number of Risk patients")+
 ylab("Frequency")
 pdf("Dist_num_risk_patients_per_lncRNA.pdf", width=10)
@@ -332,7 +332,7 @@ riskplot
 dev.off()
 
 tcga_results1$perc_risk = as.numeric(tcga_results1$perc_risk)
-riskplot = gghistogram(tcga_results1, x = "perc_risk", 
+riskplot = gghistogram(tcga_results1, x = "perc_risk",
    fill = "white", color="black",  palette = c("#00AFBB", "#E7B800")) + xlab("Percentage of Risk patients")+
 ylab("Frequency")
 pdf("Dist_perc_risk_patients_per_lncRNA.pdf", width=10)
@@ -390,11 +390,11 @@ cands$combo = paste(cands$gene, cands$canc, sep="_")
 pcawg_data = readRDS("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNA_clinical_data_PCAWG_May2.rds")
 pcawg_data$combo = paste(pcawg_data$canc, pcawg_data$histo)
 
-pcawg_data$canc[pcawg_data$combo == "Uterus Adenocarcinoma, endometrioid"] = "Uterine Corpus Endometrial Carcinoma" 
+pcawg_data$canc[pcawg_data$combo == "Uterus Adenocarcinoma, endometrioid"] = "Uterine Corpus Endometrial Carcinoma"
 pcawg_data$canc[pcawg_data$combo == "Kidney Adenocarcinoma, clear cell type"] = "Kidney renal clear cell carcinoma"
 pcawg_data$canc[pcawg_data$combo == "Breast Infiltrating duct carcinoma"] = "Breast invasive carcinoma"
 pcawg_data$canc[pcawg_data$combo == "Ovary Serous cystadenocarcinoma"] = "Ovarian serous cystadenocarcinoma"
-pcawg_data$canc[pcawg_data$combo == "Pancreas Pancreatic ductal carcinoma"] = "Pancreatic adenocarcinoma" 
+pcawg_data$canc[pcawg_data$combo == "Pancreas Pancreatic ductal carcinoma"] = "Pancreatic adenocarcinoma"
 pcawg_data$canc[pcawg_data$combo == "Liver Hepatocellular carcinoma"] = "Liver hepatocellular carcinoma"
 pcawg_data$canc[pcawg_data$combo == "Kidney Adenocarcinoma, papillary type"] = "Kidney renal papillary cell carcinoma"
 pcawg_data$canc[pcawg_data$combo == "Lung Squamous cell carcinoma"] = "Lung squamous cell carcinoma"
@@ -406,7 +406,7 @@ pcawg_data$canc[pcawg_data$canc == "Stomach"] = "Stomach adenocarcinoma"
 pcawg_data$canc[pcawg_data$canc == "Head/Neck"] = "Head and Neck squamous cell carcinoma"
 pcawg_data$canc[pcawg_data$canc == "Cervix"] = "Cervical squamous cell carcinoma and endocervical adenocarcinoma"
 
-#remove those already used in TCGA cohort - aka those with a TCGA id 
+#remove those already used in TCGA cohort - aka those with a TCGA id
 ids = unique(pcawg_clin[,c("icgc_donor_id", "submitted_donor_id.y")])
 colnames(ids) = c("patient", "TCGA_id")
 pcawg_data = merge(pcawg_data, ids, by= "patient")
@@ -418,7 +418,7 @@ cancers_tests = as.list(unique(tcga_results1$cancer[which(tcga_results1$cancer %
 
 get_matched_data = function(cancer){
     dtt = subset(pcawg_data, canc == cancer)
-    z = which(colnames(dtt) %in% c(as.character(cands$gene[cands$canc == dtt$canc[1]]), "canc", 
+    z = which(colnames(dtt) %in% c(as.character(cands$gene[cands$canc == dtt$canc[1]]), "canc",
     "histo", "time", "status", "sex", "donor_age_at_diagnosis", "patient"))
     dtt = dtt[,z]
     if(nrow(dtt) >= 20){
@@ -451,7 +451,7 @@ add_tags = function(dtt){
     med = medians[k]
     if(med ==0){
     #if median = 0 then anyone greater than zero is 1
-    #but first check if non-zero group has a median higher than 0.1  
+    #but first check if non-zero group has a median higher than 0.1
     l1 = which(dtt[,k+1] > 0)
     l2 = which(dtt[,k+1] ==0)
     check = median(dtt[l1,k+1])
@@ -464,7 +464,7 @@ add_tags = function(dtt){
       }
     if(!((check >= 0.05) & (length(l1) >= 5))){
       del = c(del, names(medians)[k])
-      }  
+      }
     }
 
     #check if meidan is greater than 0.1 otherwise save gene for deletion
@@ -498,7 +498,7 @@ names(filtered_data_tagged) = getnames
 
 get_survival_models = function(dtt){
   print(head(dtt))
-  results_cox1 <- as.data.frame(matrix(ncol=17)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer", 
+  results_cox1 <- as.data.frame(matrix(ncol=17)) ; colnames(results_cox1) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "cancer",
     "lnc_test_ph", 'global_test_ph', "num_risk", "perc_risk", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero",
     "multi_model_concordance", "lnc_only_concordance")
 
@@ -528,7 +528,7 @@ get_survival_models = function(dtt){
 
   for(i in 1:length(num_genes)){
   print(i)
-  gene = num_genes[i]  
+  gene = num_genes[i]
   k = which(!(str_detect(colnames(dat), "ENSG")))
 
   newdat = dat[,c(gene,k)]
@@ -544,7 +544,7 @@ get_survival_models = function(dtt){
 
   if(!(is.na(lnc_test_ph))){
 
-  #mutlvariate concordance 
+  #mutlvariate concordance
   cmulti = "not_avail"
   clnconly = as.numeric(glance(lncs)[11])
 
@@ -566,10 +566,10 @@ get_survival_models = function(dtt){
     risk_num = length(which(newdat[,1] == 0))
     perc = risk_num/nrow(newdat)
   }
-  
 
-  #check that HR Confidence Interval is not infiinite 
-  #check that at least 5 patients have expression greater than 0.1 
+
+  #check that HR Confidence Interval is not infiinite
+  #check that at least 5 patients have expression greater than 0.1
   lower95 = summary(lncs)[8][[1]][3]
   upper95 = summary(lncs)[8][[1]][4]
 
@@ -578,41 +578,41 @@ get_survival_models = function(dtt){
   colnames(newdat)[1] = "gene"
   newdat$time = newdat$time/365
   newdat$gene = factor(newdat$gene, levels=c(1,0))
-  
+
   fit <- survfit(Surv(time, status) ~ gene, data = newdat)
           s <- ggsurvplot(
           title = paste(gene_name, canc_conv$type[canc_conv$Cancer == dtt$canc[1]][1], "HR =", round(hr, digits=2)),
-          fit, 
-          xlab = "Time (Years)", 
+          fit,
+          xlab = "Time (Years)",
           #surv.median.line = "hv",
           font.main = c(14, "bold", "black"),
           font.x = c(12, "plain", "black"),
           font.y = c(12, "plain", "black"),
           font.tickslab = c(11, "plain", "black"),
           font.legend = 10,
-          risk.table.fontsize = 5, 
+          risk.table.fontsize = 5,
           legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
-          data = newdat,      # data used to fit survival curves. 
+          data = newdat,      # data used to fit survival curves.
           risk.table = TRUE,       # show risk table.
-          legend = "right", 
+          legend = "right",
           pval = TRUE,             # show p-value of log-rank test.
-          conf.int = FALSE,        # show confidence intervals for 
+          conf.int = FALSE,        # show confidence intervals for
                             # point estimaes of survival curves.
           xlim = c(0,10),        # present narrower X axis, but not affect
                             # survival estimates.
           break.time.by = 1,     # break X axis in time intervals by 500.
-          #palette = colorRampPalette(mypal)(14), 
+          #palette = colorRampPalette(mypal)(14),
           #palette = mypal[c(4,1)],
-          palette = "npg", 
+          palette = "npg",
           #ggtheme = theme_bw(), # customize plot and risk table with a theme.
           risk.table.y.text.col = T, # colour risk table text annotations.
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          #print(s)      
+          #print(s)
 
 
-      #generate boxplot 
+      #generate boxplot
       z = which(names(filtered_data) == dtt$canc[1])
       exp_data = filtered_data[[z]]
       exp_data$patient = rownames(exp_data)
@@ -620,8 +620,8 @@ get_survival_models = function(dtt){
       newdat$patient = rownames(newdat)
       exp_data = merge(exp_data, newdat, by="patient")
       colnames(exp_data)[2] = "geneexp"
-      
-      #get median non-zero expression and SD 
+
+      #get median non-zero expression and SD
       if(perc < 0.45){
       median_nonzero = median(exp_data[which(!(exp_data[,2] == 0)),2])
       sd_nonzero = sd(exp_data[which(!(exp_data[,2] == 0)),2])
@@ -645,22 +645,22 @@ get_survival_models = function(dtt){
 
     if(num_pats >= (0.01 * nrow(exp_data))){
     print(s)
-    row <- c(gene_name, summary(lncs)$coefficients[1,c(1,2)], pval,  summary(lncs)$conf.int[1,c(3,4)], dtt$canc[1], 
+    row <- c(gene_name, summary(lncs)$coefficients[1,c(1,2)], pval,  summary(lncs)$conf.int[1,c(3,4)], dtt$canc[1],
     lnc_test_ph, global, risk_num, perc, median_nonzero,
     sd_nonzero,
     min_nonzero,
     max_nonzero, cmulti, clnconly)
 
-    names(row) <- names(results_cox1) 
+    names(row) <- names(results_cox1)
     results_cox1 = rbind(results_cox1, row)
 
     #make density plot using FPKM-UQ values and logged values
-    #visualize bimodality 
+    #visualize bimodality
     exp_data$median=""
     exp_data$median[exp_data$gene==0] = "Low"
     exp_data$median[exp_data$gene==1] = "High"
     exp_data$median = factor(exp_data$median, levels=c("High", "Low"))
-   
+
     gg <- ggplot(exp_data)
     gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
     gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" "))
@@ -668,18 +668,18 @@ get_survival_models = function(dtt){
 
         p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
           color = "gene",
-         palette = mypal[c(4,1)], title = paste(gene_name, "Expression", dtt$canc[1] , sep=" "), 
+         palette = mypal[c(4,1)], title = paste(gene_name, "Expression", dtt$canc[1] , sep=" "),
           add = "jitter", ylab = "FPKM-UQ",  ggtheme = theme_bw())
         # Change method
        p = p + stat_compare_means(method = "wilcox.test")
        #print(p)
 
 
-   #get measure of bimodality 
+   #get measure of bimodality
    #SIBER(y=exp_data$geneexp, model='LN')
 
     exp_data$geneexp = log1p(exp_data$geneexp)
-  
+
     #gg <- ggplot(exp_data)
     #gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
     #gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" "))
@@ -688,7 +688,7 @@ get_survival_models = function(dtt){
       #exp_data$geneexp = log1p(exp_data$geneexp)
       p <- ggboxplot(exp_data, x = "gene", y = "geneexp",
           color = "gene",
-         palette = mypal[c(4,1)], title = paste(gene_name, "Expression", dtt$canc[1] , sep=" "), 
+         palette = mypal[c(4,1)], title = paste(gene_name, "Expression", dtt$canc[1] , sep=" "),
           add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_bw())
         # Change method
        p = p + stat_compare_means(method = "wilcox.test")
@@ -696,10 +696,10 @@ get_survival_models = function(dtt){
 
   p <- ggboxplot(exp_data, x = "median", y = "geneexp",
           color = "median",
-         palette = mypal[c(4,1)], title = paste(gene_name, "Expression", canc_conv$type[canc_conv$Cancer == dtt$canc[1]][1], sep=" "), 
+         palette = mypal[c(4,1)], title = paste(gene_name, "Expression", canc_conv$type[canc_conv$Cancer == dtt$canc[1]][1], sep=" "),
           add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
         # Change method
-  p = p + stat_compare_means(method = "wilcox.test") + stat_n_text() + scale_color_npg() 
+  p = p + stat_compare_means(method = "wilcox.test") + stat_n_text() + scale_color_npg()
   print(p)
 
 
@@ -759,7 +759,7 @@ pcawg_results1$combo = paste(pcawg_results1$gene, pcawg_results1$cancer, sep="_"
 
 saveRDS(pcawg_results1, file="PCAWG_external_validation_lncCands_feb19.rds")
 
-#plot power versus Hazard Ratio 
+#plot power versus Hazard Ratio
 pcawg_results1$pval = as.numeric(pcawg_results1$pval)
 write.table(pcawg_results1, file="all_lncRNAs_evaluated_by_PCAWG_KI_Nov262019.txt", quote=F, row.names=F, sep="\t")
 
@@ -778,13 +778,13 @@ all_results = all_results[order(gene, cancer)]
 lnc_info = read.csv("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/fantom_genebased_evidence_supp_table_17.csv")
 lnc_info = lnc_info[which(str_detect(lnc_info$CAT_geneID, "ENSG")),]
 
-#shorten the gene names 
+#shorten the gene names
 extract3 <- function(row){
   gene <- as.character(row[[1]])
   ens <- gsub("\\..*","",gene)
   return(ens)
 }
-lnc_info[,1] <- apply(lnc_info[,1:2], 1, extract3) #5049 lncRNAs 
+lnc_info[,1] <- apply(lnc_info[,1:2], 1, extract3) #5049 lncRNAs
 
 colnames(lnc_info)[1] = "gene"
 
@@ -807,9 +807,9 @@ lncs = as.list(as.character(unique(all_results$gene[all_results$data == "PCAWG"]
 check_match = function(lnc){
   z = which(all_results$gene == lnc)
   res = as.data.table(all_results[z,])
-  
+
   if(dim(res)[1] > 2){
-  
+
   canc = res$cancer[which(duplicated(res$cancer))]
   res = filter(res, cancer == canc)
   }
@@ -906,6 +906,3 @@ write.csv(all_results_orig, file="168_lncRNA_cancers_combos_22_cancer_types_feb1
 saveRDS(all_results_orig, file="final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 
 write.csv(all_results_orig, file="pcawg_results_tcga_results_file_supp_file_KI.csv", quote=F, row.names=F)
-
-
-

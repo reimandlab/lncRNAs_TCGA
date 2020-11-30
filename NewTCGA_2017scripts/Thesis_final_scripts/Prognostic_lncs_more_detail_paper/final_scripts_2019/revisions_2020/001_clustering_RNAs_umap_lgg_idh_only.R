@@ -21,7 +21,12 @@ mypal = "purple"
 library(umap)
 
 lgg=readRDS("TCGA_lgg_wsubtype_info_biolinks.rds")
+lgg_wsurv = unique(lgg[,c("patient", "IDH.status", "OS", "OS.time")])
 lgg = unique(lgg[,c("patient", "IDH.status")])
+lgg_rna = as.data.table(filter(rna, type =="LGG"))
+lgg_pfi = unique(lgg_rna[,c("patient", "PFI", "PFI.time")])
+lgg_pfi = merge(lgg, lgg_pfi, by="patient")
+saveRDS(lgg_pfi, "/u/kisaev/TCGA_LGG_PFS_time.rds")
 
 #-------------------------------------------------------------------
 #-----------------PCA using just all expressed lncRNA --------------
@@ -62,10 +67,10 @@ get_umap_lgg = function(canc){
   df$OS = NULL
   df$OS.time = NULL
 	embedding = umap::umap(df)
-	head(embedding)
+#	head(embedding)
 
 	layout = as.data.table(embedding$layout) ; colnames(layout)=c("x", "y")
-	layout$col = cancer.labels
+	layout$cols_names = cancer.labels
 
 	z = which(duplicated(layout$col))
 	layout$label[z] ="no"
@@ -77,12 +82,44 @@ get_umap_lgg = function(canc){
 		layout$label[z[i]] = canc
 	}
 
-	g = ggplot(layout,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col),alpha=0.5, stroke=0) +
-  scale_colour_manual(values=c("purple", "orange"))+
-		geom_text_repel(data = subset(layout, !(label == "no")))
+
+  g = ggplot(layout, aes(x=x, y=y, colour=cols_names)) +
+    geom_point() +
+    geom_point(data=layout %>%
+                 group_by(cols_names) %>%
+                 summarise_at(c("x", "y"), mean),
+               size=5, shape=3) +
+    theme_classic()+
+    scale_colour_manual(values=c("purple", "orange"))
+
+  #geom_point(aes(x=x, y=y, color=cols_names),alpha=0.5, stroke=0) +
+  #	geom_text_repel(data = subset(layout, !(label == "no")))+
+  #theme_classic()
 	print(g)
+
 }
 
 pdf("/u/kisaev/LGG_IDH_umap_plots.pdf")
 get_umap_lgg("LGG")
+
+#make survival plot just for IDH mutation status
+
+z = which(is.na(lgg_wsurv$IDH.status))
+lgg_wsurv = lgg_wsurv[-z,]
+lgg_wsurv$OS = as.numeric(lgg_wsurv$OS)
+lgg_wsurv$OS.time = as.numeric(lgg_wsurv$OS.time)
+lgg_wsurv$OS.time = lgg_wsurv$OS.time/365
+
+fit <- survfit(Surv(OS.time, OS) ~ IDH.status, data = lgg_wsurv)
+
+s <- ggsurvplot(fit ,
+        xlab = "Time (Years)",
+        data = lgg_wsurv,      # data used to fit survival curves.
+        pval = TRUE,             # show p-value of log-rank test.
+        conf.int = FALSE,        # show confidence intervals for
+        xlim = c(0,10),
+        risk.table = TRUE,      # present narrower X axis, but not affect
+        break.time.by = 1,     # break X axis in time intervals by 500.
+        palette = c("purple", "orange"))
+print(s)
 dev.off()
