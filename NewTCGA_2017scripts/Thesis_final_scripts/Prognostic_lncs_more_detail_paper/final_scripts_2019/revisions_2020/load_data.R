@@ -57,13 +57,13 @@ z <- which(colnames(rna) %in% zeroes)
 rna = rna[,-z]
 
 #only keep lncRNAs that are hg38 in new fantom
-z = which(str_detect(colnames(rna), "ENSG"))
-lnc_rna = rna[,z]
-clin = rna[,-z]
-z = which(colnames(lnc_rna) %in% fantom$gene)
-lnc_rna = lnc_rna[,z]
-rna = cbind(lnc_rna, clin)
-rna = as.data.table(rna)
+#z = which(str_detect(colnames(rna), "ENSG"))
+#lnc_rna = rna[,z]
+#clin = rna[,-z]
+#z = which(colnames(lnc_rna) %in% fantom$gene)
+#lnc_rna = lnc_rna[,z]
+#rna = cbind(lnc_rna, clin)
+#rna = as.data.table(rna)
 
 dim(rna)
 dim(pcg)
