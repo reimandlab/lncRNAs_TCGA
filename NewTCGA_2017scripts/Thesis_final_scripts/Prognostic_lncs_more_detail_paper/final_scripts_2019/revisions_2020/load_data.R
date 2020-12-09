@@ -20,7 +20,7 @@ z <- which(duplicated(fantom$CAT_geneName))
 rm <- fantom$CAT_geneName[z]
 z <- which(fantom$CAT_geneName %in% rm)
 fantom <- fantom[-z,]
-colnames(fantom)[1] = "gene"
+#colnames(fantom)[1] = "gene"
 
 hg38 = readRDS("lncRNAs_2019_manuscript/grch38_dat_annotables.rds")
 hg38$chr = paste("chr", hg38$chr, sep="")

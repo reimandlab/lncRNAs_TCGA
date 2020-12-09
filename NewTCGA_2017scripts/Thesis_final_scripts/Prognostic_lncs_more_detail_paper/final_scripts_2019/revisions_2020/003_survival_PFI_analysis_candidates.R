@@ -213,7 +213,8 @@ get_survival_models = function(dtt){
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
-          print(s)
+          if((perc > 0.1) & (perc < 0.9)){
+          print(s)}
 
    #generate boxplot
    z = which(rna$Cancer == dtt$Cancer[1])
@@ -269,7 +270,7 @@ get_survival_models = function(dtt){
    gg <- ggplot(exp_data)
    gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
    gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" ")) + labs(y="log1p(FPKM-UQ)")
-   print(gg)
+   #print(gg)
 
    p <- ggboxplot(exp_data, x = "median", y = "geneexp",
           color = "median",
@@ -277,7 +278,8 @@ get_survival_models = function(dtt){
           add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
         # Change method
   p = p + stat_compare_means(method = "wilcox.test") + stat_n_text() + scale_color_npg()
-  print(p)
+  if((perc > 0.1) & (perc < 0.9)){
+  print(p)}
 }
 
 results_cox1 = results_cox1[-1,]
@@ -289,7 +291,7 @@ return(results_cox1)
 
 }
 
-pdf("/u/kisaev/TCGA_candidates_survival_plots_final_cands_FULL_10year_PFI_2019.pdf", width=6, height=5)
+pdf("/u/kisaev/Dec2020/TCGA_candidates_survival_plots_final_cands_FULL_10year_PFI.pdf", width=6, height=5)
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
 dev.off()
 
@@ -317,11 +319,6 @@ tcga_results1 = tcga_results1[order(fdr_pval)]
 #to those models add age * survival time interaction
 which(tcga_results1$global_test_ph <= 0.05)
 tcga_results1$num_risk = as.numeric(tcga_results1$num_risk)
-
-#plot distribution, cut number of risk patients
-tcga_results1$groupy = cut(tcga_results1$num_risk, breaks =c(1, 20, 40, 60, 80, 100, 200, 300,
-  400, 500, 600, 700, 800, 900, 1000))
-
 tcga_results1$perc_risk = as.numeric(tcga_results1$perc_risk)
 #tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
 tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
@@ -329,4 +326,4 @@ saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3_PFI.rds")
 
 colnames(fantom)[1] = "gene"
 tcga_results1 = merge(fantom, tcga_results1, by="gene")
-write.table(tcga_results1, file="SuppTable4_PFI.txt", quote=F, row.names=F, sep=";")
+write.table(tcga_results1, file="/u/kisaev/Dec2020/SuppTable4_PFI.txt", quote=F, row.names=F, sep=";")

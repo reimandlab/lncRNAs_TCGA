@@ -287,7 +287,7 @@ return(results_cox1)
 
 }
 
-pdf("/u/kisaev/TCGA_candidates_survival_plots_final_cands_FULL_10year_OS.pdf", width=6, height=5)
+pdf("/u/kisaev/Dec2020/TCGA_candidates_survival_plots_final_cands_FULL_10year_OS.pdf", width=6, height=5)
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
 dev.off()
 
@@ -318,16 +318,21 @@ tcga_results1 = tcga_results1[order(fdr_pval)]
 riskplot = gghistogram(tcga_results1, x = "perc_risk",
    fill = "white", color="black",  palette = c("#00AFBB", "#E7B800")) + xlab("Percentage of Risk patients")+
 ylab("Frequency")
-pdf("/u/kisaev/Dist_perc_risk_patients_per_lncRNA.pdf", width=10)
+pdf("/u/kisaev/Dec2020/Dist_perc_risk_patients_per_lncRNA.pdf", width=10)
 riskplot
 dev.off()
 
 tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
+tcga_results1$lnc_better = NULL
+tcga_results1$global_test_ph = NULL
+tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
+tcga_results1$lnc_test_ph_fdr = p.adjust(tcga_results1$lnc_test_ph, method="fdr")
+
 saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
 
 colnames(fantom)[1] = "gene"
 tcga_results1 = merge(fantom, tcga_results1, by="gene")
-write.table(tcga_results1, file="SuppTable4.txt", quote=F, row.names=F, sep=";")
+write.table(tcga_results1, file="/u/kisaev/Dec2020/SuppTable4.txt", quote=F, row.names=F, sep=";")
 
 tcga_results1 = as.data.table(tcga_results1)
 
