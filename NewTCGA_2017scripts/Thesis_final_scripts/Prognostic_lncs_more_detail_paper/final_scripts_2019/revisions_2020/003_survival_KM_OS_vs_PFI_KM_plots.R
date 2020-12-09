@@ -8,7 +8,7 @@ setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCES
 
 #Data--------------------------------------------
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs
 
 #which cancer types are the non-unique lncRNAs from?
 allCands$Combo = NULL
@@ -23,7 +23,7 @@ get_plot = function(canc){
 	print(canc)
 
 	lncs = as.data.table(filter(allCands, cancer==canc))$gene
-	cancer = canc_conv$type[canc_conv$Cancer==canc]	
+	cancer = canc_conv$type[canc_conv$Cancer==canc]
 
 	print(lncs)
 

@@ -36,7 +36,7 @@ get_canc_data_for_plot = function(dtt){
     "PFI.time", "PFI", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course",
     "new_tumor_event_type", "Cancer", "type"))
   print(dtt$type[1])
-  #print(cands$cancer[1])
+  dtt = as.data.table(dtt)
   dtt = dtt[,..z]
 
   t=filter(as.data.table(table(dtt$histological_grade)), N <=5)$V1
@@ -314,10 +314,11 @@ tcga_results1$lnc_better[z] = "yes"
 
 tcga_results1 = as.data.table(tcga_results1)
 tcga_results1 = tcga_results1[order(fdr_pval)]
-
-#check which models violate the PH assumption
-#to those models add age * survival time interaction
-which(tcga_results1$global_test_ph <= 0.05)
+tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
+tcga_results1$lnc_better = NULL
+tcga_results1$global_test_ph = NULL
+tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
+tcga_results1$lnc_test_ph_fdr = p.adjust(tcga_results1$lnc_test_ph, method="fdr")
 tcga_results1$num_risk = as.numeric(tcga_results1$num_risk)
 tcga_results1$perc_risk = as.numeric(tcga_results1$perc_risk)
 #tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)

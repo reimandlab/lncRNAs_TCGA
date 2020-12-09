@@ -36,7 +36,7 @@ get_canc_data_for_plot = function(dtt){
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course",
     "new_tumor_event_type", "Cancer", "type"))
   print(dtt$type[1])
-  #print(cands$cancer[1])
+  dtt = as.data.table(dtt)
   dtt = dtt[,..z]
 
   t=filter(as.data.table(table(dtt$histological_grade)), N <=5)$V1
