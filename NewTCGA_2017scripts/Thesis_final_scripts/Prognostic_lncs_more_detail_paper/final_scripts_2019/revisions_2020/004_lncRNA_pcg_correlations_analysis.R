@@ -39,13 +39,13 @@ flattenCorrMatrix <- function(cormat, pmat) {
 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 #allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_Aug8.rds")
-allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 #--------This script ------------------------------------------------
 
-#intersect lncRNA coordinates with PCGs to obtain dataset of 
-#lncRNA - cis PCGs and lncRNA - trans PCGs 
+#intersect lncRNA coordinates with PCGs to obtain dataset of
+#lncRNA - cis PCGs and lncRNA - trans PCGs
 
 #--------------------------------------------------------------------
 #ANALYSIS------------------------------------------------------------
@@ -56,29 +56,29 @@ library(dplyr)
 
 lncs = (unique(allCands$gene))
 
-#GET COORDINATES AND SAVE AS BED FILES THEN USE BEDTOOLS 
+#GET COORDINATES AND SAVE AS BED FILES THEN USE BEDTOOLS
 
-#1. Get coordinates of all lncRNA candidates 
-# & make into genomic ranges object 
-  
+#1. Get coordinates of all lncRNA candidates
+# & make into genomic ranges object
+
   z = which(hg38$ensgene %in% lncs)
   lncs_cords = hg38[z,]
-  lncs_cords = lncs_cords[,c("chr", "start", 
+  lncs_cords = lncs_cords[,c("chr", "start",
   "end", "strand", "symbol",
   "biotype")]
   colnames(lncs_cords) = c("chr", "start", "end", "strand", "name", "type")
-  #missing lncRNA 
+  #missing lncRNA
   lncs_cords = as.data.table(lncs_cords)
   lncs_cords = lncs_cords[,c("chr", "start", "end", "name", "strand", "type")]
-  write.table(lncs_cords, file="lncs_cords_179_cands.bed", quote=F, row.names=F, col.names=F, sep="\t")
+  write.table(lncs_cords, file="lncs_cords_142_cands.bed", quote=F, row.names=F, col.names=F, sep="\t")
 
 
-#2. Get coordinates of all PCGs 
-# & make into genomic ranges objects 
+#2. Get coordinates of all PCGs
+# & make into genomic ranges objects
 
   z = which(hg38$ensgene %in% colnames(pcg))
   pcgs_cords = hg38[z,]
-  pcgs_cords = pcgs_cords[,c("chr", "start", 
+  pcgs_cords = pcgs_cords[,c("chr", "start",
   "end", "strand", "symbol",
   "biotype")]
   pcgs_cords = as.data.table(pcgs_cords)
@@ -86,7 +86,7 @@ lncs = (unique(allCands$gene))
   #z = which(str_detect(pcgs_cords$chr, "_"))
   #pcgs_cords = pcgs_cords[-z]
   pcgs_cords = pcgs_cords[,c("chr", "start", "end", "name", "strand", "type")]
-  write.table(pcgs_cords, file="pcgs_cords_179_cands.bed", quote=F, row.names=F, col.names=F, sep="\t")
+  write.table(pcgs_cords, file="pcgs_cords_142_cands.bed", quote=F, row.names=F, col.names=F, sep="\t")
 
 
 lncs_cords$strand[lncs_cords$strand == "1"] = "+"
@@ -101,10 +101,10 @@ hits <- findOverlaps(lncs_cords_gr, pcgs_cords_gr, ignore.strand=TRUE, maxgap=10
 hits_overlap = cbind(as.data.table(lncs_cords[queryHits(hits),]), as.data.table(pcgs_cords)[subjectHits(hits),])
 print(head(hits_overlap))
 
-colnames(hits_overlap) = c("lnc_chr", "lnc_start", "lnc_end", "lnc", "lnc_strand", "lnc_type", "pcg_chr", 
+colnames(hits_overlap) = c("lnc_chr", "lnc_start", "lnc_end", "lnc", "lnc_strand", "lnc_type", "pcg_chr",
   "pcg_start", "pcg_end", "pcg", "pcg_strand", "protein_type")
 hits_overlap$pair = paste(hits_overlap$lnc, hits_overlap$pcg, sep="_")
-#keep only unique pairs 
+#keep only unique pairs
 hits_overlap = as.data.table(hits_overlap)
 hits_overlap$distance = abs(as.numeric(hits_overlap$pcg_start) - as.numeric(hits_overlap$lnc_end))
 
@@ -115,15 +115,3 @@ hits_overlap = hits_overlap[-z,]
 saveRDS(hits_overlap, file="lncRNA_cands_wPCGs_that_are_in_cis_10kb_nov16.rds")
 
 #all the lncRNA candidates that are not in the above ^ file are "trans lncRNAs"
-
-
-
-
-
-
-
-
-
-
-
-

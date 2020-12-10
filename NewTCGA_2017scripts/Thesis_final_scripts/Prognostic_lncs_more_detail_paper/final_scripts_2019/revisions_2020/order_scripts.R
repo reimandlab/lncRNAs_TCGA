@@ -16,11 +16,12 @@ Rscript $main/002_univariate_cross_validations_candidates.R
 Rscript $main/Figure2c_figure_code.R
 Rscript $main/002_multivariate_cross_validations_candidates.R
 Rscript $main/002_multivariate_prepare_for_figure.R
+Rscript $main/
 
 #comparing univariate and multivariate models using lncRNAs and clinical variables
-Rscript $main/002_risk_scores_multivariate_models_forrestplot.R
-Rscript $main/002_risk_scores_univariate_models_forrestplot.R
-Rscript $main/002_risk_scores_all_models_summary_figure.R
+#Rscript $main/002_risk_scores_multivariate_models_forrestplot.R
+#Rscript $main/002_risk_scores_univariate_models_forrestplot.R
+#Rscript $main/002_risk_scores_all_models_summary_figure.R
 
 #comparing OS vs PFI as endpoints for survival
 Rscript $main/003_survival_OS_analysis_candidates.R
@@ -28,8 +29,9 @@ Rscript $main/003_survival_PFI_analysis_candidates.R
 Rscript $main/003_survival_KM_OS_vs_PFI.R
 
 #lncRNA versus pcgs correlation and survival model comparisons
-Rscript $main/004_lncRNA_pcg_correlation_analysis.R
-Rscript $main/004_lncRNA_pcg_correlation.R 
+Rscript $main/004_lncRNA_pcg_correlations_analysis.R
+Rscript $main/004_lncRNA_pcg_correlations_medians_analysis.R
+Rscript $main/004_lncRNA_pcg_correlation.R
 
 #4. Figure 3 related analysis
 
