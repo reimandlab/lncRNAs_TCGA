@@ -1,4 +1,4 @@
-#this file contains the order of all scripts that was run in this analysis 
+#this file contains the order of all scripts that was run in this analysis
 
 main=/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020
 cd /.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ
@@ -28,8 +28,8 @@ Rscript $main/003_survival_PFI_analysis_candidates.R
 Rscript $main/003_survival_KM_OS_vs_PFI.R
 
 #lncRNA versus pcgs correlation and survival model comparisons
-Rscript $main/004_lncRNA_pcg_correlation_analysis.R #just make KM plots for all PCAWG candidates as we did for TCGA
-Rscript $main/004_lncRNA_pcg_correlation.R #just make KM plots for all PCAWG candidates as we did for TCGA
+Rscript $main/004_lncRNA_pcg_correlation_analysis.R
+Rscript $main/004_lncRNA_pcg_correlation.R 
 
 #4. Figure 3 related analysis
 

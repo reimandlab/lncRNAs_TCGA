@@ -153,6 +153,8 @@ canc_rm = pats_num$V1
 all = all[-which(all$type %in% canc_rm),]
 rna = rna[-which(rna$type %in% canc_rm),]
 pcg = pcg[-which(pcg$type %in% canc_rm),]
+rna = as.data.table(rna)
+pcg = as.data.table(pcg)
 
 print(table(all$type))
 
