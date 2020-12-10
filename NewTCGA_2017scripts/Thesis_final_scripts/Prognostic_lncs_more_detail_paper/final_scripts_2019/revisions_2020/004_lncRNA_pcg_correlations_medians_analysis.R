@@ -237,9 +237,12 @@ mypal = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
  "#7BEE95" ,"#6F46E6" ,"#65B9E0", "#C0EC3E",
 "#DE8D54" ,"#DF4FA6")
 
-pdf("/u/kisaev/Dec2020/all_lncRNAs_zero_expression_summary.pdf", width=8, height=6)
+results2$perc_lnc_off = as.numeric(results2$perc_lnc_off)
+lncs_zero = unique(results2[,c("lnc", "perc_lnc_off", "canc")]) #79 unique genes
 
-g = ggbarplot(results2, "lnc", "perc_lnc_off",
+pdf("/u/kisaev/Dec2020/all_lncRNAs_zero_expression_summary.pdf", width=7, height=5)
+
+g = ggbarplot(lncs_zero, "lnc", "perc_lnc_off",
   fill = "canc", color = "black",
   palette = mypal)
 g = ggpar(g, legend="none",

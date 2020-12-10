@@ -61,3 +61,9 @@ ggpar(g, xtickslab.rt=90, font.tickslab=c(6, "plain", "black"),
   xlab("lncRNA") + ylab("log2(Hazard Ratio)")
 
 dev.off()
+
+#make histogram for risk group per lncRNA
+pdf("Dec2020/all_lncRNAs_cands_risk_group_summary_histogram.pdf", width=8, height=6)
+gghistogram(res, x="perc_risk", color="black", fill="#00AFBB") + xlim(0,1)+theme_bw()+
+xlab("Percent of patients in risk group") + ylab("Number of lncRNAs")
+dev.off()
