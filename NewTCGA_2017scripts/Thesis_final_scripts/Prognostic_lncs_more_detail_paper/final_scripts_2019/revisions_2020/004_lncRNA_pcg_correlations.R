@@ -361,6 +361,7 @@ pdf("/u/kisaev/Dec2020/figure2E_summary_lncs_pcgs_antisense_10kb_nov16.pdf", wid
 g = ggplot(prog_pcgs, aes(pcgConcordance, lncConcordance, label=lnc_pcg)) +
  geom_point(color = "black")+
     scale_colour_manual(values = c("blue", "dimgrey", "red", "purple")) +
+    theme_bw()+
     xlab("Neighbour PCG Concordance") + ylab("lncRNA Concordance") +
     theme(legend.box = "horizontal", axis.text = element_text(size=13),
       legend.text=element_text(size=10), legend.title=element_text(size=10))+
@@ -397,6 +398,7 @@ dev.off()
 pdf("/u/kisaev/Dec2020/figure2E_summary_lncs_pcgs_antisense_10kb_wSpearmanRho.pdf", width=5,height=5)
 g = ggplot(prog_pcgs, aes(diff_cindices, rho, label=lnc_pcg)) +
  geom_point(aes(shape= sig_spearman, color=lnc_better), alpha=0.6, size=2)+
+ theme_bw()+
     scale_colour_manual(values = c("black", "blue", "red", "purple")) +
     ylab("Spearman rho") + xlab("lncRNA cindex - PCG cindex") +
     theme(legend.box = "horizontal", axis.text = element_text(size=13),

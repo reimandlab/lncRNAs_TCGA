@@ -64,6 +64,7 @@ combos = unique(cis_pcgs$combo)
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
+all = as.data.table(all)
 
 check_cis_pcg = function(combo){
   lnc = unlist(str_split(combo, "_"))[1]
@@ -80,14 +81,13 @@ check_cis_pcg = function(combo){
 
   #get surv and exp data for these genes
   z = which(colnames(all) %in% c(lnc, pcgg, "OS", "OS.time", "type", "patient", "Cancer"))
-  exp_dat = all[,z]
+  exp_dat = all[,..z]
   exp_dat = subset(exp_dat, Cancer == cancer)
 
   #label patients by binary variable
   z = which(colnames(exp_dat) ==pcgg)
-  med = median(unlist(exp_dat[,z]))
+  med = median(unlist(exp_dat[,..z]))
   exp_dat$pcg_median = ""
-  exp_dat = as.data.table(exp_dat)
        if(med ==0){
         #if median = 0 then anyone greater than zero is 1
         l1 = which(exp_dat[,..z] > 0)
@@ -240,7 +240,7 @@ mypal = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
 results2$perc_lnc_off = as.numeric(results2$perc_lnc_off)
 lncs_zero = unique(results2[,c("lnc", "perc_lnc_off", "canc")]) #79 unique genes
 
-pdf("/u/kisaev/Dec2020/all_lncRNAs_zero_expression_summary.pdf", width=7, height=5)
+pdf("/u/kisaev/Dec2020/lncRNAs_wnearby_PCG_zero_expression_summary.pdf", width=7, height=5)
 
 g = ggbarplot(lncs_zero, "lnc", "perc_lnc_off",
   fill = "canc", color = "black",
@@ -253,6 +253,6 @@ g + facet_grid(~canc, scales = "free", space = "free") + theme(text = element_te
 dev.off()
 
 #make histogram
-pdf("/u/kisaev/Dec2020/all_lncRNAs_zero_expression_summary_histogram.pdf", width=8, height=6)
-gghistogram(results2, x="perc_lnc_off", color="black", fill="#00AFBB")
-dev.off()
+#pdf("/u/kisaev/Dec2020/all_lncRNAs_zero_expression_summary_histogram.pdf", width=8, height=6)
+#gghistogram(results2, x="perc_lnc_off", color="black", fill="#00AFBB")
+#dev.off()
