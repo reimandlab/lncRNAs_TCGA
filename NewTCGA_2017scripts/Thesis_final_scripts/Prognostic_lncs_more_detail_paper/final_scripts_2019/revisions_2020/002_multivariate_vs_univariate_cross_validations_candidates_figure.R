@@ -262,19 +262,21 @@ get_multi_plot = function(canc){
 
 all_results = as.data.table(ldply(llply(cancers, get_multi_plot)))
 colnames(canc_conv)[1] = "type_canc"
+colnames(canc_conv)[2] = "Cancer"
+
 all_results=merge(all_results, canc_conv, by="Cancer")
 saveRDS(all_results, "/u/kisaev/multivaraite_vs_univariate_cindices_input_for_plots.rds")
 
-res=as.data.table(ldply(llply(cancers, get_bar)))
-res$full_lnc_clin_fdr = p.adjust(res$full_lnc_clin_pval, method="fdr")
-write.csv(res, file="/u/kisaev/all_lncRNA_cands_single_multi_models_performance.csv", quote=F, row.names=F)
+#res=as.data.table(ldply(llply(cancers, get_bar)))
+#res$full_lnc_clin_fdr = p.adjust(res$full_lnc_clin_pval, method="fdr")
+#write.csv(res, file="/u/kisaev/Dec2020/all_lncRNA_cands_single_multi_models_performance.csv", quote=F, row.names=F)
 
-colnames(canc_conv)[1] = "cancer_name"
-res = merge(res, canc_conv,  by = "Cancer")
-res=res[order(-median_cindex)]
-res$cancer_name = factor(res$cancer_name, levels=unique(res$cancer_name))
+#colnames(canc_conv)[1] = "cancer_name"
+#res = merge(res, canc_conv,  by = "Cancer")
+#res=res[order(-median_cindex)]
+#res$cancer_name = factor(res$cancer_name, levels=unique(res$cancer_name))
 
-pdf("/u/kisaev/summary_figure2c_multivariate_single_models.pdf", height=6,width=8)
-g=ggerrorplot(res, x= "cancer_name", y="value_order", color="type", add.params = list(size = 0.5), palette="npg")+theme_bw()+coord_flip() + ylim(c(1,45))
-ggpar(g, legend="top")
-dev.off()
+#pdf("/u/kisaev/summary_figure2c_multivariate_single_models.pdf", height=6,width=8)
+#g=ggerrorplot(res, x= "cancer_name", y="value_order", color="type", add.params = list(size = 0.5), palette="npg")+theme_bw()+coord_flip() + ylim(c(1,45))
+#ggpar(g, legend="top")
+#dev.off()

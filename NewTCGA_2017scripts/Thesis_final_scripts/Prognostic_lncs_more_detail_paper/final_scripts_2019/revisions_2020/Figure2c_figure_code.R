@@ -290,17 +290,25 @@ random_lncs_vs_cand1 = random_lncs_vs_cand1[order(wp_lnc_clinical, diff_meds_lnc
 #try new Figure 2E
 #x-axis median difference between lncRNA and clinical variables
 #y-axis p-value
+full=random_lncs_vs_cand1
+full$wp_lnc_clinical_fdr = p.adjust(full$wp_lnc_clinical, method="fdr")
+full$wp_lnc_clinical_fdr = -log10(full$wp_lnc_clinical_fdr)
+full$wp_lnc_clinical_combo = p.adjust(full$wp_lnc_clinical_combo, method="fdr")
+z = which(full$wp_lnc_clinical_fdr == "Inf")
+full$wp_lnc_clinical_fdr[z] = -log10(0.0000001)
+
+write.table(full, file="summary_cross_validation_clinical_random_lncRNAs_Nov1.txt", quote=F, row.names=F, sep=";")
+
 random_lncs_vs_cand1 = unique(random_lncs_vs_cand1[,c("cancer",
 "gene", "canc", "wp_lnc_clinical",
 	"diff_meds_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical_combo",
 	"median_lncRNA", "median_clinical", "clin_combo_cind_med")])
+
 random_lncs_vs_cand1$wp_lnc_clinical_fdr = p.adjust(random_lncs_vs_cand1$wp_lnc_clinical, method="fdr")
 random_lncs_vs_cand1$wp_lnc_clinical_fdr = -log10(random_lncs_vs_cand1$wp_lnc_clinical_fdr)
 random_lncs_vs_cand1$wp_lnc_clinical_combo = p.adjust(random_lncs_vs_cand1$wp_lnc_clinical_combo, method="fdr")
 z = which(random_lncs_vs_cand1$wp_lnc_clinical_fdr == "Inf")
 random_lncs_vs_cand1$wp_lnc_clinical_fdr[z] = -log10(0.0000001)
-
-write.table(random_lncs_vs_cand1, file="summary_cross_validation_clinical_random_lncRNAs_Nov1.txt", quote=F, row.names=F, sep=";")
 
 #z = which(random_lncs_vs_cand1$wp_lnc_clinical_fdr == "Inf")
 #random_lncs_vs_cand1 = random_lncs_vs_cand1[-z,]
@@ -315,28 +323,45 @@ colnames(canc_conv) = c("canc_type","cancer")
 random_lncs_vs_cand1 = merge(random_lncs_vs_cand1, canc_conv, by="cancer")
 random_lncs_vs_cand1$diff_meds_lnc_clinical = as.numeric(random_lncs_vs_cand1$diff_meds_lnc_clinical)
 #random_lncs_vs_cand1$diff_meds_lnc_random = as.numeric(random_lncs_vs_cand1$diff_meds_lnc_random)
+full = merge(full, canc_conv, by="cancer")
+full$diff_meds_lnc_clinical = as.numeric(full$diff_meds_lnc_clinical)
 
 random_lncs_vs_cand1 = random_lncs_vs_cand1[order(wp_lnc_clinical, diff_meds_lnc_clinical, wp_lnc_clinical)]
 random_lncs_vs_cand1$type = factor(random_lncs_vs_cand1$type, levels=unique(random_lncs_vs_cand1$type))
 random_lncs_vs_cand1$canc_type = factor(random_lncs_vs_cand1$canc_type, levels=unique(random_lncs_vs_cand1$canc_type))
+
+full = full[order(wp_lnc_clinical, diff_meds_lnc_clinical, wp_lnc_clinical)]
+full$type = factor(full$type, levels=unique(full$type))
+full$canc_type = factor(full$canc_type, levels=unique(full$canc_type))
 
 #add gene name
 allCands$name = unlist(llply(allCands$gene, get_name))
 
 z = which(random_lncs_vs_cand1$gene == "HOXA-AS4")
 random_lncs_vs_cand1$gene[z] = "HOXA10-AS"
+z = which(full$gene == "HOXA-AS4")
+full$gene[z] = "HOXA10-AS"
 
 #known lncRNAs
 known_lncs = c("HOXB-AS2", "HOXA10-AS", "CCAT1", "BZRAP1-AS1", "AC114803.3", "AC097468.7")
 colnames(random_lncs_vs_cand1)[2] = "name"
+colnames(full)[7] = "name"
+
 allCands$name[allCands$name == "HOXA-AS4"] = "HOXA10-AS"
+
 random_lncs_vs_cand1 = merge(random_lncs_vs_cand1, allCands, by = c("cancer", "name"))
 random_lncs_vs_cand1$HR = as.numeric(random_lncs_vs_cand1$HR)
 random_lncs_vs_cand1$risk = ""
 random_lncs_vs_cand1$risk[random_lncs_vs_cand1$HR > 1] = "Unfavourable"
 random_lncs_vs_cand1$risk[random_lncs_vs_cand1$HR < 1] = "Favourable"
 
-write.csv(random_lncs_vs_cand1, file="summary_cross_validation_clinical_random_lncRNAs_Nov1.csv", quote=F, row.names=F)
+full = merge(full, allCands, by = c("cancer", "name"))
+full$HR = as.numeric(full$HR)
+full$risk = ""
+full$risk[full$HR > 1] = "Unfavourable"
+full$risk[full$HR < 1] = "Favourable"
+
+write.csv(full, file="summary_cross_validation_clinical_random_lncRNAs_Nov1.csv", quote=F, row.names=F)
 
 random_lncs_vs_cand1$HR = log2(random_lncs_vs_cand1$HR)
 random_lncs_vs_cand1$sig = ""
