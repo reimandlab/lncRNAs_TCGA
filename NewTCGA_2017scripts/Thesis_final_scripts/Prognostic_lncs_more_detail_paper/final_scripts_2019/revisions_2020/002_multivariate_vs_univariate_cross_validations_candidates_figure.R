@@ -7,7 +7,7 @@ setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCES
 #get candidates files
 #Data--------------------------------------------
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs
 
 #which cancer types are the non-unique lncRNAs from?
 allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_name")]
@@ -18,11 +18,11 @@ allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 #val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
 #val_cands = as.data.table(val_cands)
-#val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+#val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
 #val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
-#val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
+#val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
 
-#Combined into one dataframe because need to get ranks 
+#Combined into one dataframe because need to get ranks
 #all <- merge(rna, pcg, by = c("patient", "Cancer"))
 #all = all[,1:25170]
 
@@ -38,25 +38,25 @@ single_lncs = fread("summary_cross_validation_clinical_random_lncRNAs_Nov1.txt")
 
 #------ANALYSIS-------------------------------------------------
 
-#for each cancer type 
-#generate barplot 
-#x-axis: clinica, lnc1, lnc2, lnc3, lnc4...., all lncs, all lncs+clin 
-#y-axis: median c-index 
+#for each cancer type
+#generate barplot
+#x-axis: clinica, lnc1, lnc2, lnc3, lnc4...., all lncs, all lncs+clin
+#y-axis: median c-index
 
 cancers = unique(allCands$canc)
 
 get_bar = function(canc){
-	
+
 	multi_dat = as.data.table(filter(multivariate_lncs, Cancer == canc))
 	single_dat = as.data.table(filter(single_lncs, Cancer == canc, !(type=="clinical_variables")))
 
-	#make input for plot 
+	#make input for plot
 	multi_dat$analysis="multi"
 	single_dat$analysis="single"
-	
-	multi_dat = multi_dat[,c("lncRNA",  "Cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo" , 
+
+	multi_dat = multi_dat[,c("lncRNA",  "Cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo" ,
 		"lnc_med", "clin_med", "combo_med")]
-	single_dat = single_dat[,c("lncRNA",  "Cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo", 
+	single_dat = single_dat[,c("lncRNA",  "Cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo",
 		"lnc_med", "clin_med", "combo_med")]
 
 	all = rbind(multi_dat, single_dat)
@@ -74,15 +74,15 @@ get_bar = function(canc){
 	all$label[all$label=="clin clinical"] = "clinical variables"
 	all$label[all$label=="all_lncs lncRNA&clin"] = "all lncRNAs + clinical"
 
-	#full lnc model vs full lnc model + clin 
+	#full lnc model vs full lnc model + clin
 	full_lnc_clin = tidy(wilcox.test(all$cindex[all$label =="all lncRNAs + clinical"], all$cindex[all$label == "all lncRNAs"]))[2]
 	full_lnc_clin_diff = median(all$cindex[all$label =="all lncRNAs"]) - median(all$cindex[all$label == "all lncRNAs + clinical"])
 
 	all$full_lnc_clin_pval = full_lnc_clin
 	all$full_lnc_clin_diff = full_lnc_clin_diff
-	
+
 	#get median c-index by labl
-	meds = as.data.table(all %>% 
+	meds = as.data.table(all %>%
 		group_by(label) %>% summarise(median_cindex = median(cindex)))
 
 	#test individual lncRNAs that are better than model with all lncRNAs s
@@ -124,7 +124,7 @@ get_bar = function(canc){
 }
 
 get_multi_plot = function(canc){
-	
+
 	multi_dat = as.data.table(filter(multivariate_lncs, Cancer == canc))
 
 	z = which(single_lncs$cancer == canc)
@@ -132,16 +132,16 @@ get_multi_plot = function(canc){
 
 	z = which(!(single_dat$type == "clinical_variables"))
 	single_dat = single_dat[z,]
-	
+
 	#single_dat = as.data.table(filter(single_lncs, cancer == canc, !(type=="clinical_variables")))
 
-	#make input for plot 
+	#make input for plot
 	multi_dat$analysis="multi"
 	single_dat$analysis="single"
-	
-	multi_dat = multi_dat[,c("lncRNA",  "Cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo" , 
+
+	multi_dat = multi_dat[,c("lncRNA",  "Cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo" ,
 		"lnc_med", "clin_med", "combo_med")]
-	single_dat = single_dat[,c("lncRNA",  "cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo", 
+	single_dat = single_dat[,c("lncRNA",  "cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo",
 		"median_lncRNA", "median_clinical", "clin_combo_cind_med")]
 
 	colnames(single_dat) = colnames(multi_dat)
@@ -161,15 +161,15 @@ get_multi_plot = function(canc){
 	all$label[all$label=="clin clinical"] = "clinical variables"
 	all$label[all$label=="all_lncs lncRNA&clin"] = "all lncRNAs + clinical"
 
-	#full lnc model vs full lnc model + clin 
+	#full lnc model vs full lnc model + clin
 	full_lnc_clin = tidy(wilcox.test(all$cindex[all$label =="all lncRNAs + clinical"], all$cindex[all$label == "all lncRNAs"]))[2]
 	full_lnc_clin_diff = median(all$cindex[all$label =="all lncRNAs"]) - median(all$cindex[all$label == "all lncRNAs + clinical"])
 
 	all$full_lnc_clin_pval = full_lnc_clin
 	all$full_lnc_clin_diff = full_lnc_clin_diff
-	
+
 	#get median c-index by labl
-	meds = as.data.table(all %>% 
+	meds = as.data.table(all %>%
 		group_by(label) %>% summarise(median_cindex = median(cindex)))
 
 	#test individual lncRNAs that are better than model with all lncRNAs s
@@ -203,7 +203,7 @@ get_multi_plot = function(canc){
 	get_best_type = function(t){
 		dat = as.data.table(filter(choose, type == t))
 		dat = dat[order(-cindex)]
-		meds = as.data.table(dat %>% 
+		meds = as.data.table(dat %>%
 		group_by(lncRNA) %>% summarise(median_cindex = median(cindex)))
 		meds = meds[order(-median_cindex)]
 		dat = as.data.table(filter(dat, lncRNA == meds$lncRNA[1]))
@@ -215,9 +215,9 @@ get_multi_plot = function(canc){
 	all = all[order(-type)]
 	#all$label = factor(all$label, levels=unique(all$label))
 	z = which(all$lncRNA %in% c("clin", "all_lncs"))
-	all$lncRNA[z] = ""	
-	all$type[all$type == "all_lncs_clin"] = "all lncRNAs + clinical" 
-	all$type[all$type == "all_lncs"] = "all lncRNAs" 
+	all$lncRNA[z] = ""
+	all$type[all$type == "all_lncs_clin"] = "all lncRNAs + clinical"
+	all$type[all$type == "all_lncs"] = "all lncRNAs"
 
 	all$type = factor(all$type, levels=unique(all$type))
 	z = which(duplicated(all$lncRNA))
@@ -227,25 +227,25 @@ get_multi_plot = function(canc){
 		all$lncRNA[all$type == "lncRNA"][1] = unique(all$lncRNA)[1]
 	}
 
-	#all$type = factor(all$type, levels=c("lncRNA", "lncRNA&clin", 
+	#all$type = factor(all$type, levels=c("lncRNA", "lncRNA&clin",
 	#	"all lncRNAs", "all lncRNAs + clinical", "clinical"))
 
-	all$type = factor(all$type, levels=c("clinical", "all lncRNAs + clinical", 
+	all$type = factor(all$type, levels=c("clinical", "all lncRNAs + clinical",
 		"all lncRNAs", "lncRNA&clin", "lncRNA"))
 
 	print(head(all))
 	return(all)
 
 	# Change error plot type and add mean points
-	g = ggerrorplot(all, x = "type", y = "cindex", 
+	g = ggerrorplot(all, x = "type", y = "cindex",
             desc_stat = "median_mad", palette=c("grey", "skyblue2",
-            	"dodgerblue4", "darksalmon", "darkred"), 
+            	"dodgerblue4", "darksalmon", "darkred"),
             error.plot = "errorbar",            # Change error plot type
             add = "median" , color="type", size=2                 # Add mean points
             ) + theme_bw() + ggtitle(canc_conv$type[canc_conv$Cancer == all$Cancer[1]])
 	g=ggpar(g, legend="none", font.xtickslab=c(6, "plain", "black"), font.ytickslab=c(6, "plain", "black")) + ylim(c(0.4,1.1))+
-	geom_hline(yintercept=0.5, linetype="dashed", color = "red") + stat_compare_means(label = "p.signif", 
-                     ref.group = "clinical", hide.ns = FALSE)  + 
+	geom_hline(yintercept=0.5, linetype="dashed", color = "red") + stat_compare_means(label = "p.signif",
+                     ref.group = "clinical", hide.ns = FALSE)  +
 	  geom_text(aes(label = lncRNA), size=2, y=1) + coord_flip()
 	#return(g)
 
@@ -278,5 +278,3 @@ pdf("/u/kisaev/summary_figure2c_multivariate_single_models.pdf", height=6,width=
 g=ggerrorplot(res, x= "cancer_name", y="value_order", color="type", add.params = list(size = 0.5), palette="npg")+theme_bw()+coord_flip() + ylim(c(1,45))
 ggpar(g, legend="top")
 dev.off()
-
-

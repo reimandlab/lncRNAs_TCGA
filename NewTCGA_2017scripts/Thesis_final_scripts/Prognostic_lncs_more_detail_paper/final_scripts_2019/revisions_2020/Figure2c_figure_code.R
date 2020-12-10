@@ -213,6 +213,11 @@ get_comparison = function(comboo){
 
 	lnc_med = median(lnc_cind$cindex)
 	clin_med = median(clinical_cinds$cindex)
+
+	z = which(is.na(clin_combo_cind$cindex))
+	if(!(length(z) == 0)){
+		clin_combo_cind = clin_combo_cind[-z,]
+	}
 	clin_combo_cind_med = median(clin_combo_cind$cindex)
 
 	#rbind lnc candidate and random lncs
@@ -285,6 +290,10 @@ random_lncs_vs_cand1 = random_lncs_vs_cand1[order(wp_lnc_clinical, diff_meds_lnc
 #try new Figure 2E
 #x-axis median difference between lncRNA and clinical variables
 #y-axis p-value
+random_lncs_vs_cand1 = unique(random_lncs_vs_cand1[,c("cancer",
+"gene", "canc", "wp_lnc_clinical",
+	"diff_meds_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical_combo",
+	"median_lncRNA", "median_clinical", "clin_combo_cind_med")])
 random_lncs_vs_cand1$wp_lnc_clinical_fdr = p.adjust(random_lncs_vs_cand1$wp_lnc_clinical, method="fdr")
 random_lncs_vs_cand1$wp_lnc_clinical_fdr = -log10(random_lncs_vs_cand1$wp_lnc_clinical_fdr)
 random_lncs_vs_cand1$wp_lnc_clinical_combo = p.adjust(random_lncs_vs_cand1$wp_lnc_clinical_combo, method="fdr")
@@ -302,19 +311,20 @@ write.table(random_lncs_vs_cand1, file="summary_cross_validation_clinical_random
 #plot 1 - lncs vs clinical
 canc_conv = rna[,c("type", "Cancer")]
 canc_conv = unique(canc_conv)
-colnames(canc_conv)[2] = "cancer"
+colnames(canc_conv) = c("canc_type","cancer")
 random_lncs_vs_cand1 = merge(random_lncs_vs_cand1, canc_conv, by="cancer")
 random_lncs_vs_cand1$diff_meds_lnc_clinical = as.numeric(random_lncs_vs_cand1$diff_meds_lnc_clinical)
 #random_lncs_vs_cand1$diff_meds_lnc_random = as.numeric(random_lncs_vs_cand1$diff_meds_lnc_random)
 
 random_lncs_vs_cand1 = random_lncs_vs_cand1[order(wp_lnc_clinical, diff_meds_lnc_clinical, wp_lnc_clinical)]
 random_lncs_vs_cand1$type = factor(random_lncs_vs_cand1$type, levels=unique(random_lncs_vs_cand1$type))
+random_lncs_vs_cand1$canc_type = factor(random_lncs_vs_cand1$canc_type, levels=unique(random_lncs_vs_cand1$canc_type))
 
 #add gene name
 allCands$name = unlist(llply(allCands$gene, get_name))
 
-z = which(random_lncs_vs_cand1$lncRNA == "HOXA-AS4")
-random_lncs_vs_cand1$lncRNA[z] = "HOXA10-AS"
+z = which(random_lncs_vs_cand1$gene == "HOXA-AS4")
+random_lncs_vs_cand1$gene[z] = "HOXA10-AS"
 
 #known lncRNAs
 known_lncs = c("HOXB-AS2", "HOXA10-AS", "CCAT1", "BZRAP1-AS1", "AC114803.3", "AC097468.7")
@@ -334,15 +344,27 @@ random_lncs_vs_cand1$sig[random_lncs_vs_cand1$wp_lnc_clinical_fdr >= -log10(0.05
 random_lncs_vs_cand1$sig[random_lncs_vs_cand1$wp_lnc_clinical_fdr < -log10(0.05)] = "No"
 random_lncs_vs_cand1$sig = factor(random_lncs_vs_cand1$sig, levels=c("Yes", "No"))
 random_lncs_vs_cand1$type = as.factor(random_lncs_vs_cand1$type)
+random_lncs_vs_cand1$canc_type = as.factor(random_lncs_vs_cand1$canc_type)
 
 #supp table 4
-write.csv(random_lncs_vs_cand1, file="SuppTable4_final_cands_wcindices.csv", quote=F, row.names=F)
+#write.csv(random_lncs_vs_cand1, file="/u/kisaev/Dec2020/SuppTable4_final_cands_wcindices.csv", quote=F, row.names=F)
 
 #part a
+mypal = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
+  "#72A93B", "#74DAE3" ,"#49B98D" ,"#D97B8F" ,"#70A2A4", "#64709B" ,"#DFBF38" ,"#61EA4F" ,
+  "#C7CBE7", "#786DDA",
+"#CFA0E0" ,"#67E9D0" ,"#7C9BE1", "#D94753" ,
+"#AAE6B0", "#D13BDF" ,"#DEAEC7" ,"#BBE6DF" ,"#B2B47A" ,"#E6ECBA", "#C86ED7",
+ "#7BEE95" ,"#6F46E6" ,"#65B9E0", "#C0EC3E",
+"#DE8D54" ,"#DF4FA6")
+
+random_lncs_vs_cand1 = unique(random_lncs_vs_cand1[,c("HR", "diff_meds_lnc_clinical",
+"name", "canc_type", "sig")])
+
 pdf("/u/kisaev/Dec2020/figure2_e_lncRNA_cands_vs_clinical_variables.pdf", width=6, height=6)
 g1 = ggplot(random_lncs_vs_cand1, aes(x=HR, y=diff_meds_lnc_clinical, label=name)) +
- geom_point(aes(fill=type, colour=sig),
-       pch=21, size=2)+
+ geom_point(aes(fill=canc_type, colour=sig),
+       pch=21, size=2)+theme_bw()+
 geom_text_repel(data = subset(random_lncs_vs_cand1, name %in% known_lncs),
       min.segment.length = unit(0, 'lines'),
                      nudge_y = .2)+ labs(fill = "Cancer") +
