@@ -14,6 +14,19 @@ allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 #--------------------------------------------------------------------
 
 clin = readRDS("clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
+for(i in 1:length(clin)){
+  print(i)
+  d = clin[[i]]
+  lncs_keep = filter(allCands, cancer %in% d$Cancer[1])$gene
+  lncs_check = colnames(d)[which(str_detect(colnames(d), "ENSG"))]
+  z = which(!(lncs_check %in% lncs_keep))
+  if(!(length(z) == 0)){
+    lnc_rm = lncs_check[z]
+    z = which(colnames(d) %in% lnc_rm)
+    d = d[,-z]
+  }
+  clin[[i]] = d
+}
 
 lgg = clin[[1]]
 gbm = clin[[12]]

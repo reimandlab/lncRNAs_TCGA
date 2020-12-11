@@ -56,7 +56,7 @@ make_matrix_for_ap = function(canc){
 
   #keep only those with logFC > 1 or logFC < 1
   z1 = which(dat_all$logFC >=1)
-  z2 = which(dat_all$logFC <=-1)
+  z2 = which(dat_all$logFC < -1)
 
   dat_all = dat_all[c(z1,z2),]
 
@@ -240,12 +240,15 @@ get_name = function(ensg){
 
 all_res$genename = unlist(llply(all_res$gene, get_name))
 colnames(all_res)[1] = "canc"
+all_res$genename[all_res$genename == "HOXA-AS4"] = "HOXA10-AS"
+
 all_res$combo2 = paste(all_res$genename, all_res$canc, sep=" ")
 
 sig_paths_sum$gene = ""
 sig_paths_sum$gene = sig_paths_sum$combo
 sig_paths_sum$gene = sapply(sig_paths_sum$gene, function(x){unlist(strsplit(x, "_"))[1]})
 sig_paths_sum$genename = unlist(llply(sig_paths_sum$gene, get_name))
+sig_paths_sum$genename[sig_paths_sum$genename == "HOXA-AS4"] = "HOXA10-AS"
 sig_paths_sum$combo2 = paste(sig_paths_sum$genename, sig_paths_sum$canc, sep=" ")
 sig_paths_sum = sig_paths_sum[order(-num_sig_des)]
 
@@ -313,8 +316,9 @@ lgg_res$type[lgg_res$logFC < -1] = "DownregulatedRisk"
 
 #get order
 lgg_res$gene_name = sapply(lgg_res$lnc, get_name)
+lgg_res$gene_name[lgg_res$gene_name == "HOXA-AS4"] = "HOXA10-AS"
 ttt = as.data.table(table(lgg_res$gene_name))
-ttt = ttt[order(N)]
+ttt = ttt[order(-N)]
 
 #how many cancer gene census genes
 z = which(lgg_res$ID %in% census$ensg)
@@ -332,11 +336,13 @@ barplot$lncRNA = factor(barplot$lncRNA, levels = ttt$V1)
 
 write.table(barplot, file="figure_5A_data_LGG_DE_genes.txt", quote=F, row.names=F, sep="\t")
 
-pdf("/u/kisaev/Dec2020/figure6A_lgg_only.pdf", width=5, height=6)
+pdf("/u/kisaev/Dec2020/Figure5A_lgg_only.pdf", width=5, height=6)
 g = ggplot(barplot, aes(x=lncRNA, y=num, fill=type)) + theme_classic() +
-   geom_bar(aes(fill=type), stat="identity", position=position_dodge())+xlab("LGG lncRNAs") + ylab("Number of genes")+
+   geom_bar(aes(fill=type), stat="identity", position=position_dodge())+
+	 xlab("LGG lncRNAs") + ylab("Number of genes")+
    theme(legend.title=element_blank(), legend.position="top", axis.title.x=element_blank(),
-    axis.text.x = element_text(angle = 90, hjust = 1, size=8)) + scale_fill_manual(values=c("#56B4E9","#E69F00", "red"))
+    axis.text.x = element_text(angle = 90, hjust = 1, size=8)) +
+		scale_fill_manual(values=c("#56B4E9","#E69F00", "red"))
 ggpar(g,
  font.tickslab = c(9,"plain", "black"),
  xtickslab.rt = 45)

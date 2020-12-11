@@ -40,7 +40,7 @@ pdf("multivaraite_vs_univariate_cindices_input_for_plots_barplot.pdf", width=8, 
 g = ggbarplot(input_plot, x = "type", y = "cindex",
             palette=c("darkred", "darksalmon", "dodgerblue4", "skyblue2", "grey"),
             add = c("median_mad"),            # Change error plot type
-            fill="type", facet.by="type_canc") + theme_bw()
+            fill="type", facet.by="type_canc") + theme_bw()+rremove("x.text")+ylab("c-index")
 
 #g = facet(g, facet.by = "type_canc", panel.labs.font = list(size =4), nrow=1)
 #g=ggpar(g, font.xtickslab=c(6, "plain", "black"), font.ytickslab=c(4, "plain", "black")) +

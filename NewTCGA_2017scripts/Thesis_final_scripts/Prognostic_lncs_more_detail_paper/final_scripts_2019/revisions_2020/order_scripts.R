@@ -17,7 +17,8 @@ Rscript $main/002_univariate_cross_validations_candidates.R
 Rscript $main/002_multivariate_cross_validations_candidates.R
 Rscript $main/Figure2c_figure_code.R #currently figure 2B
 Rscript $main/002_multivariate_prepare_for_figure.R
-Rscript $main/002_multivariate_vs_univaraite_cross_validations_candidates_figure.R
+Rscript $main/002_multivariate_vs_univariate_cross_validations_candidates_figure.R
+Rscript $main/002_multivariate_vs_univariate_cross_validations_candidates_figure_get_mini_plots.R
 Rscript $main/002_multivariate_vs_univaraite_cross_validations_candidates_figure_local_plotting.R
 
 #comparing univariate and multivariate models using lncRNAs and clinical variables
@@ -54,3 +55,6 @@ Rscript $main/Figure4_run_TCGAbiolinks_summarize_results_figure.R
 
 #lncRNAs versus TCGAbiolinks individual plots
 Rscript $main/Figure4_run_TCGAbiolinks_individual_plots.R
+
+#lncRNA vs XCELL immune cells
+Rscript $main/Cibersort_integration_association_covariates.R
