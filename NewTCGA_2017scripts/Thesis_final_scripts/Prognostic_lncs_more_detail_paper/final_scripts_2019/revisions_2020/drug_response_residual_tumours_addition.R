@@ -1,31 +1,59 @@
-library(survAUC)
-require(caTools)
-#check if this person is in my analysis: TCGA-61-2095
-library(glmnet)
-library(survcomp)
-library(caret)
-library(stringr)
-library(ggpubr)
-library(ggrepel)
-library(viridis)
-library(patchwork)
-library(caret)  
-library(Rtsne)
-library(EnvStats)
+#------------------------------------------------------------------------------
 
-source("check_lnc_exp_cancers.R")
+library(corrplot)
 
-#final script used to generate clinical analyiss data now figure 4
+set.seed(911)
 
-#------FEATURES-----------------------------------------------------
+source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/load_data.R")
+#COSMIC cancer gene census
+census = read.csv("Census_allFri_Jul_13_16_55_59_2018.csv")
+#get ensg
+get_census_ensg = function(genes){
+  glist = unlist(strsplit(genes, ","))
+  z = which(str_detect(glist, "ENSG"))
+  ensg = glist[z]
+  return(ensg)
+}
+census$ensg = sapply(census$Synonyms, get_census_ensg)
+
+#setWD
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
-allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = subset(allCands, data == "TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
-allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
-cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
+#------FUNCTIONS-----------------------------------------------------
 
-library(TCGAbiolinks)
+# ++++++++++++++++++++++++++++
+# flattenCorrMatrix
+# ++++++++++++++++++++++++++++
+# cormat : matrix of the correlation coefficients
+# pmat : matrix of the correlation p-values
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+    )
+}
+
+
+#-------------------ANALYSIS--------------------------------------------
+
+#------FEATURES-----------------------------------------------------
+
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
+allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
+
+#pcgs = c("IDH1", "IDH2", "MGMT", "TERT", "ERBB2", "ESR1", "ATRX", "PGR",
+ # "CDKN2A", "SETD2", "BAP1", "PBRM1", "PIK3CA", "ARID1A")
+
+lncs = unique(allCands$gene_name)
+
+#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+
+#library(TCGAbiolinks)
 
 check=function(pat){
   pat_new=paste(unlist(strsplit(pat, "\\."))[1:3], collapse="-")
@@ -36,14 +64,7 @@ check=function(pat){
 
 #--------This script ------------------------------------------------
 
-#--------------------------------------------------------------------
-#Clinical files - use TCGAbiolinks
-#--------------------------------------------------------------------
-
-#write function that adds tag to whole data group 
-#and does survival analysis on whole group
-
-#clean up extra new columns 
+#clean up extra new columns
 rna$new_tumor_event_type[rna$new_tumor_event_type == "#N/A" ] = "NA"
 rna$treatment_outcome_first_course[rna$treatment_outcome_first_course == "[Not Available]"] = "NA"
 rna$treatment_outcome_first_course[rna$treatment_outcome_first_course == "[Unknown]"] = "NA"
@@ -58,9 +79,9 @@ rna$margin_status[rna$margin_status == "#N/A"] = "NA"
 rna$margin_status[rna$margin_status == "[Unknown]"] = "NA"
 rna$margin_status[rna$margin_status == "[Not Available]"] = "NA"
 
-rna$residual_tumor[rna$residual_tumor == "R0"] = 1 
+rna$residual_tumor[rna$residual_tumor == "R0"] = 1
 rna$residual_tumor[rna$residual_tumor == "R1"] = 2
-rna$residual_tumor[rna$residual_tumor == "R2"] = 3 
+rna$residual_tumor[rna$residual_tumor == "R2"] = 3
 rna$residual_tumor[rna$residual_tumor == "RX"] = "NA"
 
 rna$treatment_outcome_first_course[rna$treatment_outcome_first_course == "Complete Remission/Response"] = 1
@@ -79,11 +100,11 @@ get_canc_dat = function(canc){
 cancer_data = llply(cancers, get_canc_dat)
 
 get_canc_data_for_plot = function(dtt){
-  #get cancer specific candidates 
-  z = which(colnames(dtt) %in% c(as.character(allCands$gene[allCands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis", 
-    "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course", 
+  #get cancer specific candidates
+  z = which(colnames(dtt) %in% c(as.character(allCands$gene[allCands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis",
+    "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course",
     "new_tumor_event_type", "Cancer", "residual_tumor", "margin_status", "PFI", "PFI.time"))
-  dtt = dtt[,z]
+  dtt = dtt[,..z]
   return(dtt)
 }
 
@@ -93,22 +114,23 @@ get_clin_lnc_cors = function(dtt){
   canc = dtt$Cancer[1]
   print(canc)
   print(dim(dtt))
+  dtt=as.data.frame(dtt)
   #get lncs
-  z = which(str_detect(colnames(dtt), "ENSG")) 
+  z = which(str_detect(colnames(dtt), "ENSG"))
   lncs = colnames(dtt)[z]
-  
-  #look at individual lncRNAs 
+
+  #look at individual lncRNAs
   get_cor = function(lnc){
     z = which((str_detect(colnames(dtt), "ENSG") & !(colnames(dtt) %in% lnc)))
-    new_dat = dtt
+    new_dat = as.data.frame(dtt)
     if(length(z) > 0){
     new_dat = dtt[,-z]}
-    #add 0/1 labels 
+    #add 0/1 labels
     new_dat$lncRNA_tag = ""
     med = median(new_dat[,which(colnames(new_dat) %in% lnc)])
     k = which(colnames(new_dat) %in% lnc)
     if(med ==0){
-        #if median = 0 then anyone greater than zero is 1 
+        #if median = 0 then anyone greater than zero is 1
         l1 = which(new_dat[,k] > 0)
         l2 = which(new_dat[,k] ==0)
         new_dat$lncRNA_tag[l1] = 1
@@ -121,13 +143,13 @@ get_clin_lnc_cors = function(dtt){
         new_dat$lncRNA_tag[l1] = 1
          new_dat$lncRNA_tag[l2] = 0
         }
-    #get risk type 
+    #get risk type
     z = as.numeric(which((allCands$cancer %in% canc) & (allCands$gene %in% lnc) & (allCands$data == "TCGA")))
     hr = as.numeric(allCands$HR[z])
     new_dat$risk = ""
     if(hr >1){new_dat$risk = "HighExp"}
     if(hr <1){new_dat$risk = "LowExp"}
-    
+
     hr = as.numeric(allCands$HR[allCands$gene == lnc])
     if(hr > 1){
       hr="high_exp_bad"
@@ -136,8 +158,8 @@ get_clin_lnc_cors = function(dtt){
       hr="low_exp_bad"
     }
 
-    #look association between lncRNA and new variable 
-    variables_check = c("treatment_outcome_first_course", 
+    #look association between lncRNA and new variable
+    variables_check = c("treatment_outcome_first_course",
       "residual_tumor")
 
     get_assoc = function(check){
@@ -148,7 +170,7 @@ get_clin_lnc_cors = function(dtt){
       if(!(length(z)==0)){
         check_dat=check_dat[-z,]
       }
-      
+
       if(!(dim(table(check_dat$lncRNA_tag))==1)){
       check_dat[,1] = as.numeric(check_dat[,1])
       check_dat$lncRNA_tag = as.numeric(check_dat$lncRNA_tag)
@@ -176,7 +198,3 @@ colnames(all_cancers_cell_types) = c("lnc", "canc", "check", "chisq_pval", "hr")
 all_cancers_cell_types$chisq_pval = as.numeric(all_cancers_cell_types$chisq_pval)
 all_cancers_cell_types$chisq_fdr = p.adjust(all_cancers_cell_types$chisq_pval, method="fdr")
 write.csv(all_cancers_cell_types, file="/u/kisaev/cands_treatment_outcome_residual_tumor_analysis.csv", row.names=F, quote=F)
-
-
-
-
