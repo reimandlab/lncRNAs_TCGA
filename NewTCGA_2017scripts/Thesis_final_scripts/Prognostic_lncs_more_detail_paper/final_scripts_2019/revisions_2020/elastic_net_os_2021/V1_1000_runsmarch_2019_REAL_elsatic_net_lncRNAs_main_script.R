@@ -267,7 +267,7 @@ main_elastic_net = function(dat){
         #now make sure dataset is not empty
         #and start building actual models
 
-        if(!(dim(tests_survival3)[1] <2)){
+        if(!(dim(tests_survival3)[1] <5)){
 
           #-----------------------------------
           #TRAINING using just lncRNAs
@@ -288,7 +288,6 @@ main_elastic_net = function(dat){
           index.min = coef.min[active.min]
           genes_keep = rownames(coef.min)[active.min]
 
-          #print(genes_keep)
           genes_results = list(as.list(genes_keep))
 
           trainlncs = train[,c(which(colnames(train) %in% c(genes_keep,"OS", "OS.time")))]
