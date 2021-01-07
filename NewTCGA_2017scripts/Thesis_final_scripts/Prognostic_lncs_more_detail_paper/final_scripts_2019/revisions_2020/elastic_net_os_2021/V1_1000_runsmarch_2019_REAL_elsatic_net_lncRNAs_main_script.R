@@ -278,7 +278,9 @@ main_elastic_net = function(dat){
           x <- model.matrix( ~., gene_data)
           train$OS = as.numeric(train$OS)
           y <- Surv(train$OS.time, train$OS)
-          cvfit = cv.glmnet(x, y, family = "cox", alpha =0.5) #uses cross validation to select
+          cvfit = try(cv.glmnet(x, y, family = "cox", alpha =0.5)) #uses cross validation to select
+
+          if(!(inherits(cvfit,"try-error"))){
           #the best lamda and then use lambda to see which features remain in model
           cvfit$lambda.min #left vertical line
           cvfit$lambda.1se #right vertical line
@@ -527,6 +529,7 @@ main_elastic_net = function(dat){
                 } #both clin and lncs survival model no error
               } #just clin no error
             }
+          }
           }#dim(pvalues)[1] >2
         }
       }
