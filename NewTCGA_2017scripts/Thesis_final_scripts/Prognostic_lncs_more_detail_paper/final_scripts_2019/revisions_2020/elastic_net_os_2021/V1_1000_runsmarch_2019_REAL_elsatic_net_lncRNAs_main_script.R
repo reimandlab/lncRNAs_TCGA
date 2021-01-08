@@ -93,9 +93,10 @@ prepare_dat = function(dat){
 
 #[3] ----- elsatic net & splits ------------------------------------
 
-main_elastic_net = function(dat){
+main_elastic_net = function(dat, all_rm){
 
   #set.seed(101)
+  print(paste("number of genes to remove", length(all_rm)))
 
   #given random dataset, split into training and test set
   smp_size <- floor(0.7 * nrow(dat))
@@ -109,7 +110,7 @@ main_elastic_net = function(dat){
   ###---------------------------------------------------------------
   ###Extract significant predictors in training data
   ###---------------------------------------------------------------
-
+  #prepare training and test data
   z_train = which(str_detect(colnames(train), "ENSG"))
   train=as.data.frame(train)
   rownames(train) = train$patient
@@ -143,22 +144,8 @@ main_elastic_net = function(dat){
       }
       } #end assigning labels to each patient for each gene
 
-  lncs_dat = which(str_detect(colnames(dat), "ENSG"))
-  sums = apply(dat[,..lncs_dat], 2, sum)
-
-  #for the full cohort get lncRNAs that have expression in less than 15 patients
-  #or less than 10 patients
-
-  perc_10 = dim(dat)[1]*0.1
-
-  #how many lncRNAs have only 10% of cohort or 15 patients (whichever is greater)
-  #with > 0 expression in the cohort
-  z1 = which(sums < perc_10)
-  print(perc_10)
-  z2 = which(sums <= 15)
-  all_rm = names(sums)[unique(c(z1,z2))]
-
   z <- which(colnames(train) %in% all_rm)
+  print(paste("number of genes to remove from training", length(z)))
 
   if(!(length(z)==0)){
       train = train[,-z]
@@ -558,7 +545,42 @@ random_permutations = function(canc){ #main permutation cross-validation functio
   print("start permutations")
 
   set.seed(101)
-  run_res = replicate(1000, main_elastic_net(dato)) #DOUBLE CHECK number of replciations
+  lncs_dat = which(str_detect(colnames(dato), "ENSG"))
+  medians = apply(dato[,..lncs_dat], 2, median)
+  dat_meds = dato
+  for(k in 1:length(medians)){
+        #print(k)
+        med = medians[k]
+        k = which(colnames(dat_meds) == names(med))
+        if(med ==0){
+          #if median = 0 then anyone greater than zero is 1
+          l1 = which(dat_meds[,..k] > 0)
+          l2 = which(dat_meds[,..k] ==0)
+          dat_meds[l1,k] = 1
+          dat_meds[l2,k] = 0
+        }
+
+        if(!(med ==0)){
+          l1 = which(dat_meds[,..k] >= med)
+          l2 = which(dat_meds[,..k] < med)
+          dat_meds[l1,k] = 1
+          dat_meds[l2,k] = 0
+        }
+        } #end assigning labels to each patient for each gene
+
+  sums = apply(dat_meds[,..lncs_dat], 2, sum)
+
+  #for the full cohort get lncRNAs that have expression in less than 15 patients
+  #or less than 10% of patients
+  perc_10 = dim(dato)[1]*0.1
+  #how many lncRNAs have only 10% of cohort or 15 patients (whichever is greater)
+  #with > 0 expression in the cohort
+  z1 = which(sums < perc_10)
+  print(perc_10)
+  z2 = which(sums <= 15)
+  all_rm = names(sums)[unique(c(z1,z2))]
+
+  run_res = replicate(1000, main_elastic_net(dato, all_rm)) #DOUBLE CHECK number of replciations
 
   print("done permutations")
 

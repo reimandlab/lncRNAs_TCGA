@@ -295,7 +295,7 @@ dev.off()
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
 tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
-tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
+#tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
 
 tcga_results1$fdr_pval = p.adjust(as.numeric(tcga_results1$pval), method="fdr")
 tcga_results1$fdr_anova_lr = p.adjust(as.numeric(tcga_results1$anova_pval), method="fdr")
