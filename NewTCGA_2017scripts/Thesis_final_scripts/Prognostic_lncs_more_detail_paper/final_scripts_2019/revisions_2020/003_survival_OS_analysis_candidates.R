@@ -299,6 +299,7 @@ tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
 
 tcga_results1$fdr_pval = p.adjust(as.numeric(tcga_results1$pval), method="fdr")
 tcga_results1$fdr_anova_lr = p.adjust(as.numeric(tcga_results1$anova_pval), method="fdr")
+tcga_results1$lnc_test_ph_fdr = p.adjust(as.numeric(tcga_results1$lnc_test_ph), method="fdr")
 
 tcga_results1 = as.data.table(tcga_results1)
 
@@ -307,7 +308,7 @@ tcga_results1$num_events = as.numeric(tcga_results1$num_events)
 tcga_results1$num_risk = as.numeric(tcga_results1$num_risk)
 tcga_results1$perc_risk = as.numeric(tcga_results1$perc_risk)
 
-tcga_results1 = as.data.table(filter(tcga_results1, fdr_pval < 0.05, perc_risk > 0.1, perc_risk < 0.9))
+tcga_results1 = as.data.table(filter(tcga_results1, fdr_pval < 0.05, lnc_test_ph > 0.05, perc_risk > 0.1, perc_risk < 0.9))
 
 tcga_results1$lnc_better = ""
 z= which(tcga_results1$lnc_only_concordance >= tcga_results1$clinical_only_concordance)

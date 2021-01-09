@@ -162,7 +162,8 @@ main_elastic_net = function(dat, all_rm){
   surv_test = function(gene){
 
   #print(gene)
-  results_cox <- as.data.frame(matrix(ncol=6)) ; colnames(results_cox) <- c("gene", "coefficient", "HR", "pval", "low95", "upper95")
+  results_cox <- as.data.frame(matrix(ncol=7)) ; colnames(results_cox) <- c("gene", "coefficient",
+  "HR", "pval", "low95", "upper95", "prop_hazard")
 
   #1. Subset lnc_rna to those patients in cancer
   z =  which(colnames(train) %in% gene)
@@ -186,8 +187,10 @@ main_elastic_net = function(dat, all_rm){
 
   #cox regression
   res.cox <- coxph(Surv(OS.time, OS) ~ median + age_at_initial_pathologic_diagnosis, data = df)
+  test.ph <- cox.zph(res.cox)
+  test.ph = test.ph$table[1,3]
 
-  row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)],  summary(res.cox)$conf.int[1,c(3,4)])
+  row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)],  summary(res.cox)$conf.int[1,c(3,4)], test.ph)
   names(row) <- names(results_cox)
   return(row)
 
@@ -209,10 +212,12 @@ main_elastic_net = function(dat, all_rm){
       print("keep going")
 
       tests_survival3$pval = as.numeric(tests_survival3$pval)
+      tests_survival3$prop_hazard = as.numeric(tests_survival3$prop_hazard)
+
       tests_survival3$fdr = p.adjust(tests_survival3$pval, method="fdr")
 
       #keep only lncRNAs that are univaraitly significant
-      tests_survival3 = subset(tests_survival3, pval <=0.05)
+      tests_survival3 = subset(tests_survival3, pval <=0.05 & prop_hazard > 0.05)
 
       if(!(dim(tests_survival3)[1])==0){
 
