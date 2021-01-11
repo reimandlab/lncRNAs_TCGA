@@ -162,6 +162,7 @@ main_elastic_net = function(dat, all_rm){
   surv_test = function(gene){
 
   #print(gene)
+  #print(gene)
   results_cox <- as.data.frame(matrix(ncol=7)) ; colnames(results_cox) <- c("gene", "coefficient",
   "HR", "pval", "low95", "upper95", "prop_hazard")
 
@@ -187,16 +188,17 @@ main_elastic_net = function(dat, all_rm){
 
   #cox regression
   res.cox <- coxph(Surv(OS.time, OS) ~ median + age_at_initial_pathologic_diagnosis, data = df)
-  test.ph <- cox.zph(res.cox)
+  test.ph <- try(cox.zph(res.cox))
+  if(!(inherits(test.ph ,"try-error"))){
   test.ph = test.ph$table[1,3]
-
+  paste("prop hazard=", test.ph)
   row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)],  summary(res.cox)$conf.int[1,c(3,4)], test.ph)
   names(row) <- names(results_cox)
   return(row)
 
   }
   }
-  }
+  }}
 
   tests_survivaltwo = llply(genes, surv_test, .progress="text")
   print("p1")
