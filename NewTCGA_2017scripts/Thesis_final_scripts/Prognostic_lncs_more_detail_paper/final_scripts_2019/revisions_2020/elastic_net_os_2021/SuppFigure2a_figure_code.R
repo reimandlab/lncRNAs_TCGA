@@ -55,7 +55,7 @@ canc_conv$type = factor(canc_conv$type, levels = res$type)
 
 #mypal = wes_palette("FantasticFox")
 
-pdf("/u/kisaev/Jan2021/cindices_real_march2019_1000.pdf", width=9, height=3)
+pdf("cindices_real_march2019_1000.pdf", width=9, height=3)
 g = ggboxplot(canc_conv, "type", "cindex", bxp.errorbar	=TRUE,
 fill="all_res", color="black", error.plot = "errorbar", notch = TRUE, width = 0.5, palette=c("grey", "dodgerblue4", "orange"))
 g =  g + theme_minimal()
@@ -75,8 +75,9 @@ med_lnc = median(dat$cindex[dat$all_res=="lncRNAs"])
 med_clin =  median(dat$cindex[dat$all_res=="clinical"])
 med_combo = median(dat$cindex[dat$all_res=="combined"])
 w_combo_clin = wilcox.test(dat$cindex[dat$all_res=="combined"], dat$cindex[dat$all_res=="clinical"], alternative="greater")
+w_combo_lncRNA = wilcox.test(dat$cindex[dat$all_res=="combined"], dat$cindex[dat$all_res=="lncRNAs"], alternative="greater")
 
- t = tidy(w)
+  t = tidy(w)
   t$cancer = cancer
   t$med_lnc = med_lnc
   t$med_clin = med_clin
@@ -86,7 +87,7 @@ w_combo_clin = wilcox.test(dat$cindex[dat$all_res=="combined"], dat$cindex[dat$a
   t$imp = imp
   t$imp_combo_clin = imp_combo_clin
   t$w_combo_clin = w_combo_clin$p.value
-
+  t$w_combo_lncRNA = w_combo_lncRNA$p.value
   return(t)
 }
 
@@ -96,16 +97,29 @@ cancers = unique(new_res$canc)
 wil = llply(cancers, check_perform)
 wil = ldply(wil)
 wil = as.data.table(wil)
-colnames(wil)[2] = "pval"
-wil = wil[order(pval, -imp)]
-wil$fdr = p.adjust(wil$pval, method="fdr")
+colnames(wil)[2] = "lncRNA_vs_clinical_pval"
+wil = wil[order(lncRNA_vs_clinical_pval, -imp)]
+wil$fdr = p.adjust(wil$lncRNA_vs_clinical_pval, method="fdr")
 wil$fdr_w_combo_clin = p.adjust(wil$w_combo_clin, method="fdr")
+wil$fdr_w_combo_lncRNA = p.adjust(wil$w_combo_lncRNA, method="fdr")
 
 wil_sig = wil
 
 wil_sig$imp = round(wil_sig$imp, digits=2)
 wil_sig = as.data.table(wil_sig)
 wil_sig = wil_sig[order(med_lnc)]
+wil_sig$stars_combo = ""
+wil_sig$stars_combo[wil_sig$fdr_w_combo_clin < 0.05] = "*"
+wil_sig$stars_combo[wil_sig$fdr_w_combo_clin < 0.01] = "**"
+wil_sig$stars_combo[wil_sig$fdr_w_combo_clin < 0.001] = "***"
+wil_sig$stars_combo[wil_sig$fdr_w_combo_clin < 0.0001] = "****"
+
+wil_sig$stars_clin = ""
+wil_sig$stars_clin[wil_sig$fdr < 0.05] = "*"
+wil_sig$stars_clin[wil_sig$fdr < 0.01] = "**"
+wil_sig$stars_clin[wil_sig$fdr < 0.001] = "***"
+wil_sig$stars_clin[wil_sig$fdr < 0.0001] = "****"
+
 sig = filter(wil_sig, imp >0, fdr <0.05, med_lnc >=0.5)
 z = which(canc_conv$canc %in% sig$cancer)
 canc_conv$sig = ""
@@ -113,6 +127,12 @@ canc_conv$sig[z] = "V"
 canc_conv = canc_conv[z,]
 
 canc_conv$all_res = factor(canc_conv$all_res, levels = c("clinical", "lncRNAs", "combined"))
+
+colnames(sig) = c("W_statistic", "lncRNA_vs_clinical_pval", "method", "alternative",
+  "cancer", "median_lnc_cindex", "median_clin_cindex", "median_combo_cindex", "imp", "imp_combo_clin",
+  "combo_vs_clin_pval", "combo_vs_lncRNA_pval", "lncRNA_vs_clinical_fdr", "combo_vs_clin_fdr", "combo_vs_lncRNA_fdr",
+  "stars_combo", "stars_clin")
+write.table(sig, file="/u/kisaev/Jan2021/nine_cancers_in_figure_2a_sig_diff_combo_vs_clin.txt", quote=F, row.names=F, sep="\t")
 
 pdf("/u/kisaev/Jan2021/cindices_real_march2019_1000_pvalues.pdf", width=10, height=3)
 g = ggplot(canc_conv, aes(type, cindex, fill=all_res)) +
@@ -122,7 +142,6 @@ g = ggpar(g, x.text.angle = 45, legend.title="Predictors")
 print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red") + scale_fill_brewer(c("grey", "green", "orange")) +
  xlab("Cancer") + ylab("c-index"))
 dev.off()
-
 
 ########################################################################
 #2. get genes
@@ -136,7 +155,6 @@ genes = results[which(str_detect(results, "genes_.rds"))]
 get_canc = function(file){
   dat = readRDS(file)
   dat = as.data.table(filter(dat, num_rounds_selected >=500))
-  #dat = as.data.table(filter(dat, num_rounds_selected >=100))
   return(dat)
 }
 
@@ -147,11 +165,19 @@ all_res = as.data.table(all_res)
 rounds = unique(all_res$round)
 
 #remove candidates that are duplicated
-#dups = all_res$gene[which(duplicated(all_res$gene))]
-#all_res = as.data.table(filter(all_res, !(gene %in% dups)))
-#all_res = subset(all_res, canc == "Glioblastoma multiforme")
-all_res = all_res[,c("gene", "type", "cancer", "num_rounds_selected")]
-#write.csv(all_res, file="gbm_min10perc_rounds_candidates.csv", quote=F, row.names=F)
+dups = all_res$gene[which(duplicated(all_res$gene))]
+all_res = as.data.table(filter(all_res, !(gene %in% dups)))
+
+#for j in `seq 1 29`; do qsub -cwd -b y -N real10000$j -l h_vmem=55g "module load R/3.4.0;Rscript V1_10000new_runsmarch_2019_REAL_elsatic_net_lncRNAs_main_script.R $j"; done
+
+dim(filter(all_res, hr >1))
+all_res$hr = as.numeric(all_res$hr)
+median(filter(all_res, hr >1)$hr)
+
+dim(filter(all_res, hr <1))
+all_res$hr = as.numeric(all_res$hr)
+median(filter(all_res, hr <1)$hr)
+
 saveRDS(all_res, file="/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript/lncRNAs_selected_by_EN_april14.rds")
 
 #qsub -cwd -b y -N CVs -l h_vmem=75g "module load R/3.4.0;Rscript Figure2c_analysis.R"

@@ -185,7 +185,7 @@ get_survival_models = function(dtt){
   newdat$gene = factor(newdat$gene, levels=c(1,0))
   fit <- survfit(Surv(OS.time, OS) ~ gene, data = newdat)
           s <- ggsurvplot(
-          title = paste(get_name(gene_name), canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], "HR =", round(hr, digits=2)),
+          title = paste(hg38$symbol[hg38$ensgene==gene_name], canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], "HR =", round(hr, digits=2)),
           fit,
           xlab = "Time (Years)",
           #surv.median.line = "hv",
@@ -308,7 +308,7 @@ tcga_results1$num_events = as.numeric(tcga_results1$num_events)
 tcga_results1$num_risk = as.numeric(tcga_results1$num_risk)
 tcga_results1$perc_risk = as.numeric(tcga_results1$perc_risk)
 
-tcga_results1 = as.data.table(filter(tcga_results1, fdr_pval < 0.05, lnc_test_ph > 0.05, perc_risk > 0.1, perc_risk < 0.9))
+tcga_results1 = as.data.table(filter(tcga_results1, fdr_pval < 0.05, lnc_test_ph > 0.05, perc_risk >= 0.1, perc_risk < 0.9))
 
 tcga_results1$lnc_better = ""
 z= which(tcga_results1$lnc_only_concordance >= tcga_results1$clinical_only_concordance)

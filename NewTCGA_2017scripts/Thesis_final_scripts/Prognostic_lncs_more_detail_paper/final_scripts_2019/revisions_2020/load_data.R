@@ -2,10 +2,12 @@ source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognost
 source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/load_functions.R")
 
 #1. lncRNA expression in different cancers
-rna = readRDS("lncRNAs_2019_manuscript/5919_lncRNAs_tcga_all_cancers_March13_wclinical_dataalldat.rds") #<- updated gbm cohort
+#rna = readRDS("lncRNAs_2019_manuscript/5919_lncRNAs_tcga_all_cancers_March13_wclinical_dataalldat.rds") #<- updated gbm cohort
+old = readRDS("lncRNAs_2019_manuscript/5919_lncRNAs_tcga_all_cancers_March13_wclinical_dataalldat.rds") #<- updated gbm cohort
+rna = readRDS("lncRNAs_2019_manuscript/5919_lncRNAs_tcga_all_cancers_Jan2021_wclinical_dataalldat.rds") #<- updated gbm cohort
 
 #2. Protein coding genes expression in different cancers
-pcg = readRDS("lncRNAs_2019_manuscript/19438_lncRNAs_tcga_all_cancers_March13_wclinical_dataalldat.rds")
+pcg = readRDS("lncRNAs_2019_manuscript/19438_lncRNAs_tcga_all_cancers_Jan2021_wclinical_dataalldat.rds")
 
 #3. Fantom data
 fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs
@@ -39,7 +41,7 @@ colnames(fantom)[8]="CAT_geneName"
 ###---------------------------------------------------------------
 
 #Add cancer type
-canc_conversion = readRDS("lncRNAs_2019_manuscript/tcga_id_cancer_type_conversion.txt")
+canc_conversion = readRDS("lncRNAs_2019_manuscript/9753_tcga_id_cancer_type_conversion.txt")
 canc_conversion = as.data.frame(canc_conversion)
 canc_conversion = canc_conversion[,c(2,4)]
 colnames(canc_conversion)[2] = "patient"
@@ -78,9 +80,9 @@ z = which(is.na(as.numeric(rna$OS.time)))
 rna = rna[-z,]
 z = which(as.numeric(rna$OS.time) == 0)
 rna = rna[-z,]
-z = which(is.na(as.numeric(rna$PFI.time)))
+z = which(is.na(as.numeric(rna$PFI.time)) & !(rna$type=="LAML"))
 rna = rna[-z,]
-z = which(as.numeric(rna$PFI.time) == 0)
+z = which((as.numeric(rna$PFI.time) == 0) & (!(rna$type=="LAML")))
 rna = rna[-z,]
 
 #fix clinical variables so only one level per variable has NA
