@@ -71,6 +71,7 @@ combos = unique(cis_pcgs$combo) #126 pairs
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
+
 all = as.data.table(all)
 
 check_cis_pcg = function(combo){
@@ -226,25 +227,29 @@ results2 = ldply(results)
 results2 = as.data.table(results2)
 
 #visualize for each pair
-mypal = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
-  "#72A93B", "#74DAE3" ,"#49B98D" ,"#D97B8F" ,"#70A2A4", "#64709B" ,"#DFBF38" ,"#61EA4F" ,
-  "#C7CBE7", "#786DDA",
-"#CFA0E0" ,"#67E9D0" ,"#7C9BE1", "#D94753" ,
-"#AAE6B0", "#D13BDF" ,"#DEAEC7" ,"#BBE6DF" ,"#B2B47A" ,"#E6ECBA", "#C86ED7",
- "#7BEE95" ,"#6F46E6" ,"#65B9E0", "#C0EC3E",
-"#DE8D54" ,"#DF4FA6")
-
+#add colours for each cancer
+colnames(colours_palette)=c("canc", "color")
 results2$perc_lnc_off = as.numeric(results2$perc_lnc_off)
-lncs_zero = unique(results2[,c("lnc", "perc_lnc_off", "canc")]) #79 unique genes
+lncs_zero = unique(results2[,c("lnc", "perc_lnc_off", "canc")]) #92 instances
+lncs_zero = merge(lncs_zero, colours_palette, by="canc")
+t=as.data.table(table(lncs_zero$canc))
+t=t[order(-N)]
+lncs_zero$canc = factor(lncs_zero$canc, levels=t$V1)
+colnames(t)[1] = "canc"
+t=merge(t, colours_palette, by="canc")
+t=t[order(-N)]
+lncs_zero = lncs_zero[order(-perc_lnc_off)]
+lncs_zero$lncRNA = paste(lncs_zero$lnc, lncs_zero$canc)
 
-pdf("/u/kisaev/Dec2020/lncRNAs_wnearby_PCG_zero_expression_summary.pdf", width=7, height=5)
+pdf("/u/kisaev/Jan2021/lncRNAs_wnearby_PCG_zero_expression_summary.pdf", width=8, height=4)
 
-g = ggbarplot(lncs_zero, "lnc", "perc_lnc_off",
-  fill = "canc", color = "black",
-  palette = mypal)
+g = ggbarplot(lncs_zero, "lncRNA", "perc_lnc_off",
+  fill = "canc", color = "black", sort.val = "desc",          # Sort the value in descending order
+  palette = unique(t$color))
 g = ggpar(g, legend="none",
  font.tickslab = c(4,"plain", "black"),
- xtickslab.rt = 90)+ylab("% of patients with no detected expression")
+ xtickslab.rt = 90)+ylab("% of patients with no detected expression")+
+ geom_hline(yintercept=0.9, linetype="dashed", color = "grey")+ylim(c(0,1))
 g + facet_grid(~canc, scales = "free", space = "free") + theme(text = element_text(size=4))
 
 dev.off()
