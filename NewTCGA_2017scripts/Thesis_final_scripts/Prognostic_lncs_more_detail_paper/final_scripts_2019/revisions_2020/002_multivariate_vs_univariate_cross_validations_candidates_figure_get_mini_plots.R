@@ -5,14 +5,17 @@ source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognost
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
 #get candidates files
+
 #Data--------------------------------------------
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs
 
 #which cancer types are the non-unique lncRNAs from?
-allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_name")]
+allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_symbol")]
 allCands = allCands[!duplicated(allCands), ]
-allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
+cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
+allCands$combo=paste(allCands$gene, allCands$cancer, sep="_")
+allCands$gene_name = allCands$gene_symbol
 
 #old = readRDS("old_168_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 
@@ -45,10 +48,15 @@ single_lncs = fread("summary_cross_validation_clinical_random_lncRNAs_Nov1.txt")
 
 cancers = unique(allCands$canc)
 
+get_name=function(gene_n){
+	gene_s = allCands$gene_name[allCands$gene==gene_n]
+	return(gene_s)
+}
+
 get_bar = function(canc){
 
 	multi_dat = as.data.table(filter(multivariate_lncs, Cancer == canc))
-	single_dat = as.data.table(filter(single_lncs, Cancer == canc, !(type=="clinical_variables")))
+	single_dat = as.data.table(filter(single_lncs, cancer == canc, !(type=="clinical_variables")))
 
 	#make input for plot
 	multi_dat$analysis="multi"
@@ -56,9 +64,9 @@ get_bar = function(canc){
 
 	multi_dat = multi_dat[,c("lncRNA",  "Cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo" ,
 		"lnc_med", "clin_med", "combo_med")]
-	single_dat = single_dat[,c("lncRNA",  "Cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo",
-		"lnc_med", "clin_med", "combo_med")]
-
+	single_dat = single_dat[,c("lncRNA",  "cancer",  "cindex", "type", "round", "analysis", "wp_lnc_clinical", "wp_lnc_clinical_combo", "diff_meds_lnc_clinical", "diff_meds_lnc_clinical_combo",
+		"median_lncRNA", "median_clinical", "clin_combo_cind_med")]
+	colnames(single_dat) = colnames(multi_dat)
 	all = rbind(multi_dat, single_dat)
 	all = as.data.table(filter(all, !(is.na(cindex))))
 
@@ -113,7 +121,7 @@ get_bar = function(canc){
 	all$label = factor(all$label, levels=meds$label)
 	all$cindex=NULL
 	all$round=NULL
-	all = unique(all)
+	#all = unique(all)
 	all$diff_meds_lnc_clinical_combo = all$combo_med - all$lnc_med
 	all=merge(meds, all, by="label")
 	all=all[order(-median_cindex)]
@@ -151,6 +159,7 @@ get_multi_plot = function(canc){
 
 	z = which(str_detect(all$lncRNA, "ENSG"))
 	all$lncRNA[z] = sapply(all$lncRNA[z], get_name)
+	all$lncRNA = as.character(all$lncRNA)
 
 	all$lncRNA[all$type=="clinical_variables"] = "clin"
 	all$type[all$type=="clinical_variables"] = "clinical"
@@ -229,12 +238,12 @@ get_multi_plot = function(canc){
 
 	#all$type = factor(all$type, levels=c("lncRNA", "lncRNA&clin",
 	#	"all lncRNAs", "all lncRNAs + clinical", "clinical"))
-
 	all$type = factor(all$type, levels=c("clinical", "all lncRNAs + clinical",
 		"all lncRNAs", "lncRNA&clin", "lncRNA"))
 
 	print(head(all))
-	#return(all)
+	all$lncRNA[which(all$lncRNA ==  'c(\"AL353746.1\", \"AL353746.1\")')] = "AL353746.1"
+	return(all)
 
 	# Change error plot type and add mean points
 	g = ggerrorplot(all, x = "type", y = "cindex",
@@ -247,7 +256,7 @@ get_multi_plot = function(canc){
 	geom_hline(yintercept=0.5, linetype="dashed", color = "red") + stat_compare_means(label = "p.signif",
                      ref.group = "clinical", hide.ns = FALSE)  +
 	  geom_text(aes(label = lncRNA), size=2, y=1) + coord_flip()
-	return(g)
+	#return(g)
 
 }
 
@@ -256,7 +265,7 @@ library(gridExtra)
 n <- length(list_plots)
 nCol <- floor(sqrt(n))
 
-pdf("/u/kisaev/cancers_multivaraite_models_wLabels.pdf", width=14, height=12)
+pdf("/u/kisaev/Jan2021/cancers_multivaraite_models_wLabels.pdf", width=14, height=12)
 do.call("grid.arrange", c(list_plots, ncol=nCol))
 dev.off()
 
@@ -265,7 +274,7 @@ colnames(canc_conv)[1] = "type_canc"
 colnames(canc_conv)[2] = "Cancer"
 
 all_results=merge(all_results, canc_conv, by="Cancer")
-saveRDS(all_results, "/u/kisaev/multivaraite_vs_univariate_cindices_input_for_plots.rds")
+saveRDS(all_results, "/u/kisaev/Jan2021/multivaraite_vs_univariate_cindices_input_for_plots.rds")
 
 #res=as.data.table(ldply(llply(cancers, get_bar)))
 #res$full_lnc_clin_fdr = p.adjust(res$full_lnc_clin_pval, method="fdr")

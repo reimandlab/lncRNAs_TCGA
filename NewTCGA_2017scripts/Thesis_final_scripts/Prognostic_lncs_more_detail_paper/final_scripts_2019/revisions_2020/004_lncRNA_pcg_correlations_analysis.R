@@ -38,9 +38,10 @@ flattenCorrMatrix <- function(cormat, pmat) {
 #------FEATURES-----------------------------------------------------
 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-#allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_Aug8.rds")
-allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
-allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
+allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs
+cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
+allCands$combo=paste(allCands$gene, allCands$cancer, sep="_")
+allCands$gene_name = allCands$gene_symbol
 
 #--------This script ------------------------------------------------
 

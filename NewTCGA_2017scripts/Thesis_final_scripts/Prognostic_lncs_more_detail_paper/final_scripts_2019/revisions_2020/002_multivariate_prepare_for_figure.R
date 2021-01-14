@@ -5,14 +5,17 @@ source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognost
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
 #get candidates files
+
 #Data--------------------------------------------
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs
 
 #which cancer types are the non-unique lncRNAs from?
-allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_name")]
+allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_symbol")]
 allCands = allCands[!duplicated(allCands), ]
-allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
+cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
+allCands$combo=paste(allCands$gene, allCands$cancer, sep="_")
+allCands$gene_name = allCands$gene_symbol
 
 #------DATA-----------------------------------------------------
 
@@ -248,7 +251,7 @@ random_lncs_vs_cand1 = random_lncs_vs_cand1[order(wp_lnc_clinical, diff_meds_lnc
 random_lncs_vs_cand1$type = factor(random_lncs_vs_cand1$type, levels=unique(random_lncs_vs_cand1$type))
 
 #part a
-pdf("/u/kisaev/Dec2020/figure2_e_lncRNA_cands_vs_clinical_variables_multivariate.pdf", width=6, height=6)
+pdf("/u/kisaev/Jan2021/figure2_e_lncRNA_cands_vs_clinical_variables_multivariate.pdf", width=6, height=6)
 ggplot(random_lncs_vs_cand1, aes(x=diff_meds_lnc_clinical, y=wp_lnc_clinical_fdr)) + geom_point(aes(fill=type),
        colour="black", pch=21, size=2)+
 			 theme_bw()+
@@ -258,47 +261,3 @@ geom_vline(xintercept=0, linetype="dashed", color = "black")+
 labs(x="(median lncRNAs candidate c-index) - (median clinical variables c-index)", y="-log10(adjusted p-val)")+
 scale_fill_manual(values = mypal5[1:22]) + theme(legend.position="bottom", text = element_text(size=11))
 dev.off()
-
-
-#-----FIGURE 2E-------------------------------a------------------
-#summary of how many individual lncRNAs were selected in each cancer type
-#these are the ones that were studied throughout the paper
-#show how many of them had a 5% improvement over clinical
-allCands = filter(allCands, data == "TCGA")
-head(lncs_perc)
-
-allCands$better_than_clin = ""
-z = which(allCands$combo %in% lncs_perc$combo)
-allCands$better_than_clin[z] = "yes"
-allCands$better_than_clin[-z] = "no"
-allCands$multivar_sig = ""
-
-z = which(allCands$fdr <= 0.05)
-allCands$multivar_sig[z] = "yes"
-allCands$multivar_sig[-z] = "no"
-allCands = merge(allCands, canc_conv, by = c("cancer"))
-
-#get summary
-summ = as.data.table(table(allCands$type))#, #allCands$better_than_clin))
-#colnames(summ) = c("Cancer", "BetterThanClin", "NumCandidates")
-colnames(summ) = c("Cancer", "NumCandidates")
-summ = summ[order(-NumCandidates)]
-
-#order of cancer types
-od = as.data.table(table(allCands$type))
-od = od[order(-N)]
-
-summ$Cancer = factor(summ$Cancer, levels = unique(od$V1))
-#summ$BetterThanClin = factor(summ$BetterThanClin, levels = c("yes", "no"))
-
-#barplot summary
-# Create the barplot
-#pdf("figure2E_aug13.pdf")
-pdf("figure2E_oct26.pdf")
-ggplot(data=summ, aes(x=Cancer, y=NumCandidates)) +
-  theme_bw()+
-  geom_bar(stat="identity", color="black")+
-  theme(axis.text.x=element_text(angle=45, hjust=1)) +
-  scale_fill_manual(values=c('#E69F00', '#999999')) +
-  xlab("Cancer") + ylab("# of lncRNAs selected in more than 50% of cross validations")
-  dev.off()

@@ -5,20 +5,21 @@ source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognost
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
 #get candidates files
+
 #Data--------------------------------------------
+
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs
 
 #which cancer types are the non-unique lncRNAs from?
-allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_name")]
+allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_symbol")]
 allCands = allCands[!duplicated(allCands), ]
 cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
-allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
+allCands$combo=paste(allCands$gene, allCands$cancer, sep="_")
 
 #------DATA-----------------------------------------------------
 
 ################################################################################
-#cindices from 166 candidates
 lnc_cands = readRDS("lncRNAs_1000_internal_CVs_individual_cands_june19.rds")
 r = ldply(lnc_cands)
 r = as.data.table(r)
@@ -237,7 +238,8 @@ get_comparison = function(comboo){
 	wp_lnc_clinical_combo = glance(w)[2]
 	diff_meds_lnc_clinical_combo = median(all_cindices$cindex[all_cindices$type=="lncRNA&clin"]) - median(all_cindices$cindex[all_cindices$type=="clinical_variables"])
 
-	gene = get_name(unlist(strsplit(comboo, "_"))[1])
+	z = which(allCands$combo == comboo)
+	gene = allCands$gene_symbol[z]
 
 	all_cindices$type = factor(all_cindices$type, levels=c("clinical_variables", "lncRNA_canc", "lncRNA&clin"))
 	all_cindices$gene= gene
@@ -335,19 +337,19 @@ full$type = factor(full$type, levels=unique(full$type))
 full$canc_type = factor(full$canc_type, levels=unique(full$canc_type))
 
 #add gene name
-allCands$name = unlist(llply(allCands$gene, get_name))
+allCands$name = allCands$gene_symbol
 
 z = which(random_lncs_vs_cand1$gene == "HOXA-AS4")
-random_lncs_vs_cand1$gene[z] = "HOXA10-AS"
+#random_lncs_vs_cand1$gene[z] = "HOXA10-AS"
 z = which(full$gene == "HOXA-AS4")
-full$gene[z] = "HOXA10-AS"
+#full$gene[z] = "HOXA10-AS"
 
 #known lncRNAs
-known_lncs = c("HOXB-AS2", "HOXA10-AS", "CCAT1", "BZRAP1-AS1", "AC114803.3", "AC097468.7")
+known_lncs = c("HOXB-AS2", "HOXA10-AS")
 colnames(random_lncs_vs_cand1)[2] = "name"
 colnames(full)[7] = "name"
 
-allCands$name[allCands$name == "HOXA-AS4"] = "HOXA10-AS"
+#allCands$name[allCands$name == "HOXA-AS4"] = "HOXA10-AS"
 
 random_lncs_vs_cand1 = merge(random_lncs_vs_cand1, allCands, by = c("cancer", "name"))
 random_lncs_vs_cand1$HR = as.numeric(random_lncs_vs_cand1$HR)
@@ -386,7 +388,7 @@ mypal = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
 random_lncs_vs_cand1 = unique(random_lncs_vs_cand1[,c("HR", "diff_meds_lnc_clinical",
 "name", "canc_type", "sig")])
 
-pdf("/u/kisaev/Dec2020/figure2_e_lncRNA_cands_vs_clinical_variables.pdf", width=6, height=6)
+pdf("/u/kisaev/Jan2021/figure2_e_lncRNA_cands_vs_clinical_variables.pdf", width=8, height=6)
 g1 = ggplot(random_lncs_vs_cand1, aes(x=HR, y=diff_meds_lnc_clinical, label=name)) +
  geom_point(aes(fill=canc_type, colour=sig),
        pch=21, size=2)+theme_bw()+
@@ -397,7 +399,7 @@ geom_hline(yintercept=0, linetype="dashed", color = "black")+
 geom_vline(xintercept=0, linetype="dashed", color = "black")+
 labs(x="log2(HR)", y="med lncRNA c-index - med clinical c-index")+
  theme(legend.position="bottom", text = element_text(size=11)) +
- scale_fill_manual(values = mypal5[1:22]) +
+ scale_fill_manual(values = mypal5[1:23]) +
  scale_colour_manual(values = c("black", "white"))+theme_bw()
  g1
 

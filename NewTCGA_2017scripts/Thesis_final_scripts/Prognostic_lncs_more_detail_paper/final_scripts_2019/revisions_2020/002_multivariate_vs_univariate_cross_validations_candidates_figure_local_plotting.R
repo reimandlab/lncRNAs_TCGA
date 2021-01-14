@@ -2,7 +2,7 @@ library(ggpubr)
 library(data.table)
 library(dplyr)
 
-setwd("/Users/kisaev/Documents/lncRNAs")
+setwd("/Users/kisaev/Documents/lncRNAs/Jan2021")
 input_plot = readRDS("multivaraite_vs_univariate_cindices_input_for_plots.rds")
 
 input_plot$type = factor(input_plot$type, levels=c("lncRNA", "lncRNA&clin",
@@ -35,12 +35,15 @@ ylim(c(0.4,1))+
 dev.off()
 
 
-pdf("multivaraite_vs_univariate_cindices_input_for_plots_barplot.pdf", width=8, height=5)
+pdf("multivaraite_vs_univariate_cindices_input_for_plots_barplot.pdf", width=8, height=7)
 
 g = ggbarplot(input_plot, x = "type", y = "cindex",
             palette=c("darkred", "darksalmon", "dodgerblue4", "skyblue2", "grey"),
             add = c("median_mad"),            # Change error plot type
-            fill="type", facet.by="type_canc") + theme_bw()+rremove("x.text")+ylab("c-index")
+            fill="type", facet.by="type_canc") + theme_bw()+rremove("x.text")+ylab("c-index")+
+						theme(strip.text.x = element_text(size = 4, colour = "black"))+xlab("Model type")+
+						theme(strip.background = element_rect(colour="black", fill="white",
+                                       size=0.5, linetype="solid"))
 
 #g = facet(g, facet.by = "type_canc", panel.labs.font = list(size =4), nrow=1)
 #g=ggpar(g, font.xtickslab=c(6, "plain", "black"), font.ytickslab=c(4, "plain", "black")) +
@@ -50,6 +53,4 @@ g = ggbarplot(input_plot, x = "type", y = "cindex",
 #	  print(g)
 
 print(g)
-
-
 dev.off()

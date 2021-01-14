@@ -160,4 +160,7 @@ pcg = as.data.table(pcg)
 
 print(table(all$type))
 
+#color palette
+colours_palette=readRDS("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript/23_cancers_color_palette.rds")
+
 print("done loading everything YAY")

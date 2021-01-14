@@ -5,31 +5,17 @@ source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognost
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
 #get candidates files
+
 #Data--------------------------------------------
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs
 
 #which cancer types are the non-unique lncRNAs from?
-allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_name")]
+allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_symbol")]
 allCands = allCands[!duplicated(allCands), ]
-allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
-
-#old = readRDS("old_168_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-
-#val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
-#val_cands = as.data.table(val_cands)
-#val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
-#val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
-#val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
-
-#Combined into one dataframe because need to get ranks
-#all <- merge(rna, pcg, by = c("patient", "Cancer"))
-#all = all[,1:25170]
-
-#canc conversion
-#canc_conv = rna[,c(which(colnames(rna) %in% c("Cancer", "type")))]
-#canc_conv = canc_conv[!duplicated(canc_conv),]
-#colnames(canc_conv) = c("type", "cancer")
+cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
+allCands$combo=paste(allCands$gene, allCands$cancer, sep="_")
+allCands$gene_name = allCands$gene_symbol
 
 #------DATA-----------------------------------------------------
 
