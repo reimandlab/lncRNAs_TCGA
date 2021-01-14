@@ -13,23 +13,18 @@ setwd("Documents/lncRNAs")
 #figure 2
 res = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 res = as.data.table(filter(res, data=="TCGA"))
-canc_conv = readRDS("canc_conv.rds")
-colnames(canc_conv)[2] = "cancer"
-z=which(res$gene_name == "HOXA-AS4")
-res$gene_name[z] = "HOXA10-AS"
-
-res = merge(res, canc_conv, by="cancer")
-t = as.data.table(table(res$type))
+t = as.data.table(table(res$canc_type))
 t = t[order(-N)]
-res$type = factor(res$type, levels =t$V1)
+res$type = factor(res$canc_type, levels =t$V1)
+res$HR=as.numeric(res$HR)
 res = res[order(type, HR)]
 
 #need to order genes wtihin cancer type
-res$combo = paste(res$gene_name, res$type)
-res = res[order(type, HR)]
-order = unique(res$gene_name)
+res$combo = paste(res$gene_symbol, res$canc_type)
+res = res[order(canc_type, HR)]
+order = unique(res$gene_symbol)
 
-res$gene_name = factor(res$gene_name, levels=order)
+res$gene_symbol = factor(res$gene_symbol, levels=order)
 
 #x = lnc
 #stratify by type
@@ -45,9 +40,9 @@ res$low95 = log2(res$low95)
 res$upper95 = as.numeric(res$upper95)
 res$upper95 = log2(res$upper95)
 
-pdf("Dec2020/lncRNA_candidates_final_figure2B.pdf", width=14, height=6)
+pdf("Jan2021/Figure2_related/lncRNA_candidates_final_figure2A.pdf", width=14, height=6)
 
-g = ggplot(data=res, aes(x=gene_name, y=HR, order = -HR)) +
+g = ggplot(data=res, aes(x=gene_symbol, y=HR, order = -HR)) +
   geom_bar(stat="identity", aes(fill=fdr_pval),colour="black") +
   geom_errorbar(aes(ymin=low95, ymax=upper95),
                   width=.25,  size=.2,                   # Width of the error bars
@@ -63,7 +58,7 @@ ggpar(g, xtickslab.rt=90, font.tickslab=c(6, "plain", "black"),
 dev.off()
 
 #make histogram for risk group per lncRNA
-pdf("Dec2020/all_lncRNAs_cands_risk_group_summary_histogram.pdf", width=8, height=6)
+pdf("Jan2021/Figure2_related/all_lncRNAs_cands_risk_group_summary_histogram.pdf", width=8, height=6)
 gghistogram(res, x="perc_risk", color="black", fill="#00AFBB") + xlim(0,1)+theme_bw()+
 xlab("Percent of patients in risk group") + ylab("Number of lncRNAs")
 dev.off()

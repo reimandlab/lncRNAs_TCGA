@@ -38,28 +38,6 @@ get_canc_data_for_plot = function(dtt){
   print(dtt$type[1])
   dtt = as.data.table(dtt)
   dtt = dtt[,..z]
-
-  #t=filter(as.data.table(table(dtt$histological_grade)), N <=5)$V1
-  #print(t)
-  #if((!(length(t)==0))){
-  #  z=which(dtt$histological_grade %in% t)
-  #  dtt = dtt[-z,]
-  #}
-
-  #t=filter(as.data.table(table(dtt$clinical_stage)), N <=5)$V1
-  #print(t)
-  #if((!(length(t)==0))){
-  #  z=which(dtt$clinical_stage %in% t)
-  #  dtt = dtt[-z,]
-  #}
-
-  #t=filter(as.data.table(table(dtt$race)), N <=5)$V1
-  #print(t)
-  #if((!(length(t)==0))){
-  #  z=which(dtt$race %in% t)
-  #  dtt = dtt[-z,]
-  #}
-
   return(dtt)
 }
 
@@ -109,9 +87,10 @@ get_survival_models = function(dtt){
 
   print(dtt$Cancer[1])
 
-  results_cox1 <- as.data.frame(matrix(ncol=20)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer",
+  results_cox1 <- as.data.frame(matrix(ncol=22)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer",
     "lnc_test_ph", "num_risk", "perc_risk", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero", "multi_model_concordance",
-    "lnc_only_concordance", "clinical_only_concordance", "num_events", "perc_wevents", "anova_pval")
+    "lnc_only_concordance", "clinical_only_concordance",
+    "num_events", "perc_wevents", "anova_pval", "gene_symbol", "canc_type")
 
   dat = dtt
   dat$Cancer = NULL
@@ -137,53 +116,53 @@ get_survival_models = function(dtt){
   perc_events = num_events/nrow(dtt)
 
   for(i in 1:length(num_genes)){
-  gene = num_genes[i]
-  print(gene)
-  k = which(!(str_detect(colnames(dat), "ENSG")))
-  newdat = dat[,c(gene,k)]
-#  newdat$gene=newdat[,gene]
-  lncs = coxph(Surv(OS.time, OS)  ~ ., data = newdat)
-#  global = test.ph$table[nrow(test.ph$table),3]
+    gene = num_genes[i]
+    print(gene)
+    k = which(!(str_detect(colnames(dat), "ENSG")))
+    newdat = dat[,c(gene,k)]
+    #  newdat$gene=newdat[,gene]
+    lncs = coxph(Surv(OS.time, OS)  ~ ., data = newdat)
+    #  global = test.ph$table[nrow(test.ph$table),3]
 
-  #mutlvariate concordance
-  cmulti = as.numeric(glance(lncs)[13])
-  lnc_only_model = coxph(Surv(OS.time, OS)  ~ newdat[,1], data = newdat)
-  lnc_only = as.numeric(glance(lnc_only_model)[13])
-#  hr = summary(lnc_only_model)$coefficients[2]
-  test.ph <- cox.zph(lnc_only_model)
-  lnc_test_ph = test.ph$table[1,3]
+    #mutlvariate concordance
+    cmulti = as.numeric(glance(lncs)[13])
+    lnc_only_model = coxph(Surv(OS.time, OS)  ~ newdat[,1], data = newdat)
+    lnc_only = as.numeric(glance(lnc_only_model)[13])
+    #  hr = summary(lnc_only_model)$coefficients[2]
+    test.ph <- cox.zph(lnc_only_model)
+    lnc_test_ph = test.ph$table[1,3]
 
-  z = which(str_detect(colnames(newdat), "ENSG"))
-  clin_only = newdat[,-z]
-  clinical_only_model = coxph(Surv(OS.time, OS)  ~ ., data = clin_only)
-  clinical_only = as.numeric(glance(clinical_only_model)[13])
-  lr = anova(clinical_only_model, lncs)
-  lr_pval = lr[2,4]
+    z = which(str_detect(colnames(newdat), "ENSG"))
+    clin_only = newdat[,-z]
+    clinical_only_model = coxph(Surv(OS.time, OS)  ~ ., data = clin_only)
+    clinical_only = as.numeric(glance(clinical_only_model)[13])
+    lr = anova(clinical_only_model, lncs)
+    lr_pval = lr[2,4]
 
-  #calculate power
-  #k is ratio of participants in group E (experimental group) compared to group C (controlgroup).
-  kval = as.numeric(table(newdat[,1])[1]/table(newdat[,1])[2])
-  #m = expected total number of events over both groups.
-  mval = length(which(newdat$OS == 1))
+    #calculate power
+    #k is ratio of participants in group E (experimental group) compared to group C (controlgroup).
+    kval = as.numeric(table(newdat[,1])[1]/table(newdat[,1])[2])
+    #m = expected total number of events over both groups.
+    mval = length(which(newdat$OS == 1))
 
-  hr = summary(lnc_only_model)$coefficients[1,c(1,2,5)][2]
-  pval = summary(lnc_only_model)$coefficients[1,c(1,2,5)][3]
-  if(hr >1){
-    risk_num = length(which(newdat[,1] == 1))
-    perc = risk_num/nrow(newdat)
-  }
+    hr = summary(lnc_only_model)$coefficients[1,c(1,2,5)][2]
+    pval = summary(lnc_only_model)$coefficients[1,c(1,2,5)][3]
+    if(hr >1){
+      risk_num = length(which(newdat[,1] == 1))
+      perc = risk_num/nrow(newdat)
+    }
 
-  if(hr < 1){
-    risk_num = length(which(newdat[,1] == 0))
-    perc = risk_num/nrow(newdat)
-  }
+    if(hr < 1){
+      risk_num = length(which(newdat[,1] == 0))
+      perc = risk_num/nrow(newdat)
+    }
 
-  gene_name = colnames(newdat)[1]
-  gene = colnames(newdat)[1]
-  colnames(newdat)[1] = "gene"
-  newdat$OS.time = newdat$OS.time/365
-  newdat$gene = factor(newdat$gene, levels=c(1,0))
-  fit <- survfit(Surv(OS.time, OS) ~ gene, data = newdat)
+    gene_name = colnames(newdat)[1]
+    gene = colnames(newdat)[1]
+    colnames(newdat)[1] = "gene"
+    newdat$OS.time = newdat$OS.time/365
+    newdat$gene = factor(newdat$gene, levels=c(1,0))
+    fit <- survfit(Surv(OS.time, OS) ~ gene, data = newdat)
           s <- ggsurvplot(
           title = paste(hg38$symbol[hg38$ensgene==gene_name], canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], "HR =", round(hr, digits=2)),
           fit,
@@ -214,6 +193,7 @@ get_survival_models = function(dtt){
                             # in legend of risk table
           )
 
+  gene_symbol=hg38$symbol[hg38$ensgene==gene_name]
   if((perc > 0.1) & (perc < 0.9)){
   print(s)}
 
@@ -250,7 +230,8 @@ get_survival_models = function(dtt){
     lnc_test_ph, risk_num, perc, median_nonzero,
     sd_nonzero,
     min_nonzero,
-    max_nonzero, cmulti, lnc_only, clinical_only, num_events, perc_events, lr_pval)
+    max_nonzero, cmulti, lnc_only, clinical_only, num_events,
+    perc_events, lr_pval, gene_symbol, canc_type=dtt$type[1])
 
    names(row) <- names(results_cox1)
    results_cox1 = rbind(results_cox1, row)
@@ -265,13 +246,13 @@ get_survival_models = function(dtt){
 
    gg <- ggplot(exp_data)
    gg <- gg + geom_density(aes(x=geneexp, y=..scaled.., fill=median), alpha=1/2)
-   gg <- gg + theme_bw() + ggtitle(paste(gene, "Expression", dtt$Cancer[1] , sep=" ")) + labs(y="log1p(FPKM-UQ)")
+   gg <- gg + theme_bw() + ggtitle(paste(gene_symbol, "Expression", dtt$Cancer[1] , sep=" ")) + labs(y="log1p(FPKM-UQ)")
 
 #   print(gg)
 
    p <- ggboxplot(exp_data, x = "median", y = "geneexp",
           color = "median",
-         palette = mypal[c(4,1)], title = paste(get_name(gene_name), "Expression", canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], sep=" "),
+         palette = mypal[c(4,1)], title = paste(gene_symbol, "Expression", canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], sep=" "),
           add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
         # Change method
   p = p + stat_compare_means(method = "wilcox.test") + stat_n_text() + scale_color_npg()
@@ -299,7 +280,7 @@ tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
 
 tcga_results1$fdr_pval = p.adjust(as.numeric(tcga_results1$pval), method="fdr")
 tcga_results1$fdr_anova_lr = p.adjust(as.numeric(tcga_results1$anova_pval), method="fdr")
-tcga_results1$lnc_test_ph_fdr = p.adjust(as.numeric(tcga_results1$lnc_test_ph), method="fdr")
+#tcga_results1$lnc_test_ph_fdr = p.adjust(as.numeric(tcga_results1$lnc_test_ph), method="fdr")
 
 tcga_results1 = as.data.table(tcga_results1)
 
@@ -308,11 +289,11 @@ tcga_results1$num_events = as.numeric(tcga_results1$num_events)
 tcga_results1$num_risk = as.numeric(tcga_results1$num_risk)
 tcga_results1$perc_risk = as.numeric(tcga_results1$perc_risk)
 
-tcga_results1 = as.data.table(filter(tcga_results1, fdr_pval < 0.05, lnc_test_ph > 0.05, perc_risk >= 0.1, perc_risk < 0.9))
+tcga_results1 = as.data.table(filter(tcga_results1, fdr_pval < 0.05))
 
-tcga_results1$lnc_better = ""
-z= which(tcga_results1$lnc_only_concordance >= tcga_results1$clinical_only_concordance)
-tcga_results1$lnc_better[z] = "yes"
+#tcga_results1$lnc_better = ""
+#z= which(tcga_results1$lnc_only_concordance >= tcga_results1$clinical_only_concordance)
+#tcga_results1$lnc_better[z] = "yes"
 
 tcga_results1 = as.data.table(tcga_results1)
 tcga_results1 = tcga_results1[order(fdr_pval)]
@@ -324,17 +305,18 @@ pdf("/u/kisaev/Jan2021/Dist_perc_risk_patients_per_lncRNA.pdf", width=10)
 riskplot
 dev.off()
 
-tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
-tcga_results1$lnc_better = NULL
-tcga_results1$global_test_ph = NULL
+#tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
+#tcga_results1$lnc_better = NULL
+#tcga_results1$global_test_ph = NULL
 tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
-tcga_results1$lnc_test_ph_fdr = p.adjust(tcga_results1$lnc_test_ph, method="fdr")
+#tcga_results1$lnc_test_ph_fdr = p.adjust(tcga_results1$lnc_test_ph, method="fdr")
 
 saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")
 
 colnames(fantom)[1] = "gene"
 tcga_results1 = merge(fantom, tcga_results1, by="gene")
-write.table(tcga_results1, file="/u/kisaev/Jan2021/SuppTable4.txt", quote=F, row.names=F, sep=";")
+write.table(tcga_results1, file="/u/kisaev/Jan2021/SuppTable4.txt", quote=F, row.names=F, sep="}")
+
 
 tcga_results1 = as.data.table(tcga_results1)
 
