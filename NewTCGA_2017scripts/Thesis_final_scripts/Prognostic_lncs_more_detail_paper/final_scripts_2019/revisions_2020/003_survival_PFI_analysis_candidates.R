@@ -23,6 +23,9 @@ cands = readRDS("lncRNAs_selected_by_EN_april14.rds") #1000 runs of cross-valida
 #--------------------------------------------------------------------
 
 cancers = unique(cands$canc)
+z=which(cancers == "Acute Myeloid Leukemia")
+cancers=cancers[-z]
+
 get_canc = function(canc){
   rna_dat = subset(rna, Cancer == canc)
   return(rna_dat)
@@ -38,28 +41,6 @@ get_canc_data_for_plot = function(dtt){
   print(dtt$type[1])
   dtt = as.data.table(dtt)
   dtt = dtt[,..z]
-
-  #t=filter(as.data.table(table(dtt$histological_grade)), N <=5)$V1
-  #print(t)
-  #if((!(length(t)==0))){
-  #  z=which(dtt$histological_grade %in% t)
-  #  dtt = dtt[-z,]
-  #}
-
-  #t=filter(as.data.table(table(dtt$clinical_stage)), N <=5)$V1
-  #print(t)
-  #if((!(length(t)==0))){
-#    z=which(dtt$clinical_stage %in% t)
-#    dtt = dtt[-z,]
-#  }
-
-#  t=filter(as.data.table(table(dtt$race)), N <=5)$V1
-#  print(t)
-#  if((!(length(t)==0))){
-#    z=which(dtt$race %in% t)
-#    dtt = dtt[-z,]
-#  }
-
   return(dtt)
 }
 
@@ -189,7 +170,7 @@ get_survival_models = function(dtt){
   newdat$gene = factor(newdat$gene, levels=c(1,0))
   fit <- survfit(Surv(PFI.time, PFI) ~ gene, data = newdat)
           s <- ggsurvplot(
-          title = paste(get_name(gene_name), canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], "HR =", round(hr, digits=2)),
+          title = paste(hg38$symbol[hg38$ensgene==gene_name], canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], "HR =", round(hr, digits=2)),
           fit,
           xlab = "Time (Years)",
           #surv.median.line = "hv",
@@ -217,6 +198,9 @@ get_survival_models = function(dtt){
           risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
           )
+
+          gene_symbol=hg38$symbol[hg38$ensgene==gene_name]
+
           if((perc > 0.1) & (perc < 0.9)){
           print(s)}
 
@@ -279,7 +263,7 @@ get_survival_models = function(dtt){
 
    p <- ggboxplot(exp_data, x = "median", y = "geneexp",
           color = "median",
-         palette = mypal[c(4,1)], title = paste(get_name(gene_name), "Expression", canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], sep=" "),
+         palette = mypal[c(4,1)], title = paste(gene_symbol, "Expression", canc_conv$type[canc_conv$Cancer == dtt$Cancer[1]][1], sep=" "),
           add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
         # Change method
   p = p + stat_compare_means(method = "wilcox.test") + stat_n_text() + scale_color_npg()
@@ -303,8 +287,7 @@ dev.off()
 #all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
 tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
-tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
-
+#tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
 tcga_results1$fdr_pval = p.adjust(as.numeric(tcga_results1$pval), method="fdr")
 tcga_results1$fdr_anova_lr = p.adjust(as.numeric(tcga_results1$anova_pval), method="fdr")
 
@@ -321,13 +304,13 @@ tcga_results1 = as.data.table(tcga_results1)
 tcga_results1 = tcga_results1[order(fdr_pval)]
 tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
 tcga_results1$lnc_better = NULL
-tcga_results1$global_test_ph = NULL
+#tcga_results1$global_test_ph = NULL
 tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
-tcga_results1$lnc_test_ph_fdr = p.adjust(tcga_results1$lnc_test_ph, method="fdr")
+#tcga_results1$lnc_test_ph_fdr = p.adjust(tcga_results1$lnc_test_ph, method="fdr")
 tcga_results1$num_risk = as.numeric(tcga_results1$num_risk)
 tcga_results1$perc_risk = as.numeric(tcga_results1$perc_risk)
 #tcga_results1 = filter(tcga_results1, fdr_pval <=0.05)
-tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
+#tcga_results1$gene_name = sapply(tcga_results1$gene, get_name)
 saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3_PFI.rds")
 
 colnames(fantom)[1] = "gene"

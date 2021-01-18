@@ -17,14 +17,14 @@ clin = readRDS("clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
 for(i in 1:length(clin)){
   print(i)
   d = clin[[i]]
+  z=which(str_detect(colnames(d), "ENSG"))
+  d=d[,-z]
+
   lncs_keep = filter(allCands, cancer %in% d$Cancer[1])$gene
-  lncs_check = colnames(d)[which(str_detect(colnames(d), "ENSG"))]
-  z = which(!(lncs_check %in% lncs_keep))
-  if(!(length(z) == 0)){
-    lnc_rm = lncs_check[z]
-    z = which(colnames(d) %in% lnc_rm)
-    d = d[,-z]
-  }
+  gene_exp=as.data.table(filter(rna, Cancer == d$Cancer[1]))
+  z=which(colnames(gene_exp) %in% c(lncs_keep, "patient"))
+  gene_exp = gene_exp[,..z]
+  d = merge(d, gene_exp, by="patient")
   clin[[i]] = d
 }
 
@@ -171,7 +171,7 @@ get_clin_lnc_cors = function(dtt){
           conf.int = TRUE # Add confidence interval
           )
           # Add correlation coefficient
-          sp = sp + stat_cor(method = "spearman") + theme_bw() + ggtitle(paste(cancer_type, get_name(lnc), col))
+          sp = sp + stat_cor(method = "spearman") + theme_bw() + ggtitle(paste(cancer_type, allCands$gene_symbol[allCands$gene==lnc][1], col))
           print(sp)}#only plot if sig
 
         }
@@ -321,7 +321,7 @@ get_clin_lnc_cors = function(dtt){
            facet_grid(~lncRNA_tag+Clinical, space="free", scales="free") + theme_bw()+
            theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
             strip.text.x = element_text(size = 3, colour = "black"),
-            legend.position = "none")+ggtitle(get_name(lnc))
+            legend.position = "none")+ggtitle(allCands$gene_symbol[allCands$gene==lnc][1])
 
 #           facet_wrap(~ lncRNA_tag+Clinical, scales = "free_x", nrow=1) + theme_bw() +
 
@@ -358,13 +358,14 @@ d3 = get_clin_lnc_cors(clin_data_lncs[[3]])
 d4 = get_clin_lnc_cors(clin_data_lncs[[4]])
 d5 = get_clin_lnc_cors(clin_data_lncs[[5]])
 d6 = get_clin_lnc_cors(clin_data_lncs[[6]])
-#d7 = get_clin_lnc_cors(clin_data_lncs[[7]]) #uterine didnt work not enough data
 d8 = get_clin_lnc_cors(clin_data_lncs[[8]])
 d9 = get_clin_lnc_cors(clin_data_lncs[[9]])
 d10 = get_clin_lnc_cors(clin_data_lncs[[10]])
 d11 = get_clin_lnc_cors(clin_data_lncs[[11]])
 d12 = get_clin_lnc_cors(clin_data_lncs[[12]])
 d13 = get_clin_lnc_cors(clin_data_lncs[[13]])
+
+#d7 = get_clin_lnc_cors(clin_data_lncs[[7]]) #uterine didnt work not enough data
 
 all_clin = list(d1, d2,d3,d4,d5,d6, d8, d9,d10, d11,d12,d13)
 saveRDS(all_clin, file="12_data_sets_biolinks_results.rds")

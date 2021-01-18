@@ -15,7 +15,7 @@ module load rstats
 Rscript $main/002_univariate_cross_validations_candidates.R
 #Rscript $main/Figure2c_figure_code.R
 Rscript $main/002_multivariate_cross_validations_candidates.R
-Rscript $main/Figure2c_figure_code.R #currently figure 2B <-use palette defined here for all cancers 
+Rscript $main/Figure2c_figure_code.R #currently figure 2B <-use palette defined here for all cancers
 Rscript $main/002_multivariate_prepare_for_figure.R
 Rscript $main/002_multivariate_vs_univariate_cross_validations_candidates_figure.R
 Rscript $main/002_multivariate_vs_univariate_cross_validations_candidates_figure_get_mini_plots.R

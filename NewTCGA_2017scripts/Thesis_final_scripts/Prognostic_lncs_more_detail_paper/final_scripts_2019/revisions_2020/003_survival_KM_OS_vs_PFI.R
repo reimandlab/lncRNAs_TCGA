@@ -9,31 +9,38 @@ setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCES
 #Data--------------------------------------------
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 allCands = filter(allCands, data=="TCGA") #142 unique lncRNA-cancer combos
-
-#which cancer types are the non-unique lncRNAs from?
-allCands$Combo = NULL
-allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_name")]
-allCands = allCands[!duplicated(allCands), ]
+allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_symbol", "canc_type", "fdr_pval")]
 
 #read PFI and OS results
-pfi = fread("/u/kisaev/Dec2020/SuppTable4_PFI.txt")
-colnames(pfi)[7:29] = paste("PFI", colnames(pfi)[7:29], sep="_")
+pfi = readRDS("TCGA_results_multivariate_results_Oct3_PFI.rds")
+pfi = pfi[,c("gene", "cancer", "HR", "pval", "fdr_pval")]
+pfi$combo = paste(pfi$gene, pfi$cancer)
+colnames(pfi)[3:5] = paste("PFI", colnames(pfi)[3:5], sep="_")
 
-os = fread("/u/kisaev/Dec2020/SuppTable4.txt")
+os = allCands
+os$combo = paste(os$gene, os$cancer)
 pfi_cancers = c("LGG", "BRCA", "READ")
-merged = merge(os, pfi, by=c("gene"))
-colnames(canc_conv)[2]="cancer"
-merged=merge(merged, canc_conv, by="cancer")
+merged = merge(os, pfi, by=c(c("gene", "cancer", "combo")))
+
 merged$plot = "others"
-merged$plot[merged$type == "LGG"] = "LGG"
-merged$plot[merged$type == "READ"] = "READ"
-merged$plot[merged$type == "BRCA"] = "BRCA"
-merged$plot = factor(merged$plot, levels=c("others", "LGG", "BRCA", "READ"))
+merged$plot[merged$canc_type == "LGG"] = "LGG"
+#merged$plot[merged$canc_type == "READ"] = "READ"
+merged$plot[merged$canc_type == "BRCA"] = "BRCA"
+#merged$plot = factor(merged$plot, levels=c("others", "LGG", "BRCA", "READ"))
+merged$plot = factor(merged$plot, levels=c("others", "LGG", "BRCA"))
+
 merged$gene_plot = ""
-merged$gene_plot[!(merged$plot == "others")] = merged$PFI_gene_name[!(merged$plot == "others")]
+merged$gene_plot[!(merged$plot == "others")] = merged$gene_symbol[!(merged$plot == "others")]
+
+merged$HR=as.numeric(merged$HR)
+merged$PFI_HR=as.numeric(merged$PFI_HR)
 
 merged$HR  = log2(merged$HR)
 merged$PFI_HR = log2(merged$PFI_HR)
+
+merged$fdr_pval=as.numeric(merged$fdr_pval)
+merged$PFI_fdr_pval=as.numeric(merged$PFI_fdr_pval)
+
 z = which((merged$fdr_pval < 0.05) & (merged$PFI_fdr_pval < 0.05))
 merged$significant = ""
 merged$significant[z] = "sig"
@@ -41,7 +48,7 @@ merged$significant = factor(merged$significant, levels=c("sig", ""))
 
 #1. get correlation between hazard ratios OS vs PFI and highlight correlation for LGG, READ and BRCA
 
-pdf("/u/kisaev/Dec2020/figure4X_PFI_vs_OS.pdf", width=6, height=6)
+pdf("/u/kisaev/Jan2021/figure4X_PFI_vs_OS.pdf", width=6, height=6)
 ggscatter(merged, x = "HR", y = "PFI_HR", palette=c("gray88", "#1B9E77" ,"#D95F02" ,"#7570B3"), alpha = 0.7,
           add = "reg.line",  color="plot",  shape="significant",                             # Add regression line
           position="dodge", font.label = c(4, "plain"),
@@ -54,8 +61,8 @@ ggscatter(merged, x = "HR", y = "PFI_HR", palette=c("gray88", "#1B9E77" ,"#D95F0
   geom_vline(xintercept=0, linetype="dashed", color = "black") + xlab("log2HR (OS)")+ylab("log2HR (PFI)")
 dev.off()
 
-#merged = merged[,c(1:13,26,35:39, 54, 52)]
-write.csv(merged, "/u/kisaev/Dec2020/supp_table_input_XX_PFI_wOStimes.csv", quote=F, row.names=F)
+merged = merged[,c("gene", "gene_symbol", "HR", "fdr_pval", "PFI_HR", "PFI_fdr_pval", "canc_type")]
+write.csv(merged, "/u/kisaev/Jan2021/supp_table_input_XX_PFI_wOStimes.csv", quote=F, row.names=F)
 
 #2. get numbers of lncs that remain significant in PFI for LGG, READ and BRCA
 

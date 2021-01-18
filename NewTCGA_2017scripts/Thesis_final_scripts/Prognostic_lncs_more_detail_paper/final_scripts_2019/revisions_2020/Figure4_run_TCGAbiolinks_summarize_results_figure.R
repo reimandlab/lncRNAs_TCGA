@@ -17,6 +17,13 @@ allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 all_clin = readRDS("12_data_sets_biolinks_results.rds")
 all_clin_dat = as.data.table(ldply(all_clin)) #combine all dataframes into one
 
+get_name=function(g){
+  z=which(allCands$gene == g)
+  name=allCands$gene_symbol[z]
+  name=name[1]
+  return(name)
+}
+
 fdr_sum = function(dtt){
 
   #first add fdr for p-values
@@ -154,7 +161,7 @@ saveRDS(clean_up, file="process_tcga_biolinks_results_for_plotting.rds")
 #-------PLOT summary results-------------------------------------------
 
 #8 cancer types
-length(which(clean_up$clin_pval_fdr < 0.05)) #191/234 also significnatly associated with survival
+length(which(clean_up$clin_pval_fdr < 0.05)) #202/264 also significnatly associated with survival
 
 clean_up$colname[which(str_detect(clean_up$colname, "age_at"))] = "Age"
 #clean_up$colname[clean_up$colname == "age"] = "Age"
@@ -237,7 +244,7 @@ t = t[order(N)]
 clean_up$colname = factor(clean_up$colname, levels = t$V1)
 clean_up$clin_sig = factor(clean_up$clin_sig, levels = c("V", ""))
 
-pdf("/u/kisaev/Dec2020/summary_biolinks_subtypes_lncRNA_exp_April18.pdf", height=7, width=10)
+pdf("/u/kisaev/Jan2021/summary_biolinks_subtypes_lncRNA_exp_April18.pdf", height=7, width=10)
 #make geom_tile plot
 ggplot(clean_up, aes(name, colname)) +
   geom_tile(aes(fill = -log10(fdr_fig), color=clin_sig, width=0.7, height=0.7), size=0.55) +
@@ -253,12 +260,12 @@ ggplot(clean_up, aes(name, colname)) +
 
 dev.off()
 
-write.csv(clean_up, file="/u/kisaev/Dec2020/cleaned_clinical_variables_associations_data_sept28_post_cleanup_final_figure_data.csv", quote=F, row.names=F)
+write.csv(clean_up, file="/u/kisaev/Jan2021/cleaned_clinical_variables_associations_data_sept28_post_cleanup_final_figure_data.csv", quote=F, row.names=F)
 
 clean_up$anova_sig_combo_clin = ""
 clean_up$anova_sig_combo_clin[clean_up$clin_vs_combo_anova_fdr < 0.05] = "Sig"
 
-pdf("/u/kisaev/Dec2020/summary_clinical_concordances_vs_lnc_scatterplot_april18_wide.pdf", width=6, height=6)
+pdf("/u/kisaev/Jan2021/summary_clinical_concordances_vs_lnc_scatterplot_april18_wide.pdf", width=6, height=6)
 g = ggplot(clean_up, aes(clin_concordance, concordance_combo_model, label=canc_lnc_clin)) +
   geom_point(aes(colour=type,
        shape=anova_sig_combo_clin), size=1.75) +
