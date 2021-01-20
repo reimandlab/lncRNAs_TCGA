@@ -16,8 +16,19 @@ get_census_ensg = function(genes){
 }
 census$ensg = sapply(census$Synonyms, get_census_ensg)
 
+get_name=function(g){
+  z=which(allCands$gene == g)
+  name=allCands$gene_symbol[z]
+  name=name[1]
+  return(name)
+}
+
 #setWD
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
+
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = subset(allCands, data == "TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs
+allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 #------FUNCTIONS-----------------------------------------------------
 
@@ -41,20 +52,16 @@ flattenCorrMatrix <- function(cormat, pmat) {
 
 #------FEATURES-----------------------------------------------------
 
-allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
-allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
-
 #pcgs = c("IDH1", "IDH2", "MGMT", "TERT", "ERBB2", "ESR1", "ATRX", "PGR",
  # "CDKN2A", "SETD2", "BAP1", "PBRM1", "PIK3CA", "ARID1A")
 
-lncs = unique(allCands$gene_name)
+lncs = unique(allCands$gene_symbol)
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 
 check_cis_pcg = function(lnc){
-  cancer = allCands$cancer[which(allCands$gene_name == lnc)]
+  cancer = allCands$cancer[which(allCands$gene_symbol == lnc)]
   canc_type=canc_conv$type[canc_conv$Cancer == cancer]
 
   print(lnc)
@@ -87,31 +94,32 @@ check_cis_pcg = function(lnc){
   print(pcgg)
   print(get_ensg_pcg(pcgg))
   pcgg_en = get_ensg_pcg(pcgg)
-  lnc_en = get_ensg(lnc)
+  lnc_en = allCands$gene[allCands$gene_symbol == lnc]
   z = which(colnames(all) %in% c(lnc_en, pcgg_en, "OS", "OS.time", "type", "patient", "Cancer"))
-  exp_dat = all[,z]
+  exp_dat = all[,..z]
   exp_dat = subset(exp_dat, Cancer == cancer)
 
   #lncRNA
   z = which(colnames(exp_dat) ==lnc_en)
-  med = median(unlist(exp_dat[,z]))
+  med = median(unlist(exp_dat[,..z]))
   exp_dat$lnc_median = ""
        if(med ==0){
         #if median = 0 then anyone greater than zero is 1
-        l1 = which(exp_dat[,z] > 0)
-        l2 = which(exp_dat[,z] ==0)
+        l1 = which(exp_dat[,..z] > 0)
+        l2 = which(exp_dat[,..z] ==0)
         exp_dat$lnc_median[l1] = 1
         exp_dat$lnc_median[l2] = 0
         }
 
       if(!(med ==0)){
-        l1 = which(exp_dat[,z] >= med)
-        l2 = which(exp_dat[,z] < med)
+        l1 = which(exp_dat[,..z] >= med)
+        l2 = which(exp_dat[,..z] < med)
         exp_dat$lnc_median[l1] = 1
         exp_dat$lnc_median[l2] = 0
       }
 
   z = which(colnames(exp_dat) == pcgg_en)
+  exp_dat=as.data.frame(exp_dat)
   exp_dat[,z] = log1p(exp_dat[,z])
   colnames(exp_dat)[z] = "PCG"
 
@@ -155,7 +163,7 @@ return(pcg_res)
 }
 }
 
-pdf("/u/kisaev/Dec2020/lncRNA_vs_biomarker_PCGs.pdf", width=10, height=9)
+pdf("/u/kisaev/Jan2021/lncRNA_vs_biomarker_PCGs.pdf", width=10, height=9)
 all_res = as.data.table(ldply(llply(lncs, check_cis_pcg, .progress="text")))
 dev.off()
 
@@ -168,7 +176,7 @@ all_res$spear_rho = as.numeric(all_res$spear_rho)
 all_res$canc=factor(all_res$canc, levels=c("BRCA", "LGG", "STAD", "KIRP"))
 
 #make summary plot
-pdf("/u/kisaev/Dec2020/lncRNA_vs_biomarker_PCGs_geom_tile_plot_summary.pdf", height=6)
+pdf("/u/kisaev/Jan2021/lncRNA_vs_biomarker_PCGs_geom_tile_plot_summary.pdf", height=6)
 ggplot(all_res, aes(lnc, pcg)) +
   geom_tile(aes(fill = spear_rho, width=0.7, height=0.7), size=0.55, color="grey") +
   theme_bw() + geom_text(aes(label = sig), size=3) +

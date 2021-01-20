@@ -18,11 +18,18 @@ check=function(pat){
   pat_new=paste(unlist(strsplit(pat, "\\."))[1:3], collapse="-")
   test=unlist(strsplit(pat, "\\."))[4]
   print(test)
-  if(str_detect(test, "01")){
+  if((str_detect(test, "01")) |(str_detect(test, "03"))){
   return(pat_new)}
-  if(!(str_detect(test, "01"))){
+  if(!((str_detect(test, "01")) |(str_detect(test, "03")))){
   return("remove")}
 
+}
+
+get_name=function(g){
+  z=which(allCands$gene == g)
+  name=allCands$gene_symbol[z]
+  name=name[1]
+  return(name)
 }
 
 #xcell=fread("TCGA.Kallisto.fullIDs.cibersort.relative-1.tsv")
@@ -42,16 +49,16 @@ xcell=readRDS("cibersort_dat.rds")
 #write function that adds tag to whole data group
 #and does survival analysis on whole group
 
-cancers = unique(allCands$canc)
+cancers = unique(allCands$canc_type)
 get_canc_dat = function(canc){
-  canc_d = subset(rna, Cancer == canc)
+  canc_d = subset(rna, type == canc)
   return(canc_d)
 }
 cancer_data = llply(cancers, get_canc_dat)
 
 get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates
-  z = which(colnames(dtt) %in% c(as.character(allCands$gene[allCands$cancer == dtt$Cancer[1]]), "age_at_initial_pathologic_diagnosis",
+  z = which(colnames(dtt) %in% c(as.character(allCands$gene[allCands$canc_type == dtt$type[1]]), "age_at_initial_pathologic_diagnosis",
     "OS.time", "OS", "gender", "race", "patient", "clinical_stage", "histological_grade", "treatment_outcome_first_course",
     "new_tumor_event_type", "Cancer"))
   dtt = dtt[,..z]
@@ -180,7 +187,7 @@ all_cancers_cell_types$spear_fdr = p.adjust(all_cancers_cell_types$spear_p, meth
 
 sig_hits = as.data.table(filter(all_cancers_cell_types, fdr < 0.05))
 sig_hits = sig_hits[order(-abs(diff_meds))]
-write.csv(all_cancers_cell_types, file="/u/kisaev/Dec2020/cibersort_associations_all.csv", quote=F, row.names=F)
+write.csv(all_cancers_cell_types, file="/u/kisaev/Jan2021/cibersort_associations_all.csv", quote=F, row.names=F)
 
 #summarize sig_hits
 #x=lncRNA
@@ -201,8 +208,8 @@ sig_hits$enrichment[z] = "ELR"
 z = which((sig_hits$hr== "low_exp_bad") & (sig_hits$diff_meds <0))
 sig_hits$enrichment[z] = "EHR"
 
-z=which(sig_hits$lnc_name == "HOXA-AS4")
-sig_hits$lnc_name[z] = "HOXA10-AS"
+#z=which(sig_hits$lnc_name == "HOXA-AS4")
+#sig_hits$lnc_name[z] = "HOXA10-AS"
 
 sig_hits = as.data.table(filter(sig_hits , !(enrichment=="")))
 cells = as.data.table(table(sig_hits$cell_type))
@@ -226,7 +233,7 @@ theme(legend.position="bottom") + theme(text = element_text(size=7))
 
 #coord_equal()
 
-pdf("/u/kisaev/Dec2020/figure4X_xCell.pdf", width=10, height=5)
+pdf("/u/kisaev/Jan2021/figure4X_xCell.pdf", width=10, height=5)
 #+ geom_text(aes(label = sig_rho), size=4)+
 gene_exp
 dev.off()
@@ -335,6 +342,6 @@ get_clin_lnc_cors = function(dtt){
 llply(lncs, get_cor)
 }
 
-pdf("/u/kisaev/Dec2020/cell_types_immune_lncRNAs.pdf")
+pdf("/u/kisaev/Jan2021/cell_types_immune_lncRNAs.pdf")
 llply(filtered_data, get_clin_lnc_cors)
 dev.off()

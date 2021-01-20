@@ -163,4 +163,9 @@ print(table(all$type))
 #color palette
 colours_palette=readRDS("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript/23_cancers_color_palette.rds")
 
+myColors=colours_palette$color
+names(myColors)=colours_palette$type
+myColors
+colScale <- scale_colour_manual(name = "type",values = myColors)
+
 print("done loading everything YAY")

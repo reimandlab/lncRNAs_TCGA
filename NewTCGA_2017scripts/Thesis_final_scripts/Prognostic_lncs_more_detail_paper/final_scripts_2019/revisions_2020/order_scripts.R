@@ -56,5 +56,8 @@ Rscript $main/Figure4_run_TCGAbiolinks_summarize_results_figure.R
 #lncRNAs versus TCGAbiolinks individual plots
 Rscript $main/Figure4_run_TCGAbiolinks_individual_plots.R
 
+#lncRNAs versus Marker genes in some specific cancers
+Rscript $main/Figure4_run_TCGAbiolinks_gene_corrlations.R
+
 #lncRNA vs XCELL immune cells
 Rscript $main/Cibersort_integration_association_covariates.R

@@ -14,6 +14,19 @@ library(corrplot)
 #--------------------------------------------------------------------
 
 clin = readRDS("clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
+for(i in 1:length(clin)){
+  print(i)
+  d = clin[[i]]
+  z=which(str_detect(colnames(d), "ENSG"))
+  d=d[,-z]
+
+  lncs_keep = filter(allCands, cancer %in% d$Cancer[1])$gene
+  gene_exp=as.data.table(filter(rna, Cancer == d$Cancer[1]))
+  z=which(colnames(gene_exp) %in% c(lncs_keep, "patient"))
+  gene_exp = gene_exp[,..z]
+  d = merge(d, gene_exp, by="patient")
+  clin[[i]] = d
+}
 
 #results from cleaned up analysis
 res = readRDS("process_tcga_biolinks_results_for_plotting.rds")
@@ -21,6 +34,13 @@ colnames(res)[2] = "lncRNA"
 res$pairs = paste(res$lncRNA, res$type, res$colname, sep="_")
 pairs = unique(res$pairs)
 require(vcd)
+
+get_name=function(g){
+  z=which(allCands$gene == g)
+  name=allCands$gene_symbol[z]
+  name=name[1]
+  return(name)
+}
 
 #--------LOOK AT ASSOCIATIONS BETWEEN EXPRESSION-------------------------------
 
@@ -36,7 +56,7 @@ get_clin_lnc_plots = function(dtt){
   #get lncs
   z = which(str_detect(colnames(dtt), "ENSG"))
   lncs = colnames(dtt)[z]
-  z = which(lncs %in% res$lncRNA)
+  z = which(lncs %in% res$lnc)
   if(!(length(z)==0)){
   lncs=lncs[z]
 
@@ -65,7 +85,8 @@ get_clin_lnc_plots = function(dtt){
          new_dat$lncRNA_tag[l2] = 0
         }
 
-    res_dat = as.data.table(filter(res, type==cancer_type, lncRNA==lnc))
+    lnc_id=lnc
+    res_dat = as.data.table(filter(res, type==cancer_type, lnc==lnc_id))
     cols_dat = which(colnames(new_dat) %in% res_dat$colname)
     for(i in cols_dat){
       print(i)
@@ -190,10 +211,9 @@ get_clin_lnc_plots = function(dtt){
   }#only run if lncs in final clinical res dataset
 }#end get_clin_lnc_plots
 
-pdf("/u/kisaev/Dec2020/Figure4_individual_plots_clinical_plots.pdf", width=8, height=5)
+pdf("/u/kisaev/Jan2021/Figure4_individual_plots_clinical_plots.pdf", width=8, height=5)
 llply(clin, get_clin_lnc_plots, .progress="text")
 dev.off()
-
 
 #make KM plots for HOXA10-AS and HOXB-AS2 alone
 lgg = clin[[1]]

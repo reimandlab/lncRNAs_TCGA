@@ -145,7 +145,12 @@ canc_conv = rna[,c("type", "Cancer")]
 canc_conv = unique(canc_conv)
 colnames(canc_conv)[2] = "canc"
 clean_up = merge(clean_up, canc_conv, by="canc")
+
+colnames(colours_palette)[1]="type"
+clean_up = merge(clean_up, colours_palette, by="type")
+
 clean_up = clean_up[order(fdr)]
+
 clean_up$type = factor(clean_up$type, levels=unique(clean_up$type))
 clean_up$cor = as.numeric(clean_up$cor)
 clean_up$kw_pval = as.numeric(clean_up$kw_pval)
@@ -269,10 +274,12 @@ pdf("/u/kisaev/Jan2021/summary_clinical_concordances_vs_lnc_scatterplot_april18_
 g = ggplot(clean_up, aes(clin_concordance, concordance_combo_model, label=canc_lnc_clin)) +
   geom_point(aes(colour=type,
        shape=anova_sig_combo_clin), size=1.75) +
+       scale_shape_manual(values = c(5, 17))+
  #scale_size(range = c(0, 3))+
     #scale_colour_manual(values = mypal[c(2:5, 9,8)]) +
     #scale_fill_manual(values = sample(mypal5,9)) +
-    scale_colour_brewer(palette="Set1")+
+    colScale+
+    #scale_colour_brewer(palette="Set1")+
     xlab("Clinical Concordance") + ylab("lncRNA & Clinical Combined Concordance") + theme_classic() +
     theme(legend.position = "top", axis.text = element_text(size=12),
       legend.text=element_text(size=10), legend.title=element_text(size=10)) +
