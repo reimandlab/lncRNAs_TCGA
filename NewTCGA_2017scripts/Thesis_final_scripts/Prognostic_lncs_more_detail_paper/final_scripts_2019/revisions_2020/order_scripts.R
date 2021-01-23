@@ -61,3 +61,6 @@ Rscript $main/Figure4_run_TCGAbiolinks_gene_corrlations.R
 
 #lncRNA vs XCELL immune cells
 Rscript $main/Cibersort_integration_association_covariates.R
+
+#6. Figure 6 related code
+Rscript $main/figure6_de_analysis.R

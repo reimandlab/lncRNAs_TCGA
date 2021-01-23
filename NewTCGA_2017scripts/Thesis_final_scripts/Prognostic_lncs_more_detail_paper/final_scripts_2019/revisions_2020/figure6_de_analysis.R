@@ -172,7 +172,7 @@ lgg_dat = readRDS("TCGA_lgg_wsubtype_info_biolinks.rds")
 
 diffE <- function(d){
 
-  print(d$lnc)
+  print(d$lnc[1])
 	if(d$type[1] == "LGG"){
 		d = merge(d, lgg_dat, by="patient")
 		d$IDH.status = as.character(d$IDH.status)
