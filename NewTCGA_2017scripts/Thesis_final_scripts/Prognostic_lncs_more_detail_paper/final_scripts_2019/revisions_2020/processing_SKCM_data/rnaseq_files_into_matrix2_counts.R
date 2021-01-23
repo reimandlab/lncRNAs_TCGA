@@ -3,10 +3,10 @@ library(plyr)
 library(dplyr)
 library(stringr)
 
-setwd("/u/kisaev/TCGA_LAML_count_data")
+setwd("/u/kisaev/TCGA_SKCM_count_data")
 
 #rna count matrix
-rnas=readRDS("151_LAML_counts_rnaSEQfiles.rds")
+rnas=readRDS("472_SKCM_counts_rnaSEQfiles.rds")
 
 #ids conversion
 ids=fread("File_metadata.txt")
@@ -18,8 +18,14 @@ colnames(rnas)[2:ncol(rnas)]=sapply(colnames(rnas)[2:ncol(rnas)], function(x){fi
 #make sure all samples are tumour samples
 table(sapply(colnames(rnas)[2:ncol(rnas)], function(x){unlist(strsplit(x, "-"))[4]}))
 
-#03A 03B
-#136  15
+#01A 06A 06B 07A 11A
+#103 365   2   1   1
+
+#only keep th 01As
+cols=colnames(rnas)[which(str_detect(colnames(rnas), "01A"))]
+z=which(colnames(rnas) %in% c("V1", cols))
+rnas=rnas[,z]
+
 colnames(rnas)[2:ncol(rnas)] = sapply(colnames(rnas)[2:ncol(rnas)], function(x){
   paste(unlist(strsplit(x, "-"))[1:3], collapse="-")
 })
@@ -34,6 +40,6 @@ rnas$gene=NULL
 rnas=t(rnas)
 rnas=as.data.frame(rnas)
 rnas$patient = rownames(rnas)
-rnas$type="LAML"
+rnas$type="SKCM"
 
-saveRDS(rnas, file="LAML_count_data.rds")
+saveRDS(rnas, file="SKCM_count_data.rds")

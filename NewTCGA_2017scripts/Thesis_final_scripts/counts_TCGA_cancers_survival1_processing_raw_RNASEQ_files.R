@@ -15,10 +15,10 @@ library(stringr)
 #final script for processing raw count data part 2
 
 ###---------------------------------------------------------------
-###Load Data 
+###Load Data
 ###---------------------------------------------------------------
 
-#1. RNA data 
+#1. RNA data
 
 #--lncrna
 rna = readRDS("counts_5919_all_tumours_7501_tissues_TCGAnew.rds")
@@ -32,7 +32,7 @@ rownames(pcg) = pcg$gene
 pcg$gene = NULL
 pcg = t(pcg)
 
-#--normal 
+#--normal
 norm = readRDS("counts_all_genes_563_matched_normal_samples_TCGA_April11.rds")
 rownames(norm) = norm$gene
 norm$gene = NULL
@@ -60,8 +60,8 @@ pcg = pcg[,z]
 
 clin = fread("mmc1_clinical_data_cellpaper2018.txt")
 
-#3. Fantom data 
-fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
+#3. Fantom data
+fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs
 extract3 <- function(row){
 	gene <- as.character(row[[1]])
 	ens <- gsub("\\..*","",gene)
@@ -74,11 +74,11 @@ rm <- fantom$CAT_geneName[z]
 z <- which(fantom$CAT_geneName %in% rm)
 fantom <- fantom[-z,]
 
-#4. List of lncRNA survival associated candidates 
+#4. List of lncRNA survival associated candidates
 #cands = fread("7tier1_35tier2_lncRNA_candidates_August28th.txt")
 #cands = fread("lncRNAs_sig_FDR_0.1_Nov23.txt")
 
-#5. TCGA ID cancer type conversion 
+#5. TCGA ID cancer type conversion
 canc_conversion = readRDS("counts_tcga_id_cancer_type_conversion.txt")
 norm_conversion = readRDS("counts_tcga_id_NORMAL_samples_type_conversion.txt")
 met_conversion = readRDS("counts_tcga_id_Metastatic_samples_type_conversion.txt")
@@ -95,13 +95,13 @@ z = which(colnames(met) %in% c(colnames(rna), colnames(pcg)))
 met = met[,z]
 
 ###---------------------------------------------------------------
-###Process Data 
+###Process Data
 ###---------------------------------------------------------------
 
 #Change patient ids to shorted id
 change = function(rowname){
   new = canc_conversion$id[which(canc_conversion$TCGA_id %in% rowname)]
-  return(new)  
+  return(new)
 }
 
 rownames(rna) = sapply(rownames(rna), change)
@@ -109,22 +109,22 @@ rownames(pcg) = sapply(rownames(pcg), change)
 
 change = function(rowname){
   new = norm_conversion$id[which(norm_conversion$TCGA_id %in% rowname)]
-  return(new)  
+  return(new)
 }
 rownames(norm) = sapply(rownames(norm), change)
 
 change = function(rowname){
   new = met_conversion$id[which(met_conversion$TCGA_id %in% rowname)]
-  return(new)  
+  return(new)
 }
 rownames(met) = sapply(rownames(met), change)
 
 #Keep only those patients with both RNA-Seq AND clinical data
 z <- which(rownames(rna) %in% clin$bcr_patient_barcode)
-rna = rna[z,] #all have clinical data - 8725 patients 
+rna = rna[z,] #all have clinical data - 8725 patients
 #Keep only those patients with both RNA-Seq AND clinical data
 z <- which(rownames(pcg) %in% clin$bcr_patient_barcode)
-pcg = pcg[z,] #all have clinical data - 8725 patients 
+pcg = pcg[z,] #all have clinical data - 8725 patients
 z <- which(rownames(norm) %in% clin$bcr_patient_barcode)
 norm = norm[z,] #all have clinical data - 563 patients (matched normals)
 z <- which(rownames(met) %in% clin$bcr_patient_barcode)
@@ -138,7 +138,7 @@ rna = merge(rna, clin, by="patient")
 
 saveRDS(rna, "counts_5919_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
 
-#Add survival info to RNA file - normal matched 
+#Add survival info to RNA file - normal matched
 norm = as.data.frame(norm)
 norm$patient = rownames(norm)
 colnames(clin)[2] = "patient"
@@ -146,7 +146,7 @@ norm = merge(norm, clin, by="patient")
 
 saveRDS(norm, "counts_all_genes_matched_normals_563_March13_wclinical_data.rds")
 
-#Add survival info to RNA file - metastatic matched 
+#Add survival info to RNA file - metastatic matched
 met = as.data.frame(met)
 met$patient = rownames(met)
 colnames(clin)[2] = "patient"
@@ -160,61 +160,3 @@ pcg$patient = rownames(pcg)
 pcg = merge(pcg, clin, by="patient")
 
 saveRDS(pcg, "counts_19438_lncRNAs_tcga_all_cancers_March13_wclinical_data.rds")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

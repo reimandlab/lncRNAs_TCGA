@@ -9,11 +9,11 @@
 #output: GeneID
 
 get_name_pcg = function(pcg){
-        z = which(ucsc$hg19.ensGene.name2 == pcg)
+        z = which(hg38$ensgene == pcg)
   if(length(z)>1){
     z = z[1]
   }
-        return(ucsc$hg19.ensemblToGeneName.value[z])
+  return(hg38$symbol[z])
 }
 
 get_ensg_pcg = function(pcg){
@@ -275,28 +275,28 @@ get_km_plot_os = function(gene, cancer){
   dtt = dat
 
   fit <- survfit(Surv(OS.time, OS) ~ gene, data = dtt)
-  
+
   s <- ggsurvplot(
           title = paste(get_name(gene), cancer, "HR =", round(hr, digits=2)),
-          fit, 
+          fit,
           ylab = "Survival Probability" ,
-          xlab = "Time (Years)", 
+          xlab = "Time (Years)",
           #surv.median.line = "hv",
           font.main = c(4, "bold", "black"),
           font.x = c(3, "plain", "black"),
           font.y = c(3, "plain", "black"),
           font.tickslab = c(3, "plain", "black"),
           font.legend = 3,
-          risk.table.fontsize = 1, 
+          risk.table.fontsize = 1,
           #legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
-          data = dtt,      # data used to fit survival curves. 
+          data = dtt,      # data used to fit survival curves.
           risk.table = FALSE,       # show risk table.
-          legend = "right", 
+          legend = "right",
           pval = TRUE,             # show p-value of log-rank test.
-          conf.int = FALSE,        # show confidence intervals for 
+          conf.int = FALSE,        # show confidence intervals for
           xlim = c(0,10),        # present narrower X axis, but not affect
           break.time.by = 1,     # break X axis in time intervals by 500.
-          palette = pal[c(2,1)]) 
+          palette = pal[c(2,1)])
           #risk.table.y.text.col = T, # colour risk table text annotations.
           #risk.table.y.text = FALSE )
           return(s)
@@ -346,11 +346,11 @@ get_km_plot_pfi = function(gene, cancer){
   dtt = dat
 
   fit <- survfit(Surv(PFI.time, PFI) ~ gene, data = dtt)
-  
+
   s <- ggsurvplot(
           title = paste(get_name(gene), cancer, "HR =", round(hr, digits=2)),
-          fit, 
-          xlab = "Time (Years)", 
+          fit,
+          xlab = "Time (Years)",
           ylab = "Progression Free Probability" ,
           #surv.median.line = "hv",
           font.main = c(4, "bold", "black"),
@@ -358,13 +358,13 @@ get_km_plot_pfi = function(gene, cancer){
           font.y = c(4, "plain", "black"),
           font.tickslab = c(3, "plain", "black"),
           font.legend = 3,
-          risk.table.fontsize = 1, 
+          risk.table.fontsize = 1,
           #legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
-          data = dtt,      # data used to fit survival curves. 
+          data = dtt,      # data used to fit survival curves.
           risk.table = FALSE,       # show risk table.
-          legend = "right", 
+          legend = "right",
           pval = TRUE,             # show p-value of log-rank test.
-          conf.int = FALSE,        # show confidence intervals for 
+          conf.int = FALSE,        # show confidence intervals for
           xlim = c(0,10),        # present narrower X axis, but not affect
           break.time.by = 1,     # break X axis in time intervals by 500.
           palette = pal[c(2,1)])
@@ -455,109 +455,3 @@ surv_test = function(gene){
 }
 }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
