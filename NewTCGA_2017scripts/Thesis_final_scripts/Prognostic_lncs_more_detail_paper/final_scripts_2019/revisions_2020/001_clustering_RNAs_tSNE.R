@@ -1,74 +1,21 @@
-library(survAUC)
-#source("source_code_Cox_MonteCarlo_CV_Mar13.R")
-require(caTools)
-#check if this person is in my analysis: TCGA-61-2095
-library(glmnet)
-library(survcomp)
-library(caret)
-library(stringr)
-library(EnvStats)
-library(patchwork)
+source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/load_data.R")
 
-source("universal_LASSO_survival_script.R")
-
-library(ggpubr)
-library(ggrepel)
-library(viridis)
-library(patchwork)
-library(caret)  
-library(Rtsne)
-library(data.table)
-library(GenomicRanges)
-
-#------DATA---------------------------------------------------------
-#UCSC gene info
-ucsc <- fread("UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
-#z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
-#ucsc <- ucsc[z,]
-#z <- which(duplicated(ucsc[,8]))
-#ucsc <- ucsc[-z,]
-
-#fantom 
-fantom <- fread("lncs_wENSGids.txt", data.table=F) #6088 lncRNAs 
-extract3 <- function(row){
-  gene <- as.character(row[[1]])
-  ens <- gsub("\\..*","",gene)
-  return(ens)
-}
-fantom[,1] <- apply(fantom[,1:2], 1, extract3)
-#remove duplicate gene names (gene names with multiple ensembl ids)
-z <- which(duplicated(fantom$CAT_geneName))
-rm <- fantom$CAT_geneName[z]
-z <- which(fantom$CAT_geneName %in% rm)
-fantom <- fantom[-z,]
-
-#save RNA and PCG files locally
-#saveRDS(rna, file="rna_lncRNAs_expression_data_june29.rds")
-#saveRDS(pcg, file="rna_pcg_expression_data_june29.rds")
-
+#------FEATURES-----------------------------------------------------
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
+
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = subset(allCands, data == "TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs
+allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 #------FEATURES-----------------------------------------------------
 
-allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-#allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_Aug8.rds")
-allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs 
-allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
-
-
-mypal = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
-  "#72A93B", "#74DAE3" ,"#49B98D" ,"#D97B8F" ,"#70A2A4", "#64709B" ,"#DFBF38" ,"#61EA4F" ,
-  "#C7CBE7", "#786DDA",
-"#CFA0E0" ,"#67E9D0" ,"#7C9BE1", "#D94753" ,
-"#AAE6B0", "#D13BDF" ,"#DEAEC7" ,"#BBE6DF" ,"#B2B47A" ,"#E6ECBA", "#C86ED7",
- "#7BEE95" ,"#6F46E6" ,"#65B9E0", "#C0EC3E",
-"#DE8D54" ,"#DF4FA6")
+print(colours_palette)
 
 #-------------------------------------------------------------------
 #-----------------PCA using just all expressed lncRNA --------------
 #-------------------------------------------------------------------
 
-#remove cancer types with less than 50 patients 
+#remove cancer types with less than 50 patients
 pats_num = as.data.table(table(rna$Cancer))
 pats_num = filter(pats_num, N <50)
 canc_rm = pats_num$V1
@@ -88,10 +35,10 @@ rna = rna[,c(z1, z2)]
 
 #1. remove those not expressed at all
 z1 = which(str_detect(colnames(rna), "ENSG"))
-sums = apply(rna[,z1], 2, var) #get 500 most variables genes 
+sums = apply(rna[,z1], 2, var) #get 500 most variables genes
 sums = sums[order(-sums)]
-#keep = sums[1:1000] #1000 most variable lncRNAs 
-keep = sums #1000 most variable lncRNAs 
+#keep = sums[1:1000] #1000 most variable lncRNAs
+keep = sums #1000 most variable lncRNAs
 keep = names(keep)
 z = which(colnames(rna) %in% c("type", keep))
 rna = rna[,z]
@@ -103,10 +50,10 @@ library(umap)
 set.seed(100)
 
 cancer.labels = rna$type
-df = rna 
+df = rna
 df$type = NULL
 embedding = umap(df)
-head(embedding) 
+head(embedding)
 
 layout = as.data.table(embedding$layout) ; colnames(layout)=c("x", "y")
 layout$col = cancer.labels
@@ -121,13 +68,19 @@ for(i in 1:length(z)){
 	layout$label[z[i]] = canc
 }
 
-pdf("UMAP_29_cancer_types_logged_fpkmuq_all_lncs.pdf", width=9)
-ggplot(layout,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col),alpha=0.5, stroke=0) + scale_colour_manual(values=mypal)+
+layout$cancer=layout$col
+layout$cancer=factor(layout$cancer)
+
+pdf("/u/kisaev/Jan2021/UMAP_29_cancer_types_logged_fpkmuq_all_lncs.pdf", width=8)
+ggplot(layout,aes(x, y, label = label)) +
+geom_point(aes(x=x, y=y, colour=cancer),alpha=0.4, stroke=0) +
+#scale_colour_manual(values=mypal)+
+colScale_full+theme_bw()+
 geom_text_repel(data = subset(layout, !(label == "no")))
 dev.off()
 
 
-write.table(layout, file="umap_29_cancers_data_for_figure.txt", quote=F, row.names=F, col.names=T, sep="\t")
+write.table(layout, file="/u/kisaev/Jan2021/umap_29_cancers_data_for_figure.txt", quote=F, row.names=F, col.names=T, sep="\t")
 
 
 
@@ -144,14 +97,14 @@ write.table(layout, file="umap_29_cancers_data_for_figure.txt", quote=F, row.nam
 
 
 
-#2. remove those with MAD < 0? 
+#2. remove those with MAD < 0?
 #1. remove those not expressed at all
 z1 = which(str_detect(colnames(rna), "ENSG"))
 #sums = apply(rna[,z1], 2, mad)
 #z = which(sums <= 0)
 #rna = rna[,-z]
 
-#2. cluster cancer types, ie -> each dot should be cancer type 
+#2. cluster cancer types, ie -> each dot should be cancer type
 library("FactoMineR")
 z1 = which(str_detect(colnames(rna), "ENSG"))
 logged_rna = rna
@@ -160,13 +113,13 @@ logged_rna[,z1] = log1p(logged_rna[,z1])
 #logged_rna = logged_rna[,-z]
 z1 = which(str_detect(colnames(logged_rna), "ENSG"))
 
-#logged - DONE! 
+#logged - DONE!
 #pdf("logged_nonMAD0lncRNAs_cands_PCA_plots_Aug27.pdf", width=12)
-#autoplot(prcomp(logged_rna[,z1]), data = logged_rna, colour = 'type')+ 
+#autoplot(prcomp(logged_rna[,z1]), data = logged_rna, colour = 'type')+
 #scale_colour_manual(values = mypal)
 #dev.off()
 
-#try t-SNE 
+#try t-SNE
 library(Rtsne)
 #iris_unique <- unique(iris) # Remove duplicates
 #iris_matrix <- as.matrix(iris_unique[,1:4])

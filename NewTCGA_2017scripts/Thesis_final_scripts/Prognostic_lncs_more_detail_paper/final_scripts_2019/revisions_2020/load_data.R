@@ -164,8 +164,29 @@ print(table(all$type))
 colours_palette=readRDS("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript/23_cancers_color_palette.rds")
 
 myColors=colours_palette$color
-names(myColors)=colours_palette$type
+names(myColors)=colours_palette$cancer
 myColors
 colScale <- scale_colour_manual(name = "type",values = myColors)
+
+#get colours for 30 cancers
+row=c("PRAD", "gray26")
+colours_palette=rbind(colours_palette, row)
+row=c("TGCT", "darkblue")
+colours_palette=rbind(colours_palette, row)
+row=c("THYM", "yellow")
+colours_palette=rbind(colours_palette, row)
+row=c("READ", "darkgreen")
+colours_palette=rbind(colours_palette, row)
+row=c("KICH", "sienna1")
+colours_palette=rbind(colours_palette, row)
+row=c("PCPG", "hotpink")
+colours_palette=rbind(colours_palette, row)
+row=c("UVM", "maroon1")
+colours_palette=rbind(colours_palette, row)
+
+myColors_full=colours_palette$color
+names(myColors_full)=colours_palette$cancer
+myColors_full
+colScale_full <- scale_colour_manual(name = "cancer",values = myColors_full)
 
 print("done loading everything YAY")

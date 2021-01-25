@@ -4,7 +4,7 @@ source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognost
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = subset(allCands, data == "TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs 
+allCands = subset(allCands, data == "TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 mypal = c("#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
@@ -39,7 +39,7 @@ dim(rna)
 rownames(rna) = rna$patient
 
 kirc_rna = as.data.table(filter(rna, type=="KIRC"))
-#get patient risk 
+#get patient risk
 surv = unique(kirc_rna[,c("patient", "OS", "OS.time", "histological_grade")])
 surv = as.data.table(filter(surv, !(histological_grade %in% c("unknown", "GX"))))
 risks = coxph(Surv(OS.time, OS) ~ histological_grade, data = surv)
@@ -76,13 +76,13 @@ rna = rna[,c(z1, z2)]
 	kirc_rna = as.data.table(kirc_rna)
 	z1 = which(str_detect(colnames(kirc_rna), "ENSG"))
 	kirc_rna[,z1] = log1p(kirc_rna[,..z1])
-	
+
 	set.seed(100)
-	df = kirc_rna 
+	df = kirc_rna
 	df$type = NULL
 	df$patient = NULL
 	embedding = umap::umap(df)
-	head(embedding) 
+	head(embedding)
 
 	layout = as.data.table(embedding$layout) ; colnames(layout)=c("x", "y")
 	layout$col = cancer.labels
@@ -98,7 +98,7 @@ rna = rna[,c(z1, z2)]
 	}
 
 pdf("/u/kisaev/KIRC_grade_risk_umap_plot.pdf")
-	g = ggplot(layout,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col),alpha=0.5, stroke=0) + 
+	g = ggplot(layout,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col),alpha=0.5, stroke=0) +
 	scale_colour_manual(values=c("purple", "orange", "red", "green", "black","blue"))+
 		geom_text_repel(data = subset(layout, !(label == "no")))
 	print(g)
@@ -116,13 +116,13 @@ get_kirc_umap = function(var){
 	kirc_rna = as.data.table(kirc_rna)
 	z1 = which(str_detect(colnames(kirc_rna), "ENSG"))
 	kirc_rna[,z1] = log1p(kirc_rna[,..z1])
-	
+
 	set.seed(100)
-	df = kirc_rna 
+	df = kirc_rna
 	df$type = NULL
 	df$patient = NULL
 	embedding = umap::umap(df)
-	head(embedding) 
+	head(embedding)
 
 	layout = as.data.table(embedding$layout) ; colnames(layout)=c("x", "y")
 	layout$col = cancer.labels
@@ -137,7 +137,7 @@ get_kirc_umap = function(var){
 		layout$label[z[i]] = canc
 	}
 
-	g = ggplot(layout,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col),alpha=0.5, stroke=0) + 
+	g = ggplot(layout,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col),alpha=0.5, stroke=0) +
 	scale_colour_manual(values=c("purple", "orange", "red", "green", "black","blue"))+
 		geom_text_repel(data = subset(layout, !(label == "no")))
 	print(g)
@@ -153,7 +153,7 @@ dev.off()
 get_umap = function(canc){
 
 	canc_dat = as.data.table(filter(rna, type==canc))
-	
+
 	if(canc == "LGG"){
 		canc_dat = as.data.table(merge(lgg, canc_dat, by="patient"))
 		cancer.labels = canc_dat$IDH.status
@@ -172,17 +172,17 @@ get_umap = function(canc){
 	#1. remove those not expressed at all
 	z1 = which(str_detect(colnames(canc_dat), "ENSG"))
 	canc_dat[,z1] = log1p(canc_dat[,..z1])
-	
+
 	set.seed(100)
 
 	if(!(canc %in% c("LGG", "KIRC"))){
 		cancer.labels = canc_dat$type
 	}
-	df = canc_dat 
+	df = canc_dat
 	df$type = NULL
 	df$patient = NULL
 	embedding = umap::umap(df)
-	head(embedding) 
+	head(embedding)
 
 	layout = as.data.table(embedding$layout) ; colnames(layout)=c("x", "y")
 	layout$col = cancer.labels
@@ -206,7 +206,3 @@ pdf("/u/kisaev/LGG_KIRC_umap_plots.pdf")
 get_umap("KIRC")
 get_umap("LGG")
 dev.off()
-
-
-
-
