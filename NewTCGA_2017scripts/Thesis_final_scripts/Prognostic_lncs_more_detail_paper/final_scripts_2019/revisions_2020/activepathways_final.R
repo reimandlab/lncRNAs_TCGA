@@ -1,5 +1,7 @@
-setwd("/Users/kisaev/Documents/lncRNAs")
+setwd("/Users/kisaev/Documents/lncRNAs/Jan2021")
 library(ActivePathways)
+library(stringr)
+library(data.table)
 
 	dat = readRDS("LGG_all_up_down_genes_fActivepathways_March25_updFC.rds")
 	dat = as.data.frame(dat)
@@ -8,17 +10,19 @@ library(ActivePathways)
 	dat = as.matrix(dat)
 	dat_esng = dat
 
-	colnames(dat)[which(colnames(dat)=="ENSG00000215196")] = "AC091878.1"
-	colnames(dat)[which(colnames(dat)=="ENSG00000224950")] = "RP5-1086K13.1"
-	colnames(dat)[which(colnames(dat)=="ENSG00000225511")] = "LINC00475.1"
-	colnames(dat)[which(colnames(dat)=="ENSG00000228021")] = "RP11-383C5.31"
-	colnames(dat)[which(colnames(dat)=="ENSG00000231265")] = "TRERNA1"
+	colnames(dat)[which(colnames(dat)=="ENSG00000177337")] = "AC108134.2"
+	colnames(dat)[which(colnames(dat)=="ENSG00000215196")] = "AC026790.1"
+	colnames(dat)[which(colnames(dat)=="ENSG00000223768")] = "LINC00205"
+	colnames(dat)[which(colnames(dat)=="ENSG00000229267")] = "AC016708.1"
 	colnames(dat)[which(colnames(dat)=="ENSG00000239552")] = "HOXB-AS2"
+	colnames(dat)[which(colnames(dat)=="ENSG00000248693")] = "LINC02100"
+	colnames(dat)[which(colnames(dat)=="ENSG00000250237")] = "AC010273.2"
+	colnames(dat)[which(colnames(dat)=="ENSG00000250360")] = "AC008808.2"
 	colnames(dat)[which(colnames(dat)=="ENSG00000253187")] = "HOXA10-AS"
-	colnames(dat)[which(colnames(dat)=="ENSG00000254271")] = "RP11-131N11.4"
+	colnames(dat)[which(colnames(dat)=="ENSG00000254271")] = "AC022390.1"
 	colnames(dat)[which(colnames(dat)=="ENSG00000254635")] = "WAC-AS1"
-	colnames(dat)[which(colnames(dat)=="ENSG00000255020")] = "AF131216.5"
-	colnames(dat)[which(colnames(dat)=="ENSG00000261889")] = "RP11-473M20.16"
+	colnames(dat)[which(colnames(dat)=="ENSG00000255020")] = "AF131216.3"
+	colnames(dat)[which(colnames(dat)=="ENSG00000261889")] = "AC108134.2"
 
 	gmt.file <- "/Users/kisaev/Documents/lncRNAs/gprofiler_hsapiens.ENSG/gmt_file.gmt"
 
@@ -27,25 +31,24 @@ library(ActivePathways)
 #	gmt <- Filter(function(term) length(term$genes) <= 500, gmt)
 	lgg_res = ActivePathways(dat,
 		 gmt,
-	cutoff = 0.05,
+	cutoff = 0.01,
 	significant=0.05, cytoscape.file.tag ="cytoscape", geneset.filter=c(10,500))
-
 
 	gmt <- read.GMT(gmt.file)
 #	gmt <- Filter(function(term) length(term$genes) >= 10, gmt)
 #	gmt <- Filter(function(term) length(term$genes) <= 500, gmt)
 	lgg_res = ActivePathways(dat_esng,
 		 gmt,
-	cutoff = 0.05,
+	cutoff = 0.01,
 	significant=0.05, cytoscape.file.tag ="cytoscape_esng", geneset.filter=c(10,500))
 saveRDS(lgg_res, file = "LGG_all_up_down_genes_activepathways.rds")
 
-cols = c("#72E1E0" ,"#7CE147", "#73E590", "#E180E3" ,"#D39794", "#D4DC8D", "#A6E6BB", "#A4C9E9",
+cols = c("#72E1E0", "#DD9955", "#73E590", "#E180E3" ,"red", "#D4DC8D", "#A6E6BB", "#A4C9E9",
  "#DC5FA5" ,"#D8DB50" ,"#6891DB" ,"#633CE1" ,"#DDDDCF" ,"#DAAADA" ,"#D849DE",
-"#7C9F6A" ,"#E6565F" ,"#8C68D2" ,"#63859B" ,"#DD9955")
+"#7C9F6A" ,"#E6565F" ,"#8C68D2" ,"#63859B")
 
 f=fread("cytoscapesubgroups.txt")
-tests = colnames(f)[2:13]
+tests = colnames(f)[2:14]
 col.colors <- cols[1:length(tests)]
 instruct.str <- paste('piechart:',
 											' attributelist="',

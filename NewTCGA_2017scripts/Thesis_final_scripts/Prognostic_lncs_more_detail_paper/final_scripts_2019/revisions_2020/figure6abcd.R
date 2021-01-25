@@ -18,6 +18,7 @@ allCands$combo = paste(allCands$gene, allCands$type)
 
 all_de_results = readRDS("diff_expressed_PCGs_lncRNA_risk_groups_Aug21.rds")
 all_de_results = as.data.table(all_de_results)
+all_de_results$combo = paste(all_de_results$lnc, all_de_results$cancer)
 
 #only keep candidates
 all_de_results = as.data.table(filter(all_de_results, lnc %in% allCands$gene)) #133 unique lncs
@@ -29,7 +30,7 @@ all_de_results = as.data.table(filter(all_de_results, lnc %in% allCands$gene)) #
 #all_de_results_lgg = as.data.table(all_de_results_lgg)
 #all_de_results = rbind(all_de_results, all_de_results_lgg)
 
-all_de_results$combo = paste(all_de_results$lnc, all_de_results$cancer) #148/158 unique combos across 22 unique cancer types
+#all_de_results$combo = paste(all_de_results$lnc, all_de_results$cancer) #148/158 unique combos across 22 unique cancer types
 all_de_results = as.data.table(filter(all_de_results, combo %in% allCands$combo, adj.P.Val <= 0.05))
 
 full_diff_exp = all_de_results
@@ -126,7 +127,7 @@ t = as.data.table(filter(all_de_results, adj.P.Val <= 0.05))
 t = as.data.table(filter(t, (logFC >= 1) | (logFC <= -1)))
 sig_des=t
 sig_des$combo = paste(sig_des$lnc, sig_des$canc, sep="_")
-write.table(sig_des, file="/u/kisaev/Dec2020/SUPP_TABLE_9_DIFF_EXP_GENES.csv", quote=F, row.names=F, sep=";")
+write.table(sig_des, file="/u/kisaev/Jan2021/SUPP_TABLE_9_DIFF_EXP_GENES.csv", quote=F, row.names=F, sep=";")
 
 sig_des_sum = as.data.table(table(sig_des$combo))
 sig_des_sum = sig_des_sum[order(N)]
@@ -142,7 +143,7 @@ sig_paths_sum = as.data.table(table(all_lnc_pathways_df$combo))
 sig_paths_sum = sig_paths_sum[order(N)]
 
 all_lnc_pathways_df = as.data.table(filter(all_lnc_pathways_df, FDR < 0.05))
-write.table(all_lnc_pathways_df, file="/u/kisaev/Dec2020/SUPP_TABLE_10_PATHWAYS_GPROFILER.csv", quote=F, row.names=F, sep=";")
+write.table(all_lnc_pathways_df, file="/u/kisaev/Jan2021/SUPP_TABLE_10_PATHWAYS_GPROFILER.csv", quote=F, row.names=F, sep=";")
 
 hoxa10as_paths = as.data.table(filter(all_lnc_pathways_df, lnc == "ENSG00000253187", canc=="LGG"))
 saveRDS(hoxa10as_paths, file="2019_08_hoxa10as_diff_exp_pathways_TCGA.rds")
@@ -178,15 +179,15 @@ census$ensg = sapply(census$Synonyms, get_census_ensg)
 census_genes = as.data.table(filter(sig_des, ID %in% census$ensg))
 
 
-pdf("/u/kisaev/Dec2020/summary_#DE_pcgs_vs_pathways_pathways_figure_jdan2519.pdf", width=9, height=5)
+#pdf("/u/kisaev/Jan2021/summary_#DE_pcgs_vs_pathways_pathways_figure_jdan2519.pdf", width=9, height=5)
 g = ggscatter(sig_paths_sum, x = "num_sig_des", y = "num_sig_pathways",
    fill = "canc", shape = 21, size = 3, # Points color, shape and size
    add = "reg.line",  # Add regressin line
    add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
    cor.coef = TRUE, # Add correlation coefficient. see ?stat_cor
    cor.coeff.args = list(method = "spearman"), xlab="# of Sig DE PCGs", ylab="# of Sig Pathways")
-ggpar(g, legend="right")
-dev.off()
+#ggpar(g, legend="right")
+#dev.off()
 
 t = as.data.table(table(sig_paths_sum$canc))
 t=t[order(N)]
@@ -208,7 +209,7 @@ all_res$combo = factor(all_res$combo, levels=unique(sig_paths_sum$combo))
 write.csv(sig_paths_sum, file="summary_num_diff_exp_genes_pathways_jan2519.csv", quote=F, row.names=F)
 
 #network part A
-pdf("/u/kisaev/Dec2020/summary_barplot_#DE_pcgs_vs_pathways_pathways_figure_jan2519.pdf", width=16, height=5)
+pdf("/u/kisaev/Jan2021/summary_barplot_#DE_pcgs_vs_pathways_pathways_figure_jan2519.pdf", width=16, height=5)
 g = ggplot(all_res, aes(combo, num_sig_des, group=type)) + theme_classic() +
    geom_col(position = "dodge", aes(fill=type), color="grey29")+xlab("lncRNA-cancer pair") + ylab("Number of significant \ngenes/pathways")+
    theme(legend.title=element_blank(), legend.position="top", axis.title.x=element_blank(),
@@ -234,13 +235,13 @@ all_res$gene = as.character(all_res$combo)
 all_res$gene = sapply(all_res$gene, function(x){unlist(strsplit(x, "_"))[1]})
 
 get_name = function(ensg){
-    z = which(fantom$CAT_geneID == ensg)
-    return(fantom$CAT_geneName[z][1])
+    z = which(allCands$gene == ensg)
+    return(allCands$gene_symbol[z][1])
 }
 
 all_res$genename = unlist(llply(all_res$gene, get_name))
 colnames(all_res)[1] = "canc"
-all_res$genename[all_res$genename == "HOXA-AS4"] = "HOXA10-AS"
+#all_res$genename[all_res$genename == "HOXA-AS4"] = "HOXA10-AS"
 
 all_res$combo2 = paste(all_res$genename, all_res$canc, sep=" ")
 
@@ -248,7 +249,7 @@ sig_paths_sum$gene = ""
 sig_paths_sum$gene = sig_paths_sum$combo
 sig_paths_sum$gene = sapply(sig_paths_sum$gene, function(x){unlist(strsplit(x, "_"))[1]})
 sig_paths_sum$genename = unlist(llply(sig_paths_sum$gene, get_name))
-sig_paths_sum$genename[sig_paths_sum$genename == "HOXA-AS4"] = "HOXA10-AS"
+#sig_paths_sum$genename[sig_paths_sum$genename == "HOXA-AS4"] = "HOXA10-AS"
 sig_paths_sum$combo2 = paste(sig_paths_sum$genename, sig_paths_sum$canc, sep=" ")
 sig_paths_sum = sig_paths_sum[order(-num_sig_des)]
 
@@ -290,7 +291,7 @@ order_l = as.data.table(all_res %>% group_by(combo2) %>% summarise(frequency =  
 order_l = order_l[order(-frequency)]
 all_res$combo2 = factor(all_res$combo2, levels = order_l$combo2)
 
-pdf("/u/kisaev/Dec2020/summary_barplot_genenames_#DE_pcgs_vs_pathways_pathways_figure_jan2519.pdf", width=8, height=4)
+pdf("/u/kisaev/Jan2021/summary_barplot_genenames_#DE_pcgs_vs_pathways_pathways_figure_jan2519.pdf", width=8, height=4)
 g = ggplot(all_res, aes(combo2, num_sig_des, group=type)) + theme_classic() +
    geom_col(position = position_stack(), aes(fill=type), color="grey29")+xlab("lncRNA-cancer pair") + ylab("Number of sig genes/pathways")+
    theme(legend.title=element_blank(), legend.position="top", axis.title.x=element_blank(),
@@ -306,9 +307,10 @@ dev.off()
 
 #make barplot just for LGG candidates found in the network
 #keep = c("ENSG00000253187", "ENSG00000239552", "ENSG00000224950", "ENSG00000254635", "ENSG00000250360", "ENSG00000256482", "ENSG00000257261")
-keep = c("ENSG00000253187", "ENSG00000254635", "ENSG00000215196", "ENSG00000239552",
-  "ENSG00000261889" ,"ENSG00000228021", "ENSG00000224950", "ENSG00000231265",
-  "ENSG00000225511", "ENSG00000255020", "ENSG00000254271")
+keep = c("ENSG00000239552" ,"ENSG00000253187" ,"ENSG00000250360" ,"ENSG00000254635",
+  "ENSG00000255020", "ENSG00000254271", "ENSG00000250237", "ENSG00000215196",
+ "ENSG00000248693", "ENSG00000261889", "ENSG00000223768", "ENSG00000177337",
+"ENSG00000229267")
 
 lgg_res = as.data.table(filter(full_diff_exp, cancer == "LGG", adj.P.Val <= 0.05, (logFC >= 1) | (logFC < -1), lnc %in% keep))
 lgg_res$type[lgg_res$logFC >= 1] = "UpregulatedRisk"
@@ -316,7 +318,7 @@ lgg_res$type[lgg_res$logFC < -1] = "DownregulatedRisk"
 
 #get order
 lgg_res$gene_name = sapply(lgg_res$lnc, get_name)
-lgg_res$gene_name[lgg_res$gene_name == "HOXA-AS4"] = "HOXA10-AS"
+#lgg_res$gene_name[lgg_res$gene_name == "HOXA-AS4"] = "HOXA10-AS"
 ttt = as.data.table(table(lgg_res$gene_name))
 ttt = ttt[order(-N)]
 
@@ -333,16 +335,17 @@ barplot = rbind(barplot1, barplot2)
 colnames(barplot) = c("type", "lncRNA", "num")
 barplot = as.data.table(filter(barplot, num >0))
 barplot$lncRNA = factor(barplot$lncRNA, levels = ttt$V1)
+barplot$type = factor(barplot$type, levels = c("UpregulatedRisk", "DownregulatedRisk", "census"))
 
 write.table(barplot, file="figure_5A_data_LGG_DE_genes.txt", quote=F, row.names=F, sep="\t")
 
-pdf("/u/kisaev/Dec2020/Figure5A_lgg_only.pdf", width=5, height=6)
+pdf("/u/kisaev/Jan2021/Figure5A_lgg_only.pdf", width=5, height=6)
 g = ggplot(barplot, aes(x=lncRNA, y=num, fill=type)) + theme_classic() +
    geom_bar(aes(fill=type), stat="identity", position=position_dodge())+
 	 xlab("LGG lncRNAs") + ylab("Number of genes")+
    theme(legend.title=element_blank(), legend.position="top", axis.title.x=element_blank(),
     axis.text.x = element_text(angle = 90, hjust = 1, size=8)) +
-		scale_fill_manual(values=c("#56B4E9","#E69F00", "red"))
+		scale_fill_manual(values=c("red", "#E69F00", "#56B4E9"))
 ggpar(g,
  font.tickslab = c(9,"plain", "black"),
  xtickslab.rt = 45)
@@ -375,7 +378,7 @@ canc = subset(res, term.name %in% canc_paths_paths)
 
 #1. get all PCGs that are in these pathways
 pcgs_brain = unique(unlist(canc$overlap)) #[121] unique PCGs
-lncs_brain = unique(unlist(canc$evidence))[1:2] #2 unique lncRNAs to be used as covariates high vs low
+lncs_brain = unique(unlist(canc$evidence))[4:5] #2 unique lncRNAs to be used as covariates high vs low
 
 evi = c()
 for(i in 1:nrow(res)){
@@ -419,6 +422,7 @@ for(i in 1:nrow(res_all_brain)){
 res_all_brain$overlap = as.character(res_all_brain$overlap)
 res_all_brain$evidence = as.character(res_all_brain$evidence)
 
+	dat = as.data.frame(dat)
   dat_keep = dat[,which(colnames(dat) %in% c("patient", lncs_brain, pcgs_brain))]
   rownames(dat_keep) = dat_keep$patient
   dat_keep$patient = NULL
@@ -432,7 +436,7 @@ res_all_brain$evidence = as.character(res_all_brain$evidence)
   for(i in 1:nrow(heat)){
     print(i)
     pcg = rownames(heat)[i]
-    newname = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == pcg)][1]
+    newname = hg38$symbol[which(hg38$ensgene == pcg)][1]
     rownames(heat)[i] = newname
   }
   z = which(is.na(rownames(heat)))
@@ -460,7 +464,7 @@ full_heat = heat
 hox_genes = colnames(heat)[which(str_detect(colnames(heat), "HOX"))]
 random_genes = c()#which(rownames(heat) %in% c("G6PC", "ALDH5A1", "IGF1", "PDK4", "SLC2A2", "DHDH", "IGF2", "G6PD"))
 z1 = which(colnames(heat) %in% c(census$Gene.Symbol))
-z2 = which(colnames(heat) %in% ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 %in% lncs_brain)])
+z2 = which(colnames(heat) %in% allCands$gene_symbol[which(allCands$gene %in% lncs_brain)])
 z3 = which(colnames(heat) %in% hox_genes)
 #heat = heat[,unique(c(z1,z2,z3))]
 
@@ -469,20 +473,19 @@ z3 = which(colnames(heat) %in% hox_genes)
 #1. get list of genes
 development_genes = colnames(heat)
 get_ensg_pcg = function(pcg){
-  z = which(ucsc$hg19.ensemblToGeneName.value == pcg)
+  z = which(hg38$symbol == pcg)
   if(length(z)>1){
     z = z[1]
   }
-  return(ucsc$hg19.ensGene.name2[z])
+  return(hg38$ensgene[z])
 }
 
-
 get_name_pcg = function(pcg){
-  z = which(ucsc$hg19.ensGene.name2 == pcg)
+  z = which(hg38$ensgene == pcg)
   if(length(z)>1){
     z = z[1]
   }
-  return(ucsc$hg19.ensemblToGeneName.value[z])
+  return(hg38$symbol[z])
 }
 
 development_genes = sapply(development_genes, get_ensg_pcg)
@@ -495,7 +498,7 @@ rownames(lgg) = paste(rownames(lgg), "lgg")
 #3. get GBM
 #z = which(all$type == "GBM")
 #gbm = all[z,]
-gbm = subset(all, type == "GBM")
+gbm = as.data.frame(subset(all, type == "GBM"))
 z = which(colnames(gbm) %in% c("patient", development_genes))
 
 gbm = gbm[,z]
@@ -507,7 +510,7 @@ gbm = t(gbm)
 for(i in 1:nrow(gbm)){
     print(i)
     pcg = rownames(gbm)[i]
-    newname = ucsc$hg19.ensemblToGeneName.value[which(ucsc$hg19.ensGene.name2 == pcg)][1]
+    newname = hg38$symbol[which(hg38$ensgene == pcg)][1]
     rownames(gbm)[i] = newname
   }
   z = which(is.na(rownames(gbm)))
@@ -545,15 +548,15 @@ all_canc$full_patient = NULL
 all_canc$patient = NULL
 
 get_ensg = function(lnc){
-  z = which(fantom$CAT_geneName == lnc)
-  return(fantom$CAT_geneID[z])
+  z = which(hg38$symbol == lnc)
+  return(hg38$ensgene[z])
 }
 z = which(colnames(all_canc) %in% (sapply(lncs_brain, get_name)))
 for(i in 1:length(z)){
   colnames(all_canc)[z[i]] = get_ensg(colnames(all_canc)[z[i]])
 }
 
-z = which(colnames(all_canc) %in% c("ENSG00000239552", "HOXA10-AS"))
+z = which(colnames(all_canc) %in% c("ENSG00000239552", "ENSG00000253187"))
 old_canc = all_canc
 all_canc = all_canc[,-z]
 
@@ -561,8 +564,10 @@ mat = all_canc[,c(which(!(colnames(all_canc) %in% c("type", "IDH.status"))))]
 mat = scale(mat)
 mat=t(mat)
 
-df = as.data.frame(old_canc[,c(which(colnames(old_canc) %in% c("type", "IDH.status", "ENSG00000239552", "HOXA10-AS")))])
+df = as.data.frame(old_canc[,c(which(colnames(old_canc) %in% c("type", "IDH.status", "ENSG00000239552", "ENSG00000253187")))])
+colnames(df)[1] = get_name("ENSG00000253187")
 colnames(df)[2] = get_name("ENSG00000239552")
+
 df$patient = rownames(df)
 
 lnc_med = median(df[,1])
@@ -609,7 +614,6 @@ rMean <- exp(coefCPH["ENSG00000253187"] * meanENSG00000253187 +       # e^Xb
 
 all_lgg_pats <- exp(coefCPH["ENSG00000253187"]* (get_risk[1:4, "ENSG00000253187"]-1)
            + coefCPH["ENSG00000239552"] * (get_risk[1:4, "ENSG00000239552"]-1))
-
 
 relRisk <- predict(fitCPH, get_risk, type="risk")   # relative risk
 get_risk$risk = relRisk
@@ -675,7 +679,7 @@ ha = HeatmapAnnotation(relative_risk = anno_points(values, gp = gpar(size=0.3), 
     annotation_name_offset = unit(3, "mm"), height=unit(3, "cm"))
 
 #pdf("developmental_genes_lgg_gbm_all_small_version_genes_new_march26.pdf", width=12, height=4)
-pdf("/u/kisaev/Dec2020/developmental_genes_lgg_gbm_all_small_version_genes_new_april11.pdf", width=9, height=7)
+pdf("/u/kisaev/Jan2021/developmental_genes_lgg_gbm_all_small_version_genes_new_april11.pdf", width=9, height=7)
 Heatmap(mat, column_names_gp = gpar(fontsize = 1), top_annotation = ha,
 show_column_names = FALSE,
   heatmap_legend_param = list(legend_height = unit(2, "cm"), legend_width = unit(2, "cm")),
