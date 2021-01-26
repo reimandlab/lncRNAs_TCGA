@@ -279,18 +279,11 @@ pdf("/u/kisaev/Jan2021/TCGA_candidates_survival_plots_final_cands_FULL_10year_OS
 tcga_results = llply(filtered_data_tagged, get_survival_models, .progress="text")
 dev.off()
 
-#all coxph results for lcnRNAs in TCGA (these p-values came from including clinical variables in the models)
 tcga_results1 = ldply(tcga_results, data.frame)
 tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
-#tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
-
 tcga_results1$fdr_pval = p.adjust(as.numeric(tcga_results1$pval), method="fdr")
-tcga_results1$fdr_pval_adjusted=NULL
-tcga_results1$pval_adjusted=NULL
-tcga_results1$hr_adjusted=NULL
-
+tcga_results1$fdr_pval_adjusted = p.adjust(as.numeric(tcga_results1$pval_adjusted), method="fdr")
 tcga_results1$fdr_anova_lr = p.adjust(as.numeric(tcga_results1$anova_pval), method="fdr")
-#tcga_results1$lnc_test_ph_fdr = p.adjust(as.numeric(tcga_results1$lnc_test_ph), method="fdr")
 
 tcga_results1 = as.data.table(tcga_results1)
 

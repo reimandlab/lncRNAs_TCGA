@@ -20,8 +20,9 @@ write.csv(tt, file="/u/kisaev/Jan2021/SuppTable1_TCGA_cancer_types_used_in_study
 rna = as.data.frame(rna)
 dim(rna)
 dim(pcg)
-#dim(norm)
-#dim(met)
+
+table(rna$type)
+table(pcg$type)
 
 all_genes = as.data.frame(unique(c(colnames(rna), colnames(pcg))))
 z = which(str_detect(all_genes[,1], "ENSG"))
@@ -41,7 +42,6 @@ saveRDS(all_genes, file="all_genes_used_in_TCGA.rds")
 
 #function that tests each lncRNA's survival
 
-#2. list of cancers to apply function to
 cancers = as.list(unique(rna$Cancer))
 
 #3. function that splits data into cancers
@@ -90,9 +90,9 @@ canc_survival_genes = function(dato){
   print(perc_10)
   z2 = which(sums < 15)
   all_rm = names(sums)[unique(c(z1,z2))]
-  z = which(colnames(dato) %in% all_rm)
-  dato = dato[,-z]
 
+	z = which(colnames(dato) %in% all_rm)
+  dato = dato[,-z]
   print(dato$type[1])
 
   z = which(str_detect(colnames(dato), "ENSG"))
@@ -152,6 +152,7 @@ canc_survival_genes = function(dato){
 
     check1 = table(dat$med)[1] >= 10
     check2 = table(dat$med)[2] >= 10
+
     if(check1 & check2){
       if(dim(table(dat$med)) ==2){
   	  dat$gene = NULL
@@ -205,8 +206,6 @@ colnames(canc_conv)[2] = "canc"
 all_cancers_genes_surv_comb = merge(all_cancers_genes_surv_comb, canc_conv, by="canc")
 write.csv(all_cancers_genes_surv_comb, file="ALL_lncRNAs_survival_Feb262019.csv", quote=F, row.names=F)
 
-#all_cancers_genes_surv_comb = as.data.table(all_cancers_genes_surv_comb)
-#all_cancers_genes_surv_comb[,c(3:10)] = apply(all_cancers_genes_surv_comb[,c(3:10)], 2, function(x){as.numeric(x)})
 all_cancers_genes_surv_comb = as.data.table(all_cancers_genes_surv_comb)
 
 ###-------------------------------------------------------------------------------------------------
@@ -223,10 +222,10 @@ z1 = which(all_cancers_genes_surv_comb$fdr == "Inf")
 z2 = which(all_cancers_genes_surv_comb$upper95 == "Inf")
 all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-c(z1,z2),]
 
-z = which(all_cancers_genes_surv_comb$HR > 20)
+z = which(all_cancers_genes_surv_comb$HR > 10)
 all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-z,]
 
-z = which(all_cancers_genes_surv_comb$HR < 0.005)
+z = which(all_cancers_genes_surv_comb$HR < 0.1)
 all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-z,]
 
 lineval = -log10(0.05)
@@ -242,15 +241,16 @@ all_cancers_genes_surv_comb$risk_perc = as.numeric(all_cancers_genes_surv_comb$r
 all_cancers_genes_surv_comb$risk_perc_tag[(all_cancers_genes_surv_comb$risk_perc > 0.48) | (all_cancers_genes_surv_comb$risk_perc < 0.52)] = "75%_more_risk_group"
 all_cancers_genes_surv_comb$risk_perc_tag[all_cancers_genes_surv_comb$risk_perc > 0.75] = "75%_more_risk_group"
 
-#figure 2B/C?
 sig_lncs = as.data.table(all_cancers_genes_surv_comb)
-sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, fdr_log10 >= -log10(0.05)))
+sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, fdr_log10 >= -log10(0.05)), lnc_ph_test > 0.05)
 
 #save only those that appear in only one cancer type
-print(dim(sig_lncs)) #sig lncs overall
+print(dim(sig_lncs))
 
 t = filter(as.data.table(table(sig_lncs$gene)), N ==1)
 print(length(t$V1)) #lncRNAs signiciant in only one cancer type
+print(length(unique(sig_lncs$gene)))
+length(t$V1) / length(unique(sig_lncs$gene))
 #sig_lncs = as.data.table(filter(sig_lncs, gene %in% t$V1))
 sig_lncs$risk_perc_tag[(sig_lncs$risk_perc > 0.48) | (sig_lncs$risk_perc < 0.52)] = "equal"
 sig_lncs$risk_perc_tag[sig_lncs$risk_perc > 0.6] = "high_risk"
@@ -321,7 +321,7 @@ head(all_cancers_genes_surv_comb)
 all_cancers_genes_surv_comb$HR = log2(all_cancers_genes_surv_comb$HR)
 
 #summarize number favourable and unfabourable lcnRNAs by fdr significance per cancer type
-all_cancers_genes_surv_comb = as.data.table(filter(all_cancers_genes_surv_comb, fdr_log10 >= -log10(0.05)))
+all_cancers_genes_surv_comb = as.data.table(filter(all_cancers_genes_surv_comb, fdr_log10 >= -log10(0.05), lnc_ph_test > 0.05))
 
 #get order of cancer types by total number of lncRNAs
 order = as.data.table(table(all_cancers_genes_surv_comb$type, all_cancers_genes_surv_comb$fdrsig))
@@ -336,8 +336,6 @@ colnames(summ) = c("Cancer", "Sig", "Risk", "N")
 summ = as.data.table(dplyr::filter(summ, N > 0))
 
 #barplot----summary
-#only include significant ones
-#how many significant favourable vs unfavourable
 summ$Cancer = factor(summ$Cancer, levels = order)
 summ$Risk = factor(summ$Risk, levels = c("Unfavourable", "Favourable"))
 
@@ -352,8 +350,8 @@ write.table(summ, file="figure1B_data_table.txt", quote=F, row.names=F, sep="\t"
 pdf("/u/kisaev/Jan2021/final_figure_1B.pdf", height=6, width=6)
 g = ggbarplot(summ, "Cancer", "N",
           fill = "Risk", color = "Risk",
-          palette = "npg")
-g = ggpar(g, yticks.by = 250,
+          palette = "npg") + ylim(c(0,1700))
+g = ggpar(g, #yticks.by = 200,
       font.xtickslab = c(9,"plain", "black"),
       xtickslab.rt = 45) + labs(x="Cancer type", y="Number of prognostic lncRNAs") #+ scale_y_continuous(trans='log10')
 print(g)
@@ -421,12 +419,11 @@ get_summary = function(cancer){
   }
 }
 
-#canc_results = llply(cancers, get_summary, .progress = "text")
+canc_results = llply(cancers, get_summary, .progress = "text")
 #remove null
-#canc_results = Filter(Negate(is.null), canc_results)
-
-#canc_results = do.call(rbind.data.frame, canc_results)
-#colnames(canc_results) = c("cancer", "total_pairs", "sig_pairs", "perc")
+canc_results = Filter(Negate(is.null), canc_results)
+canc_results = do.call(rbind.data.frame, canc_results)
+colnames(canc_results) = c("cancer", "total_pairs", "sig_pairs", "perc")
 
 #get correlations
 
@@ -476,72 +473,74 @@ get_pairs_results = function(cancer){
     res2$cor_sum[res2$cor < 0] = "Neg"
     #summarize how many of each kind
     t = table(res2$match, res2$cor_sum)
-    t = as.data.table(tidy(t))
-    t = t[order(n)]
+    #t = as.data.table(tidy(t))
+		t = as.data.table(t)
+
+		t = t[order(N)] %>% filter(N >0)
     t$total_sig_pairs = sig_pairs
     t$total_pairs = tot_pairs
-    t$perc = t$n/sig_pairs
+    t$perc = t$N/sig_pairs
     t$cancer = cancer
     res2$cancer = cancer
     return(res2)
   }
 }
 
-#canc_results_pairs_types = llply(cancers, get_pairs_results, .progress = "text")
+canc_results_pairs_types = llply(cancers, get_pairs_results, .progress = "text")
 
 #save
-#saveRDS(canc_results_pairs_types, file="correlation_lnc_lnc_results_april10_res2.rds")
+saveRDS(canc_results_pairs_types, file="correlation_lnc_lnc_results_april10_res2.rds")
 
 #remove null
-#canc_results_pairs_types2 = Filter(Negate(is.null), canc_results_pairs_types)
-#canc_results_pairs_types2 = ldply(canc_results_pairs_types2)
-#canc_results_pairs_types2 = as.data.table(canc_results_pairs_types2)
-#colnames(canc_conv)[2] = "cancer"
-#canc_results_pairs_types2 = merge(canc_results_pairs_types2, canc_conv, by="cancer")
+canc_results_pairs_types2 = Filter(Negate(is.null), canc_results_pairs_types)
+canc_results_pairs_types2 = ldply(canc_results_pairs_types2)
+canc_results_pairs_types2 = as.data.table(canc_results_pairs_types2)
+colnames(canc_conv)[2] = "cancer"
+canc_results_pairs_types2 = merge(canc_results_pairs_types2, canc_conv, by="cancer")
 
-#canc_results_pairs_types2$HR_pair = ""
-#canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "F"] = "Both \nFavourable"
-#canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "U"] = "Both \nUnfavourable"
-#canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "D"] = "Opposite \nHRs"
+canc_results_pairs_types2$HR_pair = ""
+canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "F"] = "Both \nFavourable"
+canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "U"] = "Both \nUnfavourable"
+canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "D"] = "Opposite \nHRs"
 
 #keep only fdr significant ones
-#canc_results_pairs_types2 = as.data.table(filter(canc_results_pairs_types2, fdr < 0.05, abs(cor) >= 0.3))
+canc_results_pairs_types2 = as.data.table(filter(canc_results_pairs_types2, fdr < 0.05)) #, abs(cor) >= 0.3))
 
 #cancer order keep same as first plot
-#canc_results_pairs_types2$type <- factor(canc_results_pairs_types2$type, levels = rev(order))
-#canc_results_pairs_types2$column_name = paste(canc_results_pairs_types2$HR_pair, canc_results_pairs_types2$Exp_pair)
+canc_results_pairs_types2$type <- factor(canc_results_pairs_types2$type, levels = rev(order))
+canc_results_pairs_types2$column_name = paste(canc_results_pairs_types2$HR_pair, canc_results_pairs_types2$Exp_pair)
 
-#saveRDS(canc_results_pairs_types2, file="correlation_lnc_lnc_results_april10_res2.rds")
+saveRDS(canc_results_pairs_types2, file="correlation_lnc_lnc_results_april10_res2.rds")
 canc_results_pairs_types2 = readRDS("correlation_lnc_lnc_results_april10_res2.rds")
 
 ######################################
 #FIGURE 1B PART 2---------------------
 ######################################
+
 canc_results_pairs_types2$HR_pair = factor(canc_results_pairs_types2$HR_pair, levels = c("Both \nUnfavourable", "Opposite \nHRs", "Both \nFavourable"))
 canc_results_pairs_types2$fdr_sig = ""
 z = which(((canc_results_pairs_types2$fdr < 0.05) & (abs(canc_results_pairs_types2$cor) >= 0.3)))
 canc_results_pairs_types2$fdr_sig[z]= "sig"
 
-
 cols = RColorBrewer::brewer.pal(8, "Set1")
 
-pdf("final_figure_1B_parttwoa_2019.pdf", width=5, height=5)
+pdf("/u/kisaev/Jan2021/final_figure_1B_parttwoa_2019.pdf", width=5, height=5)
 # Change density plot fill colors by groups
 g1 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both \nUnfavourable"], aes(x=cor, fill=HR_pair), color="black") +
   geom_density(alpha=0.4, aes(x=cor, y=..scaled..)) + xlab("") + scale_fill_manual(values=cols[1]) +
-  theme(legend.position="bottom")
+  theme(legend.position="bottom")+theme_classic()
 g1 = ggpar(g1,
       font.tickslab = c(15,"plain", "black"), font.legend=c(4, "plain", "black"), xlim=c(-1,1))+
 theme(legend.position="none")
 print(g1)
 dev.off()
 
-pdf("final_figure_1B_parttwob_2019.pdf", width=5, height=5)
+pdf("/u/kisaev/Jan2021/final_figure_1B_parttwob_2019.pdf", width=5, height=5)
 
 # Change density plot fill colors by groups
 g2 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Opposite \nHRs"], aes(x=cor, fill=HR_pair), color="black") +
   geom_density(alpha=0.4, aes(x=cor, y=..scaled..)) + xlab("") + scale_fill_manual(values=cols[2]) +
-  theme(legend.position="bottom")
+  theme(legend.position="bottom")+theme_classic()
 
 g2 = ggpar(g2,
       font.tickslab = c(15,"plain", "black"), font.legend=c(4, "plain", "black"), xlim=c(-1,1))+
@@ -549,11 +548,11 @@ theme(legend.position="none")
 print(g2)
 dev.off()
 
-pdf("final_figure_1B_parttwoc_2019.pdf", width=5, height=5)
+pdf("/u/kisaev/Jan2021/final_figure_1B_parttwoc_2019.pdf", width=5, height=5)
 # Change density plot fill colors by groups
 g3 = ggplot(canc_results_pairs_types2[canc_results_pairs_types2$HR_pair == "Both \nFavourable"], aes(x=cor, fill=HR_pair), color="black") +
   geom_density(alpha=0.4, aes(x=cor, y=..scaled..)) + xlab("Spearman Correlation") + scale_fill_manual(values=cols[3]) +
-  theme(legend.position="bottom")
+  theme(legend.position="bottom")+theme_classic()
 
 g3 = ggpar(g3,
       font.tickslab = c(15,"plain", "black"), font.legend=c(4, "plain", "black"), xlim=c(-1,1))+
@@ -561,6 +560,6 @@ theme(legend.position="none")
 print(g3)
 dev.off()
 
-pdf("final_figure2b_2019.pdf")
+pdf("/u/kisaev/Jan2021/final_figure2b_2019.pdf")
 plot_grid(g1, g2, g3, ncol=1, nrow=3,  align = "v")
 dev.off()

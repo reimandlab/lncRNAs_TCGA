@@ -5,6 +5,7 @@ cd /.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_
 module load rstats
 
 #1. figure 1 related analysis
+Rscript $main/Figure_1B_code.R
 
 #2. elastic net analysis
 
