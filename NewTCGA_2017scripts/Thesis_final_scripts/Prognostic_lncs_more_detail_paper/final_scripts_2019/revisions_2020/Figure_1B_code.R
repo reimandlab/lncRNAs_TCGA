@@ -1,64 +1,11 @@
-###---------------------------------------------------------------
-###Load libraries and data - April 16th
-###---------------------------------------------------------------
+source("/u/kisaev/lncRNAs_TCGA/NewTCGA_2017scripts/Thesis_final_scripts/Prognostic_lncs_more_detail_paper/final_scripts_2019/revisions_2020/load_data.R")
 
-#source("source_code_Cox_MonteCarlo_CV_April12.R")
-require(caTools)
-library(survAUC)
-#check if this person is in my analysis: TCGA-61-2095
-library(glmnet)
-library(survcomp)
-library(caret)
-library(stringr)
-library(EnvStats)
-library(patchwork)
-
-source("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/universal_LASSO_survival_script.R")
-
-library(ggpubr)
-library(ggrepel)
-library(viridis)
-library(patchwork)
-library(caret)
-library(Rtsne)
-library(data.table)
-
-#final script used to generate survival information in figure 1
-
-#------DATA---------------------------------------------------------
-#UCSC gene info
-ucsc <- fread("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/UCSC_hg19_gene_annotations_downlJuly27byKI.txt", data.table=F)
-#z <- which(ucsc$hg19.ensemblSource.source %in% c("antisense", "lincRNA", "protein_coding"))
-#ucsc <- ucsc[z,]
-z <- which(duplicated(ucsc[,8]))
-ucsc <- ucsc[-z,]
-
-#fantom
-fantom <- fread("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncs_wENSGids.txt", data.table=F) #6088 lncRNAs
-extract3 <- function(row){
-  gene <- as.character(row[[1]])
-  ens <- gsub("\\..*","",gene)
-  return(ens)
-}
-fantom[,1] <- apply(fantom[,1:2], 1, extract3)
-#remove duplicate gene names (gene names with multiple ensembl ids)
-z <- which(duplicated(fantom$CAT_geneName))
-rm <- fantom$CAT_geneName[z]
-z <- which(fantom$CAT_geneName %in% rm)
-fantom <- fantom[-z,]
-
-#save RNA and PCG files locally
-#saveRDS(rna, file="rna_lncRNAs_expression_data_june29.rds")
-#saveRDS(pcg, file="rna_pcg_expression_data_june29.rds")
-
-#summarize lncRNAs that we studied
-lncs = colnames(rna)[which(str_detect(colnames(rna), "ENSG"))]
-z = which(fantom$CAT_geneID %in% lncs)
-fantom = fantom[z,]
-
+#------FEATURES-----------------------------------------------------
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
-write.csv(fantom, file="SuppTable2_5785_lncRNAs_used_in_study.csv", quote=F, row.names=F)
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+allCands = subset(allCands, data == "TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs
+allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 #summarize patients
 pats = unique(rna[,c("type", "Cancer")])
@@ -66,31 +13,9 @@ tt = as.data.table(table(rna$type))
 colnames(tt) = c("type", "num_patients")
 tt = merge(tt, pats, by="type")
 tt = tt[order(num_patients)]
-write.csv(tt, file="SuppTable1_TCGA_cancer_types_used_in_study.csv", quote=F, row.names=F)
+write.csv(tt, file="/u/kisaev/Jan2021/SuppTable1_TCGA_cancer_types_used_in_study.csv", quote=F, row.names=F)
 
 #------FEATURES-----------------------------------------------------
-
-#allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-#allCands = subset(allCands, data == "TCGA") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
-#allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
-#cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
-
-###[2.] Data splitting
-
-###---------------------------------------------------------------
-###PCA using lncRNA expression
-#can then compare how using all genes compared to just using
-#the ones chosen by LASSO at the end
-###---------------------------------------------------------------
-
-#check if this person is in my analysis: TCGA-61-2095
-library(glmnet)
-library(survcomp)
-library(caret)
-library(stringr)
-library(factoextra)
-library(patchwork)
-library(tidyr)
 
 rna = as.data.frame(rna)
 dim(rna)
@@ -116,20 +41,8 @@ saveRDS(all_genes, file="all_genes_used_in_TCGA.rds")
 
 #function that tests each lncRNA's survival
 
-#1. remove discrepancy
-#z = which(rna$vital_status == "[Discrepancy]")
-#rna = rna[-z,]
-
 #2. list of cancers to apply function to
 cancers = as.list(unique(rna$Cancer))
-
-#remove cancer types with less than 50 patients
-pats_num = as.data.table(table(rna$Cancer))
-pats_num = filter(pats_num, N <50)
-canc_rm = pats_num$V1
-
-#remove those ones
-cancers = cancers[which(!(cancers %in% canc_rm))]
 
 #3. function that splits data into cancers
 get_canc = function(canc){
@@ -140,26 +53,44 @@ get_canc = function(canc){
 canc_datas = llply(cancers, get_canc)
 
 #4. function that calculates survival for each gene
-#det_lncs = readRDS("all_TCGA_cancers_lncRNAs_detectable_May18.rds")
-#det_lncs =filter(det_lncs, status =="detectable")
-
-#clean up clinical columns
-cols_keep = c("race", "clinical_stage", "histological_grade")
-z = which(rna$race %in% c("[Not Available]", "[Not Evaluated]", "[Unknown]"))
-rna$race[z] = "unknown"
-
-z = which(rna$clinical_stage %in% c("[Not Applicable]", "[Not Available]"))
-rna$clinical_stage[z] = "unknown"
-
-z = which(rna$histological_grade %in% c("[Unknown]", "[Not Available]", "[Discrepancy]"))
-rna$histological_grade[z] = "unknown"
 
 canc_survival_genes = function(dato){
-	#look at all lncRNAs that are expressed in at least some patients
-  z = which(str_detect(colnames(dato), "ENSG"))
-  sums = apply(dato[,z], 2, sum)
-  rm = names(sums[which(sums == 0)])
-  z = which(colnames(dato) %in% rm)
+
+  lncs_dat = which(str_detect(colnames(dato), "ENSG"))
+  medians = apply(dato[,lncs_dat], 2, median)
+  dat_meds = dato
+  for(k in 1:length(medians)){
+        #print(k)
+        med = medians[k]
+        k = which(colnames(dat_meds) == names(med))
+        if(med ==0){
+          #if median = 0 then anyone greater than zero is 1
+          l1 = which(dat_meds[,k] > 0)
+          l2 = which(dat_meds[,k] ==0)
+          dat_meds[l1,k] = 1
+          dat_meds[l2,k] = 0
+        }
+
+        if(!(med ==0)){
+          l1 = which(dat_meds[,k] >= med)
+          l2 = which(dat_meds[,k] < med)
+          dat_meds[l1,k] = 1
+          dat_meds[l2,k] = 0
+        }
+        } #end assigning labels to each patient for each gene
+
+  sums = apply(dat_meds[,lncs_dat], 2, sum)
+
+  #for the full cohort get lncRNAs that have expression in less than 15 patients
+  #or less than 10% of patients
+  perc_10 = dim(dato)[1]*0.1
+  #how many lncRNAs have only 10% of cohort or 15 patients (whichever is greater)
+  #with > 0 expression in the cohort
+  z1 = which(sums < perc_10)
+  print(perc_10)
+  z2 = which(sums < 15)
+  all_rm = names(sums)[unique(c(z1,z2))]
+  z = which(colnames(dato) %in% all_rm)
   dato = dato[,-z]
 
   print(dato$type[1])
@@ -167,13 +98,11 @@ canc_survival_genes = function(dato){
   z = which(str_detect(colnames(dato), "ENSG"))
   genes = unique(colnames(dato)[z])
 
-  #TEST------------------------------------------------------------------------------------------
-  #genes = genes[1:100]
 	canc_data_genes_analyze = dato
 
 	get_survival = function(gene){
 	  print(gene)
-  	results_cox <- as.data.frame(matrix(ncol=8)) ; colnames(results_cox) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "risk_size", "num_patients")
+  	results_cox <- as.data.frame(matrix(ncol=10)) ; colnames(results_cox) <- c("gene", "coef", "HR", "pval", "low95", "upper95", "risk_size", "num_patients", "ph_test", "lnc_only_pval")
 
     #keep gene expresion as well as clinical columns
     cols_keep = c(gene, "patient", "age_at_initial_pathologic_diagnosis", "gender", "race", "clinical_stage", "histological_grade", "OS", "OS.time")
@@ -204,11 +133,6 @@ canc_survival_genes = function(dato){
 
     #split patients
     med = median(dat$gene)
-
-  	#remove NAs
-  	z = which(is.na(dat$OS.time))
-  	if(!(length(z) ==0)){
-  	dat = dat[-z,]}
 	  med_gene = median(dat$gene)
 	  dat$med = ""
 	  if(med_gene ==0){
@@ -233,6 +157,10 @@ canc_survival_genes = function(dato){
   	  dat$gene = NULL
       dat = dat[,c("med", colnames(dat)[2:ncol(dat)-1])]
       res.cox <- coxph(Surv(OS.time, OS) ~ ., data = dat)
+      lnc_only_model = coxph(Surv(OS.time, OS) ~ med, data = dat)
+      test.ph <- cox.zph(lnc_only_model)
+      lnc_test_ph = test.ph$table[1,3]
+      lnc_only_pval = summary(lnc_only_model)$coefficients[5]
     	hr = summary(res.cox)$coefficients[1,c(2)]
       num_pat = nrow(dat)
       if(hr > 1){
@@ -242,7 +170,7 @@ canc_survival_genes = function(dato){
         risk = length(which(dat$med ==0))
       }
 
-      row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)],  summary(res.cox)$conf.int[1,c(3,4)], risk, num_pat)
+      row <- c(gene, summary(res.cox)$coefficients[1,c(1,2,5)],  summary(res.cox)$conf.int[1,c(3,4)], risk, num_pat, lnc_test_ph, lnc_only_pval)
      	names(row) <- names(results_cox)
     	return(row)
   	}}} #end get_survival function
@@ -250,8 +178,10 @@ canc_survival_genes = function(dato){
 	genes_survival = llply(genes, get_survival, .progress="text")
 	genes_survival_res = ldply(genes_survival, rbind)
 	#fdr
-	colnames(genes_survival_res) = c("gene", "coef", "HR", "pval", "low95", "upper95", "risk_size", "num_patients")
+	colnames(genes_survival_res) = c("gene", "coef", "HR", "pval", "low95", "upper95", "risk_size", "num_patients", "lnc_ph_test", "lnc_only_pval")
 	genes_survival_res$fdr = p.adjust(as.numeric(genes_survival_res$pval), method="fdr")
+  genes_survival_res$fdr_lnc_only = p.adjust(as.numeric(genes_survival_res$lnc_only_pval), method="fdr")
+
 	genes_survival_res$canc = dato$Cancer[1]
 	genes_survival_res = as.data.table(genes_survival_res)
 	genes_survival_res = genes_survival_res[order(fdr)]
@@ -293,7 +223,10 @@ z1 = which(all_cancers_genes_surv_comb$fdr == "Inf")
 z2 = which(all_cancers_genes_surv_comb$upper95 == "Inf")
 all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-c(z1,z2),]
 
-z = which(all_cancers_genes_surv_comb$HR > 10)
+z = which(all_cancers_genes_surv_comb$HR > 20)
+all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-z,]
+
+z = which(all_cancers_genes_surv_comb$HR < 0.005)
 all_cancers_genes_surv_comb = all_cancers_genes_surv_comb[-z,]
 
 lineval = -log10(0.05)
@@ -313,12 +246,12 @@ all_cancers_genes_surv_comb$risk_perc_tag[all_cancers_genes_surv_comb$risk_perc 
 sig_lncs = as.data.table(all_cancers_genes_surv_comb)
 sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, fdr_log10 >= -log10(0.05)))
 
-#saev only those that appear in only one cancer type
+#save only those that appear in only one cancer type
 print(dim(sig_lncs)) #sig lncs overall
 
 t = filter(as.data.table(table(sig_lncs$gene)), N ==1)
 print(length(t$V1)) #lncRNAs signiciant in only one cancer type
-sig_lncs = as.data.table(filter(sig_lncs, gene %in% t$V1))
+#sig_lncs = as.data.table(filter(sig_lncs, gene %in% t$V1))
 sig_lncs$risk_perc_tag[(sig_lncs$risk_perc > 0.48) | (sig_lncs$risk_perc < 0.52)] = "equal"
 sig_lncs$risk_perc_tag[sig_lncs$risk_perc > 0.6] = "high_risk"
 sig_lncs$risk_perc_tag[sig_lncs$risk_perc < 0.45] = "low_risk"
@@ -370,7 +303,7 @@ all_canc_pairs$canc2 = factor(all_canc_pairs$canc2, levels=unique(all_canc_pairs
 order = as.data.table(table(all_cancers_genes_surv_comb$canc, all_cancers_genes_surv_comb$fdrsig))
 order = order[order(-V1,N)]
 
-z = order[order(order$V1, -order$N),]
+z = order[order(V1, -N)]
 # Remove duplicates
 z1 = z[!duplicated(z$V1),]
 #order again
@@ -416,13 +349,13 @@ write.csv(all_cancers_genes_surv_comb, file="SuppTable3_survival_Associated_lncs
 
 write.table(summ, file="figure1B_data_table.txt", quote=F, row.names=F, sep="\t")
 
-pdf("final_figure_1B.pdf", height=6, width=6)
+pdf("/u/kisaev/Jan2021/final_figure_1B.pdf", height=6, width=6)
 g = ggbarplot(summ, "Cancer", "N",
           fill = "Risk", color = "Risk",
           palette = "npg")
 g = ggpar(g, yticks.by = 250,
       font.xtickslab = c(9,"plain", "black"),
-      xtickslab.rt = 45) + labs(x="Cancer type", y="Number of prognostic lncRNAs") + scale_y_continuous(trans='log10')
+      xtickslab.rt = 45) + labs(x="Cancer type", y="Number of prognostic lncRNAs") #+ scale_y_continuous(trans='log10')
 print(g)
 dev.off()
 

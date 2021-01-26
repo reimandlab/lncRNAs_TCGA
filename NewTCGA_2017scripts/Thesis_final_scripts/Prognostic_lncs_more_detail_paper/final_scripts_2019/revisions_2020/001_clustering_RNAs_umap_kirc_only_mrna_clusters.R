@@ -74,7 +74,7 @@ for(i in 1:length(z)){
 		layout$label[z[i]] = canc
 }
 
-pdf("/u/kisaev/KIRC_mRNA_subtypes_umap_plot.pdf")
+pdf("/u/kisaev/Jan2021/KIRC_mRNA_subtypes_umap_plot.pdf")
 	#g = ggplot(layout,aes(x, y, label = label)) + geom_point(aes(x=x, y=y, color=col),alpha=0.5, stroke=0) +
 	#scale_colour_manual(values=c("purple", "orange", "red", "green", "black","blue"))+
 #		geom_text_repel(data = subset(layout, !(label == "no")))

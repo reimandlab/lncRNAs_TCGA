@@ -99,7 +99,7 @@ get_umap_lgg = function(canc){
 
 }
 
-pdf("/u/kisaev/LGG_IDH_umap_plots.pdf")
+pdf("/u/kisaev/Jan2021/LGG_IDH_umap_plots.pdf")
 get_umap_lgg("LGG")
 
 #make survival plot just for IDH mutation status

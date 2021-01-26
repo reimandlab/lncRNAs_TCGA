@@ -87,10 +87,11 @@ get_survival_models = function(dtt){
 
   print(dtt$Cancer[1])
 
-  results_cox1 <- as.data.frame(matrix(ncol=22)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer",
+  results_cox1 <- as.data.frame(matrix(ncol=24)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer",
     "lnc_test_ph", "num_risk", "perc_risk", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero", "multi_model_concordance",
     "lnc_only_concordance", "clinical_only_concordance",
-    "num_events", "perc_wevents", "anova_pval", "gene_symbol", "canc_type")
+    "num_events", "perc_wevents", "anova_pval", "gene_symbol", "canc_type",
+  "hr_adjusted", "pval_adjusted")
 
   dat = dtt
   dat$Cancer = NULL
@@ -147,6 +148,10 @@ get_survival_models = function(dtt){
 
     hr = summary(lnc_only_model)$coefficients[1,c(1,2,5)][2]
     pval = summary(lnc_only_model)$coefficients[1,c(1,2,5)][3]
+
+    hr_adjusted = summary(lncs)$coefficients[1,c(1,2,5)][2]
+    pval_adjusted = summary(lncs)$coefficients[1,c(1,2,5)][3]
+
     if(hr >1){
       risk_num = length(which(newdat[,1] == 1))
       perc = risk_num/nrow(newdat)
@@ -231,7 +236,7 @@ get_survival_models = function(dtt){
     sd_nonzero,
     min_nonzero,
     max_nonzero, cmulti, lnc_only, clinical_only, num_events,
-    perc_events, lr_pval, gene_symbol, canc_type=dtt$type[1])
+    perc_events, lr_pval, gene_symbol, canc_type=dtt$type[1], hr_adjusted, pval_adjusted)
 
    names(row) <- names(results_cox1)
    results_cox1 = rbind(results_cox1, row)
@@ -264,6 +269,7 @@ results_cox1 = results_cox1[-1,]
 #fdr on p-values
 results_cox1$pval = as.numeric(results_cox1$pval)
 results_cox1$fdr_pval = p.adjust(results_cox1$pval, method="fdr")
+results_cox1$fdr_pval_adjusted = p.adjust(results_cox1$pval_adjusted, method="fdr")
 
 return(results_cox1)
 
@@ -279,6 +285,10 @@ tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
 #tcga_results1$global_test_ph = as.numeric(tcga_results1$global_test_ph)
 
 tcga_results1$fdr_pval = p.adjust(as.numeric(tcga_results1$pval), method="fdr")
+tcga_results1$fdr_pval_adjusted=NULL
+tcga_results1$pval_adjusted=NULL
+tcga_results1$hr_adjusted=NULL
+
 tcga_results1$fdr_anova_lr = p.adjust(as.numeric(tcga_results1$anova_pval), method="fdr")
 #tcga_results1$lnc_test_ph_fdr = p.adjust(as.numeric(tcga_results1$lnc_test_ph), method="fdr")
 
