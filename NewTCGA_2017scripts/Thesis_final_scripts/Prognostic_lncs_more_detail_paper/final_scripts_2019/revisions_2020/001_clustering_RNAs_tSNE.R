@@ -79,5 +79,4 @@ colScale_full+theme_classic()+
 geom_text_repel(data = subset(layout, !(label == "no")))
 dev.off()
 
-
 write.table(layout, file="/u/kisaev/Jan2021/umap_29_cancers_data_for_figure.txt", quote=F, row.names=F, col.names=T, sep="\t")

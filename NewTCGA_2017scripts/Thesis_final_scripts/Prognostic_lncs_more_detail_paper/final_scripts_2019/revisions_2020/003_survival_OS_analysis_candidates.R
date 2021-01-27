@@ -87,11 +87,11 @@ get_survival_models = function(dtt){
 
   print(dtt$Cancer[1])
 
-  results_cox1 <- as.data.frame(matrix(ncol=24)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer",
+  results_cox1 <- as.data.frame(matrix(ncol=26)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer",
     "lnc_test_ph", "num_risk", "perc_risk", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero", "multi_model_concordance",
     "lnc_only_concordance", "clinical_only_concordance",
     "num_events", "perc_wevents", "anova_pval", "gene_symbol", "canc_type",
-  "hr_adjusted", "pval_adjusted")
+  "hr_adjusted", "pval_adjusted", "HR_adj_low95", "HR_adj_high95")
 
   dat = dtt
   dat$Cancer = NULL
@@ -150,6 +150,8 @@ get_survival_models = function(dtt){
     pval = summary(lnc_only_model)$coefficients[1,c(1,2,5)][3]
 
     hr_adjusted = summary(lncs)$coefficients[1,c(1,2,5)][2]
+    hr_adjust_low95=summary(lncs)$conf.int[1,3]
+    hr_adjust_high95=summary(lncs)$conf.int[1,4]
     pval_adjusted = summary(lncs)$coefficients[1,c(1,2,5)][3]
 
     if(hr >1){
@@ -236,7 +238,7 @@ get_survival_models = function(dtt){
     sd_nonzero,
     min_nonzero,
     max_nonzero, cmulti, lnc_only, clinical_only, num_events,
-    perc_events, lr_pval, gene_symbol, canc_type=dtt$type[1], hr_adjusted, pval_adjusted)
+    perc_events, lr_pval, gene_symbol, canc_type=dtt$type[1], hr_adjusted, pval_adjusted, hr_adjust_low95, hr_adjust_high95)
 
    names(row) <- names(results_cox1)
    results_cox1 = rbind(results_cox1, row)
@@ -300,9 +302,9 @@ riskplot = gghistogram(tcga_results1, x = "perc_risk",
    fill = "white", color="black",  palette = c("#00AFBB", "#E7B800")) + xlab("Percentage of Risk patients")+
 ylab("Frequency")
 
-pdf("/u/kisaev/Jan2021/Distribution_percent_risk_patients_per_lncRNA.pdf", width=10)
-riskplot
-dev.off()
+#pdf("/u/kisaev/Jan2021/Distribution_percent_risk_patients_per_lncRNA.pdf", width=10)
+#riskplot
+#dev.off()
 
 tcga_results1$lnc_test_ph = as.numeric(tcga_results1$lnc_test_ph)
 saveRDS(tcga_results1, file="TCGA_results_multivariate_results_Oct3.rds")

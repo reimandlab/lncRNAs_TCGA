@@ -91,6 +91,7 @@ canc_survival_genes = function(dato){
   z2 = which(sums < 15)
   all_rm = names(sums)[unique(c(z1,z2))]
 
+	print(all_rm)
 	z = which(colnames(dato) %in% all_rm)
   dato = dato[,-z]
   print(dato$type[1])
@@ -191,10 +192,9 @@ canc_survival_genes = function(dato){
 
 #DO NOT RUN
 
-#all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text")
-#all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
-
-#saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_all_survival_results_feb27.rds") #<---- important file
+all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text")
+all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
+saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_all_survival_results_feb27.rds") #<---- important file
 
 ##############RUN-----------------------------------------------------------------------------------
 
