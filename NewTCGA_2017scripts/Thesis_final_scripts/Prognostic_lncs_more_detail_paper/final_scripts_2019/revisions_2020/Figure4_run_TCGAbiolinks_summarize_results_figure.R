@@ -166,7 +166,7 @@ saveRDS(clean_up, file="process_tcga_biolinks_results_for_plotting.rds")
 #-------PLOT summary results-------------------------------------------
 
 #8 cancer types
-length(which(clean_up$clin_pval_fdr < 0.05)) #202/264 also significnatly associated with survival
+length(which(clean_up$clin_pval_fdr < 0.05)) #203/258 also significnatly associated with survival
 
 clean_up$colname[which(str_detect(clean_up$colname, "age_at"))] = "Age"
 #clean_up$colname[clean_up$colname == "age"] = "Age"

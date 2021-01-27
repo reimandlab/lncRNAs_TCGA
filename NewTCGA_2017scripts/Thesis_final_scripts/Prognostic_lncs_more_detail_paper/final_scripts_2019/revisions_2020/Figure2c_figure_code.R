@@ -12,7 +12,7 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June1
 allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs
 
 #which cancer types are the non-unique lncRNAs from?
-allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_symbol")]
+allCands = allCands[,c("gene", "coef", "hr_adjusted", "pval_adjusted", "cancer", "gene_symbol")]
 allCands = allCands[!duplicated(allCands), ]
 cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 allCands$combo=paste(allCands$gene, allCands$cancer, sep="_")
@@ -352,7 +352,7 @@ colnames(full)[7] = "name"
 #allCands$name[allCands$name == "HOXA-AS4"] = "HOXA10-AS"
 
 random_lncs_vs_cand1 = merge(random_lncs_vs_cand1, allCands, by = c("cancer", "name"))
-random_lncs_vs_cand1$HR = as.numeric(random_lncs_vs_cand1$HR)
+random_lncs_vs_cand1$HR = as.numeric(random_lncs_vs_cand1$hr_adjusted)
 random_lncs_vs_cand1$risk = ""
 random_lncs_vs_cand1$risk[random_lncs_vs_cand1$HR > 1] = "Unfavourable"
 random_lncs_vs_cand1$risk[random_lncs_vs_cand1$HR < 1] = "Favourable"
@@ -401,7 +401,7 @@ labs(x="log2(HR)", y="med lncRNA c-index - med clinical c-index")+
  theme(legend.position="bottom", text = element_text(size=11)) +
  scale_fill_manual(values = mypal5[1:23]) +
  scale_colour_manual(values = c("black", "white"))+theme_bw()
- g1
+ g1 + theme_classic()
 
 dev.off()
 

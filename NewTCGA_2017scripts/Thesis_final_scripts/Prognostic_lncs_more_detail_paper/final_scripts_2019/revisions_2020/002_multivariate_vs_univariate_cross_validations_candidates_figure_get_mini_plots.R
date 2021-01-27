@@ -6,40 +6,40 @@ setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCES
 
 #get candidates files
 
-#Data--------------------------------------------
-allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
-allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs
+	#Data--------------------------------------------
+	allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+	allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs
 
-#which cancer types are the non-unique lncRNAs from?
-allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_symbol")]
-allCands = allCands[!duplicated(allCands), ]
-cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
-allCands$combo=paste(allCands$gene, allCands$cancer, sep="_")
-allCands$gene_name = allCands$gene_symbol
+	#which cancer types are the non-unique lncRNAs from?
+	allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_symbol")]
+	allCands = allCands[!duplicated(allCands), ]
+	cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
+	allCands$combo=paste(allCands$gene, allCands$cancer, sep="_")
+	allCands$gene_name = allCands$gene_symbol
 
-#old = readRDS("old_168_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+	#old = readRDS("old_168_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 
-#val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
-#val_cands = as.data.table(val_cands)
-#val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
-#val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
-#val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
+	#val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
+	#val_cands = as.data.table(val_cands)
+	#val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
+	#val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
+	#val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
 
-#Combined into one dataframe because need to get ranks
-#all <- merge(rna, pcg, by = c("patient", "Cancer"))
-#all = all[,1:25170]
+	#Combined into one dataframe because need to get ranks
+	#all <- merge(rna, pcg, by = c("patient", "Cancer"))
+	#all = all[,1:25170]
 
-#canc conversion
-#canc_conv = rna[,c(which(colnames(rna) %in% c("Cancer", "type")))]
-#canc_conv = canc_conv[!duplicated(canc_conv),]
-#colnames(canc_conv) = c("type", "cancer")
+	#canc conversion
+	#canc_conv = rna[,c(which(colnames(rna) %in% c("Cancer", "type")))]
+	#canc_conv = canc_conv[!duplicated(canc_conv),]
+	#colnames(canc_conv) = c("type", "cancer")
 
-#------DATA-----------------------------------------------------
+	#------DATA-----------------------------------------------------
 
-multivariate_lncs = fread("summary_cross_validation_clinical_multivariate_models_lncRNAs_Nov1.csv")
-single_lncs = fread("summary_cross_validation_clinical_random_lncRNAs_Nov1.txt")
+	multivariate_lncs = fread("summary_cross_validation_clinical_multivariate_models_lncRNAs_Nov1.csv")
+	single_lncs = fread("summary_cross_validation_clinical_random_lncRNAs_Nov1.txt")
 
-#------ANALYSIS-------------------------------------------------
+	#------ANALYSIS-------------------------------------------------
 
 #for each cancer type
 #generate barplot
@@ -216,7 +216,7 @@ get_multi_plot = function(canc){
 		group_by(lncRNA) %>% summarise(median_cindex = median(cindex)))
 		meds = meds[order(-median_cindex)]
 		dat = as.data.table(filter(dat, lncRNA == meds$lncRNA[1]))
-		return(dat)
+		#return(dat)
 	}
 
 	choose_dat = as.data.table(ldply(llply(types, get_best_type)))
@@ -243,7 +243,7 @@ get_multi_plot = function(canc){
 
 	print(head(all))
 	all$lncRNA[which(all$lncRNA ==  'c(\"AL353746.1\", \"AL353746.1\")')] = "AL353746.1"
-	return(all)
+	#return(all)
 
 	# Change error plot type and add mean points
 	g = ggerrorplot(all, x = "type", y = "cindex",
@@ -256,7 +256,7 @@ get_multi_plot = function(canc){
 	geom_hline(yintercept=0.5, linetype="dashed", color = "red") + stat_compare_means(label = "p.signif",
                      ref.group = "clinical", hide.ns = FALSE)  +
 	  geom_text(aes(label = lncRNA), size=2, y=1) + coord_flip()
-	#return(g)
+	return(g)
 
 }
 
@@ -269,12 +269,12 @@ pdf("/u/kisaev/Jan2021/cancers_multivaraite_models_wLabels.pdf", width=14, heigh
 do.call("grid.arrange", c(list_plots, ncol=nCol))
 dev.off()
 
-all_results = as.data.table(ldply(llply(cancers, get_multi_plot)))
-colnames(canc_conv)[1] = "type_canc"
-colnames(canc_conv)[2] = "Cancer"
+#all_results = as.data.table(ldply(llply(cancers, get_multi_plot)))
+#colnames(canc_conv)[1] = "type_canc"
+#colnames(canc_conv)[2] = "Cancer"
 
-all_results=merge(all_results, canc_conv, by="Cancer")
-saveRDS(all_results, "/u/kisaev/Jan2021/multivaraite_vs_univariate_cindices_input_for_plots.rds")
+#all_results=merge(all_results, canc_conv, by="Cancer")
+#saveRDS(all_results, "/u/kisaev/Jan2021/multivaraite_vs_univariate_cindices_input_for_plots.rds")
 
 #res=as.data.table(ldply(llply(cancers, get_bar)))
 #res$full_lnc_clin_fdr = p.adjust(res$full_lnc_clin_pval, method="fdr")

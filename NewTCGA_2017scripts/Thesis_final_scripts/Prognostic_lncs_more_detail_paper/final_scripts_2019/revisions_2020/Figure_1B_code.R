@@ -192,9 +192,9 @@ canc_survival_genes = function(dato){
 
 #DO NOT RUN
 
-all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text")
-all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
-saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_all_survival_results_feb27.rds") #<---- important file
+#all_cancers_genes_surv = llply(canc_datas, canc_survival_genes, .progress="text")
+#all_cancers_genes_surv_comb = ldply(all_cancers_genes_surv, data.frame)
+#saveRDS(all_cancers_genes_surv_comb, file="lncRNAs_all_survival_results_feb27.rds") #<---- important file
 
 ##############RUN-----------------------------------------------------------------------------------
 
@@ -242,7 +242,7 @@ all_cancers_genes_surv_comb$risk_perc_tag[(all_cancers_genes_surv_comb$risk_perc
 all_cancers_genes_surv_comb$risk_perc_tag[all_cancers_genes_surv_comb$risk_perc > 0.75] = "75%_more_risk_group"
 
 sig_lncs = as.data.table(all_cancers_genes_surv_comb)
-sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, fdr_log10 >= -log10(0.05)), lnc_ph_test > 0.05)
+sig_lncs = as.data.table(filter(all_cancers_genes_surv_comb, fdr_log10 >= -log10(0.05)))
 
 #save only those that appear in only one cancer type
 print(dim(sig_lncs))
@@ -321,7 +321,7 @@ head(all_cancers_genes_surv_comb)
 all_cancers_genes_surv_comb$HR = log2(all_cancers_genes_surv_comb$HR)
 
 #summarize number favourable and unfabourable lcnRNAs by fdr significance per cancer type
-all_cancers_genes_surv_comb = as.data.table(filter(all_cancers_genes_surv_comb, fdr_log10 >= -log10(0.05), lnc_ph_test > 0.05))
+all_cancers_genes_surv_comb = as.data.table(filter(all_cancers_genes_surv_comb, fdr_log10 >= -log10(0.05)))
 
 #get order of cancer types by total number of lncRNAs
 order = as.data.table(table(all_cancers_genes_surv_comb$type, all_cancers_genes_surv_comb$fdrsig))
@@ -339,7 +339,7 @@ summ = as.data.table(dplyr::filter(summ, N > 0))
 summ$Cancer = factor(summ$Cancer, levels = order)
 summ$Risk = factor(summ$Risk, levels = c("Unfavourable", "Favourable"))
 
-write.csv(all_cancers_genes_surv_comb, file="SuppTable3_survival_Associated_lncs.csv", quote=F, row.names=F)
+write.csv(all_cancers_genes_surv_comb, file="/u/kisaev/Jan2021/SuppTable3_survival_Associated_lncs.csv", quote=F, row.names=F)
 
 ######################################
 #FIGURE 1B PART 1---------------------
@@ -350,13 +350,12 @@ write.table(summ, file="figure1B_data_table.txt", quote=F, row.names=F, sep="\t"
 pdf("/u/kisaev/Jan2021/final_figure_1B.pdf", height=6, width=6)
 g = ggbarplot(summ, "Cancer", "N",
           fill = "Risk", color = "Risk",
-          palette = "npg") + ylim(c(0,1700))
+          palette = "npg") + ylim(c(0,1850))
 g = ggpar(g, #yticks.by = 200,
       font.xtickslab = c(9,"plain", "black"),
       xtickslab.rt = 45) + labs(x="Cancer type", y="Number of prognostic lncRNAs") #+ scale_y_continuous(trans='log10')
 print(g)
 dev.off()
-
 
 #---------------------------------------------------------------------------------
 ### Figure 1 part 2 - correlations between prognostic lncRNAs in each cancer type

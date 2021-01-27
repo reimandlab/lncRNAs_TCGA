@@ -9,11 +9,11 @@ setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCES
 #Data--------------------------------------------
 allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 allCands = filter(allCands, data=="TCGA") #142 unique lncRNA-cancer combos
-allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_symbol", "canc_type", "fdr_pval")]
+allCands = allCands[,c("gene", "coef", "hr_adjusted", "fdr_pval_adjusted", "cancer", "gene_symbol", "canc_type", "fdr_pval")]
 
 #read PFI and OS results
 pfi = readRDS("TCGA_results_multivariate_results_Oct3_PFI.rds")
-pfi = pfi[,c("gene", "cancer", "HR", "pval", "fdr_pval")]
+pfi = pfi[,c("gene", "cancer", "hr_adjusted", "fdr_pval_adjusted", "fdr_pval")]
 pfi$combo = paste(pfi$gene, pfi$cancer)
 colnames(pfi)[3:5] = paste("PFI", colnames(pfi)[3:5], sep="_")
 
@@ -32,14 +32,14 @@ merged$plot = factor(merged$plot, levels=c("others", "LGG", "BRCA"))
 merged$gene_plot = ""
 merged$gene_plot[!(merged$plot == "others")] = merged$gene_symbol[!(merged$plot == "others")]
 
-merged$HR=as.numeric(merged$HR)
-merged$PFI_HR=as.numeric(merged$PFI_HR)
+merged$HR=as.numeric(merged$hr_adjusted)
+merged$PFI_HR=as.numeric(merged$PFI_hr_adjusted)
 
 merged$HR  = log2(merged$HR)
 merged$PFI_HR = log2(merged$PFI_HR)
 
-merged$fdr_pval=as.numeric(merged$fdr_pval)
-merged$PFI_fdr_pval=as.numeric(merged$PFI_fdr_pval)
+merged$fdr_pval=as.numeric(merged$fdr_pval_adjusted)
+merged$PFI_fdr_pval=as.numeric(merged$PFI_fdr_pval_adjusted)
 
 z = which((merged$fdr_pval < 0.05) & (merged$PFI_fdr_pval < 0.05))
 merged$significant = ""

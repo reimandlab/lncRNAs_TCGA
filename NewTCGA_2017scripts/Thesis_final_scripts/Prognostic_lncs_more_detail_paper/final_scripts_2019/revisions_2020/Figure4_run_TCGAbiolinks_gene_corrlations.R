@@ -55,16 +55,20 @@ flattenCorrMatrix <- function(cormat, pmat) {
 #pcgs = c("IDH1", "IDH2", "MGMT", "TERT", "ERBB2", "ESR1", "ATRX", "PGR",
  # "CDKN2A", "SETD2", "BAP1", "PBRM1", "PIK3CA", "ARID1A")
 
-lncs = unique(allCands$gene_symbol)
+#lncs = unique(allCands$gene_symbol)
+lncs = unique(allCands$combo)
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 
 check_cis_pcg = function(lnc){
-  cancer = allCands$cancer[which(allCands$gene_symbol == lnc)]
+
+  cancer = unlist(strsplit(lnc, "_"))[2]
+  print(cancer)
   canc_type=canc_conv$type[canc_conv$Cancer == cancer]
 
   print(lnc)
+  lnc = allCands$gene_symbol[allCands$gene == unlist(strsplit(lnc, "_"))[1]][1]
   print(canc_type)
 
   if(canc_type == "LGG"){
