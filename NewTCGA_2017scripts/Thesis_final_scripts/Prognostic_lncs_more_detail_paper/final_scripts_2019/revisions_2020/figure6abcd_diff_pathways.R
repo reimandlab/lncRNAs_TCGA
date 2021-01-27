@@ -372,7 +372,7 @@ for(i in 1:nrow(res)){
 res$term.name[lncs_hox]
 
 #canc = subset(res, res$term.name %in% canc_paths_paths)
-canc_paths_paths = res[which(str_detect(res$term.name, "brain")),]$term.name
+canc_paths_paths = res[which(str_detect(res$term.name, "synaptic")),]$term.name
 canc = subset(res, term.name %in% canc_paths_paths)
 
 #1. get all PCGs that are in these pathways
@@ -408,7 +408,7 @@ res_all_brain$overlap = as.character(res_all_brain$overlap)
 res_all_brain$evidence = as.character(res_all_brain$evidence)
 
 brain_dev = as.data.table(filter(res, term.name %in% canc_paths_paths))
-saveRDS(brain_dev, file="brain_development_pathways_lgg_JUNE2019.rds")
+#saveRDS(brain_dev, file="brain_development_pathways_lgg_JUNE2019.rds")
 
 #get counts of pathway per lcnRNA
 res_all_brain = res[,c("term.id", "term.name", "adjusted.p.val", "overlap", "evidence")]
@@ -525,6 +525,10 @@ rownames(gbm) = paste(rownames(gbm), "gbm")
 gbm <- gbm[names(lgg)]
 gbm$type = "gbm"
 lgg$type = "lgg"
+
+z= which(!(colnames(lgg) %in% colnames(gbm)))
+lgg=lgg[,-z]
+
 all_canc = rbind(lgg, gbm)
 
 all_canc$patient = rownames(all_canc)
@@ -678,7 +682,7 @@ ha = HeatmapAnnotation(relative_risk = anno_points(values, gp = gpar(size=0.3), 
     annotation_name_offset = unit(3, "mm"), height=unit(3, "cm"))
 
 #pdf("developmental_genes_lgg_gbm_all_small_version_genes_new_march26.pdf", width=12, height=4)
-pdf("/u/kisaev/Jan2021/developmental_genes_lgg_gbm_all_small_version_genes_new_april11.pdf", width=9, height=7)
+pdf("/u/kisaev/Jan2021/synaptic_genes_lgg_gbm_all_small_version_genes_new_april11.pdf", width=9, height=7)
 Heatmap(mat, column_names_gp = gpar(fontsize = 1), top_annotation = ha,
 show_column_names = FALSE,
   heatmap_legend_param = list(legend_height = unit(2, "cm"), legend_width = unit(2, "cm")),

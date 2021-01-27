@@ -54,25 +54,11 @@ pcg_counts = rbind(pcg_counts, laml, skcm)
 #keep only patients that are the in the main rna matrix to keep same list of patients
 z = which(pcg_counts$patient %in% rna$patient)
 pcg_counts = pcg_counts[z,]
+table(pcg_counts$type)
 
 #------FEATURES-----------------------------------------------------
 
-#val_cands = read.csv("175_lncRNA_cancers_combos_23_cancer_types_july5.csv")
-#val_cands = as.data.table(val_cands)
-#val_cands = subset(val_cands, data == "PCAWG") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
-#val_cands$combo = unique(paste(val_cands$gene, val_cands$cancer, sep="_"))
-#val_cands = subset(val_cands, top_pcawg_val == "YES") #175 unique lncRNA-cancer combos, #166 unique lncRNAs
-
-#------------------------------------------------------------------
-#Within each tissue type, rank lncRNAs by which percentile of
-#expression they fall into to then compare with PCAWG lncRNAS exp
-#------------------------------------------------------------------
-
-#1. log1p
-#z = which(str_detect(colnames(all), "ENSG"))
-#all[,z] <- log1p(all[,z])
-
-#2. Get lncRNA - median within each tissue type
+#1. Get lncRNA - median within each tissue type
 allCands$combo = paste(allCands$gene, allCands$Cancer, sep="_")
 combos = unique(allCands$combo)
 
@@ -88,6 +74,7 @@ get_name_pcg = function(pcg){
 }
 
 #3. Want ranking seperatley for high lncRNA expression group versus low lncRNA expression group
+
 #---------------------------------------------------------
 #Function 1
 #for each lnc-cancer, label patient as lncRNA-risk or non-risk
@@ -165,7 +152,6 @@ all_canc_lnc_data = llply(combos, get_lnc_canc, .progress="text")
 #wtihin each cancer
 #calculate for each lncRNAs differentially expressed PCGs
 #---------------------------------------------------------
-
 
 #for lgg add IDH mutation
 lgg_dat = readRDS("TCGA_lgg_wsubtype_info_biolinks.rds")

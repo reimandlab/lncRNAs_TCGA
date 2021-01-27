@@ -6,10 +6,19 @@ module load rstats
 
 #1. figure 1 related analysis
 Rscript $main/Figure_1B_code.R
+Rscript $main/001_clustering_RNAs_tSNE.R
+Rscript $main/001_clustering_RNAs_umap_lgg_idh_only.R
+Rscript $main/001_clustering_RNAs_umap_kirc_only_mrna_clusters.R
 
 #2. elastic net analysis
+sbatch $main/actual_elastic_net_script.sh
+Rscript $main/007B_analyzing_tests_REAL_DATA_1000_en_runs.R
 
 #3. figure 2 related analysis
+#comparing OS vs PFI as endpoints for survival
+Rscript $main/003_survival_OS_analysis_candidates.R
+Rscript $main/003_survival_PFI_analysis_candidates.R
+Rscript $main/003_survival_KM_OS_vs_PFI.R
 
 #using lncRNA candidates and clinical variables available run 1000 cross-validations using
 #lncRNA only, lncRNA+clinical or clinical only models to get c-index distribution
@@ -26,11 +35,6 @@ Rscript $main/002_multivariate_vs_univaraite_cross_validations_candidates_figure
 #Rscript $main/002_risk_scores_multivariate_models_forrestplot.R
 #Rscript $main/002_risk_scores_univariate_models_forrestplot.R
 #Rscript $main/002_risk_scores_all_models_summary_figure.R
-
-#comparing OS vs PFI as endpoints for survival
-Rscript $main/003_survival_OS_analysis_candidates.R
-Rscript $main/003_survival_PFI_analysis_candidates.R
-Rscript $main/003_survival_KM_OS_vs_PFI.R
 
 #lncRNA versus pcgs correlation and survival model comparisons
 Rscript $main/004_lncRNA_pcg_correlations_analysis.R
@@ -67,3 +71,4 @@ Rscript $main/Cibersort_integration_association_covariates.R
 
 #Run LIMMA
 Rscript $main/figure6_de_analysis.R
+Rscript $main/figure6abcd.R
