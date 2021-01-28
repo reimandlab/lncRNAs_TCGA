@@ -608,8 +608,7 @@ random_permutations = function(canc){ #main permutation cross-validation functio
   all_rm = names(sums)[unique(c(z1,z2))]
   print("done calculating which lncRNAs to remove")
 
-#  run_res = replicate(1000, main_elastic_net(dato, all_rm)) #DOUBLE CHECK number of replciations
-  run_res = replicate(10, main_elastic_net(dato, all_rm)) #DOUBLE CHECK number of replciations
+  run_res = replicate(1000, main_elastic_net(dato, all_rm)) #DOUBLE CHECK number of replciations
 
   print("done permutations")
 
