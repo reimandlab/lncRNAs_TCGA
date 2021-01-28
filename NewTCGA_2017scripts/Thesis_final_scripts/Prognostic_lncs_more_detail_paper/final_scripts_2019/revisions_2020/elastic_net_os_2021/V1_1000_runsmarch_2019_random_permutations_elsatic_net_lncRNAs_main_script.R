@@ -38,9 +38,6 @@ print(args[1])
 
 #registerDoParallel(cores=28)
 
-#Get CANCER index as arguement
-args = commandArgs(trailingOnly = TRUE)
-
 set.seed(911)
 
 #GET LIST OF CANCERS
@@ -50,9 +47,16 @@ cancers= cancers[order(N)]
 cancers = unique(cancers$V1)
 print(cancers)
 
+args = commandArgs(trailingOnly = TRUE)
 print(args[1])
-canc = cancers[as.integer(args[1])]
+
+cohort_index = as.integer(args[1])
+set.seed(cohort_index)
+print(cohort_index)
+
+canc = cancers[as.integer(args[2])]
 print(canc)
+
 date = Sys.Date()
 
 cols_keep = c("race", "clinical_stage", "histological_grade")
@@ -61,11 +65,28 @@ print(table(rna$histological_grade))
 print(table(rna$clinical_stage))
 
 #[1] ----- get cancer info ----------------------------
-#---------get full cancer dataset ---------------------
+#---------generate random datasets---------------------
 
 get_canc = function(canc){
   canc_data = rna[which(rna$Cancer == canc),]
-  print(dim(canc_data))
+  #mix labels up
+  #keep patient IDs and OS info in place
+  #reshuffle all the lncRNA expression values
+  #only reshuffle lncRNA columns keep all survival columns in tact
+  z = which(str_detect(colnames(canc_data), "ENSG"))
+  test = canc_data
+  canc_data = as.data.frame(canc_data)
+  canc_data$surv = paste(canc_data$OS, canc_data$OS.time, sep="_")
+  canc_data$OS = NULL
+  canc_data$OS.time = NULL
+
+  z = which(str_detect(colnames(canc_data), "surv"))
+  canc_data[,z] = sample(canc_data[,z])
+
+  canc_data = as.data.table(canc_data)
+  canc_data = canc_data %>% separate(surv, c("OS", "OS.time"))
+  canc_data = as.data.frame(canc_data)
+
   return(canc_data)
 }
 
@@ -546,12 +567,11 @@ random_permutations = function(canc){ #main permutation cross-validation functio
   canc_datas = get_canc(canc)
 
   #check covariates
-  dato = prepare_dat(canc_datas)
+  dato = as.data.table(prepare_dat(canc_datas))
   print(dim(dato))
 
   print("start permutations")
 
-  set.seed(101)
   lncs_dat = which(str_detect(colnames(dato), "ENSG"))
   medians = apply(dato[,..lncs_dat], 2, median)
   dat_meds = dato
@@ -588,7 +608,8 @@ random_permutations = function(canc){ #main permutation cross-validation functio
   all_rm = names(sums)[unique(c(z1,z2))]
   print("done calculating which lncRNAs to remove")
 
-  run_res = replicate(1000, main_elastic_net(dato, all_rm)) #DOUBLE CHECK number of replciations
+#  run_res = replicate(1000, main_elastic_net(dato, all_rm)) #DOUBLE CHECK number of replciations
+  run_res = replicate(10, main_elastic_net(dato, all_rm)) #DOUBLE CHECK number of replciations
 
   print("done permutations")
 
@@ -615,7 +636,6 @@ random_permutations = function(canc){ #main permutation cross-validation functio
 
   cindices = cindices[-1,]
   colnames(cindices) = c("combined", "lncRNAs", "clinical")
-
 
   if(!(dim(genes_list)[1]==0)){
 
@@ -716,21 +736,20 @@ random_permutations = function(canc){ #main permutation cross-validation functio
   perms_surv_results1$fdr = p.adjust(perms_surv_results1$wald_p, method = "holm")
   print(paste("done", canc, "round of 1000 cross-validations"))
   perms_surv_results1$round = paste(sample(1:5000000, 1), sample(1:5000000, 1), sample(1:5000000, 1), sep="_")
-  perms_surv_results1$inference_pvals = 1
 
   colnames(genes_list)[1:2] = c("gene", "num_rounds_selected")
   perms_surv_results1 = merge(perms_surv_results1, genes_list, by="gene")
 
   perms_surv_results1 = perms_surv_results1[order(num_rounds_selected)]
   cancer =canc_conv$type[canc_conv$Cancer==canc]
-  output="/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2021_manuscript/real_elastic_net_runs_1000/"
-  file = paste(output, "round", cancer, date, perms_surv_results1$round[1], "genes", ".rds", sep="_")
+  output="/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2021_manuscript/surv_shuffle_1000/"
+  file = paste(output, "round", cancer, cohort_index, date, perms_surv_results1$round[1], "genes", ".rds", sep="_")
   saveRDS(perms_surv_results1, file)
 
   #save c-indices results
   cindices = as.data.frame(cindices)
   cindices$canc = canc
-  file = paste(output, "round", cancer, date, "cindices", ".rds", sep="_")
+  file = paste(output, "round", cancer, cohort_index, date, perms_surv_results1$round[1], "cindices", ".rds", sep="_")
   saveRDS(cindices, file)
 
   print(head(perms_surv_results1))
