@@ -24,6 +24,7 @@ results = results[which(str_detect(results, "cindices_.rds"))]
 #break into cancer types
 get_canc = function(file){
   dat = readRDS(file)
+  print(summary(dat))
   return(dat)
 }
 
@@ -43,7 +44,7 @@ new_res = as.data.table(all_res %>% gather(all_res, cindex, combined:clinical))
 canc_conv = readRDS("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/canc_conv.rds")
 colnames(canc_conv)[2] = "canc"
 canc_conv = as.data.table(merge(canc_conv, new_res, by="canc"))
-
+canc_conv$cindex= as.numeric(canc_conv$cindex)
 ##order by medians
 res = as.data.table(canc_conv %>%
 	group_by(type, all_res) %>% summarise_each(funs(max, min, mean, median, sd), cindex))
