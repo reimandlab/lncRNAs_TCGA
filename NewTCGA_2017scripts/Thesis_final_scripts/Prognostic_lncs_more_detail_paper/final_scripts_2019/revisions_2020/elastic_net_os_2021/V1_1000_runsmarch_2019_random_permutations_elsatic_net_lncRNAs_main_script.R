@@ -625,15 +625,11 @@ random_permutations = function(canc){ #main permutation cross-validation functio
   genes_list_full = genes_list
 
   #genes_list = as.data.table(filter(genes_list, N >= 50)) #CHANGE after
-  vals=Filter(Negate(is.null), run_res)
+  vals=unlist(run_res)
+  z=which(str_detect(vals, "ENSG"))
+  vals = vals[-z]
 
-  cindices = as.data.frame(matrix(ncol=3))
-  for(i in 1:length(vals)){
-    print(vals[[i]][[2]])
-    cindices = rbind(cindices, vals[[i]][[2]])
-  }
-
-  cindices = cindices[-1,]
+  cindices = matrix(vals, ncol=3, byrow=T)
   colnames(cindices) = c("combined", "lncRNAs", "clinical")
 
   if(!(dim(genes_list)[1]==0)){
