@@ -70,7 +70,14 @@ saveRDS(all_res, file="all_res_REAL_EN_1000_runs_0606.rds")
 
 #for each cancer type get boxplot
 check_perform = function(cancer){
+
+print(cancer)
 dat = subset(new_res, canc==cancer)
+dat$cindex = as.numeric(dat$cindex)
+z = which(is.na(dat$cindex))
+if(!(length(z)==0)){
+dat=dat[-z,]}
+
 w = wilcox.test(dat$cindex[dat$all_res=="lncRNAs"], dat$cindex[dat$all_res=="clinical"], alternative="greater")
 med_lnc = median(dat$cindex[dat$all_res=="lncRNAs"])
 med_clin =  median(dat$cindex[dat$all_res=="clinical"])

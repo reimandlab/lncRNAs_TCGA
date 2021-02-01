@@ -504,6 +504,7 @@ canc_results_pairs_types2$HR_pair[canc_results_pairs_types2$match == "D"] = "Opp
 
 #keep only fdr significant ones
 canc_results_pairs_types2 = as.data.table(filter(canc_results_pairs_types2, fdr < 0.05)) #, abs(cor) >= 0.3))
+table(canc_results_pairs_types2$HR_pair)/dim(canc_results_pairs_types2)[1]
 
 #cancer order keep same as first plot
 canc_results_pairs_types2$type <- factor(canc_results_pairs_types2$type, levels = rev(order))
