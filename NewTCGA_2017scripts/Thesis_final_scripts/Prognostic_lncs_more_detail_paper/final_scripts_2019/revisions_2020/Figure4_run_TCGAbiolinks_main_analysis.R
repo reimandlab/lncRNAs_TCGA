@@ -257,7 +257,7 @@ get_clin_lnc_cors = function(dtt){
         med_check = as.data.table(new_dat_plot %>% group_by(Clinical) %>% summarise_each(funs(median),lncRNA_exp))
         med_check = !(med_check$lncRNA_exp[1] == med_check$lncRNA_exp[2])
 
-        if((dim(table(new_dat_plot$lncRNA_tag)) > 1) & lncheck & med_check){
+        if((dim(table(new_dat_plot$lncRNA_tag)) > 1) & lncheck){ #& med_check){
 
         cox_lnc = coxph(Surv(OS.time, OS) ~ lncRNA_tag, data = new_dat_plot)
         cox_clin = coxph(Surv(OS.time, OS) ~ Clinical, data = new_dat_plot)
@@ -339,7 +339,7 @@ get_clin_lnc_cors = function(dtt){
     canc_col_results = canc_col_results[-1,]
     return(canc_col_results)
 
-  } #end get_cor
+    } #end get_cor
 
     pdf(paste("/u/kisaev/", cancer_type, "clinical_plots.pdf", sep="_"))
     all_canc_lncs_results = llply(lncs, get_cor)

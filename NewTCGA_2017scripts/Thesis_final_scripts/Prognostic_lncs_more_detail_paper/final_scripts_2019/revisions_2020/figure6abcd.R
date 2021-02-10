@@ -384,7 +384,7 @@ evi = c()
 for(i in 1:nrow(res)){
   ress = unlist(res$evidence[i])
   if(ress == "combined"){
-    ress = c(1,2)
+    ress = 13
   }
   evi = c(evi, length(ress))
 }
@@ -729,6 +729,10 @@ lgg$ENSG00000253187[lgg$ENSG00000253187 == 0] = "Low"
 lgg$ENSG00000239552[lgg$ENSG00000239552 > 0] = "High"
 lgg$ENSG00000239552[lgg$ENSG00000239552 == 0] = "Low"
 
+dat_cox = lgg
+dat_cox$gene = factor(dat_cox$gene, levels = c("Low", "High"))
+coxfit <- coxph(Surv(OS.time, OS) ~ gene + IDH.status, data = dat_cox)
+
 colnames(lgg)[3] = "HOXB-AS2"
 colnames(lgg)[2] = "HOXA10-AS"
 
@@ -746,9 +750,6 @@ fit <- survfit(Surv(OS.time, OS) ~ gene + IDH.status, data = lgg)
 
 #lgg$IDH.status = factor(lgg$IDH.status, levels=c("Mutant", "WT"))
 #fit <- survfit(Surv(OS.time, OS) ~ gene + IDH.status, data = lgg)
-#lgg$gene = factor(lgg$gene, levels = c("Low", "High"))
-#fit <- coxph(Surv(OS.time, OS) ~ gene + IDH.status, data = lgg)
-
 
 pdf("lgg_two_lncRNAs_cands_figure6d.pdf", width=8, height=7)
 

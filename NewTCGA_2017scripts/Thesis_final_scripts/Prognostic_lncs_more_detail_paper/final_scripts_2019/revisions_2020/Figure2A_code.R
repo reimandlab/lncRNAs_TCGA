@@ -43,7 +43,7 @@ res$low95 = log2(res$low95)
 res$upper95 = as.numeric(res$upper95)
 res$upper95 = log2(res$upper95)
 
-pdf("Figure2_related/lncRNA_candidates_univariate_figure2A.pdf", width=14, height=6)
+pdf("Figure2_related/Figure2A_unadjusted_HR.pdf", width=14, height=6)
 
 g = ggplot(data=res, aes(x=combo, y=HR, order = -HR)) +
   geom_bar(stat="identity", aes(fill=fdr_pval),colour="black") +
