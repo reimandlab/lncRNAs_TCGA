@@ -730,8 +730,11 @@ lgg$ENSG00000239552[lgg$ENSG00000239552 > 0] = "High"
 lgg$ENSG00000239552[lgg$ENSG00000239552 == 0] = "Low"
 
 dat_cox = lgg
-dat_cox$gene = factor(dat_cox$gene, levels = c("Low", "High"))
-coxfit <- coxph(Surv(OS.time, OS) ~ gene + IDH.status, data = dat_cox)
+dat_cox$ENSG00000239552 = factor(dat_cox$ENSG00000239552, levels = c("Low", "High"))
+coxfit <- coxph(Surv(OS.time, OS) ~ ENSG00000239552 + IDH.status, data = dat_cox)
+
+dat_cox$ENSG00000253187 = factor(dat_cox$ENSG00000253187, levels = c("Low", "High"))
+coxfit <- coxph(Surv(OS.time, OS) ~ ENSG00000253187 + IDH.status, data = dat_cox)
 
 colnames(lgg)[3] = "HOXB-AS2"
 colnames(lgg)[2] = "HOXA10-AS"
