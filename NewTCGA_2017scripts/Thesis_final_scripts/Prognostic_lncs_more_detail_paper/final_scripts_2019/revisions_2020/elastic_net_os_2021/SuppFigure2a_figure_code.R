@@ -42,8 +42,15 @@ new_res = as.data.table(all_res %>% gather(all_res, cindex, combined:clinical))
 #get cancer types
 canc_conv = readRDS("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/canc_conv.rds")
 colnames(canc_conv)[2] = "canc"
+row=c("type", "Acute Myeloid Leukemia")
+names(row) = c("type", "canc")
+row[1] = "LAML"
+canc_conv = rbind(canc_conv, row)
 canc_conv = as.data.table(merge(canc_conv, new_res, by="canc"))
 canc_conv$cindex= as.numeric(canc_conv$cindex)
+
+z = which(is.na(canc_conv$cindex))
+canc_conv = canc_conv[-z,]
 
 ##order by medians
 res = as.data.table(canc_conv %>%
@@ -58,7 +65,8 @@ canc_conv$type = factor(canc_conv$type, levels = res$type)
 
 pdf("cindices_real_march2019_1000.pdf", width=9, height=3)
 g = ggboxplot(canc_conv, "type", "cindex", bxp.errorbar	=TRUE,
-fill="all_res", color="black", error.plot = "errorbar", notch = TRUE, width = 0.5, palette=c("grey", "dodgerblue4", "orange"))
+fill="all_res", color="black", error.plot = "errorbar", notch = TRUE, width = 0.5,
+palette=c("grey", "dodgerblue4", "orange"))
 g =  g + theme_minimal()
 g = ggpar(g, x.text.angle = 65, legend.title="Predictors")
 print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red"))
@@ -115,7 +123,7 @@ wil_sig = wil
 
 wil_sig$imp = round(wil_sig$imp, digits=2)
 wil_sig = as.data.table(wil_sig)
-wil_sig = wil_sig[order(med_lnc)]
+wil_sig = wil_sig[order(-med_lnc)]
 wil_sig$stars_combo = ""
 wil_sig$stars_combo[wil_sig$fdr_w_combo_clin < 0.05] = "*"
 wil_sig$stars_combo[wil_sig$fdr_w_combo_clin < 0.01] = "**"
@@ -134,7 +142,7 @@ canc_conv$sig = ""
 canc_conv$sig[z] = "V"
 canc_conv = canc_conv[z,]
 
-canc_conv$all_res = factor(canc_conv$all_res, levels = c("clinical", "lncRNAs", "combined"))
+canc_conv$all_res = factor(canc_conv$all_res, levels = c("combined", "lncRNAs", "clinical"))
 
 colnames(sig) = c("W_statistic", "lncRNA_vs_clinical_pval", "method", "alternative",
   "cancer", "median_lnc_cindex", "median_clin_cindex", "median_combo_cindex", "imp", "imp_combo_clin",
@@ -142,13 +150,15 @@ colnames(sig) = c("W_statistic", "lncRNA_vs_clinical_pval", "method", "alternati
   "stars_combo", "stars_clin")
 write.table(sig, file="/u/kisaev/Jan2021/nine_cancers_in_figure_2a_sig_diff_combo_vs_clin.txt", quote=F, row.names=F, sep="\t")
 
-pdf("/u/kisaev/Jan2021/cindices_real_march2019_1000_pvalues.pdf", width=10, height=3)
-g = ggplot(canc_conv, aes(type, cindex, fill=all_res)) +
-  geom_boxplot(outlier.alpha = 0.1, color="black") + theme_classic() #+
-  #stat_compare_means(aes(group = all_res), label = "p.signif")
-g = ggpar(g, x.text.angle = 45, legend.title="Predictors")
-print(g + geom_hline(yintercept=0.5, linetype="dashed", color = "red") + scale_fill_brewer(c("grey", "green", "orange")) +
- xlab("Cancer") + ylab("c-index"))
+pdf("/u/kisaev/Jan2021/cindices_real_march2019_1000_pvalues.pdf", width=5, height=9)
+g = ggplot(canc_conv, aes(cindex, type, fill=all_res)) +
+  geom_boxplot(outlier.alpha = 0.1, color="black") + theme_classic()
+
+g = ggpar(g, x.text.angle = 0, legend.title="Predictors")
+print(g + geom_vline(xintercept=0.5, linetype="dashed", color = "blue") +
+scale_fill_manual(values = c("orange", "cyan3", "grey")) +
+ ylab("Cancer type") + xlab("concordance c-index")+
+ theme(legend.position="bottom"))
 dev.off()
 
 ########################################################################

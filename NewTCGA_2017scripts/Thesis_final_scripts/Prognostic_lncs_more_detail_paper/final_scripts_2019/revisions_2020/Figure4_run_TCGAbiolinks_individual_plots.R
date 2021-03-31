@@ -140,6 +140,28 @@ get_clin_lnc_plots = function(dtt){
       #if categorial variable make facetted barplot
       if(!(length(unique(new_dat_plot$Clinical)) > 20)){
 
+        if((col == "treatment_outcome_first_course") & (lnc == "ENSG00000253187")){
+          #make barplot
+          pdf("/u/kisaev/Jan2021/HOXA10AS_treat_outcome.pdf", width=5, height=5)
+          print("make HOXA10-AS plot")
+          tt = as.data.table(table(new_dat_plot$Clinical, new_dat_plot$lncRNA_tag))
+          colnames(tt) = c("Treatment_Outcome", "lncRNA_expression", "N")
+
+          tt$Treatment_Outcome = factor(tt$Treatment_Outcome, levels=c("Progressive Disease",
+      "Stable Disease", "Partial Remission/Response", "Complete Remission/Response"))
+
+          tt$lncRNA_expression = factor(tt$lncRNA_expression, levels=c(0, 1))
+          tt$perc = tt$N/dim(new_dat_plot)[1]
+          ss = ggplot(data=tt, aes(x=Treatment_Outcome, y=perc, fill=lncRNA_expression)) +
+            geom_bar(stat="identity")+
+            scale_fill_manual(values=c("blue","red"))+
+            coord_flip() +ylab("Percentage of patients")+
+            xlab("Treatment outcome first course")+
+            theme(legend.position="bottom")
+            print(ss)
+            dev.off()
+        }
+
       g <- ggplot(new_dat_plot, aes(patient, lncRNA_exp)) +  geom_col(aes(fill = Clinical))+
            facet_grid(~lncRNA_tag+Clinical, space="free", scales="free") + theme_bw()+
            theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),

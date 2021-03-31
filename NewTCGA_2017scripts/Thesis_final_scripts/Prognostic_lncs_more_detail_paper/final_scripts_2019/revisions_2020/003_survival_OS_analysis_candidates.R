@@ -87,11 +87,11 @@ get_survival_models = function(dtt){
 
   print(dtt$Cancer[1])
 
-  results_cox1 <- as.data.frame(matrix(ncol=26)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer",
+  results_cox1 <- as.data.frame(matrix(ncol=27)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer",
     "lnc_test_ph", "num_risk", "perc_risk", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero", "multi_model_concordance",
     "lnc_only_concordance", "clinical_only_concordance",
     "num_events", "perc_wevents", "anova_pval", "gene_symbol", "canc_type",
-  "hr_adjusted", "pval_adjusted", "HR_adj_low95", "HR_adj_high95")
+  "hr_adjusted", "pval_adjusted", "HR_adj_low95", "HR_adj_high95", "perc_zeroes")
 
   dat = dtt
   dat$Cancer = NULL
@@ -121,6 +121,13 @@ get_survival_models = function(dtt){
     print(gene)
     k = which(!(str_detect(colnames(dat), "ENSG")))
     newdat = dat[,c(gene,k)]
+
+    #get number of people with zero expression of this gene
+    zeros_matrix = filter(rna, type == dtt$type[1])
+    z = which(colnames(zeros_matrix) == colnames(newdat)[1])
+    exp_of_gene = zeros_matrix[,..z]
+    num_zeroes = length(which(exp_of_gene == 0))/dim(newdat)[1]
+
     #  newdat$gene=newdat[,gene]
     lncs = coxph(Surv(OS.time, OS)  ~ ., data = newdat)
     #  global = test.ph$table[nrow(test.ph$table),3]
@@ -238,7 +245,7 @@ get_survival_models = function(dtt){
     sd_nonzero,
     min_nonzero,
     max_nonzero, cmulti, lnc_only, clinical_only, num_events,
-    perc_events, lr_pval, gene_symbol, canc_type=dtt$type[1], hr_adjusted, pval_adjusted, hr_adjust_low95, hr_adjust_high95)
+    perc_events, lr_pval, gene_symbol, canc_type=dtt$type[1], hr_adjusted, pval_adjusted, hr_adjust_low95, hr_adjust_high95, num_zeroes)
 
    names(row) <- names(results_cox1)
    results_cox1 = rbind(results_cox1, row)

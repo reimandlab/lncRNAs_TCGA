@@ -48,7 +48,7 @@ allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 #pcgs = c("IDH1", "IDH2", "MGMT", "TERT", "ERBB2", "ESR1", "ATRX", "PGR",
  # "CDKN2A", "SETD2", "BAP1", "PBRM1", "PIK3CA", "ARID1A")
 
-lncs = unique(allCands$gene_name)
+lncs = unique(allCands$gene)
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
@@ -92,7 +92,7 @@ rna$treatment_outcome_first_course[rna$treatment_outcome_first_course == "No Mea
 rna$treatment_outcome_first_course[rna$treatment_outcome_first_course == "Persistent Disease"] = 4
 rna$treatment_outcome_first_course[rna$treatment_outcome_first_course == "Normalization of Tumor Markers, but Residual Tumor Mass"] = 3
 
-cancers = unique(allCands$canc)
+cancers = unique(allCands$cancer)
 get_canc_dat = function(canc){
   canc_d = subset(rna, Cancer == canc)
   return(canc_d)

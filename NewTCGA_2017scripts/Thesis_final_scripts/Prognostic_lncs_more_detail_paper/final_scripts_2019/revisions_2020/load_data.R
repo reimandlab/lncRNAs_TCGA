@@ -70,6 +70,11 @@ rna = as.data.table(rna)
 dim(rna)
 dim(pcg)
 
+#final fantom genes
+z = which(fantom$gene %in% colnames(rna))
+fantom=fantom[z,]
+fantom = unique(fantom[,c("gene", "CAT_geneCategory", "CAT_geneClass", "biotype")])
+
 #clean up data
 #1. remove discrepancy
 z = which(rna$vital_status == "[Discrepancy]")

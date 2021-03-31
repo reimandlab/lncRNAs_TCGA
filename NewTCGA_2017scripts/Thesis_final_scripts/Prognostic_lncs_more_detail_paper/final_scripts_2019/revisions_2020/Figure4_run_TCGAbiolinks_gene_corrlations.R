@@ -154,7 +154,8 @@ check_cis_pcg = function(lnc){
         add = "jitter") +  ggtitle(paste(lnc_name, pcgg, canc_conv$type[canc_conv$Cancer == cancer]))
 
   box = box + stat_compare_means() + stat_n_text()
-  p = plot_grid(g, box, labels = c('A', 'B'), label_size = 12)
+  #p = plot_grid(g, box, labels = c('A', 'B'), label_size = 12)
+  p = g
   print(p)
   canc=canc_conv$type[canc_conv$Cancer==cancer]
   res=c(lnc, pcgg, canc, rho, rho_p)
@@ -167,12 +168,12 @@ return(pcg_res)
 }
 }
 
-pdf("/u/kisaev/Jan2021/lncRNA_vs_biomarker_PCGs.pdf", width=10, height=9)
+pdf("/u/kisaev/Jan2021/lncRNA_vs_biomarker_PCGs.pdf", width=6, height=6)
 all_res = as.data.table(ldply(llply(lncs, check_cis_pcg, .progress="text")))
 dev.off()
 
 #adjust p-values
-all_res$fdr = p.adjust(all_res$spear_p, method="fdr")
+all_res$fdr = p.adjust(as.numeric(all_res$spear_p), method="fdr")
 all_res$sig=""
 all_res$sig[all_res$fdr < 0.05] = "*"
 all_res$lnc[all_res$lnc=="HOXA-AS4"] = "HOXA10-AS"
@@ -180,14 +181,15 @@ all_res$spear_rho = as.numeric(all_res$spear_rho)
 all_res$canc=factor(all_res$canc, levels=c("BRCA", "LGG", "STAD", "KIRP"))
 
 #make summary plot
-pdf("/u/kisaev/Jan2021/lncRNA_vs_biomarker_PCGs_geom_tile_plot_summary.pdf", height=6)
+pdf("/u/kisaev/Jan2021/lncRNA_vs_biomarker_PCGs_geom_tile_plot_summary.pdf", height=6, width=7)
 ggplot(all_res, aes(lnc, pcg)) +
   geom_tile(aes(fill = spear_rho, width=0.7, height=0.7), size=0.55, color="grey") +
   theme_bw() + geom_text(aes(label = sig), size=3) +
   theme(legend.title=element_blank(), legend.position="bottom", axis.title.x=element_blank(),
     axis.text.x = element_text(angle = 90, hjust = 1, size=6)) +
-    scale_fill_gradientn(colours = c("blue", "white", "red"),
-                       values = scales::rescale(c(-0.75, -0.25, 0, 0.25, 0.75)))+
+    scale_fill_gradient2(midpoint=0, low = "blue", mid = "white", high = "red")+
+#    scale_fill_gradientn(colours = c("blue", "white", "red"),
+#                       values = scales::rescale(c(-0.75, -0.25, 0, 0.25, 0.75)))+
    #scale_fill_gradient(low = "blue", high = "red")+
     facet_grid(cols = vars(canc), scales = "free", space = "free")+
      theme(strip.background = element_rect(colour="black", fill="white",

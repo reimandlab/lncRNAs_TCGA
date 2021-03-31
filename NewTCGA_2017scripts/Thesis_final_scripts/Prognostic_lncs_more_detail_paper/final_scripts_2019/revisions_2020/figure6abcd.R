@@ -535,9 +535,11 @@ all_canc$full_patient = rownames(all_canc)
 #lgg info
 #clin_subtypes <- TCGAquery_subtype(tumor = "LGG")
 lgg_idh = readRDS("TCGA_lgg_wsubtype_info_biolinks.rds")
+lgg_idh = filter(lgg_idh, !(is.na(IDH.status)))
 lgg_idh = lgg_idh[,c("IDH.status", "patient")]
 
 gb_idh = readRDS("TCGA_gbm_wsubtype_info_biolinks.rds")
+gb_idh = filter(gb_idh, !(is.na(IDH.status)))
 gb_idh = gb_idh[,c("IDH.status", "patient")]
 all_brain = rbind(lgg_idh, gb_idh)
 
@@ -599,8 +601,11 @@ df$patientt = sapply(df$patient, function(x){unlist(strsplit(x, " "))[1]})
 surv = all[,c("patient", "OS", "OS.time")]
 colnames(surv)[1] = "patientt"
 df = merge(df, surv, by="patientt")
-get_risk = as.data.table(filter(df, type=="lgg"))
+
+#get_risk = as.data.table(filter(df, type=="lgg"))
+get_risk = df
 gbm = as.data.table(filter(df, type=="gbm"))
+
 colnames(get_risk)[2:3] = c("ENSG00000253187", "ENSG00000239552")
 
 fitCPH <- coxph(Surv(OS.time, OS) ~ ENSG00000253187 + ENSG00000239552, data=get_risk)    # Cox-PH model
@@ -618,7 +623,8 @@ relRisk <- predict(fitCPH, get_risk, type="risk")   # relative risk
 get_risk$risk = relRisk
 colnames(get_risk)[2:3] = c("HOXA10-AS", "HOXB-AS2")
 
-df = rbind(get_risk, gbm)
+#df = rbind(get_risk, gbm)
+df = get_risk
 
 #df$patient = NULL
 #another version of ha
@@ -670,6 +676,9 @@ idh = as.character(df$IDH.status)
 hoxa10as = df[,1]
 hoxbas2 = df[,2]
 
+genes_highlight = c(census$Gene.Symbol[which(census$Gene.Symbol %in% rownames(mat))], rownames(mat)[which(str_detect(rownames(mat), "HOX"))])
+library(dendextend)
+
 ha = HeatmapAnnotation(relative_risk = anno_points(values, gp = gpar(size=0.3), axis = TRUE),
   type = typevals, m = idh, hoxa10as = hoxa10as, hoxbas2=hoxbas2,
   col = list(type = c("lgg" = "orange", "gbm" = "purple"), m = c("Mutant" = "black", "WT" = "gray88"),
@@ -677,13 +686,19 @@ ha = HeatmapAnnotation(relative_risk = anno_points(values, gp = gpar(size=0.3), 
     show_annotation_name = TRUE,
     annotation_name_offset = unit(3, "mm"), height=unit(3, "cm"))
 
-#pdf("developmental_genes_lgg_gbm_all_small_version_genes_new_march26.pdf", width=12, height=4)
+column_dend = t(mat) %>% dist() %>% hclust() %>% as.dendrogram
+column_dend = rotate(set(column_dend, "labels_colors"), 5:1)
+
+genes_colors = rep("black", nrow(mat))
+z = which(rownames(mat) %in% genes_highlight)
+genes_colors[z] = "red"
+
 pdf("/u/kisaev/Jan2021/developmental_genes_lgg_gbm_all_small_version_genes_new_april11.pdf", width=9, height=7)
 Heatmap(mat, column_names_gp = gpar(fontsize = 1), top_annotation = ha,
-show_column_names = FALSE,
+show_column_names = FALSE, cluster_columns = column_dend,
   heatmap_legend_param = list(legend_height = unit(2, "cm"), legend_width = unit(2, "cm")),
   #top_annotation_height = unit(3, "cm"),
-	row_names_gp = gpar(fontsize = 2),
+	row_names_gp = gpar(fontsize = 2, col =genes_colors),
 	clustering_distance_rows = "pearson", clustering_distance_columns = "pearson")
 dev.off()
 
@@ -859,26 +874,35 @@ lgg$ENSG00000239552_tag = paste(lgg$ENSG00000239552_tag, lgg$IDH.status)
 lgg$ENSG00000239552_tag = factor(lgg$ENSG00000239552_tag, levels=c("High WT", "High Mutant", "Low WT", "Low Mutant"))
 
 lgg_idh_dat = lgg
+lgg_idh_dat = filter(lgg_idh_dat, !(is.na(ENSG00000253187_tag)), !(is.na(ENSG00000239552_tag)))
 
-pdf("lgg_two_lncRNAs_cands_figure6d_boxplots.pdf", width=6, height=6)
+lgg_idh_dat$ENSG00000253187_tag = factor(lgg_idh_dat$ENSG00000253187_tag, levels=c("Low WT" , "Low Mutant", "High WT", "High Mutant"))
+lgg_idh_dat$ENSG00000239552_tag = factor(lgg_idh_dat$ENSG00000239552_tag, levels=c("Low WT" , "Low Mutant", "High WT", "High Mutant"))
 
+pdf("/u/kisaev/Jan2021/lgg_two_lncRNAs_cands_figure6d_barplots.pdf", width=5, height=3)
+
+lgg_idh_dat = lgg_idh_dat[order(ENSG00000253187)]
+lgg_idh_dat$patient = factor(lgg_idh_dat$patient, levels=unique(lgg_idh_dat$patient))
 #make boxplots
-   p <- ggboxplot(lgg, x = "ENSG00000253187_tag", y = "ENSG00000253187",
-          color = "ENSG00000253187_tag",
-         palette = "npg", title = "HOXA10-AS expression",
-          add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
-        # Change method
-  p = p + stat_n_text() + scale_color_npg() + theme(legend.position="none")+xlab("HOXA10-AS expression & IDH mutation status")
-  ggpar(p, font.tickslab = c(12, "plain", "black"))
+g <- ggplot(lgg_idh_dat, aes(patient, ENSG00000253187)) +  geom_col(aes(fill = ENSG00000253187_tag))+
+			 facet_grid(~ENSG00000253187_tag, space="free", scales="free") + theme_bw()+
+			 theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+				strip.text.x = element_text(size = 3, colour = "black"),
+				legend.position = "none")+ggtitle("HOXA10-AS expression")+ylab("HOXA10-AS expression")
 
+	print(g)
+
+lgg_idh_dat = lgg_idh_dat[order(ENSG00000239552)]
+lgg_idh_dat$patient = factor(lgg_idh_dat$patient, levels=unique(lgg_idh_dat$patient))
 #make boxplots
-   p <- ggboxplot(lgg, x = "ENSG00000239552_tag", y = "ENSG00000239552",
-          color = "ENSG00000239552_tag",
-         palette = "npg", title = "HOXB-AS2 expression",
-          add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
-        # Change method
-  p = p + stat_n_text() + scale_color_npg() + theme(legend.position="none") +xlab("HOXB-AS2 expression & IDH mutation status")
-  ggpar(p, font.tickslab = c(12, "plain", "black"))
+g <- ggplot(lgg_idh_dat, aes(patient, ENSG00000239552)) +  geom_col(aes(fill = ENSG00000239552_tag))+
+				 facet_grid(~ENSG00000239552_tag, space="free", scales="free") + theme_bw()+
+				 theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+					strip.text.x = element_text(size = 3, colour = "black"),
+					legend.position = "none")+ggtitle("HOXB-AS2 expression")+ylab("HOXB-AS2 expression")
+
+		print(g)
+
 dev.off()
 
 lgg = as.data.table(subset(rna, type == "GBM"))
@@ -888,26 +912,27 @@ colnames(gbm)[6] = "patientt"
 lgg = merge(lgg, gbm, by="patient")
 
 z = which(is.na(lgg$IDH.status))
-lgg = lgg[-z,]
+if(!(length(z)==0)){
+lgg = lgg[-z,]}
 
 lgg$ENSG00000253187 = as.numeric(lgg$ENSG00000253187)
 med = median(lgg$ENSG00000253187)
-lgg$ENSG00000253187_tag[lgg$ENSG00000253187 >= med] = "High"
-lgg$ENSG00000253187_tag[lgg$ENSG00000253187 < med] = "Low"
+lgg$ENSG00000253187_tag[lgg$ENSG00000253187 > 0 ] = "High"
+lgg$ENSG00000253187_tag[lgg$ENSG00000253187 == 0 ] = "Low"
 
 lgg$ENSG00000239552 = as.numeric(lgg$ENSG00000239552)
 med = median(lgg$ENSG00000239552)
-z1 = which(lgg$ENSG00000239552 >=med)
-z2 = which(lgg$ENSG00000239552 < med)
+z1 = which(lgg$ENSG00000239552 > 0)
+z2 = which(lgg$ENSG00000239552 == 0 )
 lgg$ENSG00000239552_tag[z1] = "High"
 lgg$ENSG00000239552_tag[z2] = "Low"
 
 lgg$IDH.status = factor(lgg$IDH.status, levels=c("WT", "Mutant"))
 lgg$ENSG00000253187_tag = paste(lgg$ENSG00000253187_tag, lgg$IDH.status)
-lgg$ENSG00000253187_tag = factor(lgg$ENSG00000253187_tag, levels=c("High WT", "High Mutant", "Low WT", "Low Mutant"))
+lgg$ENSG00000253187_tag = factor(lgg$ENSG00000253187_tag, levels=c("Low WT", "Low Mutant", "High WT", "High Mutant"))
 
 lgg$ENSG00000239552_tag = paste(lgg$ENSG00000239552_tag, lgg$IDH.status)
-lgg$ENSG00000239552_tag = factor(lgg$ENSG00000239552_tag, levels=c("High WT", "High Mutant", "Low WT", "Low Mutant"))
+lgg$ENSG00000239552_tag = factor(lgg$ENSG00000239552_tag, levels=c("Low WT", "Low Mutant", "High WT", "High Mutant"))
 
 lgg$ENSG00000253187 = log1p(lgg$ENSG00000253187)
 lgg$ENSG00000239552 = log1p(lgg$ENSG00000239552)
@@ -924,26 +949,32 @@ gbm_idh_dat$type = "GBM"
 
 all_idh_dat = rbind(gbm_idh_dat, lgg_idh_dat)
 
-pdf("gbm_two_lncRNAs_cands_figure6d_boxplots.pdf", width=6, height=6)
+pdf("/u/kisaev/Jan2021/gbm_two_lncRNAs_cands_figure6d_barplots.pdf", width=5, height=3)
 
+gbm_idh_dat = gbm_idh_dat[order(ENSG00000253187)]
+gbm_idh_dat$patient = factor(gbm_idh_dat$patient, levels=unique(gbm_idh_dat$patient))
 #make boxplots
-   p <- ggboxplot(lgg, x = "ENSG00000253187_tag", y = "ENSG00000253187",
-          color = "ENSG00000253187_tag",
-         palette = "npg", title = "HOXA10-AS expression",
-          add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
-        # Change method
-  p = p + stat_n_text() + scale_color_npg() + theme(legend.position="none")+xlab("HOXA10-AS expression & IDH mutation status")
-  ggpar(p, font.tickslab = c(12, "plain", "black"))
+g <- ggplot(gbm_idh_dat, aes(patient, ENSG00000253187)) +  geom_col(aes(fill = ENSG00000253187_tag))+
+			 facet_grid(~ENSG00000253187_tag, space="free", scales="free") + theme_bw()+
+			 theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+				strip.text.x = element_text(size = 3, colour = "black"),
+				legend.position = "none")+ggtitle("HOXA10-AS expression")+ylab("HOXA10-AS expression")
 
+	print(g)
+
+gbm_idh_dat = gbm_idh_dat[order(ENSG00000239552)]
+gbm_idh_dat$patient = factor(gbm_idh_dat$patient, levels=unique(gbm_idh_dat$patient))
 #make boxplots
-   p <- ggboxplot(lgg, x = "ENSG00000239552_tag", y = "ENSG00000239552",
-          color = "ENSG00000239552_tag",
-         palette = "npg", title = "HOXB-AS2 expression",
-          add = "jitter", ylab = "log1p(FPKM-UQ)",  ggtheme = theme_classic())
-        # Change method
-  p = p + stat_n_text() + scale_color_npg() + theme(legend.position="none") +xlab("HOXB-AS2 expression & IDH mutation status")
-  ggpar(p, font.tickslab = c(12, "plain", "black"))
+g <- ggplot(gbm_idh_dat, aes(patient, ENSG00000239552)) +  geom_col(aes(fill = ENSG00000239552_tag))+
+				 facet_grid(~ENSG00000239552_tag, space="free", scales="free") + theme_bw()+
+				 theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+					strip.text.x = element_text(size = 3, colour = "black"),
+					legend.position = "none")+ggtitle("HOXB-AS2 expression")+ylab("HOXB-AS2 expression")
+
+		print(g)
+
 dev.off()
+
 
 #GBM KM plots
 

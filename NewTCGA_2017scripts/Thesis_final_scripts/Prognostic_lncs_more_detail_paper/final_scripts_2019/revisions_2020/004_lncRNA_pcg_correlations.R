@@ -78,13 +78,14 @@ check_cis_pcg = function(combo){
   lnc = unlist(str_split(combo, "_"))[1]
   cancer = allCands$cancer[which(allCands$gene == lnc)]
   pcgg = unlist(str_split(combo, "_"))[2]
-  res_all = as.data.frame(matrix(ncol=18, nrow=1))
+  res_all = as.data.frame(matrix(ncol=20, nrow=1))
 
  colnames(res_all) = c(
     "res","res2","lnc","pcg",
     "canc","pcg_improvelnc" ,"lnc_improvepcg" ,"rho",
     "rho_p","perc_lnc_off","perc_pcg_off","lncAIC",
    "lncConcordance" ,"pcgAIC","pcgConcordance" ,"combo_concord",
+   "lnc_pval", "pcg_pval",
    "lnc_median","pcg_median")
 
   cancers=cancer
@@ -231,6 +232,9 @@ check_cis_pcg = function(combo){
   res$pcgConcordance = as.data.table(glance(cox_pcg))$concordance
   res$combo_concord = as.data.table(glance(cox_both))$concordance
 
+  res$lnc_pval = as.data.table(glance(cox_lnc))$p.value.wald
+  res$pcg_pval = as.data.table(glance(cox_pcg))$p.value.wald
+
   res$lnc_median = lnc_median
   res$pcg_median = pcg_median
   res_all = rbind(res_all, res)
@@ -253,6 +257,9 @@ results2 = ldply(results)
 results2$fdr_pcg_improve_lnc_anova = p.adjust(results2$res, method="fdr")
 results2$fdr_lnc_improve_pcg_anova = p.adjust(results2$res2, method="fdr")
 results2$rho_fdr = p.adjust(results2$rho_p, method="fdr")
+
+results2$lnc_pval_fdr = p.adjust(results2$lnc_pval, method="fdr")
+results2$pcg_pval_fdr = p.adjust(results2$pcg_pval, method="fdr")
 
 results2 = as.data.table(results2)
 results2 = results2[order(fdr_pcg_improve_lnc_anova)]
@@ -335,14 +342,24 @@ for(i in 1:nrow(prog_pcgs)){
 }
 
 prog_pcgs$diff_cindices = prog_pcgs$lncConcordance - prog_pcgs$pcgConcordance
+prog_pcgs$sig_spearman = ""
+prog_pcgs$sig_spearman[prog_pcgs$rho_fdr < 0.05] = "sig"
+
+prog_pcgs$wald_pval_fdr[prog_pcgs$pcg_pval_fdr < 0.05] = "sig"
+prog_pcgs$wald_pval_fdr[prog_pcgs$pcg_pval_fdr > 0.05] = "pcg_not_sig"
+colnames(prog_pcgs)[1] = "type"
+prog_pcgs$anova_sig_combo = prog_pcgs$lnc_improvepcg
+prog_pcgs$anova_sig_combo[prog_pcgs$anova_sig_combo == "yes"] = "Sig"
 
 pdf("/u/kisaev/Jan2021/figure2E_summary_lncs_pcgs_antisense_10kb_nov16.pdf", width=5,height=5)
 g = ggplot(prog_pcgs, aes(pcgConcordance, lncConcordance, label=lnc_pcg)) +
- geom_point(color = "black")+
-    scale_colour_manual(values = c("blue", "dimgrey", "red", "purple")) +
+  geom_point(aes(colour=type,
+     shape=anova_sig_combo), size=1.75, show.legend = FALSE) +
+     scale_shape_manual(values = c(17, 5)) +
+     colScale+
     xlab("Neighbour PCG Concordance") + ylab("lncRNA Concordance") +
-    theme(legend.box = "horizontal", axis.text = element_text(size=13),
-      legend.text=element_text(size=10), legend.title=element_text(size=10))+
+    theme(axis.text = element_text(size=13),
+    legend.position = "none") +
      xlim(0.45,0.75) + ylim(0.45,0.75) + geom_abline(intercept=0) +
      geom_vline(xintercept=0.5, linetype="dashed", color = "red") +
      geom_hline(yintercept=0.5, linetype="dashed", color = "red")+
@@ -353,15 +370,13 @@ g = ggplot(prog_pcgs, aes(pcgConcordance, lncConcordance, label=lnc_pcg)) +
 g
 dev.off()
 
-prog_pcgs$sig_spearman = ""
-prog_pcgs$sig_spearman[prog_pcgs$rho_fdr < 0.05] = "sig"
 prog_pcgs$lnc_better = ""
 prog_pcgs$lnc_better[(prog_pcgs$fdr_lnc_improve_pcg_anova < 0.05) & (prog_pcgs$lncConcordance > prog_pcgs$pcgConcordance)] = "lnc_better"
 prog_pcgs$lnc_better[is.na(prog_pcgs$lnc_better)] = ""
 prog_pcgs$improv_perc = round((prog_pcgs$lncConcordance - prog_pcgs$pcgConcordance)/ prog_pcgs$pcgConcordance*100, digits=2)
 
-pdf("/u/kisaev/Jan2021/figu2_lncs_pcgs_histogram_spearman_rho.pdf", width=6, height=5)
-gghistogram(prog_pcgs, x = "rho",
+pdf("/u/kisaev/Jan2021/figu2_lncs_pcgs_histogram_spearman_rho.pdf", width=5, height=4)
+gghistogram(prog_pcgs, x = "rho", position="stack",
    color = "sig_spearman", fill = "sig_spearman",
    palette = c("grey", "black"))+theme_bw()+xlim(-1,1)+
 geom_vline(xintercept=0, linetype="dashed", color = "black")
@@ -520,7 +535,7 @@ g = ggpar(g, font.tickslab = c(5,"plain", "black"),
 print(g)
 dev.off()
 
-plot = as.data.table(filter(prog_pcgs, Cancer == "Brain Lower Grade Glioma"))
+plot = as.data.table(filter(prog_pcgs, Cancer == "Brain Lower Grade Glioma", rho_fdr < 0.05))
 plot$sig_rho = ""
 plot$sig_rho[plot$rho_fdr < 0.05] = "*"
 plot$diff = plot$lncConcordance-plot$pcgConcordance
@@ -533,19 +548,55 @@ t=as.data.table(table(plot$lnc))
 t=t[order(-N)]
 plot$lnc = factor(plot$lnc, levels=t$V1)
 plot$lncbetter = factor(plot$lncbetter, levels=c("yes", "no"))
+plot$rho = round(plot$rho, digits=2)
 
 pdf("/u/kisaev/Jan2021/figure2X_LGG_lncs_pcgs_correlations.pdf", width=6, height=6)
 gene_exp = ggplot(plot, aes(lnc, pcg)) +
-  geom_tile(aes(fill = rho, colour =lncbetter, width=0.7, height=0.7), size=1) + theme_bw()
-gene_exp = ggpar(gene_exp, x.text.angle = 45) +
-scale_fill_gradientn(colours = c("cyan", "black", "red"),
-                       values = scales::rescale(c(-0.5, -0.05, 0, 0.05, 0.5)), na.value = 'white') +
+  geom_tile(aes(fill = rho, width=0.7, height=0.7), size=1) + theme_bw() #colour =lncbetter
+gene_exp = ggpar(gene_exp, x.text.angle = 90) +
+#scale_fill_gradientn(values=c(1, .6, .5, .4, 0), colours=c("red", "indianred", "white", "lightblue", "royalblue"))+
+#scale_fill_gradientn(colours=c("royalblue", "lightblue", "white", "indianred", "red"),
+#                       values = scales::rescale(c(-0.5, -0.05, 0, 0.05, 0.5)), na.value = 'black') +
+scale_fill_gradient2(midpoint=0, low = "blue", mid = "white", high = "red")+
 ylab("Protein-coding gene")+
 xlab("lncRNA") + coord_equal()+ scale_color_manual(values=c("black", "white"))+
-theme(legend.position="bottom") + geom_text(aes(label = sig_rho), size=4)+
+theme(legend.position="bottom") + geom_text(aes(label = rho), size=2)+
 theme(text = element_text(size=10))
 gene_exp
 dev.off()
+
+#using all cancers
+
+plot = as.data.table(filter(prog_pcgs, rho_fdr < 0.05))
+plot$sig_rho = ""
+plot$sig_rho[plot$rho_fdr < 0.05] = "*"
+plot$diff = plot$lncConcordance-plot$pcgConcordance
+z = which((plot$diff > 0) & (plot$fdr_lnc_improve_pcg_anova< 0.05))
+plot$lncbetter = ""
+plot$lncbetter[z] = "yes"
+plot$lncbetter[-z] = "no"
+plot$pcg_combo = paste(plot$pcg, plot$canc)
+plot$lnc_combo = paste(plot$lnc, plot$canc)
+
+t=as.data.table(table(plot$lnc_combo))
+t=t[order(-N)]
+plot$lnc_combo = factor(plot$lnc_combo, levels=t$V1)
+plot$rho = round(plot$rho, digits=2)
+
+pdf("/u/kisaev/Jan2021/figure2X_all_cancers_lncs_pcgs_correlations.pdf", width=6, height=6)
+gene_exp = ggplot(plot, aes(lnc_combo, pcg_combo)) +
+  geom_tile(aes(fill = rho, width=0.7, height=0.7), size=1) + theme_bw() #colour =lncbetter
+gene_exp = ggpar(gene_exp, x.text.angle = 90) +
+scale_fill_gradientn(values=c(1, .6, .5, .4, 0), colours=c("red", "indianred", "white", "lightblue", "royalblue"))+
+#scale_fill_gradientn(colours = c("cyan", "black", "red"),
+#                       values = scales::rescale(c(-0.5, -0.05, 0, 0.05, 0.5)), na.value = 'white') +
+ylab("Protein-coding gene")+
+xlab("lncRNA") + coord_equal()+ scale_color_manual(values=c("black", "white"))+
+theme(legend.position="bottom") + #geom_text(aes(label = rho), size=2)+
+theme(text = element_text(size=3))
+gene_exp
+dev.off()
+
 
 #saveRDS(prog_pcgs, file="final_set_126_lncRNAPCG_pairs_nov16.rds")
 #write.csv(prog_pcgs, file="126_cis_antisense_pairs_survival_results_10kb_nov16.csv", quote=F, row.names=F)

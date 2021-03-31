@@ -178,8 +178,8 @@ clean_up$colname[which(str_detect(clean_up$colname, "histological_grade"))] = "G
 clean_up$colname[which(clean_up$colname == "expression_subtype")] = "Expression.Subtype"
 clean_up$colname[which(clean_up$colname == "mRNA_cluster")] = "Expression.Subtype"
 
-#z = which(clean_up$colname == "Vital.Status")
-#clean_up = clean_up[-z,]
+z = which(clean_up$colname == "Vital.Status")
+clean_up = clean_up[-z,]
 
 z = which(clean_up$colname == "PBRM1")
 clean_up = clean_up[-z,]
@@ -221,7 +221,8 @@ clean_up$fdr_fig = ""
 clean_up$fdr_fig[!(is.na(clean_up$chisq_fdr))] = clean_up$chisq_fdr[!(is.na(clean_up$chisq_fdr))]
 clean_up$fdr_fig[(is.na(clean_up$chisq_fdr))] = clean_up$fdr[(is.na(clean_up$chisq_fdr))]
 clean_up$fdr_fig = as.numeric(clean_up$fdr_fig)
-clean_up$fdr_fig[clean_up$fdr_fig == 0] = 0.00000000001
+#clean_up$fdr_fig[clean_up$fdr_fig == 0] = 0.00000000001
+clean_up$fdr_fig[clean_up$fdr_fig < 9.2e-29] = 9.1e-29
 
 #keep only unique combos
 clean_up$canc_lnc_clin = paste(clean_up$combo, clean_up$colname)
@@ -248,15 +249,18 @@ t = t[order(N)]
 
 clean_up$colname = factor(clean_up$colname, levels = t$V1)
 clean_up$clin_sig = factor(clean_up$clin_sig, levels = c("V", ""))
+clean_up$anova_sig_combo_clin = ""
+clean_up$anova_sig_combo_clin[clean_up$clin_vs_combo_anova_fdr < 0.05] = "Sig"
+clean_up$anova_sig_combo_clin = factor(clean_up$anova_sig_combo_clin, levels=c("Sig", ""))
 
 pdf("/u/kisaev/Jan2021/summary_biolinks_subtypes_lncRNA_exp_April18.pdf", height=7, width=10)
 #make geom_tile plot
 ggplot(clean_up, aes(name, colname)) +
-  geom_tile(aes(fill = -log10(fdr_fig), color=clin_sig, width=0.7, height=0.7), size=0.55) +
+  geom_tile(aes(fill = -log10(fdr_fig), color=anova_sig_combo_clin, width=0.7, height=0.7), size=0.55) +
   theme_bw() + #geom_text(aes(label = better), size=2.5) +
   theme(legend.title=element_blank(), legend.position="bottom", axis.title.x=element_blank(),
     axis.text.x = element_text(angle = 90, hjust = 1, size=6)) +
-    scale_fill_gradient(low = "tan1", high = "darkred")+
+    scale_fill_gradient(low = "tan1", high = "darkred", n.breaks=7)+
     facet_grid(cols = vars(type), scales = "free", space = "free")+
      theme(strip.background = element_rect(colour="black", fill="white",
                                        size=1.5, linetype="solid"))+
@@ -266,9 +270,6 @@ ggplot(clean_up, aes(name, colname)) +
 dev.off()
 
 write.csv(clean_up, file="/u/kisaev/Jan2021/cleaned_clinical_variables_associations_data_sept28_post_cleanup_final_figure_data.csv", quote=F, row.names=F)
-
-clean_up$anova_sig_combo_clin = ""
-clean_up$anova_sig_combo_clin[clean_up$clin_vs_combo_anova_fdr < 0.05] = "Sig"
 
 pdf("/u/kisaev/Jan2021/summary_clinical_concordances_vs_lnc_scatterplot_april18_wide.pdf", width=6, height=6)
 g = ggplot(clean_up, aes(clin_concordance, concordance_combo_model, label=canc_lnc_clin)) +

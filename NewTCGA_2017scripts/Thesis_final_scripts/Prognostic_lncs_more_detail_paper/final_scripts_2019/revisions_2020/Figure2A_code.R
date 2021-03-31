@@ -13,6 +13,8 @@ setwd("Documents/lncRNAs/Jan2021")
 #figure 2 - univaraite
 res = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 res = as.data.table(filter(res, data=="TCGA"))
+write.csv(res, file="main_170_survival_annotations_file.csv", quote=F, row.names=F)
+
 t = as.data.table(table(res$canc_type))
 t = t[order(-N)]
 res$type = factor(res$canc_type, levels =t$V1)
@@ -61,9 +63,16 @@ ggpar(g, xtickslab.rt=90, font.tickslab=c(6, "plain", "black"),
 dev.off()
 
 #make histogram for risk group per lncRNA
-pdf("Figure2_related/all_lncRNAs_cands_risk_group_summary_histogram.pdf", width=8, height=6)
+pdf("Figure2_related/all_lncRNAs_cands_risk_group_summary_histogram.pdf", width=5, height=5)
 gghistogram(res, x="perc_risk", color="black", fill="#00AFBB") + xlim(0,1)+theme_bw()+
 xlab("Percent of patients in risk group") + ylab("Number of lncRNAs")
+dev.off()
+
+#make histogram for percent of patients with zero expression
+pdf("Figure2_related/all_lncRNAs_cands_percent_zero_expression.pdf", width=5, height=5)
+res$perc_zeroes = as.numeric(res$perc_zeroes)
+gghistogram(res, x="perc_zeroes", color="black", fill="#00AFBB") + xlim(0,1)+theme_bw()+
+xlab("Percent of patients with zero expression") + ylab("Number of lncRNAs")
 dev.off()
 
 #figure 2 - multivaraite
