@@ -87,11 +87,11 @@ get_survival_models = function(dtt){
 
   print(dtt$Cancer[1])
 
-  results_cox1 <- as.data.frame(matrix(ncol=27)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer",
+  results_cox1 <- as.data.frame(matrix(ncol=28)) ; colnames(results_cox1) <- c("gene", "coef", "pval", "HR", "low95", "upper95", "cancer",
     "lnc_test_ph", "num_risk", "perc_risk", "median_nonzero", "sd_nonzero", "min_nonzero", "max_nonzero", "multi_model_concordance",
     "lnc_only_concordance", "clinical_only_concordance",
     "num_events", "perc_wevents", "anova_pval", "gene_symbol", "canc_type",
-  "hr_adjusted", "pval_adjusted", "HR_adj_low95", "HR_adj_high95", "perc_zeroes")
+  "hr_adjusted", "pval_adjusted", "HR_adj_low95", "HR_adj_high95", "perc_zeroes", "median_exp")
 
   dat = dtt
   dat$Cancer = NULL
@@ -221,22 +221,21 @@ get_survival_models = function(dtt){
    exp_data = merge(exp_data, newdat, by="patient")
    colnames(exp_data)[2] = "geneexp"
 
+   median_exp = median(exp_data$geneexp)
+
    #get median non-zero expression and SD
-   if(perc < 0.45){
+   if(median_exp == 0){
       median_nonzero = median(exp_data[which(!(exp_data[,2] == 0)),2])
       sd_nonzero = sd(exp_data[which(!(exp_data[,2] == 0)),2])
       min_nonzero = min(exp_data[which(!(exp_data[,2] == 0)),2])
       max_nonzero = max(exp_data[which(!(exp_data[,2] == 0)),2])
-   } else if (perc > 0.55){
-      median_nonzero = median(exp_data[which(!(exp_data[,2] == 0)),2])
-      sd_nonzero = sd(exp_data[which(!(exp_data[,2] == 0)),2])
-      min_nonzero = min(exp_data[which(!(exp_data[,2] == 0)),2])
-      max_nonzero = max(exp_data[which(!(exp_data[,2] == 0)),2])
-   } else {
-      median_nonzero = "notavail"
-      sd_nonzero = "notavail"
-      min_nonzero = "notavail"
-      max_nonzero = "notavail"
+   }
+
+   if(!(median_exp == 0)){
+     median_nonzero = "notavail"
+     sd_nonzero = "notavail"
+     min_nonzero = "notavail"
+     max_nonzero = "notavail"
    }
 
    row <- c(gene_name, summary(lnc_only_model)$coefficients[1,c(1,5)], hr,
@@ -245,7 +244,8 @@ get_survival_models = function(dtt){
     sd_nonzero,
     min_nonzero,
     max_nonzero, cmulti, lnc_only, clinical_only, num_events,
-    perc_events, lr_pval, gene_symbol, canc_type=dtt$type[1], hr_adjusted, pval_adjusted, hr_adjust_low95, hr_adjust_high95, num_zeroes)
+    perc_events, lr_pval, gene_symbol, canc_type=dtt$type[1], hr_adjusted, pval_adjusted,
+    hr_adjust_low95, hr_adjust_high95, num_zeroes, median_exp)
 
    names(row) <- names(results_cox1)
    results_cox1 = rbind(results_cox1, row)

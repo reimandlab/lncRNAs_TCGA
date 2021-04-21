@@ -98,6 +98,8 @@ colnames(all_res)[1] = "Cancer"
 all_res = merge(canc_conv, all_res)
 colnames(all_res)[2]="type"
 
+saveRDS(all_res, file="lncRNA_vs_nearby_pcgs_cindices_cross_validations.rds")
+
 pdf("/u/kisaev/Jan2021/figure2D_lncs_pcgs_antisense_10kb_cross_val_cindices.pdf", width=5,height=5)
 g = ggplot(all_res, aes(med_pcg, med_lnc)) +
   geom_point(aes(colour=type,

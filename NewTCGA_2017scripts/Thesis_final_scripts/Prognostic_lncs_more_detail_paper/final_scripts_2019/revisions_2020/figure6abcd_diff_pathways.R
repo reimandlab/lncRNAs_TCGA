@@ -35,7 +35,7 @@ all_de_results = as.data.table(filter(all_de_results, combo %in% allCands$combo,
 
 full_diff_exp = all_de_results
 hoxa10as = as.data.table(filter(full_diff_exp, cancer == "LGG", lnc == "ENSG00000253187"))
-saveRDS(hoxa10as, file="2019_08_hoxa10as_diff_exp_genes_TCGA.rds")
+saveRDS(hoxa10as, file="/u/kisaev/2021_04_hoxa10as_diff_exp_genes_TCGA.rds")
 
 #------make matrix of lncRNA candidates within each cancer type
 #and their associated PCGs

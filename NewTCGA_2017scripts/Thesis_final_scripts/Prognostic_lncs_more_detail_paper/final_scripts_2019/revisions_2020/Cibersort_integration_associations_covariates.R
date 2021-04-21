@@ -224,16 +224,17 @@ sig_hits$cell_type = factor(sig_hits$cell_type, levels=cells$V1)
 sig_hits$type = factor(sig_hits$type, levels=tums$V1)
 
 gene_exp = ggplot(sig_hits, aes(lnc_name, cell_type)) +
-  geom_tile(aes(fill = abs(diff_meds), colour = enrichment, width=0.8, height=0.8), size=1)+ theme_bw()
+  geom_tile(aes(fill = abs(diff_meds), colour = enrichment), size=1)+ theme_bw()
 gene_exp = ggpar(gene_exp, x.text.angle = 90) +
 facet_grid(~type, scales = "free", space = "free") +
-scale_fill_gradient(low = "yellow", high = "black", na.value = 'white') + ylab("Cell-type")+
+scale_fill_gradient(low = "darkgrey", high = "darkorange1", na.value = 'white', n.breaks=7, limits=c(0,0.35)) +
+ylab("Cell-type")+
 xlab("lncRNA")  + scale_color_manual(values=c("red", "blue"))+
 theme(legend.position="bottom") + theme(text = element_text(size=7))
 
 #coord_equal()
 
-pdf("/u/kisaev/Jan2021/figure4X_xCell.pdf", width=10, height=5)
+pdf("/u/kisaev/Jan2021/figure4X_xCell.pdf", width=8.5, height=3)
 #+ geom_text(aes(label = sig_rho), size=4)+
 gene_exp
 dev.off()

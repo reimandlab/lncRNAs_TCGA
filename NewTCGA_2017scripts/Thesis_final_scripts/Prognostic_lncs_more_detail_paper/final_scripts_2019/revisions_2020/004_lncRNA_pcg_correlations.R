@@ -22,6 +22,9 @@ census$ensg = sapply(census$Synonyms, get_census_ensg)
 #setWD
 setwd("/.mounts/labs/reimandlab/private/users/kisaev/Thesis/TCGA_FALL2017_PROCESSED_RNASEQ/lncRNAs_2019_manuscript")
 
+#final lnc-pcg pairs
+pcgs_final = readRDS("lncRNA_vs_nearby_pcgs_cindices_cross_validations.rds")
+
 #------FUNCTIONS-----------------------------------------------------
 
 # ++++++++++++++++++++++++++++
@@ -66,8 +69,11 @@ get_ensg = function(name){
 cis_pcgs$pcg = sapply(cis_pcgs$pcg, get_ensg)
 cis_pcgs$combo = paste(cis_pcgs$lnc, cis_pcgs$pcg, sep="_")
 
+pcgs_final$combo = paste(pcgs_final$canc_lnc, pcgs_final$canc_pcg, sep="_")
+cis_pcgs = filter(cis_pcgs, combo %in% pcgs_final$combo)
+
 #check all lncRNA-cis PCG pairs
-combos = unique(cis_pcgs$combo) #126 pairs
+combos = unique(cis_pcgs$combo) #125 pairs
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
@@ -190,6 +196,8 @@ check_cis_pcg = function(combo){
   #does lnc improve pcg?
   res2 = as.numeric(tidy(anova(cox_pcg, cox_both))[2,4]) #if sig, then yes
 
+  pcg_hr = summary(cox_pcg)$coefficients[2]
+
   #arrange
   library(patchwork)
 
@@ -238,6 +246,42 @@ check_cis_pcg = function(combo){
   res$lnc_median = lnc_median
   res$pcg_median = pcg_median
   res_all = rbind(res_all, res)
+
+  #make km plot
+  exp_dat$OS.time = exp_dat$OS.time/365
+  exp_dat$pcg_median = as.numeric(as.character(unlist(exp_dat$pcg_median)))
+  exp_dat$pcg_median = factor(exp_dat$pcg_median, levels=c(1,0))
+  fit <- survfit(Surv(OS.time, OS) ~ pcg_median, data = exp_dat)
+        s <- ggsurvplot(
+        title = paste(res$pcg, exp_dat$type[1], "HR =", round(pcg_hr, digits=2)),
+        fit,
+        xlab = "Time (Years)",
+        #surv.median.line = "hv",
+        font.main = c(14, "bold", "black"),
+        font.x = c(12, "plain", "black"),
+        font.y = c(12, "plain", "black"),
+        font.tickslab = c(11, "plain", "black"),
+        font.legend = 10,
+        risk.table.fontsize = 5,
+        legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
+        data = exp_dat,      # data used to fit survival curves.
+        risk.table = TRUE,       # show risk table.
+        legend = "right",
+        pval = TRUE,             # show p-value of log-rank test.
+        conf.int = FALSE,        # show confidence intervals for
+                          # point estimaes of survival curves.
+        xlim = c(0,10),        # present narrower X axis, but not affect
+                          # survival estimates.
+        break.time.by = 1,     # break X axis in time intervals by 500.
+        #palette = colorRampPalette(mypal)(14),
+        #palette = mypal[c(4,1)],
+        palette = "npg",
+        #ggtheme = theme_bw(), # customize plot and risk table with a theme.
+        risk.table.y.text.col = T, # colour risk table text annotations.
+        risk.table.y.text = FALSE # show bars instead of names in text annotations
+                          # in legend of risk table
+        )
+        print(s)
   }
 }
 
@@ -246,7 +290,7 @@ return(res_all)
 
 }#end function
 
-pdf("/u/kisaev/Jan2021/all_cis_antisense_lnc_pairs_survival_results_10kb_nov16.pdf", width=6, height=6)
+pdf("/u/kisaev/Jan2021/all_cis_antisense_lnc_pairs_survival_results_10kb_nov16.pdf", width=6, height=5)
 results = llply(combos, check_cis_pcg, .progress="text")
 dev.off()
 
@@ -265,7 +309,7 @@ results2 = as.data.table(results2)
 results2 = results2[order(fdr_pcg_improve_lnc_anova)]
 
 length(which(results2$res <= 0.05))
-length(which(results2$fdr_pcg_improve_lnc_anova <= 0.05)) #7/129 pairs, the lncRNA beneifts from signal from neighboring gene when accounting for multiple testing correction
+length(which(results2$fdr_pcg_improve_lnc_anova <= 0.05)) #7/128 pairs, the lncRNA beneifts from signal from neighboring gene when accounting for multiple testing correction
 length(which(results2$fdr_lnc_improve_pcg_anova <= 0.05)) #even after multiple testing correction, 129/129 pairs improve from adding lncRNA expression to PCG expression
 
 results2$pcg_improvelnc = ""
@@ -325,7 +369,6 @@ prog_pcgs$cor[prog_pcgs$rho_fdr > 0.05] = "NS"
 
 prog_pcgs$rho_fdr[prog_pcgs$rho_fdr <0.0000000001] = 0.000001
 prog_pcgs$lnc_pcg = paste(prog_pcgs$lnc, prog_pcgs$pcg, prog_pcgs$canc, sep="/")
-
 
 get_ensg = function(name){
   z = which(allCands$gene_symbol == name)
@@ -403,21 +446,21 @@ ggpar(g, legend="bottom")
 dev.off()
 
 #summarize anova
-anvova_plot = prog_pcgs[,c("lnc", "pcg", "fdr_lnc_improve_pcg_anova", "fdr_pcg_improve_lnc_anova", "canc")]
+anvova_plot = prog_pcgs[,c("lnc", "pcg", "fdr_lnc_improve_pcg_anova", "fdr_pcg_improve_lnc_anova", "type")]
 anvova_plot = melt(anvova_plot)
-anvova_plot$pair = paste(anvova_plot$lnc, anvova_plot$pcg, anvova_plot$canc)
+anvova_plot$pair = paste(anvova_plot$lnc, anvova_plot$pcg, anvova_plot$type)
 anvova_plot$log10 = -log10(anvova_plot$value)
 anvova_plot = anvova_plot[order(log10)]
 anvova_plot$pair = factor(anvova_plot$pair, levels=unique(anvova_plot$pair))
 #anvova_plot$variable = factor(anvova_plot$variable, levels=unique(anvova_plot$variable))
 
-means=as.data.table(anvova_plot %>% group_by(canc) %>% dplyr::summarize(mean = mean(log10)))
+means=as.data.table(anvova_plot %>% group_by(type) %>% dplyr::summarize(mean = mean(log10)))
 means = means[order(-mean)]
-anvova_plot$canc = factor(anvova_plot$canc, levels=unique(means$canc))
+anvova_plot$canc = factor(anvova_plot$type, levels=unique(means$type))
 anvova_plot = anvova_plot[order(-log10)]
 anvova_plot$pair = factor(anvova_plot$pair, levels=unique(anvova_plot$pair))
 
-sums=as.data.table(anvova_plot %>% group_by(canc, pair) %>% dplyr::summarize(tot = sum(log10)))
+sums=as.data.table(anvova_plot %>% group_by(type, pair) %>% dplyr::summarize(tot = sum(log10)))
 sums=sums[order(-tot)]
 anvova_plot$pair = factor(anvova_plot$pair, levels=unique(sums$pair))
 
@@ -435,10 +478,10 @@ g + facet_grid(~canc, scales = "free", space = "free") + theme(text = element_te
 dev.off()
 
 #median on off balance plot how many are binary lncs/pcgs
-meds_plot = prog_pcgs[,c("lnc", "pcg", "canc", "perc_lnc_off", "perc_pcg_off")]
+meds_plot = prog_pcgs[,c("lnc", "pcg", "type", "perc_lnc_off", "perc_pcg_off")]
 meds_plot = melt(meds_plot)
-meds_plot$pair = paste(meds_plot$lnc, meds_plot$pcg, meds_plot$canc)
-meds_plot$canc = factor(meds_plot$canc, levels=unique(means$canc))
+meds_plot$pair = paste(meds_plot$lnc, meds_plot$pcg, meds_plot$type)
+meds_plot$type = factor(meds_plot$type, levels=unique(means$type))
 meds_plot$pair = factor(meds_plot$pair, levels=unique(anvova_plot$pair))
 
 pdf("/u/kisaev/Jan2021/lncs_pcgs_antisense_10kb_linearity_fraction_lncs.pdf", width=10,height=3)
