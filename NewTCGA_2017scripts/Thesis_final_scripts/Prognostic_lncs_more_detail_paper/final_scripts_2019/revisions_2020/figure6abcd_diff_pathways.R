@@ -146,7 +146,7 @@ all_lnc_pathways_df = as.data.table(filter(all_lnc_pathways_df, FDR < 0.05))
 write.table(all_lnc_pathways_df, file="/u/kisaev/Jan2021/SUPP_TABLE_10_PATHWAYS_GPROFILER.csv", quote=F, row.names=F, sep=";")
 
 hoxa10as_paths = as.data.table(filter(all_lnc_pathways_df, lnc == "ENSG00000253187", canc=="LGG"))
-saveRDS(hoxa10as_paths, file="2019_08_hoxa10as_diff_exp_pathways_TCGA.rds")
+saveRDS(hoxa10as_paths, file="/u/kisaev/2021_hoxa10as_diff_exp_pathways_TCGA.rds")
 
 #keep those with least 5 pathways
 #sig_paths_sum = as.data.table(filter(sig_paths_sum, N > 5))

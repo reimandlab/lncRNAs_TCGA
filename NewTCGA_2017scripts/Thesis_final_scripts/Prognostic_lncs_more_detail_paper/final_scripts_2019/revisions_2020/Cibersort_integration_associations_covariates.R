@@ -239,6 +239,9 @@ pdf("/u/kisaev/Jan2021/figure4X_xCell.pdf", width=8.5, height=3)
 gene_exp
 dev.off()
 
+#save data to make figure
+write.table(sig_hits, file="/u/kisaev/Jan2021/Figure3_cibersort_immune_fractions_results.txt", quote=F, row.names=F, sep="}")
+
 #plot individual boxplots
 combos_sig = sig_hits$pair
 

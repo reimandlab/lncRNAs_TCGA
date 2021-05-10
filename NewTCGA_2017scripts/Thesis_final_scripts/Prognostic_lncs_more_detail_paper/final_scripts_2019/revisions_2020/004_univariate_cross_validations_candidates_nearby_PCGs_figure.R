@@ -118,3 +118,9 @@ g = ggplot(all_res, aes(med_pcg, med_lnc)) +
       #segment.size = 0.05)
 g
 dev.off()
+
+#combine data for supplementary tables
+r$combo_merge = paste(r$lnc, r$pcg, r$canc, sep="_")
+all_res$combo_merge = paste(all_res$canc_lnc, all_res$canc_pcg, all_res$type, sep="_")
+both = merge(r, all_res, by="combo_merge")
+write.table(both, file="/u/kisaev/Jan2021/nearby_pcgs_results.txt", sep="}", quote=F, row.names=F)

@@ -195,3 +195,8 @@ myColors_full
 colScale_full <- scale_colour_manual(name = "cancer",values = myColors_full)
 
 print("done loading everything YAY")
+
+#save list of lncRNAs studied
+hg38_lncs = unique(hg38_lncs[,c("gene", "symbol", "chr", "start", "end", "description")])
+fantom=merge(fantom, hg38_lncs, by="gene")
+write.csv(fantom, file="/u/kisaev/all_lncRNAs_studied_5592.csv")

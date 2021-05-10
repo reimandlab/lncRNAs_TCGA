@@ -25,12 +25,35 @@ lgg_wsurv$HOXA10AS = ""
 lgg_wsurv$HOXA10AS[lgg_wsurv$ENSG00000253187 == 0 ] = "Low HOXA10-AS"
 lgg_wsurv$HOXA10AS[lgg_wsurv$ENSG00000253187 > 0 ] = "High HOXA10-AS"
 
+dat_save_figure = lgg_wsurv
+dat_save_figure$OS.time = dat_save_figure$OS.time/365
+
+#add censoring to match other panels in figure 5
+dat_save_figure$OS[dat_save_figure$OS.time >8] = 0
+dat_save_figure$OS.time[dat_save_figure$OS.time >8] = 8
+
+dat_save_figure$TS = dat_save_figure$Transcriptome.Subtype
+dat_save_figure$TOFC = dat_save_figure$treatment_outcome_first_course
+dat_save_figure$TOFC[dat_save_figure$TOFC == "Complete Remission/Response"] = "CR"
+dat_save_figure$TOFC[dat_save_figure$TOFC == "Partial Remission/Response"] = "PR"
+dat_save_figure$TOFC[dat_save_figure$TOFC == "Progressive Disease"] = "PD"
+dat_save_figure$TOFC[dat_save_figure$TOFC == "Stable Disease"] = "SD"
+dat_save_figure$TOFC[dat_save_figure$TOFC %in% c("[Not Available]", "[Unknown]",
+"[Discrepancy]", "[Not Applicable]")] = "NA"
+dat_save_figure = dat_save_figure[,c("patient", "ENSG00000253187",
+"HOXA10AS", "TOFC", "TS",
+"OS", "OS.time")]
+write.csv(dat_save_figure, "/u/kisaev/data_for_figure5_TCGA_TOFC_TS.csv", quote=F, row.names=F)
+
 #transcriptome subtype
 tum_subtype = lgg_wsurv
 z= which(is.na(tum_subtype$Transcriptome.Subtype))
 tum_subtype = tum_subtype[-z,]
 tum_subtype$OS.time = tum_subtype$OS.time/365
 tum_subtype$TS = tum_subtype$Transcriptome.Subtype
+#add censoring to match other panels in figure 5
+tum_subtype$OS[tum_subtype$OS.time >8] = 0
+tum_subtype$OS.time[tum_subtype$OS.time >8] = 8
 
 pdf("/u/kisaev/HOXA10AS_transcriptome_subtype_KM_plot.pdf")
 fit <- survfit(Surv(OS.time, OS) ~ TS, data = tum_subtype)
@@ -39,7 +62,7 @@ s1 <- ggsurvplot(fit ,
         data = tum_subtype,      # data used to fit survival curves.
         pval = TRUE,             # show p-value of log-rank test.
         conf.int = FALSE,        # show confidence intervals for
-        xlim = c(0,10),
+        #xlim = c(0,8),
         risk.table = TRUE,      # present narrower X axis, but not affect
         break.time.by = 1)#,     # break X axis in time intervals by 500.
         #palette = c("purple", "orange"))
@@ -52,7 +75,7 @@ s2 <- ggsurvplot(fit ,
         facet.by = "TS",
         pval = TRUE,             # show p-value of log-rank test.
         conf.int = FALSE,        # show confidence intervals for
-        xlim = c(0,10),
+        #xlim = c(0,8),
         palette =c("#4DBBD5FF", "#E64B35FF"),
         break.time.by = 1)#,     # break X axis in time intervals by 500.
 print(s2)
@@ -63,6 +86,12 @@ summary(coxph(Surv(OS.time, OS) ~ HOXA10AS, data = filter(tum_subtype, TS=="ME")
 summary(coxph(Surv(OS.time, OS) ~ HOXA10AS, data = filter(tum_subtype, TS=="NE")))$coefficients
 summary(coxph(Surv(OS.time, OS) ~ HOXA10AS, data = filter(tum_subtype, TS=="PN")))$coefficients
 
+clin_only = coxph(Surv(OS.time, OS) ~ TS, data =tum_subtype)
+clin_plus_lnc = coxph(Surv(OS.time, OS) ~ TS + HOXA10AS, data =tum_subtype)
+anova(clin_only, clin_plus_lnc) #pvalue = 5.58e-06
+
+xx = table(tum_subtype$HOXA10AS,tum_subtype$TS)
+chisq.test(xx) #pvalue = 8.006e-14
 
 ##treatment outcome
 tum_outcome = lgg_wsurv
@@ -70,13 +99,15 @@ z= which(tum_outcome$treatment_outcome_first_course %in% c("Complete Remission/R
 "Progressive Disease", "Stable Disease"))
 tum_outcome = tum_outcome[z,]
 tum_outcome$OS.time = tum_outcome$OS.time/365
+#add censoring to match other panels in figure 5
+tum_outcome$OS[tum_outcome$OS.time >8] = 0
+tum_outcome$OS.time[tum_outcome$OS.time >8] = 8
 tum_outcome$TOFC = tum_outcome$treatment_outcome_first_course
 tum_outcome$TOFC[tum_outcome$TOFC == "Complete Remission/Response"] = "CR"
 tum_outcome$TOFC[tum_outcome$TOFC == "Partial Remission/Response"] = "PR"
 tum_outcome$TOFC[tum_outcome$TOFC == "Progressive Disease"] = "PD"
 tum_outcome$TOFC[tum_outcome$TOFC == "Stable Disease"] = "SD"
 tum_outcome$HOXA10AS = factor(tum_outcome$HOXA10AS, levels=c("Low HOXA10-AS", "High HOXA10-AS"))
-
 
 pdf("/u/kisaev/HOXA10AS_treatment_outcome_KM_plot.pdf")
 
@@ -86,7 +117,7 @@ s1 <- ggsurvplot(fit ,
         data = tum_outcome,      # data used to fit survival curves.
         pval = TRUE,             # show p-value of log-rank test.
         conf.int = FALSE,        # show confidence intervals for
-        xlim = c(0,10),
+        #xlim = c(0,8),
         risk.table = TRUE,      # present narrower X axis, but not affect
         break.time.by = 1)#,     # break X axis in time intervals by 500.
         #palette = c("purple", "orange"))
@@ -98,7 +129,7 @@ s2 <- ggsurvplot(fit ,
         data = tum_outcome,      # data used to fit survival curves.
         pval = TRUE,             # show p-value of log-rank test.
         conf.int = FALSE,        # show confidence intervals for
-        xlim = c(0,10),
+        #xlim = c(0,8),
         palette =c("#4DBBD5FF", "#E64B35FF"),
         facet.by = "TOFC",
         break.time.by = 1)#,     # break X axis in time intervals by 500.
@@ -112,3 +143,10 @@ summary(coxph(Surv(OS.time, OS) ~ HOXA10AS, data = filter(tum_outcome, TOFC=="CR
 summary(coxph(Surv(OS.time, OS) ~ HOXA10AS, data = filter(tum_outcome, TOFC=="PR")))$coefficients
 summary(coxph(Surv(OS.time, OS) ~ HOXA10AS, data = filter(tum_outcome, TOFC=="PD")))$coefficients
 summary(coxph(Surv(OS.time, OS) ~ HOXA10AS, data = filter(tum_outcome, TOFC=="SD")))$coefficients
+
+clin_only = coxph(Surv(OS.time, OS) ~ TOFC, data =tum_outcome)
+clin_plus_lnc = coxph(Surv(OS.time, OS) ~ TOFC + HOXA10AS, data =tum_outcome)
+anova(clin_only, clin_plus_lnc) #pvalue = 1.567e-05
+
+xx = table(tum_outcome$TOFC, tum_outcome$HOXA10AS)
+chisq.test(xx) #pvalue = 0.0001013
