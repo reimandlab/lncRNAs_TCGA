@@ -141,6 +141,7 @@ lowrisksamps = table(tum_subtype$risk_group_clin_only)[1]
 highrisksamps = table(tum_subtype$risk_group_clin_only)[2]
 
 s1 <- ggsurvplot(fit ,
+    font.main = c(7, "bold", "black"),
         title = paste("HR=", hr, "waldpval=", pval, "riskhigh=", highrisksamps, "risklow=", lowrisksamps),
         xlab = "Time (Years)",
         data = tum_subtype,      # data used to fit survival curves.
@@ -161,6 +162,7 @@ highrisksamps = table(tum_subtype$risk_group_clin_plus_lncRNA)[2]
 
 s2 <- ggsurvplot(fit ,
         xlab = "Time (Years)",
+        font.main = c(7, "bold", "black"),
         title = paste("HR=", hr, "waldpval=", pval, "riskhigh=", highrisksamps, "risklow=", lowrisksamps),
         data = tum_subtype,      # data used to fit survival curves.
         pval = TRUE,             # show p-value of log-rank test.
