@@ -187,41 +187,60 @@ get_clin_lnc_plots = function(dtt){
       print(box)
 
       #also print KM plot
-      #new_dat_plot$OS.time = new_dat_plot$OS.time/365
+      new_dat_plot$OS.time = new_dat_plot$OS.time/365
 
-      #fit <- survfit(Surv(OS.time, OS) ~ lncRNA_tag + Clinical, data = new_dat_plot)
+      fit <- survfit(Surv(OS.time, OS) ~ lncRNA_tag + Clinical, data = new_dat_plot)
 
-      #s <- ggsurvplot(
-       #   title = paste(get_name(lnc), cancer_type, colnames(new_dat)[i]),
-        #  fit,
-         # xlab = "Time (Years)",
-          #surv.median.line = "hv",
-         # font.main = c(14, "bold", "black"),
-         # font.x = c(12, "plain", "black"),
-         # font.y = c(12, "plain", "black"),
-         # font.tickslab = c(12, "plain", "black"),
-         # font.legend = 10,
-         # risk.table.fontsize = 5,
-          #legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
-         # data = new_dat_plot,      # data used to fit survival curves.
-         # risk.table = TRUE,       # show risk table.
-         # legend = "right",
-         # pval = TRUE,             # show p-value of log-rank test.
-         # conf.int = FALSE,        # show confidence intervals for
+      s <- ggsurvplot(
+          title = paste(get_name(lnc), cancer_type, colnames(new_dat)[i]),
+          fit,
+          xlab = "Time (Years)",
+          font.main = c(14, "bold", "black"),
+          font.x = c(12, "plain", "black"),
+         font.y = c(12, "plain", "black"),
+          font.tickslab = c(11, "plain", "black"),
+          font.legend = 4,
+          risk.table.fontsize = 2,
+          data = new_dat_plot,      # data used to fit survival curves.
+          risk.table = TRUE,       # show risk table.
+         legend = "right",
+          pval = TRUE,             # show p-value of log-rank test.
+          conf.int = FALSE,        # show confidence intervals for
                             # point estimaes of survival curves.
-         # xlim = c(0,10),        # present narrower X axis, but not affect
+          xlim = c(0,10),        # present narrower X axis, but not affect
                             # survival estimates.
-         # break.time.by = 1,     # break X axis in time intervals by 500.
-          #palette = colorRampPalette(mypal)(14),
-          #palette = mypal[c(4,1)],
-         # palette = "npg",
-          #ggtheme = theme_bw(), # customize plot and risk table with a theme.
-         # risk.table.y.text.col = T, # colour risk table text annotations.
-         # risk.table.y.text = FALSE # show bars instead of names in text annotations
+          break.time.by = 1,     # break X axis in time intervals by 500.
+          palette = "npg",
+          risk.table.y.text.col = T, # colour risk table text annotations.
+          risk.table.y.text = FALSE # show bars instead of names in text annotations
                             # in legend of risk table
-         # )
+          )
 
-      #print(s)
+      print(s)
+
+      fit <- survfit(Surv(OS.time, OS) ~ lncRNA_tag, data = new_dat_plot)
+      s2 <- ggsurvplot(fit ,
+              xlab = "Time (Years)",
+              data = new_dat_plot,      # data used to fit survival curves.
+              facet.by = "Clinical",
+              pval = TRUE,             # show p-value of log-rank test.
+              conf.int = FALSE,        # show confidence intervals for
+              xlim = c(0,10),
+              palette ="npg",
+              break.time.by = 1)#,     # break X axis in time intervals by 500.
+
+      print(s2)
+
+      fit <- survfit(Surv(OS.time, OS) ~ Clinical, data = new_dat_plot)
+      s3 <- ggsurvplot(fit ,
+              xlab = "Time (Years)",
+              data = new_dat_plot,      # data used to fit survival curves.
+              pval = TRUE,             # show p-value of log-rank test.
+              conf.int = FALSE,        # show confidence intervals for
+              xlim = c(0,10),
+              palette ="npg",
+              break.time.by = 1)#,
+      print(s3)
 
       }
 
@@ -233,162 +252,6 @@ get_clin_lnc_plots = function(dtt){
   }#only run if lncs in final clinical res dataset
 }#end get_clin_lnc_plots
 
-pdf("/u/kisaev/Jan2021/Figure4_individual_plots_clinical_plots.pdf", width=8, height=5)
+pdf("/u/kisaev/Jan2021/Figure4_individual_plots_clinical_plots.pdf", width=6, height=5)
 llply(clin, get_clin_lnc_plots, .progress="text")
-dev.off()
-
-#make KM plots for HOXA10-AS and HOXB-AS2 alone
-lgg = clin[[1]]
-z = which(is.na(lgg$IDH.status))
-lgg = lgg[-z,]
-
-lgg$OS.time = lgg$OS.time/365
-
-z = which(str_detect(colnames(lgg), "ENSG"))
-lncs = colnames(lgg)[z]
-
-#look at individual lncRNAs
-for(i in z){
-  print(i)
-  med = median(lgg[,i])
-
-  if(med ==0){
-        #if median = 0 then anyone greater than zero is 1
-        l1 = which(lgg[,i] > 0)
-        l2 = which(lgg[,i] ==0)
-        lgg[l1, i] = 1
-        lgg[l2, i] = 0
-        }
-
-  if(!(med ==0)){
-        l1 = which(lgg[,i] >= med)
-        l2 = which(lgg[,i] < med)
-        lgg[l1,i] = 1
-        lgg[l2,i] = 0
-        }
-}
-
-
-pdf("/u/kisaev/Dec2020/hoxa10as_hoxbas2_km_plots.pdf")
-
-lgg$ENSG00000239552 = factor(lgg$ENSG00000239552, levels=c(1,0))
-lgg$ENSG00000253187 = factor(lgg$ENSG00000253187, levels=c(1,0))
-
-fit <- survfit(Surv(OS.time, OS) ~ ENSG00000239552, data = lgg)
-s1 <- ggsurvplot(
-          title = paste("HOXB-AS2 in LGG"),
-          fit,
-          xlab = "Time (Years)",
-          #surv.median.line = "hv",
-          font.main = c(14, "bold", "black"),
-          font.x = c(12, "plain", "black"),
-          font.y = c(12, "plain", "black"),
-          font.tickslab = c(12, "plain", "black"),
-          font.legend = 10,
-          risk.table.fontsize = 5,
-          legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
-          data = lgg,      # data used to fit survival curves.
-          risk.table = TRUE,       # show risk table.
-          legend = "right",
-          pval = TRUE,             # show p-value of log-rank test.
-          conf.int = FALSE,        # show confidence intervals for
-                            # point estimaes of survival curves.
-          xlim = c(0,10),        # present narrower X axis, but not affect
-                            # survival estimates.
-          break.time.by = 1,     # break X axis in time intervals by 500.
-          palette = "npg",
-          risk.table.y.text.col = T, # colour risk table text annotations.
-         risk.table.y.text = FALSE # show bars instead of names in text annotations
-                            # in legend of risk table
-          )
-
-fit <- survfit(Surv(OS.time, OS) ~ ENSG00000239552 + IDH.status, data = lgg)
-s2 <- ggsurvplot(
-          title = paste("HOXB-AS2 and IDH status in LGG"),
-          fit,
-          xlab = "Time (Years)",
-          #surv.median.line = "hv",
-          font.main = c(14, "bold", "black"),
-          font.x = c(12, "plain", "black"),
-          font.y = c(12, "plain", "black"),
-          font.tickslab = c(12, "plain", "black"),
-          font.legend = 10,
-          risk.table.fontsize = 5,
-          legend.labs = c("High lncRNA, IDH Mut", "High lncRNA DH WT",
-          "Low lncRNA, IDH Mut", "Low lncRNA", "IDH WT"),             # survfit object with calculated statistics.
-          data = lgg,      # data used to fit survival curves.
-          risk.table = TRUE,       # show risk table.
-          legend = "right",
-          pval = TRUE,             # show p-value of log-rank test.
-          conf.int = FALSE,        # show confidence intervals for
-                            # point estimaes of survival curves.
-          xlim = c(0,10),        # present narrower X axis, but not affect
-                            # survival estimates.
-          break.time.by = 1,     # break X axis in time intervals by 500.
-          palette = "npg",
-          risk.table.y.text.col = T, # colour risk table text annotations.
-         risk.table.y.text = FALSE # show bars instead of names in text annotations
-                            # in legend of risk table
-          )
-
-fit <- survfit(Surv(OS.time, OS) ~ ENSG00000253187, data = lgg)
-s3 <- ggsurvplot(
-          title = paste("HOXA10-AS in LGG"),
-          fit,
-          xlab = "Time (Years)",
-          surv.median.line = "hv",
-          font.main = c(14, "bold", "black"),
-          font.x = c(12, "plain", "black"),
-          font.y = c(12, "plain", "black"),
-          font.tickslab = c(12, "plain", "black"),
-          font.legend = 10,
-          risk.table.fontsize = 5,
-          legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
-          data = lgg,      # data used to fit survival curves.
-          risk.table = TRUE,       # show risk table.
-          legend = "right",
-          pval = TRUE,             # show p-value of log-rank test.
-          conf.int = FALSE,        # show confidence intervals for
-                            # point estimaes of survival curves.
-          xlim = c(0,10),        # present narrower X axis, but not affect
-                            # survival estimates.
-          break.time.by = 1,     # break X axis in time intervals by 500.
-          palette = "npg",
-          risk.table.y.text.col = T, # colour risk table text annotations.
-         risk.table.y.text = FALSE # show bars instead of names in text annotations
-                            # in legend of risk table
-          )
-
-fit <- survfit(Surv(OS.time, OS) ~ ENSG00000253187 + IDH.status, data = lgg)
-s4 <- ggsurvplot(
-          title = paste("HOXA10-AS and IDH status in LGG"),
-          fit,
-          xlab = "Time (Years)",
-          surv.median.line = "hv",
-          font.main = c(14, "bold", "black"),
-          font.x = c(12, "plain", "black"),
-          font.y = c(12, "plain", "black"),
-          font.tickslab = c(12, "plain", "black"),
-          font.legend = 10,
-          risk.table.fontsize = 5,
-          #legend.labs = c("High Expression", "Low Expression"),             # survfit object with calculated statistics.
-          data = lgg,      # data used to fit survival curves.
-          risk.table = TRUE,       # show risk table.
-          legend = "right",
-          pval = TRUE,             # show p-value of log-rank test.
-          conf.int = FALSE,        # show confidence intervals for
-                            # point estimaes of survival curves.
-          xlim = c(0,10),        # present narrower X axis, but not affect
-                            # survival estimates.
-          break.time.by = 1,     # break X axis in time intervals by 500.
-          palette = "npg",
-          risk.table.y.text.col = T, # colour risk table text annotations.
-         risk.table.y.text = FALSE # show bars instead of names in text annotations
-                            # in legend of risk table
-          )
-print(s1)
-#print(s2)
-print(s3)
-#print(s4)
-
 dev.off()
