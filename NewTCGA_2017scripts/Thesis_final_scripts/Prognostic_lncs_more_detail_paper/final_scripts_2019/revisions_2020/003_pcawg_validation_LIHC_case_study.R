@@ -49,6 +49,7 @@ ids = unique(pcawg_clin[,c("icgc_donor_id", "submitted_donor_id.y")])
 colnames(ids) = c("patient", "TCGA_id")
 pcawg_data = merge(pcawg_data, ids, by= "patient")
 z = which(str_detect(pcawg_data$TCGA_id, "TCGA"))
+all_tcga_ids = pcawg_data$TCGA_id[z]
 pcawg_data = pcawg_data[-z,]
 
 #add more pcawg people

@@ -11,8 +11,8 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June1
 allCands = filter(allCands, data=="TCGA") #179 unique lncRNA-cancer combos, #166 unique lncRNAs
 
 #which cancer types are the non-unique lncRNAs from?
-allCands$Combo = NULL
-allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_name")]
+#allCands$Combo = NULL
+allCands = allCands[,c("gene", "coef", "HR", "pval", "cancer", "gene_symbol")]
 allCands = allCands[!duplicated(allCands), ]
 cands_dups = unique(allCands$gene[which(duplicated(allCands$gene))])
 

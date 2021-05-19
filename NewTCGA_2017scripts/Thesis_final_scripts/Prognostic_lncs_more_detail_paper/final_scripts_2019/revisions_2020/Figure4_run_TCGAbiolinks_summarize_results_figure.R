@@ -34,6 +34,8 @@ fdr_sum = function(dtt){
   dtt$clin_pval_fdr = as.numeric(dtt$clin_pval)
   dtt$clin_pval_fdr = p.adjust(dtt$clin_pval, method="fdr")
 
+  dtt$fdr[!(is.na(dtt$chisq))] = dtt$chisq_fdr[!(is.na(dtt$chisq))]
+
   dtt$clin_vs_combo_anova_fdr = as.numeric(dtt$clin_vs_combo_anova)
   dtt$clin_vs_combo_anova_fdr = p.adjust(dtt$clin_vs_combo_anova, method="fdr")
 
@@ -171,8 +173,12 @@ length(which(clean_up$clin_pval_fdr < 0.05)) #203/258 also significnatly associa
 clean_up$colname[which(str_detect(clean_up$colname, "age_at"))] = "Age"
 #clean_up$colname[clean_up$colname == "age"] = "Age"
 #clean_up$colname[clean_up$colname == "Age..years.at.diagnosis."] = "Age"
-clean_up$colname[which(str_detect(clean_up$colname, "Tumor.Stage..Clinical"))] = "Cliincal Stage"
-clean_up$colname[which(str_detect(clean_up$colname, "clinical_stage"))] = "Cliincal Stage"
+clean_up$colname[which(str_detect(clean_up$colname, "Tumor.Stage..Clinical"))] = "Clinical Stage"
+clean_up$colname[which(str_detect(clean_up$colname, "clinical_stage"))] = "Clinical Stage"
+
+z=which((clean_up$colname == "Grade") & (clean_up$type == "LGG"))
+clean_up = clean_up[-z,]
+
 clean_up$colname[which(str_detect(clean_up$colname, "histological_grade"))] = "Grade"
 
 clean_up$colname[which(clean_up$colname == "expression_subtype")] = "Expression.Subtype"
@@ -253,37 +259,43 @@ clean_up$anova_sig_combo_clin = ""
 clean_up$anova_sig_combo_clin[clean_up$clin_vs_combo_anova_fdr < 0.05] = "Sig"
 clean_up$anova_sig_combo_clin = factor(clean_up$anova_sig_combo_clin, levels=c("Sig", ""))
 
-pdf("/u/kisaev/Jan2021/summary_biolinks_subtypes_lncRNA_exp_April18.pdf", height=7, width=10)
+pdf("/u/kisaev/Jan2021/summary_biolinks_subtypes_lncRNA_exp_April18.pdf", height=5, width=6)
 #make geom_tile plot
 ggplot(clean_up, aes(name, colname)) +
-  geom_tile(aes(fill = -log10(fdr_fig), color=anova_sig_combo_clin, width=0.7, height=0.7), size=0.55) +
+  geom_tile(aes(fill = -log10(fdr_fig), color=anova_sig_combo_clin, width=0.65, height=0.65), size=0.5) +
   theme_bw() + #geom_text(aes(label = better), size=2.5) +
   theme(legend.title=element_blank(), legend.position="bottom", axis.title.x=element_blank(),
-    axis.text.x = element_text(angle = 90, hjust = 1, size=6)) +
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5, size=5),
+    strip.text.x = element_text(size = 4),
+    axis.text.y = element_text(size=5)) +
     scale_fill_gradient(low = "tan1", high = "darkred", n.breaks=7)+
     facet_grid(cols = vars(type), scales = "free", space = "free")+
      theme(strip.background = element_rect(colour="black", fill="white",
                                        size=1.5, linetype="solid"))+
-     scale_color_manual(values=c("black", "white"))
+     scale_color_manual(values=c("black", "grey"))+
+     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank())+
+theme(axis.text.x = element_text(face = "italic"))
     #+ scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))
 
 dev.off()
 
 write.csv(clean_up, file="/u/kisaev/Jan2021/cleaned_clinical_variables_associations_data_sept28_post_cleanup_final_figure_data.csv", quote=F, row.names=F)
 
-pdf("/u/kisaev/Jan2021/summary_clinical_concordances_vs_lnc_scatterplot_april18_wide.pdf", width=6, height=6)
+pdf("/u/kisaev/Jan2021/summary_clinical_concordances_vs_lnc_scatterplot_april18_wide.pdf", width=2, height=3)
 g = ggplot(clean_up, aes(clin_concordance, concordance_combo_model, label=canc_lnc_clin)) +
   geom_point(aes(colour=type,
-       shape=anova_sig_combo_clin), size=1.75) +
-       scale_shape_manual(values = c(5, 17))+
+       shape=anova_sig_combo_clin), size=1.4) +
+       scale_shape_manual(values = c(17, 5))+
  #scale_size(range = c(0, 3))+
     #scale_colour_manual(values = mypal[c(2:5, 9,8)]) +
     #scale_fill_manual(values = sample(mypal5,9)) +
     colScale+
     #scale_colour_brewer(palette="Set1")+
     xlab("Clinical Concordance") + ylab("lncRNA & Clinical Combined Concordance") + theme_classic() +
-    theme(legend.position = "top", axis.text = element_text(size=12),
-      legend.text=element_text(size=10), legend.title=element_text(size=10)) +
+    theme(legend.position = "top", axis.text = element_text(size=6),
+    axis.title=element_text(size=6),
+      legend.text=element_text(size=3), legend.title=element_text(size=3)) +
      xlim(0.5,1) + ylim(0.5,1) + geom_abline(intercept=0) +
      geom_text_repel(data = subset(clean_up,
       canc_lnc_clin %in% c("RP11-279F6.3 KIRP Cliincal Stage", "RP5-1086K13.1 LGG X1p.19q.codeletion")),min.segment.length = unit(0, 'lines'),

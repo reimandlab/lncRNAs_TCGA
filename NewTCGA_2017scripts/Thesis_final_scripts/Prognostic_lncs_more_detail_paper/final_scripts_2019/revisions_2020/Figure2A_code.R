@@ -75,6 +75,23 @@ gghistogram(res, x="perc_zeroes", color="black", fill="#00AFBB") + xlim(0,1)+the
 xlab("Percent of patients with zero expression") + ylab("Number of lncRNAs")
 dev.off()
 
+#barplot
+res$perc_zeroes = as.numeric(res$perc_zeroes)
+res$perc_on = 1 - res$perc_zeroes
+res_off = res[,c("gene_symbol", "type", "perc_zeroes", "perc_on")]
+res_off = melt(res_off)
+
+pdf("fraction_lncRNA_turned_on_off.pdf", width=8,height=3)
+g = ggbarplot(res_off, "gene_symbol", "value",
+  fill = "variable", color = "variable",
+  palette = c("#00AFBB", "#E7B800"))
+g = ggpar(g,
+ font.tickslab = c(5,"plain", "black"),
+ xtickslab.rt = 90)+ylab("% of patients with no detected expression")
+g + facet_grid(~type, scales = "free", space = "free") + theme(text = element_text(size=5),
+axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=3))
+dev.off()
+
 #figure 2 - multivaraite
 res = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
 res = as.data.table(filter(res, data=="TCGA"))

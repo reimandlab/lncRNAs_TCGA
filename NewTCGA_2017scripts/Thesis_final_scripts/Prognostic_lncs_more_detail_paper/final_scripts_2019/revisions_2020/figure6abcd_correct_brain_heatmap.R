@@ -383,8 +383,9 @@ lncs_brain_all = unlist(canc[3,]$evidence)
 evi = c()
 for(i in 1:nrow(res)){
   ress = unlist(res$evidence[i])
+	print(ress)
   if(ress == "combined"){
-    ress = 13
+    ress = c(1:13)
   }
   evi = c(evi, length(ress))
 }
@@ -856,6 +857,7 @@ lgg = merge(lgg, lgg_idh, by="patient")
 #z = which(is.na(lgg$IDH.status))
 #lgg = lgg[-z,]
 
+lgg$ENSG00000253187_fpkm = lgg$ENSG00000253187
 lgg$ENSG00000253187 = log1p(lgg$ENSG00000253187)
 lgg$ENSG00000253187_tag[lgg$ENSG00000253187 > 0] = "High"
 lgg$ENSG00000253187_tag[lgg$ENSG00000253187 == 0] = "Low"
@@ -916,6 +918,8 @@ if(!(length(z)==0)){
 lgg = lgg[-z,]}
 
 lgg$ENSG00000253187 = as.numeric(lgg$ENSG00000253187)
+lgg$ENSG00000253187_fpkm = as.numeric(lgg$ENSG00000253187)
+
 med = median(lgg$ENSG00000253187)
 lgg$ENSG00000253187_tag[lgg$ENSG00000253187 > 0 ] = "High"
 lgg$ENSG00000253187_tag[lgg$ENSG00000253187 == 0 ] = "Low"

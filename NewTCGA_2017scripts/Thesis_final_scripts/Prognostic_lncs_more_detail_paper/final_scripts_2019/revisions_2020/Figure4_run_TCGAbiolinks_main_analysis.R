@@ -8,6 +8,19 @@ allCands = subset(allCands, data == "TCGA") #173 unique lncRNA-cancer combos, #1
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 #library(TCGAbiolinks)
+get_median_risk_group = function(PI_centered, PI_lower_thres, epsilon = 0.0001) {
+
+  if (!any(PI_centered > PI_lower_thres)) {
+    PI_lower_thres = PI_lower_thres - epsilon
+  } else if (all(PI_centered > PI_lower_thres)) {
+    PI_lower_thres = PI_lower_thres + epsilon
+  }
+
+  risk_group = 1 + (PI_centered > PI_lower_thres)
+  risk_group = c("low_risk", "high_risk")[risk_group]
+  risk_group = factor(risk_group, levels = c("low_risk", "high_risk"))
+  risk_group
+}
 
 #--------------------------------------------------------------------
 #Clinical files - use TCGAbiolinks via previous script
@@ -120,6 +133,10 @@ get_clin_lnc_cors = function(dtt){
           new_dat_plot[,3] = log1p(new_dat_plot[,3])
           colnames(new_dat_plot)[3] = "lncRNA_exp"
 
+          z = which(is.na(new_dat_plot[,2]))
+          if(!(length(z)==0)){
+            new_dat_plot = new_dat_plot[-z,]
+          }
           #get correlation results and save results into file
           cor = rcorr(new_dat_plot$lncRNA_exp, new_dat_plot$Clinical, "spearman")$r[2]
           pval_cor = rcorr(new_dat_plot$lncRNA_exp, new_dat_plot$Clinical, "spearman")$P[2]
@@ -147,6 +164,7 @@ get_clin_lnc_cors = function(dtt){
           z = which(is.na(new_dat_plot[,2]))
           if(!(length(z)==0)){
             anov_pval = "cant_calc"
+            clin_vs_combo_anova = anova(cox_clin, both)[2,4]
           }
 
           if(length(z)==0){
@@ -183,7 +201,7 @@ get_clin_lnc_cors = function(dtt){
 
         #remove catgeories with less than 5 patients
         t = as.data.table(table(new_dat_plot[,2]))
-        t = filter(t, N < 10)
+        t = filter(t, N < 5)
         rm = unique(t$V1)
         if(!(length(rm) ==0)){
           new_dat_plot = new_dat_plot[-(which(new_dat_plot[,2] %in% rm)),]
@@ -263,7 +281,7 @@ get_clin_lnc_cors = function(dtt){
         cox_clin = coxph(Surv(OS.time, OS) ~ Clinical, data = new_dat_plot)
         both = coxph(Surv(OS.time, OS) ~ lncRNA_tag + Clinical, data = new_dat_plot)
 
-        clin_pval = glance(cox_clin)[6]
+        clin_pval = glance(cox_clin)[8]
 
         clin_concordance = glance(cox_clin)$concordance
         lnc_concordance = glance(cox_lnc)$concordance
@@ -273,6 +291,79 @@ get_clin_lnc_cors = function(dtt){
         clin_vs_combo_anova = anova(cox_clin, both)[2,4]
         #print(ggforest(both, main = paste(lnc, col, canc), data=new_dat_plot))
 
+#        check_comp2 = ((col == "clinical_stage") & (lnc == "ENSG00000259641"))
+        check_comp2 = TRUE
+
+        if(check_comp2){
+          new_dat_plot$OS.time = new_dat_plot$OS.time/365
+          cox_lnc = coxph(Surv(OS.time, OS) ~ Clinical, data = new_dat_plot)
+          relRisk <- predict(cox_lnc, new_dat_plot, type="risk")   # relative risk
+          new_dat_plot$rel_risk_clin_only = relRisk
+
+          # split into two risk groups based on median
+          PI_lower_thres = median(new_dat_plot$rel_risk_clin_only)
+          PI_max_threshold = summary(new_dat_plot$rel_risk_clin_only)[5]
+          new_dat_plot$risk_group_clin_only = get_median_risk_group(
+            new_dat_plot$rel_risk_clin_only,
+            PI_lower_thres)
+          new_dat_plot$risk_group_clin_only = factor(new_dat_plot$risk_group_clin_only, levels=c("low_risk", "high_risk"))
+
+          #get risk based models clinical plus lncRNA only
+          cox_lnc = coxph(Surv(OS.time, OS) ~ Clinical + lncRNA_tag, data = new_dat_plot)
+          relRisk <- predict(cox_lnc, new_dat_plot, type="risk")   # relative risk
+          new_dat_plot$rel_risk_clin_plus_lncRNA = relRisk
+
+          # split into two risk groups based on median
+          PI_lower_thres = median(new_dat_plot$rel_risk_clin_plus_lncRNA)
+          PI_max_threshold = summary(new_dat_plot$rel_risk_clin_plus_lncRNA)[5]
+          new_dat_plot$risk_group_clin_plus_lncRNA = get_median_risk_group(
+            new_dat_plot$rel_risk_clin_plus_lncRNA,
+            PI_lower_thres)
+          new_dat_plot$risk_group_clin_plus_lncRNA = factor(new_dat_plot$risk_group_clin_plus_lncRNA, levels=c("low_risk", "high_risk"))
+
+          file_name = paste("/u/kisaev/", lnc, col, ".pdf", sep="_")
+
+          #pdf(file_name, width=6, height=5)
+          fit <- survfit(Surv(OS.time, OS) ~ risk_group_clin_only, data = new_dat_plot)
+          cox_lnc = coxph(Surv(OS.time, OS) ~ risk_group_clin_only, data = new_dat_plot)
+          hr=round(summary(cox_lnc)$coefficients[2], digits=3)
+          pval=round(summary(cox_lnc)$coefficients[5], digits=15)
+          lowrisksamps = table(new_dat_plot$risk_group_clin_only)[1]
+          highrisksamps = table(new_dat_plot$risk_group_clin_only)[2]
+
+          s1 <- ggsurvplot(fit ,
+                  title = paste("HR=", hr, "waldpval=", pval, "riskhigh=", highrisksamps, "risklow=", lowrisksamps),
+                  xlab = "Time (Years)",
+                  font.main = c(7, "bold", "black"),
+                  data = new_dat_plot,      # data used to fit survival curves.
+                  pval = TRUE,             # show p-value of log-rank test.
+                  conf.int = FALSE,        # show confidence intervals for
+                  #xlim = c(0,8),
+                  risk.table = FALSE,      # present narrower X axis, but not affect
+                  break.time.by = 1,     # break X axis in time intervals by 500.
+                  palette =c("#4DBBD5FF", "#E64B35FF"))
+          print(s1)
+          fit <- survfit(Surv(OS.time, OS) ~ risk_group_clin_plus_lncRNA, data = new_dat_plot)
+
+          cox_lnc = coxph(Surv(OS.time, OS) ~ risk_group_clin_plus_lncRNA, data = new_dat_plot)
+          hr=round(summary(cox_lnc)$coefficients[2], digits=3)
+          pval=round(summary(cox_lnc)$coefficients[5], digits=15)
+          lowrisksamps = table(new_dat_plot$risk_group_clin_plus_lncRNA)[1]
+          highrisksamps = table(new_dat_plot$risk_group_clin_plus_lncRNA)[2]
+
+          s2 <- ggsurvplot(fit ,
+                  xlab = "Time (Years)",
+                  font.main = c(7, "bold", "black"),
+                  title = paste("HR=", hr, "waldpval=", pval, "riskhigh=", highrisksamps, "risklow=", lowrisksamps),
+                  data = new_dat_plot,      # data used to fit survival curves.
+                  pval = TRUE,             # show p-value of log-rank test.
+                  conf.int = FALSE,        # show confidence intervals for
+                  #xlim = c(0,8),
+                  palette =c("#4DBBD5FF", "#E64B35FF"),
+                  break.time.by = 1)#,     # break X axis in time intervals by 500.
+          print(s2)
+          #dev.off()
+        }
         }
 
         if((dim(table(new_dat_plot$lncRNA_tag))) <= 1 & (!(check))){
@@ -341,7 +432,7 @@ get_clin_lnc_cors = function(dtt){
 
     } #end get_cor
 
-    pdf(paste("/u/kisaev/", cancer_type, "clinical_plots.pdf", sep="_"))
+    pdf(paste("/u/kisaev/", cancer_type, "clinical_plots.pdf", sep="_"), width=6, height=5)
     all_canc_lncs_results = llply(lncs, get_cor)
     all_canc_lncs_results = do.call(rbind.data.frame, all_canc_lncs_results)
     dev.off()

@@ -386,7 +386,7 @@ mypal = c("#E5DFD9","#EAD286" ,"#D1EB7B", "#96897F" ,"#E5C0A6" ,
 "#DE8D54" ,"#DF4FA6")
 
 random_lncs_vs_cand1 = unique(random_lncs_vs_cand1[,c("HR", "diff_meds_lnc_clinical",
-"name", "canc_type", "sig")])
+"name", "canc_type", "sig", "median_lncRNA", "median_clinical")])
 
 pdf("/u/kisaev/Jan2021/figure2_e_lncRNA_cands_vs_clinical_variables.pdf", width=8, height=6)
 g1 = ggplot(random_lncs_vs_cand1, aes(x=HR, y=diff_meds_lnc_clinical, label=name)) +
@@ -404,6 +404,11 @@ labs(x="log2(HR)", y="med lncRNA c-index - med clinical c-index")+
  g1 + theme_classic()
 
 dev.off()
+
+allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June15.rds")
+colnames(random_lncs_vs_cand1)[3] = "gene_symbol"
+allCands = merge(allCands,random_lncs_vs_cand1, by=c("gene_symbol", "canc_type"))
+write.table(allCands, file="/u/kisaev/lncRNAs_SuppTable2A_with_cindices.txt", quote=F, row.names=F, sep="}")
 
 #part b
 #pdf("figure2_e_lncRNA_cands_vs_random_lncs_variables.pdf", width=6, height=6)

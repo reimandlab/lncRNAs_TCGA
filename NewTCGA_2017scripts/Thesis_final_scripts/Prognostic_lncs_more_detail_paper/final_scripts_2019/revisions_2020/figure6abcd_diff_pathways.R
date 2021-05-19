@@ -338,6 +338,8 @@ barplot = as.data.table(filter(barplot, num >0))
 barplot$lncRNA = factor(barplot$lncRNA, levels = ttt$V1)
 barplot$type = factor(barplot$type, levels = c("UpregulatedRisk", "DownregulatedRisk", "census"))
 
+just_lgg = as.data.table(table(lgg_res$gene_name))
+
 write.table(barplot, file="figure_5A_data_LGG_DE_genes.txt", quote=F, row.names=F, sep="\t")
 
 pdf("/u/kisaev/Jan2021/Figure5A_lgg_only.pdf", width=5, height=6)
@@ -372,7 +374,7 @@ for(i in 1:nrow(res)){
 res$term.name[lncs_hox]
 
 #canc = subset(res, res$term.name %in% canc_paths_paths)
-canc_paths_paths = res[which(str_detect(res$term.name, "synaptic")),]$term.name
+canc_paths_paths = res[which(str_detect(res$term.name, "brain")),]$term.name
 canc = subset(res, term.name %in% canc_paths_paths)
 
 #1. get all PCGs that are in these pathways

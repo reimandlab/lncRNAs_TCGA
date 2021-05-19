@@ -9,6 +9,20 @@ allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 library(corrplot)
 
+get_median_risk_group = function(PI_centered, PI_lower_thres, epsilon = 1e-16) {
+
+  if (!any(PI_centered > PI_lower_thres)) {
+    PI_lower_thres = PI_lower_thres - epsilon
+  } else if (all(PI_centered > PI_lower_thres)) {
+    PI_lower_thres = PI_lower_thres + epsilon
+  }
+
+  risk_group = 1 + (PI_centered > PI_lower_thres)
+  risk_group = c("low_risk", "high_risk")[risk_group]
+  risk_group = factor(risk_group, levels = c("low_risk", "high_risk"))
+  risk_group
+}
+
 #--------------------------------------------------------------------
 #Clinical files - use TCGAbiolinks via previous script
 #--------------------------------------------------------------------
@@ -140,26 +154,79 @@ get_clin_lnc_plots = function(dtt){
       #if categorial variable make facetted barplot
       if(!(length(unique(new_dat_plot$Clinical)) > 20)){
 
-        if((col == "treatment_outcome_first_course") & (lnc == "ENSG00000253187")){
-          #make barplot
-          pdf("/u/kisaev/Jan2021/HOXA10AS_treat_outcome.pdf", width=5, height=5)
-          print("make HOXA10-AS plot")
-          tt = as.data.table(table(new_dat_plot$Clinical, new_dat_plot$lncRNA_tag))
-          colnames(tt) = c("Treatment_Outcome", "lncRNA_expression", "N")
+        check_comp1 = ((col == "X1p.19q.codeletion") & (lnc == "ENSG00000239552"))
+        check_comp2 = ((col == "clinical_stage") & (lnc == "ENSG00000259641"))
 
-          tt$Treatment_Outcome = factor(tt$Treatment_Outcome, levels=c("Progressive Disease",
-      "Stable Disease", "Partial Remission/Response", "Complete Remission/Response"))
+        if((check_comp1 | check_comp2)){
+          #get risk based models clinical only
+          new_dat_plot$OS.time = new_dat_plot$OS.time/365
+          cox_lnc = coxph(Surv(OS.time, OS) ~ Clinical, data = new_dat_plot)
+          relRisk <- predict(cox_lnc, new_dat_plot, type="risk")   # relative risk
+          new_dat_plot$rel_risk_clin_only = relRisk
 
-          tt$lncRNA_expression = factor(tt$lncRNA_expression, levels=c(0, 1))
-          tt$perc = tt$N/dim(new_dat_plot)[1]
-          ss = ggplot(data=tt, aes(x=Treatment_Outcome, y=perc, fill=lncRNA_expression)) +
-            geom_bar(stat="identity")+
-            scale_fill_manual(values=c("blue","red"))+
-            coord_flip() +ylab("Percentage of patients")+
-            xlab("Treatment outcome first course")+
-            theme(legend.position="bottom")
-            print(ss)
-            dev.off()
+          # split into two risk groups based on median
+          PI_lower_thres = median(new_dat_plot$rel_risk_clin_only)
+          PI_max_threshold = summary(new_dat_plot$rel_risk_clin_only)[5]
+          new_dat_plot$risk_group_clin_only = get_median_risk_group(
+            new_dat_plot$rel_risk_clin_only,
+            PI_lower_thres)
+          new_dat_plot$risk_group_clin_only = factor(new_dat_plot$risk_group_clin_only, levels=c("low_risk", "high_risk"))
+
+          #get risk based models clinical plus lncRNA only
+          cox_lnc = coxph(Surv(OS.time, OS) ~ Clinical + lncRNA_tag, data = new_dat_plot)
+          relRisk <- predict(cox_lnc, new_dat_plot, type="risk")   # relative risk
+          new_dat_plot$rel_risk_clin_plus_lncRNA = relRisk
+
+          # split into two risk groups based on median
+          PI_lower_thres = median(new_dat_plot$rel_risk_clin_plus_lncRNA)
+          PI_max_threshold = summary(new_dat_plot$rel_risk_clin_plus_lncRNA)[5]
+          new_dat_plot$risk_group_clin_plus_lncRNA = get_median_risk_group(
+            new_dat_plot$rel_risk_clin_plus_lncRNA,
+            PI_lower_thres)
+          new_dat_plot$risk_group_clin_plus_lncRNA = factor(new_dat_plot$risk_group_clin_plus_lncRNA, levels=c("low_risk", "high_risk"))
+
+          file_name = paste("/u/kisaev/", lnc, col, ".pdf", sep="_")
+
+          pdf(file_name, width=6, height=5)
+          fit <- survfit(Surv(OS.time, OS) ~ risk_group_clin_only, data = new_dat_plot)
+          cox_lnc = coxph(Surv(OS.time, OS) ~ risk_group_clin_only, data = new_dat_plot)
+          hr=round(summary(cox_lnc)$coefficients[2], digits=3)
+          pval=round(summary(cox_lnc)$coefficients[5], digits=15)
+          lowrisksamps = table(new_dat_plot$risk_group_clin_only)[1]
+          highrisksamps = table(new_dat_plot$risk_group_clin_only)[2]
+
+          s1 <- ggsurvplot(fit ,
+                  title = paste("HR=", hr, "waldpval=", pval, "riskhigh=", highrisksamps, "risklow=", lowrisksamps),
+                  xlab = "Time (Years)",
+                  font.main = c(7, "bold", "black"),
+                  data = new_dat_plot,      # data used to fit survival curves.
+                  pval = TRUE,             # show p-value of log-rank test.
+                  conf.int = FALSE,        # show confidence intervals for
+                  #xlim = c(0,8),
+                  risk.table = FALSE,      # present narrower X axis, but not affect
+                  break.time.by = 1,     # break X axis in time intervals by 500.
+                  palette =c("#4DBBD5FF", "#E64B35FF"))
+          print(s1)
+          fit <- survfit(Surv(OS.time, OS) ~ risk_group_clin_plus_lncRNA, data = new_dat_plot)
+
+          cox_lnc = coxph(Surv(OS.time, OS) ~ risk_group_clin_plus_lncRNA, data = new_dat_plot)
+          hr=round(summary(cox_lnc)$coefficients[2], digits=3)
+          pval=round(summary(cox_lnc)$coefficients[5], digits=15)
+          lowrisksamps = table(new_dat_plot$risk_group_clin_plus_lncRNA)[1]
+          highrisksamps = table(new_dat_plot$risk_group_clin_plus_lncRNA)[2]
+
+          s2 <- ggsurvplot(fit ,
+                  xlab = "Time (Years)",
+                  font.main = c(7, "bold", "black"),
+                  title = paste("HR=", hr, "waldpval=", pval, "riskhigh=", highrisksamps, "risklow=", lowrisksamps),
+                  data = new_dat_plot,      # data used to fit survival curves.
+                  pval = TRUE,             # show p-value of log-rank test.
+                  conf.int = FALSE,        # show confidence intervals for
+                  #xlim = c(0,8),
+                  palette =c("#4DBBD5FF", "#E64B35FF"),
+                  break.time.by = 1)#,     # break X axis in time intervals by 500.
+          print(s2)
+          dev.off()
         }
 
       g <- ggplot(new_dat_plot, aes(patient, lncRNA_exp)) +  geom_col(aes(fill = Clinical))+
