@@ -55,6 +55,7 @@ get_canc_dat = function(canc){
   return(canc_d)
 }
 cancer_data = llply(cancers, get_canc_dat)
+names(cancer_data) = cancers
 
 get_canc_data_for_plot = function(dtt){
   #get cancer specific candidates
@@ -244,25 +245,41 @@ write.table(sig_hits, file="/u/kisaev/Jan2021/Figure3_cibersort_immune_fractions
 
 #plot individual boxplots
 combos_sig = sig_hits$pair
+combos_sig = c("Macrophages.M2 WAC-AS1", "T.cells.CD4.memory.resting WAC-AS1",
+"Macrophages.M2 HOXA10-AS", "Macrophages.M2 DLGAP1-AS1",
+"Macrophages.M2 AC010273.2", "Mast.cells.activated AC010273.2", "T.cells.CD4.memory.resting AC010273.2",
+"Macrophages.M2 AC026790.1", "T.cells.CD4.memory.resting AC026790.1",
+"Monocytes AC022390.1", "Macrophages.M2 AC016708.1", "T.cells.CD4.memory.resting AC016708.1",
+"Monocytes AF131216.3", "T.cells.CD4.memory.resting AF131216.3",
+"T.cells.CD4.memory.resting LINC02100", "Monocytes HOXB-AS2",
+"T.cells.CD4.memory.resting HOXB-AS2", "Mast.cells.activated HOXB-AS2",
+"Monocytes AC022390.1", "T.cells.CD4.memory.resting AC022390.1",
+"Monocytes AC008808.2")
 
-get_clin_lnc_cors = function(dtt){
-  canc = dtt$Cancer[1]
-  print(canc)
-  print(dim(dtt))
+get_clin_lnc_cors = function(sig_hit){
+
+  print(sig_hit)
+  canc = filter(sig_hits, pair == sig_hit)$type
+
+  z = which(names(filtered_data) == canc)
+
+  dtt = filtered_data[[z]]
+  #print(canc)
+  #print(dim(dtt))
   #get lncs
+
   z = which(str_detect(colnames(dtt), "ENSG"))
   lncs = colnames(dtt)[z]
   dtt=as.data.frame(dtt)
 
-  #look at individual lncRNAs
-  get_cor = function(lncrna){
-    if(lncrna %in% sig_hits$lnc){
-      print("run test")
-    z = which((str_detect(colnames(dtt), "ENSG") & !(colnames(dtt) %in% lncrna)))
-    if(length(z) > 0){
+  lncrna = unlist(strsplit(sig_hit, " "))[2]
+  lncrna = allCands$gene[allCands$gene_symbol == lncrna][1]
+
+  z = which((str_detect(colnames(dtt), "ENSG") & !(colnames(dtt) %in% lncrna)))
+  if(length(z) > 0){
     new_dat = dtt[,-z]}
-    #add 0/1 labels
-    if(length(z) == 0){
+  #add 0/1 labels
+  if(length(z) == 0){
     new_dat = dtt}
     new_dat$lncRNA_tag = ""
     med = median(new_dat[,which(colnames(new_dat) %in% lncrna)])
@@ -282,7 +299,7 @@ get_clin_lnc_cors = function(dtt){
          new_dat$lncRNA_tag[l2] = 0
         }
     #get risk type
-    z = as.numeric(which((allCands$cancer %in% canc) & (allCands$gene %in% lncrna) & (allCands$data == "TCGA")))
+    z = as.numeric(which((allCands$canc_type %in% canc) & (allCands$gene %in% lncrna) & (allCands$data == "TCGA")))
     hr = as.numeric(allCands$HR[z])
     new_dat$risk = ""
     if(hr >1){new_dat$risk = "HighExp"}
@@ -302,19 +319,18 @@ get_clin_lnc_cors = function(dtt){
     z = which(canc_xcell$patient %in% new_dat$patient)
     canc_xcell = merge(canc_xcell, new_dat, by="patient")
 
-    cell_types=as.character(filter(sig_hits, lnc == lncrna)$cell_type)
+    cell_type = unlist(strsplit(sig_hit, " "))[1]
 
     #check cell type enrichment between low/high groups
-    get_enrich = function(cell_type){
-      print(cell_type)
-      colnames(canc_xcell)[29]="lnc"
-      cell_dat  = as.data.frame(canc_xcell)
-      z = which(colnames(cell_dat) %in% c(cell_type, "lncRNA_tag", "lnc"))
-      cell_dat = cell_dat[,z]
-      cell_t=colnames(cell_dat)[1]
-      colnames(cell_dat)[1]="cell_type"
-      cell_dat$cell_type = as.numeric(cell_dat$cell_type)
-      cell_dat$lncRNA_tag = as.numeric(cell_dat$lncRNA_tag)
+    #print(cell_type)
+    colnames(canc_xcell)[29]="lnc"
+    cell_dat  = as.data.frame(canc_xcell)
+    z = which(colnames(cell_dat) %in% c(cell_type, "lncRNA_tag", "lnc"))
+    cell_dat = cell_dat[,z]
+    cell_t=colnames(cell_dat)[1]
+    colnames(cell_dat)[1]="cell_type"
+    cell_dat$cell_type = as.numeric(cell_dat$cell_type)
+    cell_dat$lncRNA_tag = as.numeric(cell_dat$lncRNA_tag)
 
       if(summary(cell_dat$cell_type)[5] > 0.1){
       lnc_name = get_name(lncrna)
@@ -334,18 +350,23 @@ get_clin_lnc_cors = function(dtt){
       }
       cell_dat$Risk = factor(cell_dat$Risk, levels=c("LowRisk", "HighRisk"))
       g = ggboxplot(cell_dat, x="Risk", y="cell_type",
-      fill="Risk", palette=c("blue", "red"), add = "jitter") + stat_compare_means() +
-      ggtitle(paste(lnc_name, cell_t, canc)) + stat_n_text() +ylim(0,1)
-      print(g)
+      fill="Risk", palette=c("blue", "red"), add = "jitter",
+      add.params = list(size = 0.5, alpha = 0.3), legend="none") +
+       font("xlab", size = 5, color = "black")+
+        font("ylab", size = 5, color = "black")+
+         font("title", size = 5, color = "black")+
+          font("xy.text", size = 6, color = "black")+
+      ggtitle(paste(lnc_name, cell_t, canc)) #+ stat_n_text() #+ylim(0,1)
+      return(g)
       }
-    }
-
-    llply(cell_types, get_enrich)
-  }} #end get_cor
-
-llply(lncs, get_cor)
 }
 
-pdf("/u/kisaev/Jan2021/cell_types_immune_lncRNAs.pdf")
-llply(filtered_data, get_clin_lnc_cors)
+pdf("/u/kisaev/Jan2021/cell_types_immune_lncRNAs.pdf", width=7, height=8)
+list_plots = llply(combos_sig, get_clin_lnc_cors)
+library(gridExtra)
+n <- length(list_plots)
+nCol <- floor(sqrt(n))
+do.call("grid.arrange", c(list_plots, ncol=nCol))
 dev.off()
+
+#get plot for each lnc-immune cell of interest
