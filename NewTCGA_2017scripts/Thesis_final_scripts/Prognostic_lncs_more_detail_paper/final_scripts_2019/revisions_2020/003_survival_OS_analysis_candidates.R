@@ -130,6 +130,9 @@ get_survival_models = function(dtt){
 
     #  newdat$gene=newdat[,gene]
     lncs = coxph(Surv(OS.time, OS)  ~ ., data = newdat)
+    clin_vars_used = paste(colnames(newdat), collapse=",")
+    print(clin_vars_used)
+
     #  global = test.ph$table[nrow(test.ph$table),3]
 
     #mutlvariate concordance
@@ -279,6 +282,7 @@ results_cox1 = results_cox1[-1,]
 results_cox1$pval = as.numeric(results_cox1$pval)
 results_cox1$fdr_pval = p.adjust(results_cox1$pval, method="fdr")
 results_cox1$fdr_pval_adjusted = p.adjust(results_cox1$pval_adjusted, method="fdr")
+results_cox1$clin_vars = clin_vars_used
 
 return(results_cox1)
 
