@@ -116,7 +116,9 @@ get_clin_lnc_cors = function(dtt){
       new_dat[,i] = as.character(new_dat[,i])}
 
       print(col)
-      if(!(col %in% c("patient", "patient_id", "bcr_patient_uuid", "tissue_source_site",
+      if(!(col %in% c("patient", "patient_id", "Baylor GCC\r\nexome seq",
+"Baylor GCC whole genome seq",
+      "bcr_patient_uuid", "tissue_source_site",
         "last_contact_days_to", "days_to_initial_pathologic_diagnosis", "tumor_tissue_site",
         "form_completion_date", "OS.time", "OS", "days_to_death", "Signet.Ring", "MACIS"))){
 
@@ -236,7 +238,7 @@ get_clin_lnc_cors = function(dtt){
        z2 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% c("[Unknown]", "[Not Available]",
        "#N/A", "[Not Evaluated]", "[Discrepancy]", "[Not Applicable]", "Unknown", "N/A", "NA", "Not Available", "Not performed",
         "Indeterminate", "[Not Available]", "[Unknown]", "Not Performed Clinical",
-       "Performed but Not Available", "[Not submitted]", "-"))
+       "Performed but Not Available", "[Not submitted]", "-", "---", ".", "NaN"))
 
        if(!(length(z2)==0)){
         new_dat_plot = new_dat_plot[-z2,]}
