@@ -15,6 +15,8 @@ allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
 #1. adjust pvalues and remove unimportant/uninformative columns
 all_clin = readRDS("12_data_sets_biolinks_results.rds")
+#all_clin = readRDS("13_data_sets_biolinks_results.rds")
+
 all_clin_dat = as.data.table(ldply(all_clin)) #combine all dataframes into one
 
 get_name=function(g){
@@ -73,6 +75,17 @@ fdr_sum = function(dtt){
     "CDE_ID.3203222",
     "Largest.Dimension",
     "Middle.Dimension",
+    "lncRNA Clusters",
+    "NBS_cluster",
+    "Mutation Clusters",
+    "mRNA_Cluster_number_Feb2014",
+    "meth_Cluster_number",
+    "Included_in_previous_marker_papers",
+    "mRNA Clusters",
+    "miRNA Clusters",
+    "Protein Clusters",
+    "CNV Clusters",
+    "DNA.Methylation Clusters",
     "Smallest.Dimension",
     "DNA.copy.cluster..Murray.",
     "Meth.Cluster..Laird.group.",
@@ -82,6 +95,7 @@ fdr_sum = function(dtt){
     "NF2.mutation.1",
     "Country","Days.to.Last.Follow.up","Days.to.Death",
     "Recurrence",
+    "recurred_progressed",
     "Days.to.Recurrence",
     "sequenced",
     "microRNA", "SNP6",
@@ -89,8 +103,10 @@ fdr_sum = function(dtt){
     "normal_meth", "complete", "Methylation.Cluster",
     "Copy.Number.Cluster",
     "MicroRNA.Expression.Cluster",
+    "disease_status_at_lfu",
     "Gene.Expression.Cluster",
     "days_to_last_followup",
+    "PARADIGM Clusters",
     "days_to_last_known_alive",
     "number_of_first_degree_relatives_with_cancer_diagnosis",
     "number_of_lymphnodes_examined",
@@ -184,8 +200,8 @@ clean_up$colname[which(str_detect(clean_up$colname, "histological_grade"))] = "G
 clean_up$colname[which(clean_up$colname == "expression_subtype")] = "Expression.Subtype"
 clean_up$colname[which(clean_up$colname == "mRNA_cluster")] = "Expression.Subtype"
 
-z = which(clean_up$colname == "Vital.Status")
-clean_up = clean_up[-z,]
+#z = which(clean_up$colname == "Vital.Status")
+#clean_up = clean_up[-z,]
 
 z = which(clean_up$colname == "PBRM1")
 clean_up = clean_up[-z,]

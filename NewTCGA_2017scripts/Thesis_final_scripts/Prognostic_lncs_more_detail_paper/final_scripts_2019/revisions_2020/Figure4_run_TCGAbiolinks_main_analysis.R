@@ -26,12 +26,16 @@ get_median_risk_group = function(PI_centered, PI_lower_thres, epsilon = 0.0001) 
 #Clinical files - use TCGAbiolinks via previous script
 #--------------------------------------------------------------------
 
-clin = readRDS("clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
+clin = readRDS("clin_data_lncs_new_variables_2021_tcgabiolinks_data.rds")
+
 for(i in 1:length(clin)){
   print(i)
-  d = clin[[i]]
+
+  d = as.data.frame(clin[[i]])
   z=which(str_detect(colnames(d), "ENSG"))
   d=d[,-z]
+
+  print(d$Cancer[1])
 
   lncs_keep = filter(allCands, cancer %in% d$Cancer[1])$gene
   gene_exp=as.data.table(filter(rna, Cancer == d$Cancer[1]))
@@ -42,8 +46,8 @@ for(i in 1:length(clin)){
 }
 
 lgg = clin[[1]]
-gbm = clin[[12]]
-kirc = clin[[3]]
+gbm = clin[[18]]
+kirc = clin[[2]]
 
 saveRDS(lgg, file="/u/kisaev/TCGA_lgg_wsubtype_info_biolinks.rds")
 saveRDS(gbm, file="/u/kisaev/TCGA_gbm_wsubtype_info_biolinks.rds")
@@ -105,6 +109,7 @@ get_clin_lnc_cors = function(dtt){
     for(i in 1:(ncol(new_dat)-2)){
       print(i)
       col = colnames(new_dat)[i]
+      print(col)
       if((!(col == lnc)) & (!(str_detect(col, "RPPA")))){
 
       if(!(is.numeric(new_dat[,i]))){
@@ -231,7 +236,7 @@ get_clin_lnc_cors = function(dtt){
        z2 = which(new_dat_plot[,which(colnames(new_dat_plot) %in% col)] %in% c("[Unknown]", "[Not Available]",
        "#N/A", "[Not Evaluated]", "[Discrepancy]", "[Not Applicable]", "Unknown", "N/A", "NA", "Not Available", "Not performed",
         "Indeterminate", "[Not Available]", "[Unknown]", "Not Performed Clinical",
-       "Performed but Not Available", "[Not submitted]"))
+       "Performed but Not Available", "[Not submitted]", "-"))
 
        if(!(length(z2)==0)){
         new_dat_plot = new_dat_plot[-z2,]}
@@ -404,8 +409,8 @@ get_clin_lnc_cors = function(dtt){
 
         new_dat_plot = as.data.table(new_dat_plot)
         new_dat_plot = new_dat_plot[order(lncRNA_exp)]
-        new_dat_plot$patient = factor(new_dat_plot$patient, levels=new_dat_plot$patient)
-        new_dat_plot$lncRNA_tag = factor(new_dat_plot$lncRNA_tag, levels=c(1,0))
+#        new_dat_plot$patient = factor(new_dat_plot$patient, levels=new_dat_plot$patient)
+#        new_dat_plot$lncRNA_tag = factor(new_dat_plot$lncRNA_tag, levels=c(1,0))
 
          #facet_grid(Clinical ~ , scales = "free", space = "free") +
          g <- ggplot(new_dat_plot, aes(patient, lncRNA_exp)) +  geom_col(aes(fill = Clinical))+
@@ -449,14 +454,23 @@ d3 = get_clin_lnc_cors(clin_data_lncs[[3]])
 d4 = get_clin_lnc_cors(clin_data_lncs[[4]])
 d5 = get_clin_lnc_cors(clin_data_lncs[[5]])
 d6 = get_clin_lnc_cors(clin_data_lncs[[6]])
+d7 = get_clin_lnc_cors(clin_data_lncs[[7]])
 d8 = get_clin_lnc_cors(clin_data_lncs[[8]])
 d9 = get_clin_lnc_cors(clin_data_lncs[[9]])
 d10 = get_clin_lnc_cors(clin_data_lncs[[10]])
 d11 = get_clin_lnc_cors(clin_data_lncs[[11]])
 d12 = get_clin_lnc_cors(clin_data_lncs[[12]])
 d13 = get_clin_lnc_cors(clin_data_lncs[[13]])
+d14 = get_clin_lnc_cors(clin_data_lncs[[14]])
+d15 = get_clin_lnc_cors(clin_data_lncs[[15]])
+d16 = get_clin_lnc_cors(clin_data_lncs[[16]])
+d17 = get_clin_lnc_cors(clin_data_lncs[[17]])
+d18 = get_clin_lnc_cors(clin_data_lncs[[18]])
+d19 = get_clin_lnc_cors(clin_data_lncs[[19]])
 
 #d7 = get_clin_lnc_cors(clin_data_lncs[[7]]) #uterine didnt work not enough data
 
-all_clin = list(d1, d2,d3,d4,d5,d6, d8, d9,d10, d11,d12,d13)
-saveRDS(all_clin, file="12_data_sets_biolinks_results.rds")
+all_clin = list(d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14,
+d15, d16, d17, d18, d19)
+#saveRDS(all_clin, file="12_data_sets_biolinks_results.rds")
+saveRDS(all_clin, file="13_data_sets_biolinks_results.rds")

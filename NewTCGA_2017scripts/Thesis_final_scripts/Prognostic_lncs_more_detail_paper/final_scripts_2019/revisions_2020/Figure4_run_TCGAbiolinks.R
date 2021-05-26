@@ -7,7 +7,7 @@ allCands = readRDS("final_candidates_TCGA_PCAWG_results_100CVsofElasticNet_June1
 allCands = subset(allCands, data == "TCGA") #173 unique lncRNA-cancer combos, #166 unique lncRNAs
 allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 
-#library(TCGAbiolinks)
+library(TCGAbiolinks)
 
 #--------This script ------------------------------------------------
 
@@ -24,7 +24,7 @@ allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 #write function that adds tag to whole data group
 #and does survival analysis on whole group
 
-cancers = unique(allCands$canc)
+cancers = unique(allCands$cancer)
 get_canc_dat = function(canc){
   canc_d = subset(rna, Cancer == canc)
   return(canc_d)
@@ -43,8 +43,25 @@ get_canc_data_for_plot = function(dtt){
 filtered_data = llply(cancer_data, get_canc_data_for_plot)
 
 #subtypes available from biolinks
-subtypes_data = toupper(c("acc", "brca", "coad", "gbm", "hnsc", "kich", "kirp",
-  "kirc", "lgg", "luad", "lusc", "prad", "pancan", "read", "skcm", "stad", "thca", "ucec"))
+subtypes_data = toupper(c("acc", "blca", "brca", "coad", "gbm", "hnsc",
+ "kich", "kirp", "lihc", "paad", "esca",
+  "kirc", "lgg", "luad", "lusc", "prad", "pancan", "read", "sarc",
+  "skcm", "stad", "thca", "ucec", "uvm"))
+
+#ACC
+#BRCA
+#COAD
+#GBM
+#HNSC
+#KIRP
+#KIRC
+#LGG
+#LUAD
+#LUSC
+#SKCM
+#STAD
+#THCA
+#UCEC
 
 #--------ADD CLINICAL VARIABLES----------------------------------------
 
@@ -91,6 +108,12 @@ add_clin_vars = function(dtt){
 
     cols = colnames(clin)[which(colnames(clin) %in% colnames(dtt))]
 
+    if("age_at_initial_pathologic_diagnosis" %in% cols){
+      clin$age_at_initial_pathologic_diagnosis = NULL
+    }
+
+    cols = colnames(clin)[which(colnames(clin) %in% colnames(dtt))]
+
     dtt = merge(dtt, clin, by=cols)
     return(dtt)
 
@@ -104,9 +127,11 @@ add_clin_vars = function(dtt){
 
 }
 
-clin_data_lncs = llply(filtered_data, add_clin_vars)
+clin_data_lncs = llply(filtered_data, add_clin_vars) #23
 
 #remove Nulls
-clin_data_lncs = Filter(Negate(is.null), clin_data_lncs)
+clin_data_lncs = Filter(Negate(is.null), clin_data_lncs) #19
+
 #saved file --- below
-saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
+#saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")
+saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_2021_tcgabiolinks_data.rds")

@@ -13,9 +13,21 @@ setwd("Downloads")
 #data
 f = fread("GSE89567_IDH_A_processed_data.txt")
 
+#how amny are protein coding genes
+library(annotables)
+gene_data = as.data.table(grch37)
+
 genes = unique(unlist(f[,1]))
 rownames(f) = genes
 f$V1 = NULL
+
+check_gene_type = function(gene){
+  print(gene)
+  gene = unlist(strsplit(gene, "'"))[2]
+  genetype = filter(gene_data, symbol == gene)$biotype[1]
+  return(c(gene, genetype))
+}
+all_genes_types = as.data.table(ldply(llply(genes, check_gene_type, .progress="text")))
 
 get_perc = function(gene){
   print(gene)
