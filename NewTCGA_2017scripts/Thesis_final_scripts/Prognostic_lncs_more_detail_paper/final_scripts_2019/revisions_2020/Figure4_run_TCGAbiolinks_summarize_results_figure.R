@@ -14,8 +14,8 @@ allCands$combo = unique(paste(allCands$gene, allCands$cancer, sep="_"))
 #--------FDR & Summarize Results-------------------------------------
 
 #1. adjust pvalues and remove unimportant/uninformative columns
-all_clin = readRDS("12_data_sets_biolinks_results.rds")
-#all_clin = readRDS("13_data_sets_biolinks_results.rds")
+#all_clin = readRDS("12_data_sets_biolinks_results.rds")
+all_clin = readRDS("13_data_sets_biolinks_results.rds")
 
 all_clin_dat = as.data.table(ldply(all_clin)) #combine all dataframes into one
 
@@ -70,6 +70,25 @@ fdr_sum = function(dtt){
     "protein.cluster",
     "OncoSign",
     "batch",
+    "time_of_follow-up",
+    "residual_tumor",
+    "RS65.Score",
+    "mRNA clusters (5 group NMF, Hoadley group)",
+    "miRNA clusters (5 group NMF, Robertson group)",
+    "NCIPHS",
+    "Hypomethylation Cluster (Laird group)",
+    "RS65",
+    "NCIHS",
+"iCluster clusters (k=3, Ronglai Shen)",
+"Paradigm clusters (k=4, Kiley Graim)",
+"HB16",
+"Censored 1=yes 0=no",
+"Follow up vital status",
+"Follow up days",
+"lncRNA Clusters (All 150 Samples)",
+"Methylation Clusters (All 150 Samples)",
+"Days to death",
+"mRNA Moffitt clusters (76 High Purity Samples Only)  1basal  2classical",
     "tumor_type.KIRP.path.",
     "CDE_ID.3203106",
     "CDE_ID.3203222",
@@ -130,6 +149,11 @@ fdr_sum = function(dtt){
   "Integrated.Clusters..no.exp.",
   "Integrated.Clusters..unsup.exp.",
   "HM27",
+  "miRNA cluster",
+  "short histo",
+  "methylation cluster","mRNA cluster","iCluster cluster",
+  "residual tumor","PARADIGM cluster","DSS status",
+  "OS days", "OS status",
   "HM450"))
 
   if(!(length(z)==0)){
@@ -199,6 +223,9 @@ clean_up$colname[which(str_detect(clean_up$colname, "histological_grade"))] = "G
 
 clean_up$colname[which(clean_up$colname == "expression_subtype")] = "Expression.Subtype"
 clean_up$colname[which(clean_up$colname == "mRNA_cluster")] = "Expression.Subtype"
+clean_up$colname[which(str_detect(clean_up$colname, "ABSOLUTE"))] = "ABSOLUTE.Purity"
+clean_up$colname[which(str_detect(clean_up$colname, "ABSOLUTE.Purity"))] = "Purity"
+clean_up$colname[which(str_detect(clean_up$colname, "purity"))] = "Purity"
 
 #z = which(clean_up$colname == "Vital.Status")
 #clean_up = clean_up[-z,]
