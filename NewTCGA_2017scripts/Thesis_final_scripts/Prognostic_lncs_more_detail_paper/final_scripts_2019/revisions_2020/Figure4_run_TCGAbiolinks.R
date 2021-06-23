@@ -44,24 +44,9 @@ filtered_data = llply(cancer_data, get_canc_data_for_plot)
 
 #subtypes available from biolinks
 subtypes_data = toupper(c("acc", "blca", "brca", "coad", "gbm", "hnsc",
- "kich", "kirp", "lihc", "paad", "esca",
+ "kich", "kirp", "lihc", "paad", "esca", "cesc",
   "kirc", "lgg", "luad", "lusc", "prad", "pancan", "read", "sarc",
   "skcm", "stad", "thca", "ucec", "uvm"))
-
-#ACC
-#BRCA
-#COAD
-#GBM
-#HNSC
-#KIRP
-#KIRC
-#LGG
-#LUAD
-#LUSC
-#SKCM
-#STAD
-#THCA
-#UCEC
 
 #--------ADD CLINICAL VARIABLES----------------------------------------
 
@@ -130,7 +115,7 @@ add_clin_vars = function(dtt){
 clin_data_lncs = llply(filtered_data, add_clin_vars) #23
 
 #remove Nulls
-clin_data_lncs = Filter(Negate(is.null), clin_data_lncs) #19
+clin_data_lncs = Filter(Negate(is.null), clin_data_lncs) #20
 
 #saved file --- below
 #saveRDS(clin_data_lncs, file="clin_data_lncs_new_variables_July19_tcgabiolinks_data.rds")

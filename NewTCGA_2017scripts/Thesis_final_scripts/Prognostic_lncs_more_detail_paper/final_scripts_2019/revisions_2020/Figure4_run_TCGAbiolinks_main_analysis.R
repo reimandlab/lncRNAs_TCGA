@@ -46,7 +46,7 @@ for(i in 1:length(clin)){
 }
 
 lgg = clin[[1]]
-gbm = clin[[18]]
+gbm = clin[[19]]
 kirc = clin[[2]]
 
 saveRDS(lgg, file="/u/kisaev/TCGA_lgg_wsubtype_info_biolinks.rds")
@@ -469,10 +469,11 @@ d16 = get_clin_lnc_cors(clin_data_lncs[[16]])
 d17 = get_clin_lnc_cors(clin_data_lncs[[17]])
 d18 = get_clin_lnc_cors(clin_data_lncs[[18]])
 d19 = get_clin_lnc_cors(clin_data_lncs[[19]])
+d20 = get_clin_lnc_cors(clin_data_lncs[[20]])
 
 #d7 = get_clin_lnc_cors(clin_data_lncs[[7]]) #uterine didnt work not enough data
 
 all_clin = list(d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14,
-d15, d16, d17, d18, d19)
+d15, d16, d17, d18, d19, d20)
 #saveRDS(all_clin, file="12_data_sets_biolinks_results.rds")
-saveRDS(all_clin, file="13_data_sets_biolinks_results.rds")
+saveRDS(all_clin, file="20_data_sets_biolinks_results.rds")
