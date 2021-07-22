@@ -17,7 +17,7 @@ clin = readRDS("clin_data_lncs_new_variables_2021_tcgabiolinks_data.rds")
 
 #1. adjust pvalues and remove unimportant/uninformative columns
 #all_clin = readRDS("12_data_sets_biolinks_results.rds")
-all_clin = readRDS("19_data_sets_biolinks_results.rds")
+all_clin = readRDS("20_data_sets_biolinks_results.rds")
 
 all_clin_dat = as.data.table(ldply(all_clin)) #combine all dataframes into one
 
@@ -27,6 +27,27 @@ get_name=function(g){
   name=name[1]
   return(name)
 }
+
+
+clin = readRDS("clin_data_lncs_new_variables_2021_tcgabiolinks_data.rds")
+
+for(i in 1:length(clin)){
+  print(i)
+
+  d = as.data.frame(clin[[i]])
+  z=which(str_detect(colnames(d), "ENSG"))
+  d=d[,-z]
+
+  print(d$Cancer[1])
+
+  lncs_keep = filter(allCands, cancer %in% d$Cancer[1])$gene
+  gene_exp=as.data.table(filter(rna, Cancer == d$Cancer[1]))
+  z=which(colnames(gene_exp) %in% c(lncs_keep, "patient"))
+  gene_exp = gene_exp[,..z]
+  d = merge(d, gene_exp, by="patient")
+  clin[[i]] = d
+}
+
 
 fdr_sum = function(dtt){
 
@@ -53,10 +74,10 @@ fdr_sum = function(dtt){
     "Tumor", "X2009stagegroup", "time_of_follow.up", "CDE_ID.3045435", "batch", "Survival", "Exome.data",
     "CDE_ID.3104937","OS.Time",
     "Country", "os_days", "CDE_ID.2006657", "icd_o_3_site", "WGS",
-    "Pan.Glioma.RNA.Expression.Cluster",
-    "Pan.Glioma.DNA.Methylation.Cluster",
-    #"Supervised.DNA.Methylation.Cluster",
-    #"IDH.specific.RNA.Expression.Cluster",
+    #"Pan.Glioma.RNA.Expression.Cluster",
+    #"Pan.Glioma.DNA.Methylation.Cluster",
+    "Supervised.DNA.Methylation.Cluster",
+    "IDH.specific.RNA.Expression.Cluster",
     "Random.Forest.Sturm.Cluster",
     "Telomere.length.estimate.in.blood.normal..Kb.",
     "Telomere.length.estimate.in.tumor..Kb.",
@@ -65,7 +86,7 @@ fdr_sum = function(dtt){
     "iCluster.Group",
     "IDH.codel.subtype",
 #    "Age..years.at.diagnosis.",
-    #"IDH.specific.DNA.Methylation.Cluster",
+    "IDH.specific.DNA.Methylation.Cluster",
     "mRNA_K4",
     "MethyLevel",
     "IDH_P",
@@ -73,6 +94,7 @@ fdr_sum = function(dtt){
     #"SCNA.cluster",
     #"protein.cluster",
     "OncoSign",
+    "SETD2",
     "batch",
     "time_of_follow-up",
     "pharmaceutical tx adjuvant",
@@ -100,6 +122,8 @@ fdr_sum = function(dtt){
     "Largest.Dimension",
     "Middle.Dimension",
   #  "lncRNA Clusters",
+  "ESTIMATE.combined.score",
+  "PBRM1",
     "NBS_cluster",
   #  "Mutation Clusters",
     "mRNA_Cluster_number_Feb2014",
@@ -111,6 +135,16 @@ fdr_sum = function(dtt){
     #"CNV Clusters",
     #"DNA.Methylation Clusters",
     "Smallest.Dimension",
+    "SAMP:iCluster_All_k3",
+    "SAMP:iCluster_Squam_k2",
+    "CLIN:Ratio_E6_unspliced_to_spliced",
+    "CLIN:HPV_clade_4",
+    "CLIN:Dx_merged",
+    "CLIN:e6ratio_cat_k4",
+"GEXP:APOBEC1:339",
+"GEXP:APOBEC3A:200315",
+"GEXP:APOBEC3B:9582",
+"GEXP:APOBEC3C:27350",
 #    "DNA.copy.cluster..Murray.",
 #    "Meth.Cluster..Laird.group.",
     "miRNA.clusters..4.group.NMF..Robertson.group.",
@@ -207,7 +241,7 @@ clean_up$cor = as.numeric(clean_up$cor)
 clean_up$kw_pval = as.numeric(clean_up$kw_pval)
 
 #keep only those with significant chisq and spearman test associations
-clean_up = as.data.table(filter(clean_up, chisq_fdr < 0.05 | (!(is.na(cor)) & fdr < 0.05 & abs(cor) > 0.25))) #297 left
+clean_up = as.data.table(filter(clean_up, chisq_fdr < 0.05 | (!(is.na(cor)) & fdr < 0.05 & abs(cor) > 0.25)))
 clean_up$combo = paste(clean_up$lnc, clean_up$canc, sep = "_")
 clean_up$canc_lnc_clin = paste(clean_up$combo, clean_up$colname)
 
@@ -215,9 +249,6 @@ clean_up$canc_lnc_clin = paste(clean_up$combo, clean_up$colname)
 saveRDS(clean_up, file="process_tcga_biolinks_results_for_plotting.rds")
 
 #-------PLOT summary results-------------------------------------------
-
-#8 cancer types
-length(which(clean_up$clin_pval_fdr < 0.05)) #203/258 also significnatly associated with survival
 
 clean_up$colname[which(str_detect(clean_up$colname, "Age"))] = "Age"
 
@@ -232,10 +263,12 @@ clean_up = clean_up[-z,]
 
 clean_up$colname[which(str_detect(clean_up$colname, "histological_grade"))] = "Grade"
 
-clean_up$colname[which(clean_up$colname == "expression_subtype")] = "Molecular.Subtype"
+clean_up$colname[which(clean_up$colname == "expression_subtype")] = "Transcriptomic Subtype"
 
 clean_up$colname[which(clean_up$colname == "mRNA cluster")] = "Gene.Expression.Cluster"
 clean_up$colname[which(clean_up$colname == "mRNA Clusters")] = "Gene.Expression.Cluster"
+clean_up$colname[which(clean_up$colname == "mRNAseq")] = "Gene.Expression.Cluster"
+
 clean_up$colname[which(clean_up$colname == "Transcriptome.Subtype")] = "Transcriptomic Subtype"
 
 clean_up$colname[which(clean_up$colname == "mRNA Moffitt clusters (All 150 Samples) 1basal  2classical")] = "Gene.Expression.Cluster"
@@ -248,17 +281,24 @@ clean_up$colname[which(clean_up$colname == "methylation cluster")] = "Methylatio
 clean_up$colname[which(clean_up$colname == "MicroRNA.Expression.Cluster")] = "miRNA cluster"
 clean_up$colname[which(clean_up$colname == "miRNA Clusters")] = "miRNA cluster"
 clean_up$colname[which(clean_up$colname == "miRNA.cluster")] = "miRNA cluster"
+clean_up$colname[which(clean_up$colname == "miRNA")] = "miRNA cluster"
+
+clean_up$colname[which(clean_up$colname == "CIMP")] = "CIMP.Category"
+
+clean_up$colname[which(clean_up$colname == "Original.Subtype")] = "Molecular.Subtype"
+
 clean_up$colname[which(clean_up$colname == "Purity Class (high or low)")] = "Purity"
 
 clean_up$colname[which(str_detect(clean_up$colname, "ABSOLUTE"))] = "ABSOLUTE.Purity"
 clean_up$colname[which(str_detect(clean_up$colname, "ABSOLUTE.Purity"))] = "Purity"
+clean_up$colname[which(str_detect(clean_up$colname, "SAMP:Purity_Absolute"))] = "Purity"
+
 clean_up$colname[which(str_detect(clean_up$colname, "purity"))] = "Purity"
 clean_up$colname[which(str_detect(clean_up$colname, "Cancer DNA fraction"))] = "Purity"
 clean_up$colname[which(str_detect(clean_up$colname, "Toshinori"))] = "CDKN2A silencing"
 clean_up$colname[which(str_detect(clean_up$colname, "CDKN2A.Epigenetically.Silenced"))] = "CDKN2A silencing"
 clean_up$colname[which(str_detect(clean_up$colname, "CDKN2Ameth"))] = "CDKN2A silencing"
 clean_up$colname[which(str_detect(clean_up$colname, "DNA methylation leukocyte percent estimate"))] = "Leukocyte Percent"
-clean_up$colname[which(str_detect(clean_up$colname, "SETD2.mutation"))] = "SETD2"
 clean_up$colname[which(str_detect(clean_up$colname, "TERT mRNA expression"))] = "TERT.expression.status"
 clean_up$colname[which(str_detect(clean_up$colname, "Total.Mutation.Rate"))] = "Mutation.Count"
 clean_up$colname[which(str_detect(clean_up$colname, "TP53 mutation signature"))] = "TP53_mutation_signature"
@@ -266,8 +306,10 @@ clean_up$colname[which(str_detect(clean_up$colname, "treatment_outcome_first_cou
 clean_up$colname[which(str_detect(clean_up$colname, "SCNA.cluster"))] = "SCNA cluster"
 clean_up$colname[which(str_detect(clean_up$colname, "CNV Clusters"))] = "SCNA cluster"
 
+clean_up$colname[which(str_detect(clean_up$colname, "PARADIGM"))] = "PARADIGM Clusters"
+
 clean_up$colname[which(str_detect(clean_up$colname, "mRNA_cluster"))] = "Gene.Expression.Cluster"
-clean_up$colname[which(str_detect(clean_up$colname, "Expression.Subtype"))] = "Molecular.Subtype"
+clean_up$colname[which(str_detect(clean_up$colname, "Expression.Subtype"))] = "Transcriptomic Subtype"
 
 clean_up$colname[which(str_detect(clean_up$colname, "Clinical.Spread..Lymph.Nodes..N."))] = "Lymph node Spread"
 clean_up$colname[which(str_detect(clean_up$colname, "lymphnode_pathologic_spread"))] = "Lymph node Spread"
@@ -287,6 +329,10 @@ clean_up$colname[which(str_detect(clean_up$colname, "miRNA clusters"))] = "miRNA
 clean_up$colname[which(str_detect(clean_up$colname, "mRNA clusters"))] = "Gene.Expression.Cluster"
 clean_up$colname[which(str_detect(clean_up$colname, "Supervised.DNA.Methylation.Cluster"))] = "Methylation.Cluster"
 clean_up$colname[which(str_detect(clean_up$colname, "Toshinori"))] = "CDKN2A silencing"
+
+clean_up$colname[which(str_detect(clean_up$colname, "SAMP:miRNA"))] = "miRNA cluster"
+clean_up$colname[which(str_detect(clean_up$colname, "SAMP:mRNAseq"))] = "Gene.Expression.Cluster"
+clean_up$colname[which(str_detect(clean_up$colname, "SAMP:CIMP"))] = "CIMP.Category"
 
 #which combos are better once lncRNA is used
 #look at only those where clinical variable also associated with survival
@@ -348,7 +394,7 @@ length(unique(clean_up$canc_lnc_clin))
 
 clean_up$better[clean_up$better == "V"] = "*"
 
-#get order - 113 unique combos
+#get order -
 t = as.data.table(table(clean_up$colname))
 t = as.data.table(filter(t, N > 0))
 t = t[order(N)]
@@ -359,15 +405,18 @@ clean_up$anova_sig_combo_clin = ""
 clean_up$anova_sig_combo_clin[clean_up$clin_vs_combo_anova_fdr < 0.05] = "Sig"
 clean_up$anova_sig_combo_clin = factor(clean_up$anova_sig_combo_clin, levels=c("Sig", ""))
 
-pdf("/u/kisaev/Jan2021/summary_biolinks_subtypes_lncRNA_exp_April18.pdf", height=5, width=7)
+length(which(clean_up$clin_pval_fdr < 0.05)) #235/405 also significnatly associated with survival
+table(clean_up$anova_sig_combo_clin) #356/405
+
+pdf("/u/kisaev/Jan2021/summary_biolinks_subtypes_lncRNA_exp_April18.pdf", height=8, width=10)
 #make geom_tile plot
 ggplot(clean_up, aes(name, colname)) +
   geom_tile(aes(fill = -log10(fdr_fig), color=anova_sig_combo_clin, width=0.65, height=0.65), size=0.5) +
   theme_bw() + #geom_text(aes(label = better), size=2.5) +
   theme(legend.title=element_blank(), legend.position="bottom", axis.title.x=element_blank(),
-    axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5, size=5),
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5, size=8, color="black"),
     strip.text.x = element_text(size = 4),
-    axis.text.y = element_text(size=5)) +
+    axis.text.y = element_text(size=8, color="black")) +
     scale_fill_gradient(low = "tan1", high = "darkred", n.breaks=7)+
     facet_grid(cols = vars(type), scales = "free", space = "free")+
      theme(strip.background = element_rect(colour="black", fill="white",
@@ -385,21 +434,20 @@ write.csv(clean_up, file="/u/kisaev/Jan2021/cleaned_clinical_variables_associati
 pdf("/u/kisaev/Jan2021/summary_clinical_concordances_vs_lnc_scatterplot_april18_wide.pdf", width=2, height=3)
 g = ggplot(clean_up, aes(clin_concordance, concordance_combo_model, label=canc_lnc_clin)) +
   geom_point(aes(colour=type,
-       shape=anova_sig_combo_clin), size=1.2) +
+       shape=anova_sig_combo_clin), size=1.1) +
        scale_shape_manual(values = c(17, 5))+
  #scale_size(range = c(0, 3))+
     #scale_colour_manual(values = mypal[c(2:5, 9,8)]) +
     #scale_fill_manual(values = sample(mypal5,9)) +
+#    fillScale+
     colScale+
     #scale_colour_brewer(palette="Set1")+
     xlab("Clinical Concordance") + ylab("lncRNA & Clinical Combined Concordance") + theme_classic() +
     theme(legend.position = "top", axis.text = element_text(size=6),
     axis.title=element_text(size=6),
-      legend.text=element_text(size=3), legend.title=element_text(size=3)) +
-     xlim(0.5,1) + ylim(0.5,1) + geom_abline(intercept=0) +
-     geom_text_repel(data = subset(clean_up,
-      canc_lnc_clin %in% c("RP11-279F6.3 KIRP Cliincal Stage", "RP5-1086K13.1 LGG X1p.19q.codeletion")),min.segment.length = unit(0, 'lines'),
-                     nudge_y = .2)
+      legend.text=element_text(size=2), legend.title=element_text(size=2),
+    legend.key.size = unit(1,"line")) +
+     xlim(0.5,1) + ylim(0.5,1) + geom_abline(intercept=0)
 g
 dev.off()
 

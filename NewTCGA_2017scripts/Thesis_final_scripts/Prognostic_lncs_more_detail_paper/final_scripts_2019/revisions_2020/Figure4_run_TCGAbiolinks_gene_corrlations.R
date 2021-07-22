@@ -75,19 +75,23 @@ check_cis_pcg = function(lnc){
     pcgs = c("IDH1", "IDH2", "MGMT", "TERT", "ATRX")
   }
 
-  if(canc_type == "BRCA"){
-    pcgs = c("ERBB2", "ESR1", "PGR")
-  }
+  #if(canc_type == "BRCA"){
+  #  pcgs = c("ERBB2", "ESR1", "PGR")
+  #}
 
   if(canc_type == "KIRP"){
     pcgs = c("BAP1", "SETD2", "PBRM1")
   }
 
   if(canc_type == "STAD"){
-    pcgs = c("CDKN2A", "PIK3CA", "ARID1A")
+    pcgs = c("CDKN2A", "MLH1")
   }
 
-  if(canc_type %in% c("LGG", "BRCA", "KIRP", "STAD")){
+  if(canc_type == "SARC"){
+    pcgs = c("DDIT3", "MDM2", "HMGA2", "FRS2", "CDK4")
+  }
+
+  if(canc_type %in% c("LGG", "KIRP", "STAD", "SARC")){
 
   pcg_res = as.data.frame(matrix(ncol=5))
   colnames(pcg_res)=c("lnc", "pcg", "canc", "spear_rho", "spear_p")
@@ -178,15 +182,16 @@ all_res$sig=""
 all_res$sig[all_res$fdr < 0.05] = "*"
 all_res$lnc[all_res$lnc=="HOXA-AS4"] = "HOXA10-AS"
 all_res$spear_rho = as.numeric(all_res$spear_rho)
-all_res$canc=factor(all_res$canc, levels=c("BRCA", "LGG", "STAD", "KIRP"))
+all_res$canc=factor(all_res$canc, levels=c("LGG", "STAD", "KIRP", "SARC"))
 
 #make summary plot
-pdf("/u/kisaev/Jan2021/lncRNA_vs_biomarker_PCGs_geom_tile_plot_summary.pdf", height=6, width=7)
+pdf("/u/kisaev/Jan2021/lncRNA_vs_biomarker_PCGs_geom_tile_plot_summary.pdf", height=5, width=8)
 ggplot(all_res, aes(lnc, pcg)) +
   geom_tile(aes(fill = spear_rho, width=0.7, height=0.7), size=0.55, color="grey") +
   theme_bw() + geom_text(aes(label = sig), size=3) +
   theme(legend.title=element_blank(), legend.position="bottom", axis.title.x=element_blank(),
-    axis.text.x = element_text(angle = 90, hjust = 1, size=6)) +
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5, size=8, color="black", face = "italic"),
+  axis.text.y = element_text(size=8, color="black", face="italic")) +
     scale_fill_gradient2(midpoint=0, low = "blue", mid = "white", high = "red")+
 #    scale_fill_gradientn(colours = c("blue", "white", "red"),
 #                       values = scales::rescale(c(-0.75, -0.25, 0, 0.25, 0.75)))+

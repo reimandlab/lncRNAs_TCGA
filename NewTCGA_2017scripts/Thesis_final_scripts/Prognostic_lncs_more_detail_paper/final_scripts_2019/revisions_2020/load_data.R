@@ -172,6 +172,7 @@ myColors=colours_palette$color
 names(myColors)=colours_palette$cancer
 myColors
 colScale <- scale_colour_manual(name = "type",values = myColors)
+fillScale <- scale_fill_manual(name = "type",values = myColors)
 
 #get colours for 30 cancers
 row=c("PRAD", "gray26")
