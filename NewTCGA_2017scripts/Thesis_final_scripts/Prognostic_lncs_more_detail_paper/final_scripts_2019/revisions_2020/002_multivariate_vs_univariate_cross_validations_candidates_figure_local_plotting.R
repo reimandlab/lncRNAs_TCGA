@@ -2,7 +2,8 @@ library(ggpubr)
 library(data.table)
 library(dplyr)
 
-setwd("/Users/kisaev/Documents/lncRNAs/Jan2021")
+#setwd("/Users/kisaev/Documents/lncRNAs/Jan2021")
+setwd("/Users/kerenisaev/Google Drive/My Drive/lncRNAs/Jan2021")
 
 #color palette
 colours_palette=readRDS("23_cancers_color_palette.rds")
